@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794606154" />
+  <meta name="build" content="1794606369" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -143,7 +143,9 @@
     .error { border-color: rgba(255, 59, 78, .4); color: #ffb3bb; }
     .skel { height: 128px; border-radius: var(--radius); background: linear-gradient(90deg, var(--panel) 0%, var(--panel-2) 50%, var(--panel) 100%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; border: 1px solid var(--line); }
     @keyframes shimmer { to { background-position: -200% 0; } }
-    footer { max-width: 1180px; margin: 0 auto; padding: 0 20px 40px; color: #5d6676; font-size: 12px; }
+    footer { max-width: 1180px; margin: 0 auto; padding: 0 20px 40px; color: #5d6676; font-size: 12px; line-height: 1.5; }
+    footer p { margin: 0 0 8px; } footer b { color: var(--muted); }
+    .src-note { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); color: #5d6676; font-size: 11px; }
 
     .install-btn { background: var(--accent) !important; color: #120a07 !important; border-color: transparent !important; font-weight: 800; }
     #notifyBtn { font-size: 14px; filter: grayscale(1) opacity(.6); }
@@ -387,7 +389,11 @@
     </div>
   </section>
 
-  <footer>Scores and standings come from ESPN's public data feeds. Scoreline is an independent fan project and is not affiliated with ESPN or any league. Times are shown in your local time zone.</footer>
+  <footer>
+    <p><b>Scoreline is an independent fan project.</b> It is not affiliated with, endorsed by, sponsored by, or connected to ESPN, the NFL, the NCAA, Formula 1, the FIA, the NBA, MLB, or any team, player or league.</p>
+    <p>Scores, stats, schedules, rosters and photos come from ESPN's publicly available data feeds and may be delayed or inaccurate. Win probabilities are estimates, not predictions or betting advice.</p>
+    <p>All team names, logos, player names and likenesses, league marks and other trademarks belong to their respective owners and are shown only to identify teams and players. "Formula 1", "F1" and related marks are trademarks of Formula One Licensing B.V. Times are shown in your local time zone.</p>
+  </footer>
 
   <script>
     const API = "https://site.api.espn.com/apis/site/v2/sports/";
@@ -748,7 +754,8 @@
     }
     function closeSheets() { const n = views.length; if (n) history.go(-n); }
     addEventListener("popstate", () => { while (views.length > (history.state?.sheet || 0)) popView(); });
-    const setBody = (v, title, html) => { v.el.querySelector(".sheet-title").textContent = title; v.el.querySelector(".sheet-body").innerHTML = html; };
+    const setBody = (v, title, html) => { v.el.querySelector(".sheet-title").textContent = title; v.el.querySelector(".sheet-body").innerHTML = html + SRC_NOTE; };
+    const SRC_NOTE = '<div class="src-note">Data from ESPN public feeds; may be delayed. Scoreline is an independent fan app, not affiliated with or endorsed by ESPN or any league, team or player. Names and logos belong to their owners.</div>';
 
     const pct = (x) => Math.round(x * 100);
     function mlProb(ml) { ml = Number(ml); if (!ml) return null; return ml < 0 ? -ml / (100 - ml) : 100 / (ml + 100); }
