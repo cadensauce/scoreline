@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -161,14 +161,88 @@
     .update-bar span { color: var(--muted); font-size: 13px; }
     .update-bar .dl { background: var(--accent); color: #120a07; border-color: transparent; }
     .update-x { border: 0; background: none; color: var(--muted); font-size: 20px; padding: 0 4px; }
+    .btabs, .more-sheet, .ptr { display: none; }
     @media (max-width: 720px) {
-      #updated { display: none; }
-      .top-inner { height: auto; padding: 10px 14px; flex-wrap: wrap; gap: 10px; }
-      .tabs { order: 3; width: 100%; }
-      main { padding: 16px 14px 50px; }
-      .bar h1 { font-size: 28px; width: 100%; }
-      .grid { grid-template-columns: 1fr; }
+      /* header: slim, shrinks on scroll */
+      #updated, .tabs { display: none; }
+      .top { padding-top: env(safe-area-inset-top); }
+      .native-app .top { padding-top: max(env(safe-area-inset-top), 32px); }
+      .top-inner { height: 52px; padding: 0 max(14px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left)); gap: 8px; transition: height .3s var(--ease); }
+      .brand { font-size: 21px; transition: font-size .3s var(--ease); }
+      .brand svg { width: 22px; height: 22px; }
+      .top-right { gap: 6px; }
+      .refresh { width: 40px; height: 40px; border-color: transparent; background: transparent; }
+      body.scrolled .top-inner { height: 44px; }
+      body.scrolled .brand { font-size: 18px; }
+      main { padding: 12px 12px calc(84px + env(safe-area-inset-bottom)); }
+      footer, .get-app { padding-left: 12px; padding-right: 12px; }
+      footer { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+      .bar { gap: 8px; margin-bottom: 10px; }
+      .bar h1 { font-size: 26px; width: 100%; }
+      .pill-btn { min-height: 38px; padding: 8px 14px; }
+      .pager { flex: 1; justify-content: flex-end; }
+      .pager .label { min-width: 0; flex: 1; }
+      .section-title { margin: 18px 0 8px; font-size: 15px; }
+      .section-title .pill-btn { min-height: 30px; padding: 4px 10px; font-size: 12px; }
+
+      /* compact score rows */
+      .grid { grid-template-columns: 1fr; gap: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+      .card { display: grid; grid-template-columns: 1fr 76px; column-gap: 10px; align-items: center; border: 0; border-radius: 0; border-bottom: 1px solid var(--line); padding: 8px 12px; background: transparent; }
+      .grid .card:last-child { border-bottom: 0; }
+      .card:hover { background: transparent; }
+      .card:active { transform: none; background: var(--panel-2); }
+      .card.live { border-color: var(--line); }
+      .card.live::before { inset: 0 auto 0 0; width: 3px; height: auto; background: var(--live); }
+      .card > .team { grid-column: 1; }
+      .card-head { grid-column: 2; grid-row: 1 / span 2; flex-direction: column; align-items: flex-end; justify-content: center; gap: 2px; margin: 0; text-align: right; font-size: 11px; border-left: 1px solid var(--line); padding-left: 8px; height: 100%; }
+      .card-head .status { font-size: 11px; line-height: 1.25; }
+      .team { grid-template-columns: 22px 1fr auto 40px; gap: 8px; padding: 3px 0; }
+      .team img, .team .ph { width: 22px; height: 22px; }
+      .tname strong { font-size: 14px; }
+      .tname .rec { font-size: 11px; }
+      .score { font-size: 21px; min-width: 0; }
+      .team.winner .score::after { font-size: 11px; vertical-align: 3px; margin-left: 2px; }
+      .fav { width: 32px; height: 32px; margin: -6px -4px; font-size: 14px; }
+      .card-foot { grid-column: 1 / -1; display: none; margin-top: 6px; padding-top: 6px; flex-wrap: wrap; animation: rise .3s var(--ease) both; }
+      .card.open .card-foot { display: flex; }
+      .card-foot span { white-space: normal; }
+
+      /* bottom tab bar */
+      .btabs { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; padding: 6px max(6px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)); background: rgba(11, 14, 19, .9); backdrop-filter: blur(16px) saturate(140%); border-top: 1px solid var(--line); }
+      .btab { flex: 1; border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0 4px; color: var(--muted); font-size: 10.5px; font-weight: 700; letter-spacing: .3px; position: relative; transition: color .2s; }
+      .btab svg { width: 24px; height: 24px; transition: transform .35s var(--ease); }
+      .btab.active { color: var(--accent); }
+      .btab.active svg { transform: translateY(-1px) scale(1.08); }
+      .btab .dot { position: absolute; top: 4px; left: calc(50% + 10px); width: 7px; height: 7px; border-radius: 50%; background: var(--live); animation: pulse 1.4s ease-in-out infinite; }
+      .more-sheet { display: block; position: fixed; left: 10px; right: 10px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 31; background: #1b212c; border: 1px solid var(--line-hi); border-radius: 16px; padding: 6px; box-shadow: 0 18px 44px rgba(0,0,0,.5); opacity: 0; transform: translateY(14px); pointer-events: none; transition: opacity .2s, transform .35s var(--ease); }
+      .more-sheet.show { opacity: 1; transform: none; pointer-events: auto; }
+      .more-sheet button { display: flex; width: 100%; align-items: center; gap: 12px; border: 0; background: none; padding: 14px; border-radius: 10px; font-weight: 700; text-align: left; }
+      .more-sheet button.active { color: var(--accent); background: var(--panel-3); }
+      .toast { bottom: calc(86px + env(safe-area-inset-bottom)); }
+      .update-bar { top: calc(60px + env(safe-area-inset-top)); }
+
+      /* pull to refresh */
+      .ptr { display: grid; place-items: center; position: fixed; left: 50%; top: calc(56px + env(safe-area-inset-top)); z-index: 19; width: 38px; height: 38px; margin-left: -19px; border-radius: 50%; background: #1b212c; border: 1px solid var(--line-hi); box-shadow: 0 8px 24px rgba(0,0,0,.4); opacity: 0; transform: translateY(-40px); color: var(--accent); }
+      .ptr svg { width: 20px; height: 20px; }
+      .ptr.go svg { animation: spin .8s linear infinite; }
+      .ptr.back { transition: transform .35s var(--ease), opacity .25s; }
+
+      /* F1 */
+      .panel { padding: 14px; }
+      .gp-name { font-size: 24px; }
+      .gp-sub { margin-bottom: 10px; font-size: 13px; }
+      .countdown { margin: 8px 0 10px; font-size: 28px; display: flex; align-items: baseline; gap: 8px; }
+      .countdown small { display: inline; }
+      .sessions { gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+      .session { grid-template-columns: 52px 1fr auto; padding: 9px 12px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; font-size: 13px; }
+      .session:last-child { border-bottom: 0; }
+      .session b { font-size: 15px; }
+      .session .when { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .session.next { background: rgba(255, 90, 54, .08); }
+      td { padding: 7px 6px; }
+      .seg button { padding: 8px 14px; }
     }
+    @keyframes spin { to { transform: rotate(360deg); } }
     @media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; transition: none !important; } }
   </style>
 </head>
@@ -189,7 +263,10 @@
     </div>
   </header>
 
+  <div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg></div>
   <main id="main"></main>
+  <nav class="btabs" id="btabs" aria-label="Sports"></nav>
+  <div class="more-sheet" id="moreSheet"></div>
 
   <section class="get-app" id="getApp">
     <div class="get-app-inner">
@@ -317,7 +394,22 @@
         const live = k !== "home" && (cache[k]?.events || []).some(isLive);
         return '<button class="tab ' + (state.tab === k ? "active" : "") + '" type="button" data-tab="' + k + '">' + esc(name) + (live ? '<span class="dot" aria-label="live"></span>' : "") + "</button>";
       }).join("");
+      const liveIn = (k) => (cache[k]?.events || []).some(isLive);
+      const btn = (k, label, active, extra) => '<button class="btab ' + (active ? "active" : "") + '" type="button" ' + extra + ">" + ICONS[k] + label + (k !== "home" && k !== "more" && liveIn(k) ? '<span class="dot"></span>' : "") + "</button>";
+      $("btabs").innerHTML = ["home", "nfl", "cfb", "f1", "nba"].map((k) => btn(k, k === "home" ? "Top" : (LEAGUES[k].short || LEAGUES[k].name), state.tab === k, 'data-tab="' + k + '"')).join("") +
+        btn("more", "More", state.tab === "epl", 'id="moreBtn"');
+      $("moreSheet").innerHTML = '<button type="button" data-tab="epl" class="' + (state.tab === "epl" ? "active" : "") + '">' + ICONS.epl + " Premier League" + (liveIn("epl") ? ' <span class="status live">Live</span>' : "") + "</button>";
     }
+    const svg = (d) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + "</svg>";
+    const ICONS = {
+      home: svg('<path d="M4 18h16M4 12h11M4 6h6"/>'),
+      nfl: svg('<ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-45 12 12)"/><path d="M9.5 14.5l5-5M11 11.5l1.5 1.5M12.5 10l1.5 1.5"/>'),
+      cfb: svg('<path d="M3 9l9-5 9 5-9 5z"/><path d="M7 11.5V16c0 1.5 2.5 3 5 3s5-1.5 5-3v-4.5M21 9v5"/>'),
+      f1: svg('<path d="M5 21V4M5 4h13l-2.5 4L18 12H5"/>'),
+      nba: svg('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.6 5.6c3 3 3 9.8 0 12.8M18.4 5.6c-3 3-3 9.8 0 12.8"/>'),
+      epl: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z"/>'),
+      more: svg('<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>'),
+    };
     function skeleton(n = 6) { return '<div class="grid">' + '<div class="skel"></div>'.repeat(n) + "</div>"; }
 
     function pagerLabel(key) {
@@ -488,6 +580,9 @@
 
     /* ---------- events ---------- */
     document.addEventListener("click", (e) => {
+      const sheet = $("moreSheet");
+      if (e.target.closest("#moreBtn")) { sheet.classList.toggle("show"); return; }
+      sheet.classList.remove("show");
       const tab = e.target.closest("[data-tab]");
       if (tab) {
         if (state.tab !== tab.dataset.tab) { state.tab = tab.dataset.tab; state.liveOnly = false; $("main").innerHTML = ""; window.scrollTo({ top: 0, behavior: "smooth" }); }
@@ -506,7 +601,31 @@
       if (e.target.closest("#liveOnly")) { state.liveOnly = !state.liveOnly; return render(); }
       const f1t = e.target.closest("[data-f1t]");
       if (f1t) { state.f1Table = f1t.dataset.f1t; return render(); }
+      const card = e.target.closest(".grid .card");
+      if (card && card.querySelector(".card-foot") && matchMedia("(max-width: 720px)").matches) card.classList.toggle("open");
     });
+
+    /* ---------- phone: shrinking header + pull to refresh ---------- */
+    addEventListener("scroll", () => document.body.classList.toggle("scrolled", scrollY > 8), { passive: true });
+    (() => {
+      const ptr = $("ptr");
+      let y0 = null, dy = 0;
+      const phone = () => matchMedia("(max-width: 720px)").matches;
+      const set = (d, back) => {
+        ptr.classList.toggle("back", !!back);
+        ptr.style.transform = "translateY(" + (Math.min(d, 90) - 40) + "px) rotate(" + d * 3 + "deg)";
+        ptr.style.opacity = Math.min(1, d / 60);
+      };
+      addEventListener("touchstart", (e) => { if (phone() && scrollY <= 0 && !ptr.classList.contains("go")) { y0 = e.touches[0].clientY; dy = 0; } }, { passive: true });
+      addEventListener("touchmove", (e) => { if (y0 === null) return; dy = Math.max(0, (e.touches[0].clientY - y0) * 0.5); if (scrollY > 0) dy = 0; set(dy); }, { passive: true });
+      addEventListener("touchend", async () => {
+        if (y0 === null) return; y0 = null;
+        if (dy < 60) return set(0, true);
+        ptr.classList.add("go", "back"); ptr.style.transform = "translateY(30px)"; ptr.style.opacity = 1;
+        await Promise.all([render(), new Promise((r) => setTimeout(r, 600))]);
+        ptr.classList.remove("go"); set(0, true);
+      });
+    })();
     $("refresh").addEventListener("click", () => {
       const b = $("refresh");
       b.classList.remove("spin"); void b.offsetWidth; b.classList.add("spin");
