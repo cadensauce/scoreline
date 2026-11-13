@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794609120" />
+  <meta name="build" content="1794609305" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -305,6 +305,23 @@
     .f-row > span:first-child { color: var(--muted); font-size: 11px; font-weight: 700; }
     .f-row.sel { background: var(--panel-3); }
     .f-row.score b { color: var(--gold); } .f-row.turnover b { color: #ff8a96; }
+    .h2 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; margin-bottom: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; font-size: 13px; }
+    .h2 > span { font-size: 10.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--accent); }
+    .h2 b { display: flex; align-items: center; gap: 6px; } .h2 img { width: 20px; height: 20px; object-fit: contain; }
+    .h2 small { color: var(--muted); }
+    .track-panel { margin-bottom: 14px; }
+    .t-head { display: flex; align-items: center; justify-content: space-between; }
+    .t-replay { font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); background: var(--panel-3); padding: 3px 8px; border-radius: 99px; }
+    .track { width: 100%; display: block; max-width: 560px; margin: 0 auto; }
+    .t-outer { fill: none; stroke: #2a3140; stroke-width: 13; stroke-linejoin: round; stroke-linecap: round; }
+    .t-inner { fill: none; stroke: #3b4456; stroke-width: 9; stroke-linejoin: round; stroke-linecap: round; }
+    .car circle { stroke: #0b0e13; stroke-width: 1.5; }
+    .car.key circle { stroke: #fff; stroke-width: 2; }
+    .car.key { filter: drop-shadow(0 2px 4px rgba(0,0,0,.6)); }
+    .car-lbl { fill: #fff; font: 800 10.5px Inter, sans-serif; text-anchor: middle; paint-order: stroke; stroke: #0b0e13; stroke-width: 3px; }
+    .t-order { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; justify-content: center; }
+    .t-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; background: var(--panel-2); border: 1px solid var(--line); font-size: 12px; font-weight: 700; }
+    .t-chip i { width: 8px; height: 8px; border-radius: 50%; }
     .ldr-ph { width: 46px; height: 46px; border-radius: 50%; background: var(--panel-2); flex: none; }
     .ldr img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; background: var(--panel-2); flex: none; }
     .inj-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -721,11 +738,107 @@
           return '<tr><td class="pos">' + (i + 1) + "</td><td>" + flag + esc(who) + '</td><td class="pts">' + esc(pts) + "</td></tr>";
         }).join("") + "</tbody></table>" : '<div class="empty">Standings unavailable.</div>';
       right += "</div>";
-      main.innerHTML = barHtml("Formula 1", "f1") + '<div class="f1-wrap">' + left + right + "</div>";
+      main.innerHTML = barHtml("Formula 1", "f1") + '<div class="panel track-panel" id="trackPanel"><div class="g-label">Track</div><div class="skel" style="height:260px"></div></div>' + '<div class="f1-wrap">' + left + right + "</div>";
       renderTabs();
       stamp();
       tickCountdown();
+      loadTrack();
       schedule(ev && nextSession(ev)?.status?.type?.state === "in");
+    }
+    /* ---------- F1 track map (car positions from the free OpenF1 API) ---------- */
+    // Live when a session is running and data is flowing; otherwise loops a 100-second replay from the latest session.
+    const OF1 = "https://api.openf1.org/v1/";
+    let track = null, trackRaf = 0, trackPoll = 0;
+    const q = (k, v) => k + encodeURIComponent(v);
+    async function fetchLoc(key, a, b) {
+      const rows = await getJSON(OF1 + "location?session_key=" + key + "&" + q("date>", a.toISOString()) + "&" + q("date<", b.toISOString()));
+      return Array.isArray(rows) ? rows : [];
+    }
+    async function loadTrack() {
+      const el = $("trackPanel");
+      if (!el) return;
+      if (track) return drawTrack(el);
+      track = { loading: true };
+      try {
+        const now = Date.now();
+        let s = (await getJSON(OF1 + "sessions?session_key=latest"))[0];
+        let live = s && new Date(s.date_start) <= now && now <= new Date(s.date_end).getTime() + 15 * 60000;
+        if (!s || new Date(s.date_start) > now) {
+          const all = await getJSON(OF1 + "sessions?year=" + new Date().getFullYear());
+          s = all.filter((x) => new Date(x.date_end) < now).pop(); live = false;
+        }
+        const drivers = await getJSON(OF1 + "drivers?session_key=" + s.session_key);
+        let a, b, rows = [];
+        if (live) { b = new Date(now); a = new Date(now - 100000); rows = await fetchLoc(s.session_key, a, b); }
+        if (!rows.length) {
+          live = false;
+          const st = new Date(s.date_start).getTime(), en = new Date(s.date_end).getTime();
+          a = new Date(st + (en - st) * .45); b = new Date(a.getTime() + 100000);
+          rows = await fetchLoc(s.session_key, a, b);
+        }
+        const pos = await getJSON(OF1 + "position?session_key=" + s.session_key + "&" + q("date<", b.toISOString())).catch(() => []);
+        const order = {};
+        (pos || []).forEach((p) => { order[p.driver_number] = p.position; });
+        const cars = {};
+        rows.forEach((r) => { if (r.x === 0 && r.y === 0) return; (cars[r.driver_number] ||= []).push({ t: new Date(r.date).getTime(), x: r.x, y: r.y }); });
+        Object.values(cars).forEach((c) => c.sort((m, n) => m.t - n.t));
+        const nums = Object.keys(cars).filter((n) => cars[n].length > 20);
+        if (!nums.length) throw new Error("no data");
+        const ref = nums.slice().sort((m, n) => (order[m] || 99) - (order[n] || 99))[0];
+        track = { s, live, a: a.getTime(), b: b.getTime(), cars, order, outline: cars[ref], drivers: Object.fromEntries(drivers.map((d) => [d.driver_number, d])) };
+      } catch { track = { error: true }; }
+      const el2 = $("trackPanel");
+      if (el2) drawTrack(el2);
+    }
+    function drawTrack(el) {
+      const T = track;
+      cancelAnimationFrame(trackRaf); clearInterval(trackPoll);
+      if (!T || T.loading) return;
+      if (T.error) { el.innerHTML = '<div class="g-label">Track</div><div class="g-note">Car positions aren\'t available right now.</div>'; return; }
+      const W = 360, H = 250, pad = 22;
+      const xs = T.outline.map((p) => p.x), ys = T.outline.map((p) => p.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+      const k = Math.min((W - 2 * pad) / (maxX - minX || 1), (H - 2 * pad) / (maxY - minY || 1));
+      const ox = (W - (maxX - minX) * k) / 2, oy = (H - (maxY - minY) * k) / 2;
+      const sx = (x) => ox + (x - minX) * k, sy = (y) => H - (oy + (y - minY) * k);
+      const d = T.outline.map((p, i) => (i ? "L" : "M") + sx(p.x).toFixed(1) + " " + sy(p.y).toFixed(1)).join("");
+      const nums = Object.keys(T.cars).sort((m, n) => (T.order[n] || 0) - (T.order[m] || 0));
+      const ranked = nums.filter((n) => T.order[n]).sort((m, n) => T.order[m] - T.order[n]);
+      const first = ranked[0], last = ranked[ranked.length - 1];
+      const dname = (n) => T.drivers[n]?.name_acronym || n;
+      let svg = '<svg class="track" viewBox="0 0 ' + W + " " + H + '"><path d="' + d + '" class="t-outer"/><path d="' + d + '" class="t-inner"/>';
+      nums.forEach((n) => {
+        const c = "#" + (T.drivers[n]?.team_colour || "8a93a5"), tag = n === first ? "P1" : n === last ? "P" + T.order[n] : "";
+        svg += '<g class="car' + (tag ? " key" : "") + '" data-n="' + n + '"><circle r="' + (tag ? 6.5 : 5) + '" fill="' + esc(c) + '"/>' + (tag ? '<text class="car-lbl" y="-11">' + esc(tag + " " + dname(n)) + "</text>" : "") + "</g>";
+      });
+      svg += "</svg>";
+      const chip = (n) => '<span class="t-chip"><i style="background:#' + esc(T.drivers[n]?.team_colour || "8a93a5") + '"></i>P' + esc(T.order[n]) + " " + esc(dname(n)) + "</span>";
+      el.innerHTML = '<div class="t-head"><div class="g-label" style="margin:0">Track</div><span class="' + (T.live ? "status live" : "t-replay") + '">' + (T.live ? "Live" : "Replay") + "</span></div>" +
+        '<div class="g-note" style="margin:2px 0 6px">' + esc([T.s.circuit_short_name, T.s.session_name, T.live ? "" : new Date(T.s.date_start).toLocaleDateString([], { month: "short", day: "numeric" })].filter(Boolean).join(" · ")) + "</div>" + svg +
+        '<div class="t-order">' + ranked.slice(0, 3).map(chip).join("") + (ranked.length > 3 ? '<span class="muted">…</span>' + chip(last) : "") + "</div>";
+      const groups = Object.fromEntries([...el.querySelectorAll(".car")].map((g) => [g.dataset.n, g]));
+      const idx = {};
+      const span = T.b - T.a, wall0 = performance.now();
+      const frame = () => {
+        const t = T.live ? Date.now() - 8000 : T.a + ((performance.now() - wall0) % span);
+        for (const n in groups) {
+          const c = T.cars[n]; let i = idx[n] || 0;
+          if (c[i] && c[i].t > t) i = 0;
+          while (i < c.length - 2 && c[i + 1].t <= t) i++;
+          idx[n] = i;
+          const p = c[i], q2 = c[i + 1] || p, f = q2.t > p.t ? Math.max(0, Math.min(1, (t - p.t) / (q2.t - p.t))) : 0;
+          groups[n].setAttribute("transform", "translate(" + sx(p.x + (q2.x - p.x) * f).toFixed(1) + " " + sy(p.y + (q2.y - p.y) * f).toFixed(1) + ")");
+        }
+        if (el.isConnected) trackRaf = requestAnimationFrame(frame);
+      };
+      frame();
+      if (T.live) trackPoll = setInterval(async () => {
+        if (!el.isConnected) return clearInterval(trackPoll);
+        const from = new Date(Math.max(...Object.values(T.cars).map((c) => c[c.length - 1].t)));
+        const rows = await fetchLoc(T.s.session_key, from, new Date()).catch(() => []);
+        rows.forEach((r) => { if (r.x || r.y) (T.cars[r.driver_number] ||= []).push({ t: new Date(r.date).getTime(), x: r.x, y: r.y }); });
+        Object.values(T.cars).forEach((c) => { while (c.length > 600) c.shift(); });
+      }, 4000);
     }
     function tickCountdown() {
       clearInterval(countdownTimer);
@@ -867,7 +980,11 @@
         cur.plays.push(p);
       });
       const prev = v.field, stay = prev && prev.di < prev.drives.length - 1;
-      v.field = { drives, di: stay ? prev.di : drives.length - 1, pi: stay ? prev.pi : null, away, home, lg, id, teams, state };
+      const kicks = (data.items || []).filter((p) => /kickoff/i.test(p.type?.text || ""));
+      const q3 = kicks.find((p) => p.period?.number === 3), q1 = kicks.find((p) => p.period?.number === 1);
+      const h2id = q3 ? refId(q3.team, "teams") : q1 ? refId(q1.start?.team, "teams") : null;
+      const h2 = h2id ? { team: h2id === String(away.team?.id) ? away : home, actual: !!q3 } : null;
+      v.field = { drives, h2, di: stay ? prev.di : drives.length - 1, pi: stay ? prev.pi : null, away, home, lg, id, teams, state };
       drawField(v, !!prev && prev.drives.length === drives.length && prev.drives[prev.drives.length - 1].plays.length === drives[drives.length - 1].plays.length);
       if (state === "in") {
         clearInterval(v.fieldTimer);
@@ -976,7 +1093,7 @@
       svg += "</g></g></svg>";
       const dteam = D.team === String(F.away.team?.id) ? F.away : F.home;
       const last = D.plays[D.plays.length - 1];
-      let html = '<div class="g-label">Plays</div><div class="f-nav"><button type="button" class="sheet-btn" data-drive="-1" ' + (F.di ? "" : "disabled") + '>‹</button><div><b>' + ab(dteam) + " drive " + (F.di + 1) + " of " + F.drives.length + "</b><small>" + D.plays.length + " plays · " + esc(last?.type?.text || "") + "</small></div>" +
+      let html = (F.h2 ? '<div class="h2"><span>2nd half</span><b>' + (F.h2.team.team?.logos?.[0]?.href ? '<img src="' + esc(F.h2.team.team.logos[0].href) + '" alt="">' : "") + esc(F.h2.team.team?.displayName || ab(F.h2.team)) + "</b><small>" + (F.h2.actual ? "received the 2nd-half kickoff" : "gets the ball first") + "</small></div>" : "") + '<div class="g-label">Plays</div><div class="f-nav"><button type="button" class="sheet-btn" data-drive="-1" ' + (F.di ? "" : "disabled") + '>‹</button><div><b>' + ab(dteam) + " drive " + (F.di + 1) + " of " + F.drives.length + "</b><small>" + D.plays.length + " plays · " + esc(last?.type?.text || "") + "</small></div>" +
         '<button type="button" class="sheet-btn" data-drive="1" ' + (F.di < F.drives.length - 1 ? "" : "disabled") + ">›</button></div>" + svg +
         '<div class="f-key"><span><i class="k-los"></i>Line of scrimmage</span><span><i class="k-1st"></i>First down</span><span><i class="k-air"></i>Throw</span></div>';
       if (P) {
