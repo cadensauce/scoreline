@@ -1,0 +1,23 @@
+[package]
+name = "scoreline"
+version = "1.0.0"
+description = "Live sports scores: NFL, college football, F1, NBA and the Premier League"
+edition = "2021"
+
+[lib]
+name = "scoreline_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-notification = "2"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

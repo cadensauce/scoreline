@@ -148,6 +148,13 @@
     .toast { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px); opacity: 0; z-index: 50; background: #1b212c; border: 1px solid var(--line-hi); color: var(--text); padding: 10px 16px; border-radius: 999px; font-weight: 600; box-shadow: 0 16px 40px rgba(0,0,0,.45); transition: opacity .25s, transform .4s var(--ease); pointer-events: none; max-width: calc(100% - 32px); text-align: center; }
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
     @media (display-mode: standalone) { .install-btn { display: none !important; } }
+    .native-app .install-btn, .native-app .get-app { display: none !important; }
+    .get-app { max-width: 1180px; margin: 0 auto 18px; padding: 0 20px; }
+    .get-app-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(120deg, rgba(255, 90, 54, .10), transparent 60%), var(--panel); }
+    .get-app-title { font-family: var(--display); font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; }
+    .get-app-sub { color: var(--muted); }
+    .get-app-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .dl { text-decoration: none; padding: 10px 16px; font-weight: 800; }
     @media (max-width: 720px) {
       #updated { display: none; }
       .top-inner { height: auto; padding: 10px 14px; flex-wrap: wrap; gap: 10px; }
@@ -177,6 +184,19 @@
   </header>
 
   <main id="main"></main>
+
+  <section class="get-app" id="getApp">
+    <div class="get-app-inner">
+      <div>
+        <div class="get-app-title">Get the Scoreline app</div>
+        <div class="get-app-sub">Native app built in Rust, with notifications for your ★ teams.</div>
+      </div>
+      <div class="get-app-btns">
+        <a class="pill-btn dl" href="https://github.com/cadensauce/scoreline/releases/latest/download/Scoreline-Windows-Setup.exe">⊞ Windows</a>
+        <a class="pill-btn dl" href="https://github.com/cadensauce/scoreline/releases/latest/download/Scoreline-Android.apk">▶ Android APK</a>
+      </div>
+    </div>
+  </section>
 
   <footer>Scores and standings come from ESPN's public data feeds. Scoreline is an independent fan project and is not affiliated with ESPN or any league. Times are shown in your local time zone.</footer>
 
@@ -501,7 +521,10 @@
 
     /* ---------- install (PWA) ---------- */
     let installPrompt = null;
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+    const TAURI = window.__TAURI__;            // set when running inside the native (Rust/Tauri) app
+    const NATIVE_NOTIFY = TAURI && TAURI.notification;
+    if (!TAURI && "serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+    if (TAURI) document.documentElement.classList.add("native-app");
     window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; $("installBtn").hidden = false; });
     window.addEventListener("appinstalled", () => { $("installBtn").hidden = true; toast("Scoreline installed!"); });
     $("installBtn").addEventListener("click", async () => {
@@ -515,21 +538,30 @@
     /* ---------- score alerts for ★ teams ---------- */
     // Watches every league's scoreboard for favorite teams' games and alerts on kickoff, score changes and final.
     // Runs while the app is open or recently used; alerts when closed need a push server.
-    let alertsOn = store.get("alerts", false) && "Notification" in window && Notification.permission === "granted";
+    let alertsOn = store.get("alerts", false) && (NATIVE_NOTIFY || ("Notification" in window && Notification.permission === "granted"));
+    async function askPermission() {
+      if (NATIVE_NOTIFY) {
+        if (await NATIVE_NOTIFY.isPermissionGranted()) return "granted";
+        return await NATIVE_NOTIFY.requestPermission();
+      }
+      if (!("Notification" in window)) return "unsupported";
+      return Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+    }
     const snapshot = store.get("snap", {});
     const syncBell = () => { $("notifyBtn").classList.toggle("on", alertsOn); $("notifyBtn").title = alertsOn ? "Score alerts on for your ★ teams" : "Turn on score alerts for your ★ teams"; };
     syncBell();
     $("notifyBtn").addEventListener("click", async () => {
-      if (!("Notification" in window)) { toast("This browser doesn't support notifications."); return; }
       if (alertsOn) { alertsOn = false; store.set("alerts", false); syncBell(); toast("Score alerts off"); return; }
-      const perm = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
-      if (perm !== "granted") { toast("Notifications are blocked. Allow them in your browser's site settings."); return; }
+      const perm = await askPermission().catch(() => "denied");
+      if (perm === "unsupported") { toast("This browser doesn't support notifications."); return; }
+      if (perm !== "granted") { toast(TAURI ? "Notifications are blocked. Allow them for Scoreline in your system settings." : "Notifications are blocked. Allow them in your browser's site settings."); return; }
       alertsOn = true; store.set("alerts", true); syncBell();
       toast(state.favs.size ? "Score alerts on for your ★ teams" : "Alerts on. Tap ★ on a team to follow it.");
       checkAlerts();
     });
     async function notify(title, body, tag) {
       try {
+        if (NATIVE_NOTIFY) { NATIVE_NOTIFY.sendNotification({ title, body }); return; }
         const reg = await navigator.serviceWorker?.getRegistration();
         const opts = { body, tag, icon: "icon-192.png", badge: "icon-192.png", renotify: true };
         if (reg) reg.showNotification(title, opts); else new Notification(title, opts);
