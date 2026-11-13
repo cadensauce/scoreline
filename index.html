@@ -193,12 +193,49 @@
     .wp-bar i:last-child { flex: 1; }
     .g-note { margin-top: 6px; }
     .ldr-cat { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin: 8px 0 4px; }
-    .ldr-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .ldr { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .ldr img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: var(--panel-2); flex: none; }
-    .ldr div { min-width: 0; display: flex; flex-direction: column; }
-    .ldr b, .ldr small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .ldr b { font-size: 13px; } .ldr small { font-size: 11.5px; color: var(--muted); }
+    .ldr-list { display: grid; gap: 6px; }
+    .ldr { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+    .ldr-main { min-width: 0; flex: 1; }
+    .ldr-main > b { display: block; font-size: 14.5px; margin-bottom: 6px; }
+    .ldr-main > b small { color: var(--muted); font-weight: 600; font-size: 11.5px; margin-left: 2px; }
+    .stats { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+    .st { display: flex; flex-direction: column; line-height: 1.1; }
+    .st b { font-family: var(--display); font-size: 21px; font-weight: 800; }
+    .st small { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    button.ldr { width: 100%; text-align: left; color: inherit; transition: background .2s, transform .15s; }
+    button.ldr:active, .row[data-player]:active { background: var(--panel-2); transform: scale(.99); }
+    .row[data-player] { cursor: pointer; }
+    .chev { color: var(--muted); font-size: 22px; flex: none; }
+    .p-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+    .p-head img { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; background: var(--panel-2); border: 2px solid var(--line-hi); flex: none; }
+    .p-head > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .p-head b { font-family: var(--display); font-size: 26px; font-weight: 800; text-transform: uppercase; line-height: 1.05; }
+    .p-head small { color: var(--muted); font-size: 12.5px; }
+    .donuts { display: flex; justify-content: space-around; gap: 10px; }
+    .donut { position: relative; width: 96px; display: flex; flex-direction: column; align-items: center; }
+    .donut svg { width: 96px; height: 96px; transform: rotate(-90deg); }
+    .d-bg { fill: none; stroke: var(--panel-3); stroke-width: 7; }
+    .d-fg { fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round; animation: draw 1s var(--ease) both; }
+    @keyframes draw { from { stroke-dasharray: 0 999; } }
+    .donut b { position: absolute; top: 34px; font-family: var(--display); font-size: 21px; font-weight: 800; }
+    .donut small { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
+    .g-sec.flush { border-top: 0; padding-top: 0; }
+    .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 6px; text-align: center; display: flex; flex-direction: column; }
+    .tile b { font-family: var(--display); font-size: 20px; font-weight: 800; line-height: 1.1; }
+    .tile small { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+    .bars { display: flex; align-items: flex-end; gap: 6px; height: 150px; padding-top: 16px; }
+    .bar-col { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; min-width: 0; }
+    .bar-col i { width: 100%; max-width: 30px; border-radius: 6px 6px 2px 2px; background: var(--line-hi); transform-origin: bottom; animation: grow .7s var(--ease) both; }
+    .bar-col i.w { background: var(--accent); } .bar-col i.l { background: #5b6476; }
+    @keyframes grow { from { transform: scaleY(0); } }
+    .bar-v { font-size: 11px; font-weight: 700; }
+    .bar-col small { font-size: 10px; color: var(--muted); font-weight: 700; }
+    .row.glog { grid-template-columns: 1.6fr repeat(5, 1fr); font-size: 12.5px; padding: 8px 10px; text-align: right; }
+    .row.glog > span:first-child { text-align: left; white-space: nowrap; }
+    .row.glog.head { color: var(--muted); font-size: 10.5px; font-weight: 700; text-transform: uppercase; }
+    .ldr-ph { width: 46px; height: 46px; border-radius: 50%; background: var(--panel-2); flex: none; }
+    .ldr img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; background: var(--panel-2); flex: none; }
     .inj-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .inj-team { font-weight: 800; font-size: 12px; margin-bottom: 4px; }
     .inj { font-size: 12.5px; padding: 3px 0; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; }
@@ -673,6 +710,8 @@
       if (f1t) { state.f1Table = f1t.dataset.f1t; return render(); }
       const ap = e.target.closest("[data-ap]");
       if (ap) { const p = alertPrefs(); p[ap.dataset.ap] = !p[ap.dataset.ap]; store.set("alertPrefs", p); ap.classList.toggle("on", p[ap.dataset.ap]); return; }
+      const pl = e.target.closest("[data-player]");
+      if (pl) { const [lg, id] = pl.dataset.player.split("|"); return openPlayer(lg, id); }
       const team = e.target.closest("[data-team]");
       if (team) { const [lg, id] = team.dataset.team.split("|"); return openTeam(lg, id); }
       const card = e.target.closest("[data-ev]");
@@ -723,6 +762,56 @@
       if (h && a) return { home: h / (h + a), src: "Based on betting odds" };
       return null;
     }
+    /* ---------- player profile ---------- */
+    function donut(pctVal, label) {
+      const p = Math.max(0, Math.min(100, Number(pctVal) || 0)), r = 26, c = 2 * Math.PI * r;
+      return '<div class="donut"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="' + r + '" class="d-bg"/><circle cx="32" cy="32" r="' + r + '" class="d-fg" stroke-dasharray="' + (c * p / 100).toFixed(1) + " " + c.toFixed(1) + '"/></svg><b>' + esc(pctVal) + "%</b><small>" + esc(label) + "</small></div>";
+    }
+    async function openPlayer(lg, id) {
+      const v = { kind: "player" };
+      pushView(v);
+      const base = "https://site.web.api.espn.com/apis/common/v3/sports/" + LEAGUES[lg].path + "/athletes/" + id;
+      const [info, ov] = await Promise.all([getJSON(base).catch(() => null), getJSON(base + "/overview").catch(() => null)]);
+      if (!v.el.isConnected) return;
+      const a = info?.athlete;
+      if (!a) return setBody(v, "Player", '<div class="error">Couldn\'t load this player.</div>');
+      let h = '<div class="p-head">' + (a.headshot?.href ? '<img src="' + esc(a.headshot.href) + '" alt="">' : "") + "<div><b>" + esc(a.displayName) + "</b><small>" +
+        esc([a.team?.abbreviation || a.team?.displayName, a.jersey ? "#" + a.jersey : "", a.position?.abbreviation].filter(Boolean).join(" · ")) + "</small><small>" +
+        esc([a.displayHeight, a.displayWeight, a.age ? "Age " + a.age : "", a.college?.name, a.displayExperience].filter(Boolean).join(" · ")) + "</small></div></div>";
+      const S = ov?.statistics, sp = S?.splits?.[0];
+      if (S && sp) {
+        const pcts = S.labels.map((l, i) => [l, sp.stats[i]]).filter(([l, val]) => /%$/.test(l) && val !== "" && !isNaN(parseFloat(val)));
+        if (pcts.length) h += '<div class="g-sec"><div class="g-label">' + esc(S.displayName || "Season") + '</div><div class="donuts">' + pcts.slice(0, 3).map(([l, val]) => donut(val, l)).join("") + "</div></div>";
+        h += '<div class="g-sec' + (pcts.length ? " flush" : "") + '">' + (pcts.length ? "" : '<div class="g-label">' + esc(S.displayName || "Season") + "</div>") + '<div class="tiles">' +
+          S.labels.map((l, i) => /%$/.test(l) ? "" : '<div class="tile" title="' + esc(S.displayNames?.[i] || l) + '"><b>' + esc(sp.stats[i]) + "</b><small>" + esc(l) + "</small></div>").join("") + "</div></div>";
+      }
+      const G = ov?.gameLog, gs = G?.statistics?.[0];
+      if (gs?.events?.length) {
+        const pick = ["YDS", "PTS", "H", "K"].map((l) => gs.labels.indexOf(l)).find((i) => i >= 0) ?? 0;
+        const games = gs.events.slice(0, 8).reverse();
+        const vals = games.map((g) => parseFloat(String(g.stats[pick]).replace(/,/g, "")) || 0), max = Math.max(1, ...vals);
+        const meta = (g) => G.events?.[g.eventId] || {};
+        h += '<div class="g-sec"><div class="g-label">' + esc(gs.displayNames?.[pick] || gs.labels[pick]) + ' · recent games</div><div class="bars">' + games.map((g, i) => {
+          const m = meta(g);
+          return '<div class="bar-col"><span class="bar-v">' + esc(g.stats[pick]) + '</span><i style="height:' + Math.max(4, vals[i] / max * 100) + '%;animation-delay:' + i * 40 + 'ms" class="' + (m.gameResult === "W" ? "w" : m.gameResult === "L" ? "l" : "") + '"></i><small>' + esc(m.opponent?.abbreviation || "") + "</small></div>";
+        }).join("") + "</div>";
+        const cols = gs.labels.slice(0, 5);
+        h += '<div class="list" style="margin-top:12px"><div class="row glog head"><span>Opp</span>' + cols.map((c) => "<span>" + esc(c) + "</span>").join("") + "</div>" +
+          gs.events.slice(0, 8).map((g) => { const m = meta(g); return '<div class="row glog"><span>' + (m.gameResult ? '<span class="res ' + (m.gameResult === "W" ? "w" : "l") + '">' + esc(m.gameResult) + "</span> " : "") + esc((m.atVs || "") + " " + (m.opponent?.abbreviation || "")) + "</span>" + cols.map((_, i) => "<span>" + esc(g.stats[i]) + "</span>").join("") + "</div>"; }).join("") + "</div></div>";
+      }
+      setBody(v, a.shortName || a.displayName, h);
+    }
+
+    // "178/272, 2,282 YDS, 18 TD, 11 INT" -> stat blocks (adds completion % for a/b pairs)
+    function statChips(text) {
+      const chip = (v, l) => '<span class="st"><b>' + esc(v) + "</b><small>" + esc(l) + "</small></span>";
+      return String(text || "").split(/,\s+(?=\S*\d)/).map((part) => {
+        const ratio = part.match(/^(\d+)\/(\d+)$/);
+        if (ratio) return chip(part, "Comp/Att") + (Number(ratio[2]) ? chip((ratio[1] / ratio[2] * 100).toFixed(1) + "%", "Comp %") : "");
+        const m = part.match(/^([\d.,\-]+)\s*(.*)$/);
+        return m ? chip(m[1], m[2] || "") : chip(part, "");
+      }).join("");
+    }
     async function openGame(lg, id) {
       const v = { kind: "game" };
       pushView(v);
@@ -756,8 +845,8 @@
       if (cats.length) {
         h += '<div class="g-sec"><div class="g-label">' + (st.state === "pre" ? "Season leaders" : "Top players") + "</div>" + cats.map((c) => {
           const other = (byTeam[teams[1]?.team?.id] || []).find((x) => x.name === c.name);
-          const cell = (x) => { const p = x?.leaders?.[0]; if (!p) return "<div></div>"; return '<div class="ldr">' + (p.athlete?.headshot?.href ? '<img src="' + esc(p.athlete.headshot.href) + '" alt="" loading="lazy">' : "") + "<div><b>" + esc(p.athlete?.shortName || p.athlete?.displayName) + "</b><small>" + esc(p.displayValue) + "</small></div></div>"; };
-          return '<div class="ldr-cat">' + esc(c.displayName) + '</div><div class="ldr-row">' + cell(c) + cell(other) + "</div>";
+          const cell = (x, t) => { const p = x?.leaders?.[0]; if (!p) return ""; return '<button type="button" class="ldr" data-player="' + lg + '|' + esc(p.athlete?.id) + '">' + (p.athlete?.headshot?.href ? '<img src="' + esc(p.athlete.headshot.href) + '" alt="" loading="lazy">' : '<span class="ldr-ph"></span>') + '<div class="ldr-main"><b>' + esc(p.athlete?.shortName || p.athlete?.displayName) + ' <small>' + esc(t?.team?.abbreviation || "") + (p.athlete?.position?.abbreviation ? " · " + esc(p.athlete.position.abbreviation) : "") + '</small></b><div class="stats">' + statChips(p.displayValue) + "</div></div><span class=\"chev\">›</span></button>"; };
+          return '<div class="ldr-cat">' + esc(c.displayName) + '</div><div class="ldr-list">' + cell(c, teams[0]) + cell(other, teams[1]) + "</div>";
         }).join("") + "</div>";
       }
 
@@ -809,7 +898,7 @@
         h += groups.filter((g) => g.items?.length).map((g) => '<div class="g-label" style="margin-top:14px">' + esc(ROSTER_GROUPS[g.position] || g.position) + " <small>" + g.items.length + '</small></div><div class="list">' +
           g.items.map((p) => {
             const inj = p.injuries?.[0]?.status;
-            return '<div class="row"><span class="muted">' + esc(p.jersey ? "#" + p.jersey : "") + "</span><span>" + esc(p.displayName) + ' <small class="muted">' + esc(p.position?.abbreviation || "") + "</small></span><span>" +
+            return '<div class="row" data-player="' + v.lg + '|' + esc(p.id) + '"><span class="muted">' + esc(p.jersey ? "#" + p.jersey : "") + "</span><span>" + esc(p.displayName) + ' <small class="muted">' + esc(p.position?.abbreviation || "") + "</small></span><span>" +
               (inj ? '<span class="badge ' + esc(String(inj).toLowerCase().replace(/\W/g, "")) + '">' + esc(inj) + "</span>" : "") + "</span></div>";
           }).join("") + "</div>").join("") || '<div class="empty">No roster available.</div>';
       }
