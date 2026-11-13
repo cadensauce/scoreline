@@ -649,7 +649,7 @@
 
     /* ---------- events ---------- */
     document.addEventListener("click", (e) => {
-      sheet.classList.remove("show");
+      if (e.target.closest(".btab, .tab") && views.length) closeSheets();
       const tab = e.target.closest("[data-tab]");
       if (tab) {
         if (state.tab !== tab.dataset.tab) { state.tab = tab.dataset.tab; state.liveOnly = false; $("main").innerHTML = ""; window.scrollTo({ top: 0, behavior: "smooth" }); }
