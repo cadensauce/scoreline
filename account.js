@@ -174,6 +174,37 @@ async function openChat(uid) {
   });
 }
 
+/* ---------- trust + privacy ---------- */
+const TRUST = '<div class="trust"><div class="trust-h">🔒 What Scoreline stores</div><ul>' +
+  "<li><b>Your username</b>: the only thing other people can see.</li>" +
+  "<li><b>Your email</b>: private, only used to log in and reset your password. Never shown to anyone or sold.</li>" +
+  "<li><b>Your ★ teams and alert settings</b>: so they sync to your other devices.</li>" +
+  "<li><b>Chats</b>: only you and your friend can read them in the app.</li></ul>" +
+  '<div class="trust-f">Passwords are encrypted by Google Firebase and nobody, including Scoreline, can see them. No ads, no tracking, and you can delete your account anytime.</div></div>';
+const PRIVACY = '<div class="privacy"><p><b>Scoreline is a free, independent fan app.</b> This page explains exactly what happens to your information.</p>' +
+  "<h4>What we collect</h4><ul><li>Email and password, to log you in. Passwords are stored encrypted by Google Firebase; no one can read them.</li><li>A username you choose. It's the only thing visible to other users.</li><li>Your ★ teams and alert settings.</li><li>Friend connections and chat messages you send.</li></ul>" +
+  "<h4>Who can see it</h4><ul><li>Other users see only your username.</li><li>Chats are visible only to the two people in them inside the app.</li><li>The app's developer can access the database to keep it running and safe (for example, to remove abuse), like any app's admin.</li></ul>" +
+  "<h4>What we never do</h4><ul><li>No ads, no selling or sharing your data, no tracking across other apps or sites.</li><li>We never ask for payment info. Fantasy, when it comes, uses points only, never real money.</li></ul>" +
+  "<h4>Your controls</h4><ul><li>Remove friends anytime, and only friends can message you.</li><li>Delete your account from the Account screen. This erases your profile, settings, friends and the messages you sent.</li></ul>" +
+  "<h4>Where it's stored</h4><p>Google Firebase (Authentication and Firestore), which encrypts data in transit and at rest.</p></div>";
+function openPrivacy() { const v = { kind: "privacy" }; pushView(v); setBody(v, "Privacy", PRIVACY); }
+
+async function deleteAccount() {
+  const uid = user.uid, uname = profile?.username;
+  // Remove messages I sent, friend links, profile, username and settings, then the login itself.
+  for (const f of friendState.friends) {
+    const id = chatId(uid, f);
+    const mine = await fb.getDocs(fb.query(fb.collection(db, "chats", id, "messages"), fb.where("from", "==", uid))).catch(() => null);
+    if (mine) await Promise.all(mine.docs.map((d) => fb.deleteDoc(d.ref).catch(() => {})));
+  }
+  const reqs = [...friendState.incoming.map((r) => r.id), ...friendState.outgoing.map((r) => r.id), ...friendState.friends.flatMap((f) => [reqId(uid, f), reqId(f, uid)])];
+  await Promise.all(reqs.map((r) => fb.deleteDoc(fb.doc(db, "requests", r)).catch(() => {})));
+  await fb.deleteDoc(fb.doc(db, "users", uid)).catch(() => {});
+  await fb.deleteDoc(fb.doc(db, "profiles", uid)).catch(() => {});
+  if (uname) await fb.deleteDoc(fb.doc(db, "usernames", uname)).catch(() => {});
+  await user.delete();
+}
+
 /* ---------- account sheet UI ---------- */
 let sheetView = null, mode = "login";
 function openAccount() {
@@ -193,7 +224,7 @@ function refreshAccountSheet() {
       '<label>Email<input name="email" type="email" autocomplete="email" required></label><label>Password<input name="password" type="password" minlength="6" autocomplete="' + (mode === "signup" ? "new-password" : "current-password") + '" required></label>' +
       '<div class="acct-err" data-err></div><button class="pill-btn dl acct-go" type="submit">' + (mode === "signup" ? "Create account" : "Log in") + "</button>" +
       (mode === "login" ? '<button type="button" class="acct-link" data-forgot>Forgot password?</button>' : "") + "</form>" +
-      '<p class="g-note">Your ★ teams and alert settings sync to every device you log in on.</p>';
+      TRUST + '<button type="button" class="acct-link" data-privacy>Read the full privacy page</button>';
   } else {
     const F = friendState;
     const person = (uid, actions) => '<div class="opt"><span><b>@' + esc(names[uid] || "…") + "</b></span><span class=\"acct-acts\">" + actions + "</span></div>";
@@ -202,7 +233,8 @@ function refreshAccountSheet() {
       '<div class="g-label" style="margin-top:18px">Add a friend</div><form class="acct-add" data-addf><input placeholder="Username" maxlength="21" autocomplete="off"><button class="pill-btn" type="submit">Add</button></form><div class="acct-err" data-err></div>' +
       (F.incoming.length ? '<div class="g-label" style="margin-top:16px">Friend requests</div><div class="panel">' + F.incoming.map((r) => person(r.from, '<button class="pill-btn" type="button" data-accept="' + esc(r.id) + '">Accept</button><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '">✕</button>')).join("") + "</div>" : "") +
       '<div class="g-label" style="margin-top:16px">Friends</div><div class="panel">' + (F.friends.length ? F.friends.map((uid) => person(uid, '<button class="pill-btn" type="button" data-chat="' + esc(uid) + '">Chat</button><button class="pill-btn" type="button" data-unfriend="' + esc(uid) + '" aria-label="Remove friend">✕</button>')).join("") : '<div class="g-note">No friends yet. Add someone by their username.</div>') + "</div>" +
-      (F.outgoing.length ? '<div class="g-label" style="margin-top:16px">Sent</div><div class="panel">' + F.outgoing.map((r) => person(r.to, '<span class="muted">Pending</span><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '">✕</button>')).join("") + "</div>" : "");
+      (F.outgoing.length ? '<div class="g-label" style="margin-top:16px">Sent</div><div class="panel">' + F.outgoing.map((r) => person(r.to, '<span class="muted">Pending</span><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '">✕</button>')).join("") + "</div>" : "") +
+      '<div class="acct-foot"><button type="button" class="acct-link" data-privacy>Privacy</button><button type="button" class="acct-link danger" data-delacct>Delete my account</button></div><div class="acct-err" data-err></div>';
   }
   setBody(v, user ? "Account" : "Scoreline account", h);
 }
@@ -241,6 +273,22 @@ document.addEventListener("click", async (e) => {
   if (t.closest("#accountBtn")) { e.stopPropagation(); return openAccount(); }
   const m = t.closest("[data-amode]");
   if (m) { mode = m.dataset.amode; return refreshAccountSheet(); }
+  if (t.closest("[data-privacy]")) return openPrivacy();
+  const del = t.closest("[data-delacct]");
+  if (del) {
+    if (!del.dataset.sure) {
+      del.dataset.sure = "1"; del.textContent = "Tap again to permanently delete";
+      setTimeout(() => { if (del.isConnected) { delete del.dataset.sure; del.textContent = "Delete my account"; } }, 4000);
+      return;
+    }
+    del.textContent = "Deleting…";
+    try { await deleteAccount(); toast("Your account was deleted"); }
+    catch (err) {
+      errBox(del, /requires-recent-login/.test(err?.code || "") ? "For safety, log out and log back in, then delete again." : "Couldn't delete. Try again.");
+      del.textContent = "Delete my account"; delete del.dataset.sure;
+    }
+    return;
+  }
   if (t.closest("[data-logout]")) { await fb.signOut(auth); toast("Logged out"); return; }
   if (t.closest("[data-forgot]")) {
     const email = t.closest("form")?.querySelector('[name="email"]')?.value.trim();

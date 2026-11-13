@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794610982" />
+  <meta name="build" content="1794611549" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -378,6 +378,15 @@
     .sheet-bar { position: relative; }
     .test-btn { width: 100%; margin-top: 10px; justify-content: center; }
     /* ---- account, friends, chat ---- */
+    .trust { margin-top: 16px; padding: 14px; border-radius: 14px; background: rgba(76, 212, 134, .06); border: 1px solid rgba(76, 212, 134, .25); font-size: 13px; line-height: 1.5; }
+    .trust-h { font-weight: 800; margin-bottom: 6px; }
+    .trust ul { margin: 0; padding-left: 18px; color: #c9cfda; } .trust li { margin: 4px 0; } .trust b { color: var(--text); }
+    .trust-f { margin-top: 8px; color: var(--muted); font-size: 12px; }
+    .privacy { font-size: 14px; line-height: 1.55; color: #c9cfda; }
+    .privacy h4 { margin: 18px 0 6px; font-family: var(--display); font-size: 17px; letter-spacing: .4px; text-transform: uppercase; color: var(--text); }
+    .privacy ul { margin: 0; padding-left: 18px; } .privacy li { margin: 4px 0; } .privacy b { color: var(--text); }
+    .acct-foot { display: flex; justify-content: space-between; margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .acct-link.danger { color: #ff8a96; }
     #accountBtn { position: relative; color: var(--muted); }
     #accountBtn.on { color: var(--accent); }
     #accountBtn[data-count]:not([data-count=""])::after { content: attr(data-count); position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px; background: var(--live); color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
