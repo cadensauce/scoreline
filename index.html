@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794614279" />
+  <meta name="build" content="1794614364" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -383,7 +383,8 @@
     .dchip { flex: none; width: 52px; scroll-snap-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 7px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); transition: background .25s, color .25s, border-color .25s, transform .2s var(--ease); }
     .dchip small { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
     .dchip b { font-family: var(--display); font-size: 21px; font-weight: 800; color: var(--text); line-height: 1; }
-    .dchip i { width: 5px; height: 5px; border-radius: 50%; background: transparent; margin-top: 2px; }
+    .dchip em { font-style: normal; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+    .dchip.on em { color: #120a07; }
     .dchip.has i { background: var(--accent); }
     .dchip.today small { color: var(--accent); }
     .dchip.on { background: var(--accent); border-color: var(--accent); color: #120a07; transform: translateY(-1px); }
@@ -773,16 +774,30 @@
     }
     async function ensureGameDays(key) {
       if (gameDays[key]?.size) return;
-      try { noteGameDays(key, await getJSON(API + LEAGUES[key].path + "/scoreboard?" + (LEAGUES[key].extra || "").replace(/^&/, ""))); } catch {}
+      const L = LEAGUES[key], base = API + L.path + "/scoreboard?" + (L.extra || "").replace(/^&/, "");
+      try {
+        const cur = await getJSON(base);
+        noteGameDays(key, cur);
+        // Football has no day calendar, so collect game days from the surrounding weeks.
+        if (L.paging === "week" && cur.week?.number) {
+          const n = cur.week.number, st = cur.season?.type || 2;
+          await Promise.allSettled([-3, -2, -1, 1, 2, 3].filter((k) => n + k > 0).map((k) => getJSON(base + "&week=" + (n + k) + "&seasontype=" + st).then((d) => noteGameDays(key, d))));
+        }
+      } catch {}
     }
+    const fromYmd = (s) => new Date(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8), 12);
+    const offOf = (s) => Math.round((fromYmd(s) - dateAt(0)) / DAY);
     function stripHtml(key) {
-      const sel = dayOff[key] || 0, gd = gameDays[key] || new Set();
-      let h = '<div class="dstrip" data-dstrip>';
-      for (let o = sel - 10; o <= sel + 14; o++) {
-        const d = dateAt(o), wk = o === 0 ? "Today" : d.toLocaleDateString([], { weekday: "short" });
-        h += '<button type="button" data-day="' + o + '" class="dchip' + (o === sel ? " on" : "") + (gd.has(ymd(d)) ? " has" : "") + (o === 0 ? " today" : "") + '"><small>' + esc(wk) + "</small><b>" + d.getDate() + "</b><i></i></button>";
-      }
-      return h + "</div>";
+      const sel = ymd(dateAt(dayOff[key] || 0));
+      let days = [...(gameDays[key] || [])].sort();
+      if (!days.includes(sel)) days = [...days, sel].sort();
+      const i = days.indexOf(sel);
+      days = days.slice(Math.max(0, i - 8), i + 14);
+      return '<div class="dstrip" data-dstrip>' + days.map((s) => {
+        const d = fromYmd(s), o = offOf(s);
+        const wk = o === 0 ? "Today" : o === 1 ? "Tmrw" : d.toLocaleDateString([], { weekday: "short" });
+        return '<button type="button" data-day="' + o + '" class="dchip has' + (s === sel ? " on" : "") + (o === 0 ? " today" : "") + '"><small>' + esc(wk) + "</small><b>" + d.getDate() + '</b><em>' + esc(d.toLocaleDateString([], { month: "short" })) + "</em></button>";
+      }).join("") + "</div>";
     }
     function weekRange(key) {
       const off = state.offset[key] || 0, d = dateAt(0);
@@ -801,7 +816,7 @@
         if (dayOff[key] == null) {
           dayOff[key] = 0;
           const gd = gameDays[key];
-          if (gd?.size && !gd.has(ymd(dateAt(0)))) for (let o = 1; o <= 10; o++) if (gd.has(ymd(dateAt(o)))) { dayOff[key] = o; break; }
+          if (gd?.size && !gd.has(ymd(dateAt(0)))) { const t = ymd(dateAt(0)), all = [...gd].sort(), nx = all.find((s) => s > t) || all[all.length - 1]; dayOff[key] = offOf(nx); }
         }
         const data = await getJSON(dayUrl(key, dateAt(dayOff[key])));
         noteGameDays(key, data); cache[key] = data;
