@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794609871" />
+  <meta name="build" content="1794609897" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -323,6 +323,7 @@
     .t-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; background: var(--panel-2); border: 1px solid var(--line); font-size: 12px; font-weight: 700; }
     .t-chip i { width: 8px; height: 8px; border-radius: 50%; }
     .t-head .seg { display: inline-flex; flex-direction: row; margin: 0; }
+    .ct-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
     .ls-wrap { overflow-x: auto; }
     .ls { font-size: 12.5px; font-variant-numeric: tabular-nums; }
     .ls th, .ls td { text-align: center; padding: 6px 5px; }
@@ -1037,9 +1038,9 @@
     function chartHtml(v) {
       const s = v.s, teams = v.teams, f = v.chartTeam;
       const tc = (t) => "#" + (t.team?.color || "8a93a5");
-      const tabs = '<div class="seg chips">' + [["all", "Both"], ["0", teams[0].team?.abbreviation], ["1", teams[1].team?.abbreviation]].map(([k, l]) => '<button type="button" data-ct="' + k + '" class="' + (f === k ? "active" : "") + '">' + esc(l) + "</button>").join("") + "</div>";
+      const tabs = '<div class="seg chips">' + [["all", "Both"], ["0", teams[0].team?.abbreviation], ["1", teams[1].team?.abbreviation]].map(([k, l]) => '<button type="button" data-ct="' + k + '" class="' + (f === k ? "active" : "") + '">' + (k === "all" ? "" : '<i class="ct-dot" style="background:' + ["#ff7a45", "#5bb4ff"][k] + '"></i>') + esc(l) + "</button>").join("") + "</div>";
       const want = (tid) => f === "all" || teams[+f]?.team?.id === String(tid);
-      const colorOf = (tid) => tc(teams.find((t) => t.team?.id === String(tid)) || teams[0]);
+      const PAL = ["#ff7a45", "#5bb4ff"], colorOf = (tid) => PAL[teams[1]?.team?.id === String(tid) ? 1 : 0];
       if (v.lg === "nba") {
         const shots = (s.plays || []).filter((p) => p.shootingPlay && p.coordinate && p.coordinate.x >= 0 && p.coordinate.x <= 50 && !/free throw/i.test(p.text || ""));
         if (!shots.length) return '<div class="g-label">Shot chart</div><div class="g-note">Shots will appear here once the game starts.</div>';
