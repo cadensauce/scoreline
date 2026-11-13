@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794606430" />
+  <meta name="build" content="1794606711" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -237,6 +237,27 @@
     .row.glog { grid-template-columns: 1.6fr repeat(5, 1fr); font-size: 12.5px; padding: 8px 10px; text-align: right; }
     .row.glog > span:first-child { text-align: left; white-space: nowrap; }
     .row.glog.head { color: var(--muted); font-size: 10.5px; font-weight: 700; text-transform: uppercase; }
+    .bar .seg { margin: 0; }
+    .chips button { padding: 7px 12px; font-size: 12.5px; }
+    .p-status { display: flex; gap: 12px; align-items: flex-start; margin: 12px 0 4px; padding: 12px; border-radius: 12px; background: rgba(255, 200, 61, .08); border: 1px solid rgba(255, 200, 61, .3); }
+    .p-status .pill { flex: none; min-width: 38px; height: 26px; padding: 0 8px; display: grid; place-items: center; border-radius: 8px; font-weight: 800; font-size: 12px; background: rgba(255, 200, 61, .18); color: var(--gold); }
+    .p-status > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .p-status small { color: var(--muted); font-size: 12px; }
+    .p-status p { margin: 4px 0 0; font-size: 12.5px; color: #c9cfda; }
+    .p-status.inj-out, .p-status.inj-injuredreserve, .p-status.inj-suspension { background: rgba(255, 59, 78, .08); border-color: rgba(255, 59, 78, .3); }
+    .p-status.inj-out .pill, .p-status.inj-injuredreserve .pill, .p-status.inj-suspension .pill { background: rgba(255, 59, 78, .18); color: #ff8a96; }
+    .p-status.ok { background: rgba(76, 212, 134, .07); border-color: rgba(76, 212, 134, .28); align-items: center; }
+    .p-status.ok .pill { background: rgba(76, 212, 134, .16); color: #4cd486; }
+    .news-note { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 8px; }
+    .news-note b { display: block; font-size: 13.5px; line-height: 1.4; }
+    .news-note p { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+    .news-src { font-size: 10.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+    .news { display: flex; gap: 10px; align-items: center; text-decoration: none; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .news:last-child { border-bottom: 0; }
+    .news img { width: 72px; height: 48px; object-fit: cover; border-radius: 8px; flex: none; background: var(--panel-2); }
+    .news div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .news b { font-size: 13.5px; line-height: 1.3; }
+    .news small { color: var(--muted); font-size: 11.5px; }
     .ldr-ph { width: 46px; height: 46px; border-radius: 50%; background: var(--panel-2); flex: none; }
     .ldr img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; background: var(--panel-2); flex: none; }
     .inj-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -416,7 +437,7 @@
     let state = {
       tab: store.get("tab", "home"),
       favs: new Set(store.get("favs", [])),
-      liveOnly: false,
+      filter: store.get("filter", "all"),
       offset: { nfl: 0, cfb: 0, nba: 0, mlb: 0 },
       f1Table: "drivers",
     };
@@ -495,6 +516,7 @@
       return '<article data-ev="' + esc(ev.id) + '" data-lg="' + key + '" class="card ' + (live ? "live" : "") + '" style="animation-delay:' + Math.min(i * 30, 300) + 'ms">' +
         '<div class="card-head">' + statusHtml + league + "</div>" + rows + foot + "</article>";
     }
+    function applyFilter(evs) { return state.filter === "live" ? evs.filter(isLive) : state.filter === "fav" ? evs.filter(hasFav) : evs; }
     function sortEvents(events) {
       const rank = (ev) => (isLive(ev) ? 0 : ev.status?.type?.state === "pre" ? 1 : 2);
       return events.slice().sort((a, b) => (hasFav(b) - hasFav(a)) || (rank(a) - rank(b)) || (new Date(a.date) - new Date(b.date)));
@@ -546,9 +568,9 @@
       catch (e) { main.innerHTML = barHtml(L.name, key) + '<div class="error">Couldn\'t load ' + esc(L.name) + " scores. Check your connection and try again.</div>"; return; }
       if (state.tab !== key) return;
       let events = sortEvents(data.events || []);
-      if (state.liveOnly) events = events.filter(isLive);
+      events = applyFilter(events);
       const body = events.length ? '<div class="grid">' + events.map((e, i) => gameCard(e, key, i)).join("") + "</div>"
-        : '<div class="empty">' + (state.liveOnly ? "No live games right now." : "No games scheduled for " + esc(pagerLabel(key).toLowerCase()) + ".") + "</div>";
+        : '<div class="empty">' + (state.filter === "live" ? "No live games right now." : state.filter === "fav" ? "None of your ★ teams play " + esc(pagerLabel(key).toLowerCase()) + "." : "No games scheduled for " + esc(pagerLabel(key).toLowerCase()) + ".") + "</div>";
       main.innerHTML = barHtml(L.name, key) + body;
       renderTabs();
       stamp();
@@ -557,7 +579,8 @@
     function barHtml(title, key) {
       const paging = key && LEAGUES[key]?.paging;
       const pager = paging ? '<div class="pager"><button class="pill-btn" type="button" data-page="-1" aria-label="Previous">‹</button><span class="label">' + esc(pagerLabel(key)) + '</span><button class="pill-btn" type="button" data-page="1" aria-label="Next">›</button></div>' : "";
-      const liveBtn = key !== "f1" ? '<button class="pill-btn ' + (state.liveOnly ? "on" : "") + '" type="button" id="liveOnly">● Live only</button>' : "";
+      const liveBtn = key !== "f1" ? '<div class="seg chips">' + [["all", "All"], ["fav", "★ My teams"], ["live", "● Live"]].map(([k, l]) => '<button type="button" data-filter="' + k + '" class="' + (state.filter === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
+
       return '<div class="bar"><h1>' + esc(title) + "</h1>" + liveBtn + pager + "</div>";
     }
 
@@ -576,7 +599,7 @@
         if (results[i].status !== "fulfilled") return;
         (results[i].value.events || []).forEach((e) => { if (hasFav(e)) favEvents.push([e, k]); });
       });
-      if (favEvents.length) {
+      if (favEvents.length && state.filter !== "fav") {
         html += '<div class="section-title">★ <b>Your teams</b></div><div class="grid">' + favEvents.map(([e, k], i) => gameCard(e, k, i)).join("") + "</div>";
       }
       if (f1?.events?.[0]) html += f1Mini(f1.events[0]);
@@ -584,7 +607,7 @@
         const L = LEAGUES[k];
         if (results[i].status !== "fulfilled") { html += '<div class="section-title"><b>' + esc(L.name) + '</b></div><div class="error">Couldn\'t load ' + esc(L.name) + ".</div>"; return; }
         let evs = sortEvents(results[i].value.events || []);
-        if (state.liveOnly) evs = evs.filter(isLive);
+        evs = applyFilter(evs);
         if (evs.some(isLive)) anyLive = true;
         if (!evs.length) return;
         const show = evs.slice(0, 6);
@@ -696,7 +719,7 @@
       if (e.target.closest(".btab, .tab") && views.length) closeSheets();
       const tab = e.target.closest("[data-tab]");
       if (tab) {
-        if (state.tab !== tab.dataset.tab) { state.tab = tab.dataset.tab; state.liveOnly = false; $("main").innerHTML = ""; window.scrollTo({ top: 0, behavior: "smooth" }); }
+        if (state.tab !== tab.dataset.tab) { state.tab = tab.dataset.tab; $("main").innerHTML = ""; window.scrollTo({ top: 0, behavior: "smooth" }); }
         return render();
       }
       const fav = e.target.closest("[data-fav]");
@@ -712,11 +735,14 @@
       }
       const page = e.target.closest("[data-page]");
       if (page) { state.offset[state.tab] = (state.offset[state.tab] || 0) + Number(page.dataset.page); return render(); }
-      if (e.target.closest("#liveOnly")) { state.liveOnly = !state.liveOnly; return render(); }
+      const flt = e.target.closest("[data-filter]");
+      if (flt) { state.filter = flt.dataset.filter; store.set("filter", state.filter); return render(); }
       const f1t = e.target.closest("[data-f1t]");
       if (f1t) { state.f1Table = f1t.dataset.f1t; return render(); }
       const ap = e.target.closest("[data-ap]");
       if (ap) { const p = alertPrefs(); p[ap.dataset.ap] = !p[ap.dataset.ap]; store.set("alertPrefs", p); ap.classList.toggle("on", p[ap.dataset.ap]); return; }
+      const ext = e.target.closest("a[data-ext]");
+      if (ext && TAURI?.opener) { e.preventDefault(); TAURI.opener.openUrl(ext.href).catch(() => window.open(ext.href, "_blank")); return; }
       const pl = e.target.closest("[data-player]");
       if (pl) { const [lg, id] = pl.dataset.player.split("|"); return openPlayer(lg, id); }
       const team = e.target.closest("[data-team]");
@@ -786,6 +812,16 @@
       let h = '<div class="p-head">' + (a.headshot?.href ? '<img src="' + esc(a.headshot.href) + '" alt="">' : "") + "<div><b>" + esc(a.displayName) + "</b><small>" +
         esc([a.team?.abbreviation || a.team?.displayName, a.jersey ? "#" + a.jersey : "", a.position?.abbreviation].filter(Boolean).join(" · ")) + "</small><small>" +
         esc([a.displayHeight, a.displayWeight, a.age ? "Age " + a.age : "", a.college?.name, a.displayExperience].filter(Boolean).join(" · ")) + "</small></div></div>";
+      const inj = (a.injuries || [])[0];
+      if (inj) {
+        const ab = inj.type?.abbreviation || inj.details?.fantasyStatus?.abbreviation || String(inj.status || "").slice(0, 1);
+        const ret = inj.details?.returnDate ? "Possible return " + fmtDay(inj.details.returnDate) : "";
+        h += '<div class="p-status inj-' + esc(String(inj.status || "").toLowerCase().replace(/\W/g, "")) + '"><span class="pill">' + esc(ab) + "</span><div><b>" + esc(inj.status || "Injured") +
+          (inj.details?.type ? " · " + esc(inj.details.type) : "") + "</b>" + (ret ? "<small>" + esc(ret) + "</small>" : "") + (inj.shortComment ? "<p>" + esc(inj.shortComment) + "</p>" : "") + "</div></div>";
+      } else {
+        const sname = a.status?.name || "Active";
+        h += '<div class="p-status ' + (/active/i.test(sname) ? "ok" : "") + '"><span class="pill">' + (/active/i.test(sname) ? "IN" : esc(sname.slice(0, 3).toUpperCase())) + "</span><div><b>" + esc(sname) + "</b><small>No injury reported</small></div></div>";
+      }
       const S = ov?.statistics, sp = S?.splits?.[0];
       if (S && sp) {
         const pcts = S.labels.map((l, i) => [l, sp.stats[i]]).filter(([l, val]) => /%$/.test(l) && val !== "" && !isNaN(parseFloat(val)));
@@ -814,9 +850,20 @@
         h += '<div class="list" style="margin-top:12px"><div class="row glog head"><span>Opp</span>' + cols.map((c) => "<span>" + esc(c) + "</span>").join("") + "</div>" +
           gs.events.slice(0, 8).map((g) => { const m = meta(g); return '<div class="row glog"><span>' + (m.gameResult ? '<span class="res ' + (m.gameResult === "W" ? "w" : "l") + '">' + esc(m.gameResult) + "</span> " : "") + esc((m.atVs || "") + " " + (m.opponent?.abbreviation || "")) + "</span>" + cols.map((_, i) => "<span>" + esc(g.stats[i]) + "</span>").join("") + "</div>"; }).join("") + "</div></div>";
       }
+      const ago = (iso) => { const m = Math.round((Date.now() - new Date(iso)) / 60000); return !iso || isNaN(m) ? "" : m < 60 ? m + "m ago" : m < 1440 ? Math.round(m / 60) + "h ago" : fmtDay(iso); };
+      const rw = ov?.rotowire;
+      const news = (ov?.news || []).slice(0, 6);
+      if (rw?.headline || news.length) {
+        h += '<div class="g-sec"><div class="g-label">Latest news</div>';
+        if (rw?.headline) h += '<div class="news-note"><div class="news-src">Player note · RotoWire' + (rw.published ? " · " + esc(ago(rw.published)) : "") + "</div><b>" + esc(rw.headline) + "</b>" + (rw.story ? "<p>" + esc(rw.story) + "</p>" : "") + "</div>";
+        h += news.map((n) => '<a class="news" href="' + esc(n.links?.web?.href || "#") + '" target="_blank" rel="noopener" data-ext>' + (n.images?.[0]?.url ? '<img src="' + esc(n.images[0].url) + '" alt="" loading="lazy">' : "") +
+          "<div><b>" + esc(n.headline) + '</b><small>' + esc([n.byline, ago(n.published)].filter(Boolean).join(" · ")) + "</small></div></a>").join("") + "</div>";
+      }
       setBody(v, a.shortName || a.displayName, h);
     }
 
+    const INJ_ABBR = { "out": "OUT", "questionable": "Q", "doubtful": "D", "probable": "P", "injured reserve": "IR", "day-to-day": "DTD", "suspension": "SUSP", "physically unable to perform": "PUP" };
+    const injAbbr = (s) => INJ_ABBR[String(s || "").toLowerCase()] || String(s || "").slice(0, 3).toUpperCase();
     // "178/272, 2,282 YDS, 18 TD, 11 INT" -> stat blocks (adds completion % for a/b pairs)
     function statChips(text) {
       const chip = (v, l) => '<span class="st"><b>' + esc(v) + "</b><small>" + esc(l) + "</small></span>";
@@ -867,10 +914,10 @@
 
       const inj = s.injuries || [];
       if (inj.some((x) => x.injuries?.length)) {
-        h += '<div class="g-sec"><div class="g-label">Injuries</div><div class="inj-cols">' + teams.map((t) => {
+        h += '<div class="g-sec"><div class="g-label">Injuries</div><div class="g-note" style="margin:-4px 0 10px">OUT = out · D = doubtful · Q = questionable · IR = injured reserve · DTD = day-to-day</div><div class="inj-cols">' + teams.map((t) => {
           const list = (inj.find((x) => x.team?.id === t.team?.id)?.injuries || []);
           return "<div><div class=\"inj-team\">" + esc(t.team?.abbreviation) + "</div>" + (list.length ? list.slice(0, 6).map((p) =>
-            '<div class="inj"><span class="badge ' + esc(String(p.status || "").toLowerCase().replace(/\W/g, "")) + '">' + esc(String(p.status || "").slice(0, 1)) + "</span>" + esc(p.athlete?.shortName || p.athlete?.displayName) + " <small>" + esc(p.athlete?.position?.abbreviation || "") + "</small></div>").join("") +
+            '<div class="inj"><span class="badge ' + esc(String(p.status || "").toLowerCase().replace(/\W/g, "")) + '">' + esc(injAbbr(p.status)) + "</span>" + esc(p.athlete?.shortName || p.athlete?.displayName) + " <small>" + esc(p.athlete?.position?.abbreviation || "") + "</small></div>").join("") +
             (list.length > 6 ? '<div class="g-note">+' + (list.length - 6) + " more</div>" : "") : '<div class="g-note">None reported</div>') + "</div>";
         }).join("") + "</div></div>";
       }
@@ -968,9 +1015,9 @@
     async function checkBuild() {
       try {
         if (location.protocol !== "https:" || !BUILD) return;
-        const html = await (await fetch(location.pathname + "?b=" + Date.now(), { cache: "no-store" })).text();
+        const html = await (await fetch(location.pathname, { cache: "reload" })).text();
         const live = (html.match(/name="build" content="(\d+)"/) || [])[1];
-        if (live && live !== BUILD && !views.length) location.replace(location.pathname + "?v=" + live);
+        if (live && live !== BUILD && !views.length) location.reload();
       } catch {}
     }
     checkBuild();
