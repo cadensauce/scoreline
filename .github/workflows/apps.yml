@@ -88,6 +88,11 @@ jobs:
         run: |
           npm run tauri -- android init --ci
           npm run tauri -- icon icon-512.png
+      - name: Add Android permissions (vibration for haptics)
+        run: |
+          M=src-tauri/gen/android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.VIBRATE' "$M" || sed -i 's#<application#<uses-permission android:name="android.permission.VIBRATE" />\n    <application#' "$M"
+          grep -n 'uses-permission' "$M"
       - name: Pin Kotlin to a published version
         working-directory: src-tauri/gen/android
         run: |

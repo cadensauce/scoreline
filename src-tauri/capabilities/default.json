@@ -10,7 +10,11 @@
     "notification:default",
     {
       "identifier": "opener:allow-open-url",
-      "allow": [{ "url": "https://github.com/cadensauce/scoreline/*" }]
+      "allow": [
+        { "url": "https://github.com/cadensauce/scoreline/*" },
+        { "url": "https://www.espn.com/*" },
+        { "url": "https://*.espn.com/*" }
+      ]
     }
   ]
 }
