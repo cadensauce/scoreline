@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794606759" />
+  <meta name="build" content="1794606784" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -250,6 +250,8 @@
     .p-status.ok .pill { background: rgba(76, 212, 134, .16); color: #4cd486; }
     .news-note { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 8px; }
     .news-note b { display: block; font-size: 13.5px; line-height: 1.4; }
+    .news-note p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+    .news-note p.full { -webkit-line-clamp: unset; }
     .news-note p { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
     .news-src { font-size: 10.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
     .news { display: flex; gap: 10px; align-items: center; text-decoration: none; padding: 10px 0; border-bottom: 1px solid var(--line); }
@@ -741,6 +743,8 @@
       if (f1t) { state.f1Table = f1t.dataset.f1t; return render(); }
       const ap = e.target.closest("[data-ap]");
       if (ap) { const p = alertPrefs(); p[ap.dataset.ap] = !p[ap.dataset.ap]; store.set("alertPrefs", p); ap.classList.toggle("on", p[ap.dataset.ap]); return; }
+      const np = e.target.closest(".news-note p");
+      if (np) { np.classList.toggle("full"); return; }
       const ext = e.target.closest("a[data-ext]");
       if (ext && TAURI?.opener) { e.preventDefault(); TAURI.opener.openUrl(ext.href).catch(() => window.open(ext.href, "_blank")); return; }
       const pl = e.target.closest("[data-player]");
