@@ -5,5 +5,12 @@
   "remote": {
     "urls": ["https://cadensauce.github.io/scoreline/*", "https://cadensauce.github.io/scoreline"]
   },
-  "permissions": ["core:default", "notification:default"]
+  "permissions": [
+    "core:default",
+    "notification:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [{ "url": "https://github.com/cadensauce/scoreline/*" }]
+    }
+  ]
 }

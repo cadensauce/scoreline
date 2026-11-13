@@ -155,6 +155,12 @@
     .get-app-sub { color: var(--muted); }
     .get-app-btns { display: flex; gap: 8px; flex-wrap: wrap; }
     .dl { text-decoration: none; padding: 10px 16px; font-weight: 800; }
+    .update-bar { position: fixed; left: 50%; top: 74px; z-index: 40; transform: translate(-50%, -16px); opacity: 0; display: flex; align-items: center; gap: 14px; padding: 12px 14px 12px 18px; width: min(560px, calc(100% - 28px)); background: #1b212c; border: 1px solid rgba(255, 90, 54, .5); border-radius: 16px; box-shadow: 0 18px 44px rgba(0, 0, 0, .5); transition: opacity .3s, transform .45s var(--ease); }
+    .update-bar.show { opacity: 1; transform: translate(-50%, 0); }
+    .update-bar > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .update-bar span { color: var(--muted); font-size: 13px; }
+    .update-bar .dl { background: var(--accent); color: #120a07; border-color: transparent; }
+    .update-x { border: 0; background: none; color: var(--muted); font-size: 20px; padding: 0 4px; }
     @media (max-width: 720px) {
       #updated { display: none; }
       .top-inner { height: auto; padding: 10px 14px; flex-wrap: wrap; gap: 10px; }
@@ -594,6 +600,33 @@
     }
     setInterval(checkAlerts, 60000);
     checkAlerts();
+
+    /* ---------- in-app updates (native app only) ---------- */
+    // Releases are tagged build-N and the app built from them has version 1.0.N.
+    async function checkForAppUpdate() {
+      if (!TAURI?.app?.getVersion) return;
+      try {
+        const current = Number(String(await TAURI.app.getVersion()).split(".")[2] || 0);
+        const rel = await getJSON("https://api.github.com/repos/cadensauce/scoreline/releases/latest");
+        const latest = Number(String(rel.tag_name || "").replace(/\D+/g, "") || 0);
+        if (!latest || latest <= current) return;
+        const android = /android/i.test(navigator.userAgent);
+        const file = android ? "Scoreline-Android.apk" : "Scoreline-Windows-Setup.exe";
+        const url = "https://github.com/cadensauce/scoreline/releases/latest/download/" + file;
+        const bar = document.createElement("div");
+        bar.className = "update-bar";
+        bar.innerHTML = '<div><strong>Update available</strong><span>Version 1.0.' + latest + " is ready" + (android ? ". After it downloads, tap Install." : ".") + '</span></div><button class="pill-btn dl" type="button">Update</button><button class="update-x" type="button" aria-label="Later">×</button>';
+        document.body.appendChild(bar);
+        requestAnimationFrame(() => bar.classList.add("show"));
+        bar.querySelector(".dl").addEventListener("click", async () => {
+          try { await TAURI.opener.openUrl(url); }
+          catch { window.open(url, "_blank"); }
+          bar.querySelector("span").textContent = android ? "Downloading… open the download and tap Install." : "Downloading the installer… run it to finish updating.";
+        });
+        bar.querySelector(".update-x").addEventListener("click", () => bar.remove());
+      } catch {}
+    }
+    checkForAppUpdate();
 
     if (!ORDER.includes(state.tab)) state.tab = "home";
     render();
