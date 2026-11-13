@@ -1,0 +1,67 @@
+rules_version = '2';
+// Scoreline security rules. Paste into Firebase console -> Firestore Database -> Rules -> Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function friends(a, b) {
+      return (exists(/databases/$(database)/documents/requests/$(a + '_' + b)) && get(/databases/$(database)/documents/requests/$(a + '_' + b)).data.status == 'accepted')
+          || (exists(/databases/$(database)/documents/requests/$(b + '_' + a)) && get(/databases/$(database)/documents/requests/$(b + '_' + a)).data.status == 'accepted');
+    }
+
+    // Private settings: favourite teams, alert settings. Only the owner can see or change them.
+    match /users/{uid} {
+      allow read, write: if signedIn() && me() == uid;
+    }
+
+    // Public profile: just the username, so friends can find each other.
+    match /profiles/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && me() == uid
+        && request.resource.data.keys().hasOnly(['username', 'createdAt'])
+        && request.resource.data.username is string
+        && request.resource.data.username.matches('^[a-z0-9_]{3,20}$');
+      allow delete: if signedIn() && me() == uid;
+    }
+
+    // Username -> uid lookup. First come, first served; you can only claim names for yourself.
+    match /usernames/{name} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == me() && name.matches('^[a-z0-9_]{3,20}$');
+      allow delete: if signedIn() && resource.data.uid == me();
+    }
+
+    // Friend requests. Document id is "<from>_<to>".
+    match /requests/{id} {
+      allow read: if signedIn() && (resource.data.from == me() || resource.data.to == me());
+      allow create: if signedIn() && request.resource.data.from == me()
+        && id == me() + '_' + request.resource.data.to
+        && request.resource.data.status == 'pending'
+        && request.resource.data.to != me();
+      allow update: if signedIn() && resource.data.to == me()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status == 'accepted';
+      allow delete: if signedIn() && (resource.data.from == me() || resource.data.to == me());
+    }
+
+    // Chats: only between friends, only members can read or write.
+    match /chats/{chatId} {
+      allow read: if signedIn() && me() in resource.data.members;
+      allow create: if signedIn() && me() in request.resource.data.members
+        && request.resource.data.members.size() == 2
+        && chatId == request.resource.data.members[0] + '_' + request.resource.data.members[1]
+        && friends(request.resource.data.members[0], request.resource.data.members[1]);
+      allow update: if signedIn() && me() in resource.data.members
+        && request.resource.data.members == resource.data.members;
+
+      match /messages/{msg} {
+        allow read: if signedIn() && me() in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+        allow create: if signedIn() && request.resource.data.from == me()
+          && me() in get(/databases/$(database)/documents/chats/$(chatId)).data.members
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 500;
+        allow delete: if signedIn() && resource.data.from == me();
+      }
+    }
+  }
+}

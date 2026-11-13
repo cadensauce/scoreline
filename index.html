@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794610668" />
+  <meta name="build" content="1794610982" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -377,6 +377,35 @@
     .mobile-app .sheet-bar::before { content: ""; position: absolute; left: 50%; top: 6px; width: 36px; height: 4px; margin-left: -18px; border-radius: 99px; background: var(--line-hi); }
     .sheet-bar { position: relative; }
     .test-btn { width: 100%; margin-top: 10px; justify-content: center; }
+    /* ---- account, friends, chat ---- */
+    #accountBtn { position: relative; color: var(--muted); }
+    #accountBtn.on { color: var(--accent); }
+    #accountBtn[data-count]:not([data-count=""])::after { content: attr(data-count); position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px; background: var(--live); color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
+    .acct-form { display: flex; flex-direction: column; gap: 12px; margin: 14px 0; }
+    .acct-form label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+    .acct-form input, .acct-add input, .chat-form input { font: inherit; font-size: 15px; color: var(--text); background: var(--panel); border: 1px solid var(--line-hi); border-radius: 12px; padding: 12px 14px; outline: none; transition: border-color .2s; }
+    .acct-form input:focus, .acct-add input:focus, .chat-form input:focus { border-color: var(--accent); }
+    .acct-go { width: 100%; padding: 13px; justify-content: center; background: var(--accent) !important; color: #120a07 !important; border-color: transparent !important; }
+    .acct-go:disabled { opacity: .6; }
+    .acct-link { border: 0; background: none; color: var(--muted); font-size: 13px; padding: 6px; }
+    .acct-err { color: #ff8a96; font-size: 13px; min-height: 0; }
+    .acct-err:not(:empty) { margin-top: 6px; }
+    .acct-me { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .acct-me > div:nth-child(2) { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .acct-me b { font-size: 17px; } .acct-me small { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; }
+    .avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #ffb03a); color: #120a07; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 24px; flex: none; }
+    .acct-add { display: flex; gap: 8px; } .acct-add input { flex: 1; min-width: 0; }
+    .acct-acts { display: flex !important; flex-direction: row !important; gap: 6px; align-items: center; }
+    .acct-acts .pill-btn { min-height: 34px; padding: 6px 12px; }
+    .acct-acts .pill-btn.on { background: rgba(255,59,78,.16); border-color: rgba(255,59,78,.5); color: #ff8a96; }
+    .chat-sheet .sheet-body { display: flex; flex-direction: column; padding-bottom: 0; }
+    .chat-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px 0 12px; }
+    .msg { max-width: 78%; align-self: flex-start; animation: rise .25s var(--ease) both; }
+    .msg p { margin: 0; padding: 9px 13px; border-radius: 18px 18px 18px 6px; background: var(--panel-3); font-size: 14.5px; line-height: 1.35; word-wrap: break-word; -webkit-user-select: text; user-select: text; }
+    .msg.me { align-self: flex-end; } .msg.me p { background: var(--accent); color: #120a07; border-radius: 18px 18px 6px 18px; }
+    .msg small { display: block; font-size: 10.5px; color: var(--muted); margin: 3px 8px 0; } .msg.me small { text-align: right; }
+    .chat-form { display: flex; gap: 8px; padding: 10px 0 calc(12px + env(safe-area-inset-bottom)); position: sticky; bottom: 0; background: var(--bg); }
+    .chat-form input { flex: 1; min-width: 0; border-radius: 99px; }
     .ldr-ph { width: 46px; height: 46px; border-radius: 50%; background: var(--panel-2); flex: none; }
     .ldr img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; background: var(--panel-2); flex: none; }
     .inj-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -505,6 +534,7 @@
       <nav class="tabs" id="tabs" aria-label="Sports"></nav>
       <div class="top-right">
         <button class="pill-btn install-btn" id="installBtn" type="button" hidden>⤓ Install app</button>
+        <button class="refresh" id="accountBtn" type="button" aria-label="Account" title="Account"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></button>
         <button class="refresh" id="notifyBtn" type="button" aria-label="Score alerts" title="Score alerts for your ★ teams">🔔</button>
         <span id="updated">Loading…</span>
         <button class="refresh" id="refresh" type="button" aria-label="Refresh scores" title="Refresh">↻</button>
@@ -964,6 +994,7 @@
         const k = fav.dataset.fav;
         state.favs.has(k) ? state.favs.delete(k) : state.favs.add(k);
         store.set("favs", [...state.favs]);
+        window.scorelineSettingsChanged?.();
         const nm = (fav.getAttribute("aria-label") || "").replace(/^(Favorite|Follow|Unfollow) ?/, "");
         if (nm) { teamNames[k] = nm; store.set("favNames", teamNames); }
         if (state.tab === "alerts") renderAlerts();
@@ -977,7 +1008,7 @@
       const f1t = e.target.closest("[data-f1t]");
       if (f1t) { state.f1Table = f1t.dataset.f1t; return render(); }
       const ap = e.target.closest("[data-ap]");
-      if (ap) { const p = alertPrefs(); p[ap.dataset.ap] = !p[ap.dataset.ap]; store.set("alertPrefs", p); ap.classList.toggle("on", p[ap.dataset.ap]); return; }
+      if (ap) { const p = alertPrefs(); p[ap.dataset.ap] = !p[ap.dataset.ap]; store.set("alertPrefs", p); window.scorelineSettingsChanged?.(); ap.classList.toggle("on", p[ap.dataset.ap]); return; }
       const np = e.target.closest(".news-note p");
       if (np) { np.classList.toggle("full"); return; }
       const ext = e.target.closest("a[data-ext]");
@@ -1723,5 +1754,6 @@
     if (!ORDER.includes(state.tab)) state.tab = "home";
     Promise.all([Promise.resolve(render()).catch(() => {}), new Promise((r) => setTimeout(r, 900))]).finally(hideSplash);
   </script>
+  <script type="module" src="account.js"></script>
 </body>
 </html>
