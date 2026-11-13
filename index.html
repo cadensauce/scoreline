@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794608689" />
+  <meta name="build" content="1794608726" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -262,13 +262,13 @@
     .news b { font-size: 13.5px; line-height: 1.3; }
     .news small { color: var(--muted); font-size: 11.5px; }
     .field { width: 100%; display: block; margin-top: 10px; border-radius: 14px; border: 1px solid var(--line); }
-    .f-s1 { fill: #15241b; } .f-s2 { fill: #17281e; }
-    .f-yl { stroke: rgba(255,255,255,.07); stroke-width: 1; } .f-yl.ten { stroke: rgba(255,255,255,.16); } .f-yl.goal { stroke: rgba(255,255,255,.4); stroke-width: 1.5; }
-    .f-hash { stroke: rgba(255,255,255,.14); stroke-width: 1; }
-    .f-num { fill: rgba(255,255,255,.22); dominant-baseline: central; font: 800 20px "Barlow Condensed", sans-serif; text-anchor: middle; }
-    .f-ez { fill: #fff; font: 800 30px "Barlow Condensed", sans-serif; letter-spacing: 6px; opacity: .55; text-anchor: middle; dominant-baseline: middle; text-transform: uppercase; }
-    .f-los { stroke: #5b9dff; stroke-width: 2; opacity: .85; }
-    .f-1st { stroke: var(--gold); stroke-width: 2; opacity: .85; }
+    .f-s1 { fill: #25553a; } .f-s2 { fill: #285c3e; }
+    .f-yl { stroke: rgba(255,255,255,.2); stroke-width: 1; } .f-yl.ten { stroke: rgba(255,255,255,.4); } .f-yl.goal { stroke: rgba(255,255,255,.75); stroke-width: 1.5; }
+    .f-hash { stroke: rgba(255,255,255,.3); stroke-width: 1; }
+    .f-num { fill: rgba(255,255,255,.5); dominant-baseline: central; font: 800 20px "Barlow Condensed", sans-serif; text-anchor: middle; }
+    .f-ez { fill: #fff; font: 800 30px "Barlow Condensed", sans-serif; letter-spacing: 6px; opacity: .85; text-anchor: middle; dominant-baseline: middle; text-transform: uppercase; }
+    .f-los { stroke: #5b9dff; stroke-width: 2.5; }
+    .f-1st { stroke: var(--gold); stroke-width: 2.5; }
     .f-throw { fill: none; stroke: rgba(255,255,255,.75); stroke-width: 1.8; stroke-dasharray: 4 5; }
     .f-run { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; filter: drop-shadow(0 0 2px rgba(0,0,0,.6)); }
     .f-ball { fill: #fff; stroke: #fff; stroke-width: 1; }
@@ -922,7 +922,7 @@
         '<marker id="farw" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#ff5a36"/></marker></defs>' +
         '<g clip-path="url(#fclip)"><g class="cam" data-to="' + camY + '" style="transform:translateY(' + -fromY + 'px)">';
       for (let y = 0; y < 100; y += 5) svg += '<rect x="0" y="' + Y(y) + '" width="' + W + '" height="' + 5 * SC + '" class="' + (y / 5 % 2 ? "f-s2" : "f-s1") + '"/>';
-      const ezRect = (y0, team) => '<rect x="0" y="' + y0 + '" width="' + W + '" height="' + 10 * SC + '" fill="' + esc(col(team)) + '" opacity=".5"/><text x="' + CX + '" y="' + (y0 + 5 * SC) + '" class="f-ez">' + esc(team.team?.name || ab(team)) + "</text>";
+      const ezRect = (y0, team) => '<rect x="0" y="' + y0 + '" width="' + W + '" height="' + 10 * SC + '" fill="' + esc(col(team)) + '" opacity=".8"/><text x="' + CX + '" y="' + (y0 + 5 * SC) + '" class="f-ez">' + esc(team.team?.name || ab(team)) + "</text>";
       svg += ezRect(0, defTeam) + ezRect(Y(100), offTeam);
       for (let y = 0; y <= 100; y += 5) svg += '<line x1="0" x2="' + W + '" y1="' + Y(y) + '" y2="' + Y(y) + '" class="f-yl' + (y % 10 ? "" : " ten") + (y === 0 || y === 100 ? " goal" : "") + '"/>';
       for (let y = 1; y < 100; y++) if (y % 5) [6, W * .41, W * .59, W - 6].forEach((hx) => { svg += '<line x1="' + (hx - 5) + '" x2="' + (hx + 5) + '" y1="' + Y(y) + '" y2="' + Y(y) + '" class="f-hash"/>'; });
