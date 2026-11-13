@@ -1,7 +1,9 @@
 {
-  "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions for the Scoreline window",
+  "description": "Permissions for the Scoreline window. The app shows the live Scoreline site so updates appear instantly; only that site may use native notifications.",
   "windows": ["main"],
+  "remote": {
+    "urls": ["https://cadensauce.github.io/scoreline/*", "https://cadensauce.github.io/scoreline"]
+  },
   "permissions": ["core:default", "notification:default"]
 }

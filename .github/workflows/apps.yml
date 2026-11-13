@@ -30,6 +30,9 @@ jobs:
         run: |
           mkdir -p dist
           cp index.html manifest.webmanifest icon-192.png icon-512.png dist/
+          # Every build gets a higher version so it installs over the previous one.
+          sed -i -E 's/"version": "[0-9.]+"/"version": "1.0.${{ github.run_number }}"/' src-tauri/tauri.conf.json
+          grep '"version"' src-tauri/tauri.conf.json
       - name: Install Tauri CLI
         run: npm install
       - name: Generate app icons
@@ -76,6 +79,9 @@ jobs:
         run: |
           mkdir -p dist
           cp index.html manifest.webmanifest icon-192.png icon-512.png dist/
+          # Every build gets a higher version so it installs over the previous one.
+          sed -i -E 's/"version": "[0-9.]+"/"version": "1.0.${{ github.run_number }}"/' src-tauri/tauri.conf.json
+          grep '"version"' src-tauri/tauri.conf.json
       - name: Install Tauri CLI
         run: npm install
       - name: Set up Android project
