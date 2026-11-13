@@ -3,3 +3,5 @@ src-tauri/target/
 src-tauri/gen/
 src-tauri/icons/
 *.jks
+node_modules/
+package-lock.json

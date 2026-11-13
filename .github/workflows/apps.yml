@@ -30,12 +30,12 @@ jobs:
         run: |
           mkdir -p dist
           cp index.html manifest.webmanifest icon-192.png icon-512.png dist/
+      - name: Install Tauri CLI
+        run: npm install
       - name: Generate app icons
-        working-directory: src-tauri
-        run: npx -y ${{ env.TAURI_CLI }} icon ../icon-512.png
+        run: npm run tauri -- icon icon-512.png
       - name: Build Windows installer
-        working-directory: src-tauri
-        run: npx -y ${{ env.TAURI_CLI }} build
+        run: npm run tauri -- build
       - name: Collect installer
         shell: bash
         run: |
@@ -76,11 +76,12 @@ jobs:
         run: |
           mkdir -p dist
           cp index.html manifest.webmanifest icon-192.png icon-512.png dist/
+      - name: Install Tauri CLI
+        run: npm install
       - name: Set up Android project
-        working-directory: src-tauri
         run: |
-          npx -y ${{ env.TAURI_CLI }} android init --ci
-          npx -y ${{ env.TAURI_CLI }} icon ../icon-512.png
+          npm run tauri -- android init --ci
+          npm run tauri -- icon icon-512.png
       - name: Pin Kotlin to a published version
         working-directory: src-tauri/gen/android
         run: |
@@ -88,8 +89,7 @@ jobs:
           grep -rlE '2\.3\.[0-9]+' . --include=*.kts --include=*.gradle --include=*.toml --include=*.properties | xargs -r sed -i -E 's/(kotlin[^"\n]*)2\.3\.[0-9]+/\12.1.21/g; s/"2\.3\.[0-9]+"/"2.1.21"/g'
           grep -rnE 'kotlin.*2\.[0-9]+\.[0-9]+' . --include=*.kts --include=*.gradle --include=*.toml || true
       - name: Build APK
-        working-directory: src-tauri
-        run: npx -y ${{ env.TAURI_CLI }} android build --apk --ci
+        run: npm run tauri -- android build --apk --ci
       - name: Sign APK
         run: |
           APK=$(find src-tauri/gen/android -name "*universal-release-unsigned.apk" | head -1)
