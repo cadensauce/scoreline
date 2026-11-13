@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794606784" />
+  <meta name="build" content="1794607505" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -260,6 +260,39 @@
     .news div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
     .news b { font-size: 13.5px; line-height: 1.3; }
     .news small { color: var(--muted); font-size: 11.5px; }
+    .field { width: 100%; display: block; margin-top: 8px; }
+    .f-turf { fill: #12301f; }
+    .f-line { stroke: rgba(255,255,255,.14); stroke-width: 1; } .f-line.mid { stroke: rgba(255,255,255,.3); }
+    .f-num { fill: rgba(255,255,255,.35); font: 700 9px Inter, sans-serif; text-anchor: middle; }
+    .f-ez { fill: #fff; font: 800 11px "Barlow Condensed", sans-serif; letter-spacing: 1px; text-anchor: middle; dominant-baseline: middle; }
+    .f-play { cursor: pointer; animation: rise .35s var(--ease) both; }
+    .f-play line { stroke-width: 3.5; stroke-linecap: round; filter: brightness(1.35); }
+    .f-air { stroke-dasharray: 3 3; }
+    .f-catch { fill: #fff; }
+    .f-play.inc circle { fill: none; stroke: #fff; stroke-width: 1.5; }
+    .f-play.score line { stroke: var(--gold) !important; }
+    .f-play.turnover line { stroke: var(--live) !important; }
+    .f-play.penalty line { stroke: #f5d142 !important; stroke-dasharray: 1 3; }
+    .field:has(.sel) .f-play:not(.sel) { opacity: .3; }
+    .f-play.sel line { stroke-width: 5; }
+    .f-nav { display: flex; align-items: center; gap: 6px; }
+    .f-nav > div { flex: 1; text-align: center; display: flex; flex-direction: column; }
+    .f-nav small { color: var(--muted); font-size: 11.5px; }
+    .f-nav .sheet-btn:disabled { opacity: .25; }
+    .f-key { display: flex; gap: 14px; justify-content: center; margin-top: 6px; font-size: 11px; color: var(--muted); }
+    .f-key span { display: flex; align-items: center; gap: 5px; }
+    .f-key i { display: inline-block; width: 16px; height: 0; border-top: 3px solid var(--text); }
+    .f-key .k-air { border-top-style: dashed; } .f-key .k-dot { width: 6px; height: 6px; border: 0; border-radius: 50%; background: var(--text); }
+    .f-detail { margin-top: 10px; padding: 12px; background: var(--panel); border: 1px solid var(--line-hi); border-radius: 12px; animation: rise .3s var(--ease) both; }
+    .f-detail > b { display: block; font-size: 15px; margin: 4px 0 8px; }
+    .f-detail p { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+    .f-dhead { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .4px; }
+    .f-list { margin-top: 10px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .f-row { display: grid; grid-template-columns: 62px 1fr auto; gap: 8px; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: var(--panel); padding: 9px 10px; font-size: 12.5px; align-items: center; }
+    .f-row:last-child { border-bottom: 0; }
+    .f-row > span:first-child { color: var(--muted); font-size: 11px; font-weight: 700; }
+    .f-row.sel { background: var(--panel-3); }
+    .f-row.score b { color: var(--gold); } .f-row.turnover b { color: #ff8a96; }
     .ldr-ph { width: 46px; height: 46px; border-radius: 50%; background: var(--panel-2); flex: none; }
     .ldr img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; background: var(--panel-2); flex: none; }
     .inj-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -800,6 +833,108 @@
       if (h && a) return { home: h / (h + a), src: "Based on betting odds" };
       return null;
     }
+    /* ---------- play-by-play field (football) ---------- */
+    // Away team attacks to the right, home team to the left. x = 0..100 yards between the goal lines.
+    const refId = (r, k) => (String(r?.$ref || "").match(new RegExp("/" + k + "/(\\d+)")) || [])[1];
+    async function loadField(v, lg, id, teams, state) {
+      const [sport, league] = LEAGUES[lg].path.split("/");
+      const url = "https://sports.core.api.espn.com/v2/sports/" + sport + "/leagues/" + league + "/events/" + id + "/competitions/" + id + "/plays?limit=500";
+      const sec = () => v.el.querySelector("[data-field]");
+      let data;
+      try { data = await getJSON(url); } catch { if (sec()) sec().innerHTML = '<div class="g-label">Plays</div><div class="g-note">Play-by-play isn\'t available for this game.</div>'; return; }
+      if (!v.el.isConnected || !sec()) return;
+      const away = teams[0], home = teams[1];
+      const plays = (data.items || []).filter((p) => p.start && p.end && p.start.yardsToEndzone != null && !/timeout|end of|end period|two-minute|coin toss/i.test(p.type?.text || ""));
+      if (!plays.length) { sec().innerHTML = '<div class="g-label">Plays</div><div class="g-note">' + (state === "pre" ? "Plays will show here once the game starts." : "No plays yet.") + "</div>"; return; }
+      const drives = [];
+      plays.forEach((p) => {
+        const d = refId(p.drive, "drives") || "x";
+        let cur = drives[drives.length - 1];
+        if (!cur || cur.id !== d) { cur = { id: d, team: refId(p.start.team, "teams") || refId(p.team, "teams"), plays: [] }; drives.push(cur); }
+        cur.plays.push(p);
+      });
+      const prev = v.field, stay = prev && prev.di < prev.drives.length - 1;
+      v.field = { drives, di: stay ? prev.di : drives.length - 1, pi: stay ? prev.pi : null, away, home, lg, id, teams, state };
+      drawField(v);
+      if (state === "in") {
+        clearInterval(v.fieldTimer);
+        v.fieldTimer = setInterval(() => { if (!v.el.isConnected) return clearInterval(v.fieldTimer); loadField(v, lg, id, teams, state); }, 20000);
+      }
+    }
+    function playGeom(p, F) {
+      const team = refId(p.start.team, "teams") || refId(p.team, "teams");
+      const right = team === String(F.away.team?.id);
+      const pos = (ytez) => right ? 100 - ytez : ytez;
+      const x0 = pos(p.start.yardsToEndzone), x1 = pos(p.end.yardsToEndzone);
+      const isPass = /pass/i.test(p.type?.text || "") && !/incomplet|interception|sack/i.test(p.type?.text || "");
+      const yac = isPass && p.yardsAfterCatch != null ? Number(p.yardsAfterCatch) : null;
+      const gain = Number(p.statYardage) || 0;
+      const air = yac != null ? gain - yac : null;
+      const xc = air != null ? x0 + (right ? air : -air) : null;
+      return { team, right, x0, x1, xc, yac, air, gain, isPass };
+    }
+    function playKind(p) {
+      const t = p.type?.text || "";
+      if (p.scoringPlay) return "score";
+      if (p.isTurnover || /interception|fumble/i.test(t)) return "turnover";
+      if (p.isPenalty || /penalty/i.test(t)) return "penalty";
+      if (/incomplet/i.test(t)) return "inc";
+      return "";
+    }
+    function drawField(v) {
+      const F = v.field, sec = v.el.querySelector("[data-field]");
+      if (!F || !sec) return;
+      const D = F.drives[F.di];
+      const col = (t) => "#" + (t?.team?.color || "8a93a5");
+      const ab = (t) => esc(t?.team?.abbreviation || "");
+      const W = 360, H = 170, ez = 24, fx = (x) => ez + (x / 100) * (W - 2 * ez);
+      let svg = '<svg class="field" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Field">';
+      svg += '<rect x="0" y="0" width="' + W + '" height="' + H + '" rx="10" class="f-turf"/>';
+      svg += '<rect x="0" y="0" width="' + ez + '" height="' + H + '" rx="10" fill="' + esc(col(F.home)) + '" opacity=".85"/><rect x="' + (W - ez) + '" y="0" width="' + ez + '" height="' + H + '" rx="10" fill="' + esc(col(F.away)) + '" opacity=".85"/>';
+      svg += '<text x="' + ez / 2 + '" y="' + H / 2 + '" class="f-ez" transform="rotate(-90 ' + ez / 2 + " " + H / 2 + ')">' + ab(F.home) + '</text><text x="' + (W - ez / 2) + '" y="' + H / 2 + '" class="f-ez" transform="rotate(90 ' + (W - ez / 2) + " " + H / 2 + ')">' + ab(F.away) + "</text>";
+      for (let y = 10; y < 100; y += 10) svg += '<line x1="' + fx(y) + '" x2="' + fx(y) + '" y1="0" y2="' + H + '" class="f-line' + (y === 50 ? " mid" : "") + '"/><text x="' + fx(y) + '" y="' + (H - 6) + '" class="f-num">' + (y <= 50 ? y : 100 - y) + "</text>";
+      const n = D.plays.length, rowH = Math.min(18, (H - 30) / Math.max(n, 1));
+      D.plays.forEach((p, i) => {
+        const g = playGeom(p, F), y = 10 + i * rowH + rowH / 2, sel = F.pi === i, k = playKind(p);
+        const c = esc(g.team === String(F.away.team?.id) ? col(F.away) : col(F.home));
+        let seg = "";
+        if (k === "inc" || g.x0 === g.x1) seg = '<circle cx="' + fx(g.x0) + '" cy="' + y + '" r="3" fill="' + c + '"/>';
+        else if (g.xc != null) seg = '<line x1="' + fx(g.x0) + '" x2="' + fx(g.xc) + '" y1="' + y + '" y2="' + y + '" stroke="' + c + '" class="f-air"/><line x1="' + fx(g.xc) + '" x2="' + fx(g.x1) + '" y1="' + y + '" y2="' + y + '" stroke="' + c + '" class="f-run"/><circle cx="' + fx(g.xc) + '" cy="' + y + '" r="2.6" class="f-catch"/>';
+        else seg = '<line x1="' + fx(g.x0) + '" x2="' + fx(g.x1) + '" y1="' + y + '" y2="' + y + '" stroke="' + c + '" class="f-run"/>';
+        svg += '<g class="f-play ' + k + (sel ? " sel" : "") + '" data-play="' + i + '" style="animation-delay:' + i * 35 + 'ms">' + seg + '<rect x="0" y="' + (y - rowH / 2) + '" width="' + W + '" height="' + rowH + '" fill="transparent"/></g>';
+      });
+      svg += "</svg>";
+      const dteam = D.team === String(F.away.team?.id) ? F.away : F.home;
+      const last = D.plays[D.plays.length - 1];
+      let html = '<div class="g-label">Plays</div><div class="f-nav"><button type="button" class="sheet-btn" data-drive="-1" ' + (F.di ? "" : "disabled") + '>‹</button><div><b>' + ab(dteam) + " drive " + (F.di + 1) + " of " + F.drives.length + "</b><small>" + D.plays.length + " plays · " + esc(last?.type?.text || "") + "</small></div>" +
+        '<button type="button" class="sheet-btn" data-drive="1" ' + (F.di < F.drives.length - 1 ? "" : "disabled") + ">›</button></div>" + svg +
+        '<div class="f-key"><span><i class="k-air"></i>Air yards</span><span><i class="k-run"></i>Run / after catch</span><span><i class="k-dot"></i>Catch</span></div>';
+      const P = F.pi != null ? D.plays[F.pi] : null;
+      if (P) {
+        const g = playGeom(P, F), t = P.text || "";
+        const who = (t.match(/([A-Z][a-z]?\.[\w'.-]+(?:\s[\w'.-]+)?)\s(?:pass|up the|left|right|scrambles|kneels|punts|kicks|sacked|rushes|FUMBLES)/) || [])[1];
+        const rec = (t.match(/ to ([A-Z][a-z]?\.[\w'.-]+)/) || [])[1];
+        const chips = [];
+        if (g.isPass && g.air != null) chips.push(["Air", g.air], ["After catch", g.yac]);
+        chips.push(["Gain", g.gain]);
+        html += '<div class="f-detail"><div class="f-dhead"><span>' + esc(P.start.downDistanceText || P.start.shortDownDistanceText || "") + "</span><span>Q" + esc(P.period?.number || "") + " · " + esc(P.clock?.displayValue || "") + "</span></div>" +
+          "<b>" + esc([who, rec ? "→ " + rec : ""].filter(Boolean).join(" ") || P.type?.text || "Play") + "</b>" +
+          '<div class="stats">' + chips.map(([l, n]) => '<span class="st"><b>' + esc(n) + "</b><small>" + l + " yds</small></span>").join("") + "</div><p>" + esc(t) + "</p></div>";
+      }
+      html += '<div class="f-list">' + D.plays.map((p, i) => '<button type="button" class="f-row ' + playKind(p) + (F.pi === i ? " sel" : "") + '" data-play="' + i + '"><span>' + esc(p.start.shortDownDistanceText || "") + "</span><span>" + esc(p.shortText || p.text || "") + "</span><b>" + (Number(p.statYardage) > 0 ? "+" : "") + esc(p.statYardage ?? "") + "</b></button>").join("") + "</div>";
+      sec.innerHTML = html;
+    }
+    document.addEventListener("click", (e) => {
+      const sheet = e.target.closest(".sheet");
+      if (!sheet) return;
+      const v = views.find((x) => x.el === sheet);
+      if (!v?.field) return;
+      const dr = e.target.closest("[data-drive]");
+      if (dr) { v.field.di = Math.max(0, Math.min(v.field.drives.length - 1, v.field.di + Number(dr.dataset.drive))); v.field.pi = null; return drawField(v); }
+      const pl = e.target.closest("[data-play]");
+      if (pl) { const i = Number(pl.dataset.play); v.field.pi = v.field.pi === i ? null : i; drawField(v); }
+    });
+
     /* ---------- player profile ---------- */
     function donut(pctVal, label) {
       const p = Math.max(0, Math.min(100, Number(pctVal) || 0)), r = 26, c = 2 * Math.PI * r;
@@ -898,6 +1033,7 @@
             '<div class="status ' + (st.state === "in" ? "live" : "") + '">' + esc(st.state === "pre" ? fmtDay(comp.date) + " · " + fmtTime(comp.date) : st.shortDetail || "") + "</div></div>" : "");
       }).join("") + "</div>";
 
+      if (lg === "nfl" || lg === "cfb") h += '<div class="g-sec" data-field><div class="g-label">Plays</div><div class="skel" style="height:150px"></div></div>';
       const wp = winProb(s, st.state);
       if (wp && teams.length === 2) {
         const hp = pct(wp.home), ap = 100 - hp;
@@ -930,6 +1066,7 @@
       const info = [s.gameInfo?.venue?.fullName, (comp.broadcasts || []).map((b) => b.media?.shortName).filter(Boolean).join(", ")].filter(Boolean);
       if (info.length) h += '<div class="g-sec g-note">' + info.map(esc).join(" · ") + "</div>";
       setBody(v, (teams[0]?.team?.abbreviation || "") + " @ " + (teams[1]?.team?.abbreviation || ""), h);
+      if (lg === "nfl" || lg === "cfb") loadField(v, lg, id, teams, st.state);
     }
 
     const ROSTER_GROUPS = { offense: "Offense", defense: "Defense", specialTeam: "Special teams", injuredReserveOrOut: "Injured reserve / out", suspended: "Suspended", practiceSquad: "Practice squad" };
