@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794612429" />
+  <meta name="build" content="1794614279" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -377,6 +377,24 @@
     .mobile-app .sheet-bar::before { content: ""; position: absolute; left: 50%; top: 6px; width: 36px; height: 4px; margin-left: -18px; border-radius: 99px; background: var(--line-hi); }
     .sheet-bar { position: relative; }
     .test-btn { width: 100%; margin-top: 10px; justify-content: center; }
+    /* ---- day strip ---- */
+    .dstrip { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 2px 12px; margin: 0 -2px 4px; scroll-snap-type: x proximity; -webkit-mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent); mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent); }
+    .dstrip::-webkit-scrollbar { display: none; }
+    .dchip { flex: none; width: 52px; scroll-snap-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 7px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); transition: background .25s, color .25s, border-color .25s, transform .2s var(--ease); }
+    .dchip small { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
+    .dchip b { font-family: var(--display); font-size: 21px; font-weight: 800; color: var(--text); line-height: 1; }
+    .dchip i { width: 5px; height: 5px; border-radius: 50%; background: transparent; margin-top: 2px; }
+    .dchip.has i { background: var(--accent); }
+    .dchip.today small { color: var(--accent); }
+    .dchip.on { background: var(--accent); border-color: var(--accent); color: #120a07; transform: translateY(-1px); }
+    .dchip.on b, .dchip.on small { color: #120a07; } .dchip.on.has i { background: #120a07; }
+    .dchip:active { transform: scale(.94); }
+    .day-head { display: flex; align-items: baseline; gap: 8px; margin: 18px 2px 8px; }
+    .day-head:first-of-type { margin-top: 6px; }
+    .day-head b { font-family: var(--display); font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; }
+    .day-head span { color: var(--muted); font-size: 12.5px; }
+    .vt button { min-width: 54px; }
+
     /* ---- account, friends, chat ---- */
     .trust { margin-top: 16px; padding: 14px; border-radius: 14px; background: rgba(76, 212, 134, .06); border: 1px solid rgba(76, 212, 134, .25); font-size: 13px; line-height: 1.5; }
     .trust-h { font-weight: 800; margin-bottom: 6px; }
@@ -739,29 +757,99 @@
       return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
     }
 
+    /* ---------- day strip + Day/Week views ---------- */
+    const views0 = store.get("view", {});
+    const viewOf = (key) => views0[key] || "day";
+    const dayOff = {};                      // key -> days from today (day view)
+    const gameDays = {};                    // key -> Set of "YYYYMMDD" that have games
+    const DAY = 86400000;
+    const dateAt = (off) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + off); return d; };
+    const dayUrl = (key, d) => API + LEAGUES[key].path + "/scoreboard?dates=" + ymd(d) + (LEAGUES[key].extra || "");
+    function noteGameDays(key, data) {
+      const s = (gameDays[key] ||= new Set());
+      (data?.events || []).forEach((e) => s.add(ymd(new Date(e.date))));
+      const cal = data?.leagues?.[0]?.calendar;
+      if (Array.isArray(cal) && typeof cal[0] === "string") cal.forEach((c) => s.add(ymd(new Date(c))));
+    }
+    async function ensureGameDays(key) {
+      if (gameDays[key]?.size) return;
+      try { noteGameDays(key, await getJSON(API + LEAGUES[key].path + "/scoreboard?" + (LEAGUES[key].extra || "").replace(/^&/, ""))); } catch {}
+    }
+    function stripHtml(key) {
+      const sel = dayOff[key] || 0, gd = gameDays[key] || new Set();
+      let h = '<div class="dstrip" data-dstrip>';
+      for (let o = sel - 10; o <= sel + 14; o++) {
+        const d = dateAt(o), wk = o === 0 ? "Today" : d.toLocaleDateString([], { weekday: "short" });
+        h += '<button type="button" data-day="' + o + '" class="dchip' + (o === sel ? " on" : "") + (gd.has(ymd(d)) ? " has" : "") + (o === 0 ? " today" : "") + '"><small>' + esc(wk) + "</small><b>" + d.getDate() + "</b><i></i></button>";
+      }
+      return h + "</div>";
+    }
+    function weekRange(key) {
+      const off = state.offset[key] || 0, d = dateAt(0);
+      const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay() + 6) % 7) + off * 7);
+      return Array.from({ length: 7 }, (_, i) => { const x = new Date(mon); x.setDate(mon.getDate() + i); return x; });
+    }
+    function weekLabel(key) {
+      if (LEAGUES[key].paging === "week") { const wk = cache[key]?.week?.number; return wk ? "Week " + wk : "This week"; }
+      const r = weekRange(key), f = (x) => x.toLocaleDateString([], { month: "short", day: "numeric" });
+      return (state.offset[key] || 0) === 0 ? "This week" : f(r[0]) + " – " + f(r[6]);
+    }
+    async function loadView(key) {
+      const L = LEAGUES[key];
+      if (viewOf(key) === "day") {
+        await ensureGameDays(key);
+        if (dayOff[key] == null) {
+          dayOff[key] = 0;
+          const gd = gameDays[key];
+          if (gd?.size && !gd.has(ymd(dateAt(0)))) for (let o = 1; o <= 10; o++) if (gd.has(ymd(dateAt(o)))) { dayOff[key] = o; break; }
+        }
+        const data = await getJSON(dayUrl(key, dateAt(dayOff[key])));
+        noteGameDays(key, data); cache[key] = data;
+        return { events: data.events || [] };
+      }
+      if (L.paging === "week") { const data = await loadLeague(key); noteGameDays(key, data); return { events: data.events || [], grouped: true }; }
+      const days = weekRange(key);
+      const res = await Promise.allSettled(days.map((d) => getJSON(dayUrl(key, d))));
+      const events = res.flatMap((r) => r.status === "fulfilled" ? r.value.events || [] : []);
+      if (res.every((r) => r.status === "rejected")) throw new Error("load");
+      cache[key] = { events };
+      return { events, grouped: true };
+    }
+    function groupByDay(events, key, start = 0) {
+      const by = {};
+      events.slice().sort((a, b) => new Date(a.date) - new Date(b.date)).forEach((e) => { (by[ymd(new Date(e.date))] ||= []).push(e); });
+      let i = start;
+      return Object.entries(by).map(([k, evs]) => {
+        const d = new Date(evs[0].date), today = ymd(dateAt(0)) === k;
+        return '<div class="day-head"><b>' + esc(today ? "Today" : d.toLocaleDateString([], { weekday: "long" })) + "</b><span>" + esc(d.toLocaleDateString([], { month: "short", day: "numeric" })) + "</span></div>" +
+          '<div class="grid">' + sortEvents(evs).map((e) => gameCard(e, key, i++)).join("") + "</div>";
+      }).join("");
+    }
     async function renderLeague(key) {
       const L = LEAGUES[key];
       const main = $("main");
-      if (!main.querySelector(".grid")) main.innerHTML = barHtml(L.name, key) + skeleton();
-      let data;
-      try { data = await loadLeague(key); }
+      if (!main.querySelector(".grid, .empty")) main.innerHTML = barHtml(L.name, key) + skeleton();
+      let res;
+      try { res = await loadView(key); }
       catch (e) { main.innerHTML = barHtml(L.name, key) + '<div class="error">Couldn\'t load ' + esc(L.name) + " scores. Check your connection and try again.</div>"; return; }
       if (state.tab !== key) return;
-      let events = sortEvents(data.events || []);
-      events = applyFilter(events);
-      const body = events.length ? '<div class="grid">' + events.map((e, i) => gameCard(e, key, i)).join("") + "</div>"
-        : '<div class="empty">' + (state.filter === "live" ? "No live games right now." : state.filter === "fav" ? "None of your ★ teams play " + esc(pagerLabel(key).toLowerCase()) + "." : "No games scheduled for " + esc(pagerLabel(key).toLowerCase()) + ".") + "</div>";
+      const events = applyFilter(sortEvents(res.events));
+      const when = viewOf(key) === "day" ? (dayOff[key] === 0 ? "today" : "on " + dateAt(dayOff[key]).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })) : weekLabel(key).toLowerCase();
+      const body = !events.length ? '<div class="empty">' + (state.filter === "live" ? "No live games right now." : state.filter === "fav" ? "None of your ★ teams play " + esc(when) + "." : "No games " + esc(when) + ".") + "</div>"
+        : res.grouped ? groupByDay(events, key) : '<div class="grid">' + events.map((e, i) => gameCard(e, key, i)).join("") + "</div>";
       main.innerHTML = barHtml(L.name, key) + body;
+      main.querySelector(".dchip.on")?.scrollIntoView({ inline: "center", block: "nearest" });
       renderTabs();
       stamp();
       schedule(events.some(isLive));
     }
     function barHtml(title, key) {
-      const paging = key && LEAGUES[key]?.paging;
-      const pager = paging ? '<div class="pager"><button class="pill-btn" type="button" data-page="-1" aria-label="Previous">‹</button><span class="label">' + esc(pagerLabel(key)) + '</span><button class="pill-btn" type="button" data-page="1" aria-label="Next">›</button></div>' : "";
+      const L = key && LEAGUES[key];
+      const paged = !!L?.paging, day = paged && viewOf(key) === "day";
+      const toggle = paged ? '<div class="seg chips vt">' + [["day", "Day"], ["week", "Week"]].map(([k, l]) => '<button type="button" data-view="' + k + '" class="' + (viewOf(key) === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
+      const pager = paged && !day ? '<div class="pager"><button class="pill-btn" type="button" data-page="-1" aria-label="Previous">‹</button><span class="label">' + esc(weekLabel(key)) + '</span><button class="pill-btn" type="button" data-page="1" aria-label="Next">›</button></div>' : "";
       const liveBtn = key !== "f1" ? '<div class="seg chips">' + [["all", "All"], ["fav", "★ My teams"], ["live", "● Live"]].map(([k, l]) => '<button type="button" data-filter="' + k + '" class="' + (state.filter === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
-
-      return '<div class="bar"><h1>' + esc(title) + "</h1>" + liveBtn + pager + "</div>";
+      return '<div class="bar"><h1>' + esc(title) + "</h1>" + toggle + liveBtn + pager + "</div>" + (day ? stripHtml(key) : "");
     }
 
     async function renderHome() {
@@ -1013,6 +1101,10 @@
         document.querySelectorAll('[data-fav="' + CSS.escape(k) + '"]').forEach((b) => b.classList.toggle("on", state.favs.has(k)));
         return;
       }
+      const dc = e.target.closest("[data-day]");
+      if (dc) { dayOff[state.tab] = Number(dc.dataset.day); buzz(); $("main").querySelectorAll(".dchip").forEach((c) => c.classList.toggle("on", c === dc)); dc.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" }); const m = $("main"); [...m.children].filter((c) => !c.matches(".bar, .dstrip")).forEach((c) => c.remove()); m.insertAdjacentHTML("beforeend", skeleton(4)); return render(); }
+      const vw = e.target.closest("[data-view]");
+      if (vw) { views0[state.tab] = vw.dataset.view; store.set("view", views0); state.offset[state.tab] = 0; buzz(); swapIn(1); return render(); }
       const page = e.target.closest("[data-page]");
       if (page) { state.offset[state.tab] = (state.offset[state.tab] || 0) + Number(page.dataset.page); return render(); }
       const flt = e.target.closest("[data-filter]");
@@ -1589,7 +1681,7 @@
         }
         if (views.length || mode !== "h" || Math.abs(dx) < 70 || Math.abs(dy) > 45) return;
         if (!MOBILE_APP && !matchMedia("(max-width: 720px)").matches) return;
-        if (e.target.closest(".ls-wrap, .seg, .track, .court, .field, .tabs, .btabs, .pager")) return;
+        if (e.target.closest(".ls-wrap, .seg, .track, .court, .field, .tabs, .btabs, .pager, .dstrip")) return;
         const i = ORDER.indexOf(state.tab), j = i + (dx < 0 ? 1 : -1);
         if (j < 0 || j >= ORDER.length) return;
         document.querySelector('.btab[data-tab="' + ORDER[j] + '"]')?.click();
