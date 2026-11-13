@@ -6,6 +6,9 @@
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#0b0e13" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -139,7 +142,14 @@
     @keyframes shimmer { to { background-position: -200% 0; } }
     footer { max-width: 1180px; margin: 0 auto; padding: 0 20px 40px; color: #5d6676; font-size: 12px; }
 
+    .install-btn { background: var(--accent) !important; color: #120a07 !important; border-color: transparent !important; font-weight: 800; }
+    #notifyBtn { font-size: 14px; filter: grayscale(1) opacity(.6); }
+    #notifyBtn.on { filter: none; border-color: rgba(255, 200, 61, .5); }
+    .toast { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px); opacity: 0; z-index: 50; background: #1b212c; border: 1px solid var(--line-hi); color: var(--text); padding: 10px 16px; border-radius: 999px; font-weight: 600; box-shadow: 0 16px 40px rgba(0,0,0,.45); transition: opacity .25s, transform .4s var(--ease); pointer-events: none; max-width: calc(100% - 32px); text-align: center; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    @media (display-mode: standalone) { .install-btn { display: none !important; } }
     @media (max-width: 720px) {
+      #updated { display: none; }
       .top-inner { height: auto; padding: 10px 14px; flex-wrap: wrap; gap: 10px; }
       .tabs { order: 3; width: 100%; }
       main { padding: 16px 14px 50px; }
@@ -158,6 +168,8 @@
       </div>
       <nav class="tabs" id="tabs" aria-label="Sports"></nav>
       <div class="top-right">
+        <button class="pill-btn install-btn" id="installBtn" type="button" hidden>⤓ Install app</button>
+        <button class="refresh" id="notifyBtn" type="button" aria-label="Score alerts" title="Score alerts for your ★ teams">🔔</button>
         <span id="updated">Loading…</span>
         <button class="refresh" id="refresh" type="button" aria-label="Refresh scores" title="Refresh">↻</button>
       </div>
@@ -475,6 +487,81 @@
       render();
     });
     document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
+
+    /* ---------- toast ---------- */
+    let toastTimer = 0;
+    function toast(msg) {
+      let el = document.querySelector(".toast");
+      if (!el) { el = document.createElement("div"); el.className = "toast"; el.setAttribute("role", "status"); document.body.appendChild(el); }
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove("show"), 2800);
+    }
+
+    /* ---------- install (PWA) ---------- */
+    let installPrompt = null;
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+    window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; $("installBtn").hidden = false; });
+    window.addEventListener("appinstalled", () => { $("installBtn").hidden = true; toast("Scoreline installed!"); });
+    $("installBtn").addEventListener("click", async () => {
+      if (!installPrompt) return;
+      installPrompt.prompt();
+      await installPrompt.userChoice.catch(() => {});
+      installPrompt = null;
+      $("installBtn").hidden = true;
+    });
+
+    /* ---------- score alerts for ★ teams ---------- */
+    // Watches every league's scoreboard for favorite teams' games and alerts on kickoff, score changes and final.
+    // Runs while the app is open or recently used; alerts when closed need a push server.
+    let alertsOn = store.get("alerts", false) && "Notification" in window && Notification.permission === "granted";
+    const snapshot = store.get("snap", {});
+    const syncBell = () => { $("notifyBtn").classList.toggle("on", alertsOn); $("notifyBtn").title = alertsOn ? "Score alerts on for your ★ teams" : "Turn on score alerts for your ★ teams"; };
+    syncBell();
+    $("notifyBtn").addEventListener("click", async () => {
+      if (!("Notification" in window)) { toast("This browser doesn't support notifications."); return; }
+      if (alertsOn) { alertsOn = false; store.set("alerts", false); syncBell(); toast("Score alerts off"); return; }
+      const perm = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+      if (perm !== "granted") { toast("Notifications are blocked. Allow them in your browser's site settings."); return; }
+      alertsOn = true; store.set("alerts", true); syncBell();
+      toast(state.favs.size ? "Score alerts on for your ★ teams" : "Alerts on. Tap ★ on a team to follow it.");
+      checkAlerts();
+    });
+    async function notify(title, body, tag) {
+      try {
+        const reg = await navigator.serviceWorker?.getRegistration();
+        const opts = { body, tag, icon: "icon-192.png", badge: "icon-192.png", renotify: true };
+        if (reg) reg.showNotification(title, opts); else new Notification(title, opts);
+      } catch {}
+    }
+    function line(ev) {
+      const t = teamsOf(ev);
+      return t.map((x) => (x.team?.abbreviation || x.team?.shortDisplayName) + " " + (x.score ?? "")).join(" – ");
+    }
+    async function checkAlerts() {
+      if (!alertsOn || !state.favs.size) return;
+      const keys = ["nfl", "cfb", "nba", "epl"];
+      const datas = await Promise.allSettled(keys.map((k) => getJSON(API + LEAGUES[k].path + "/scoreboard?" + (LEAGUES[k].extra || "").replace(/^&/, ""))));
+      datas.forEach((res, i) => {
+        if (res.status !== "fulfilled") return;
+        (res.value.events || []).filter(hasFav).forEach((ev) => {
+          const st = ev.status?.type?.state;
+          const sig = st + "|" + teamsOf(ev).map((x) => x.score).join("-");
+          const prev = snapshot[ev.id];
+          snapshot[ev.id] = sig;
+          if (!prev || prev === sig) return;
+          const [pst] = prev.split("|");
+          const league = LEAGUES[keys[i]].short || LEAGUES[keys[i]].name;
+          if (pst === "pre" && st === "in") notify(league + ": Game on", ev.name, ev.id);
+          else if (st === "post" && pst !== "post") notify(league + ": Final", line(ev), ev.id);
+          else if (st === "in") notify(league + ": Score update", line(ev) + " · " + (ev.status?.type?.shortDetail || ""), ev.id);
+        });
+      });
+      store.set("snap", snapshot);
+    }
+    setInterval(checkAlerts, 60000);
+    checkAlerts();
 
     if (!ORDER.includes(state.tab)) state.tab = "home";
     render();
