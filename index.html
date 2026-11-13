@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794607749" />
+  <meta name="build" content="1794607851" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -270,10 +270,17 @@
     .f-1st { stroke: #ffd400; stroke-width: 2.5; }
     .f-throw { fill: none; stroke: #fff; stroke-width: 2; stroke-dasharray: 4 4; opacity: .9; }
     .f-run { fill: none; stroke: #fff; stroke-width: 4; stroke-linecap: round; filter: drop-shadow(0 0 2px rgba(0,0,0,.6)); }
-    .f-ball { fill: #8b4a1f; stroke: #fff; stroke-width: 1; }
+    .f-ball { fill: #c0662b; stroke: #fff; stroke-width: 1; }
     .f-catchpt { fill: #fff; }
     .f-x { fill: #ff6b6b; font: 800 14px Inter, sans-serif; text-anchor: middle; }
-    .f-mark { animation: rise .4s var(--ease) both; }
+    .cam { transition: transform .75s var(--ease); }
+    .f-mark { animation: pop .45s var(--ease) both; transform-box: fill-box; transform-origin: center; }
+    @keyframes pop { from { opacity: 0; transform: scale(.4); } }
+    .f-run.draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: dash .55s var(--ease) forwards; }
+    @keyframes dash { to { stroke-dashoffset: 0; } }
+    .f-throw, .f-catchpt, .f-x { animation: fadein .4s ease both; }
+    @keyframes fadein { from { opacity: 0; } }
+    .f-ball { opacity: 0; animation: fadein .1s .45s forwards; }
     .f-mark circle { stroke: #fff; stroke-width: 2; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
     .f-jn { fill: #fff; font: 800 11px Inter, sans-serif; text-anchor: middle; dominant-baseline: central; } .f-jn.s { font-size: 9px; }
     .f-lbl { fill: #fff; font: 700 10px Inter, sans-serif; text-anchor: middle; paint-order: stroke; stroke: rgba(0,0,0,.75); stroke-width: 3px; }
@@ -890,16 +897,19 @@
       const D = F.drives[F.di];
       const col = (t) => "#" + (t?.team?.color || "8a93a5");
       const ab = (t) => esc(t?.team?.abbreviation || "");
-      const W = 360, H = 200, ez = 30, fx = (x) => ez + (x / 100) * (W - 2 * ez), mid = H / 2;
+      const W = 360, H = 200, SC = 8, ez = 10 * SC, fx = (x) => (x + 10) * SC, FW = 120 * SC, mid = H / 2;
       const pi = F.pi ?? D.plays.length - 1, P = D.plays[pi];
       const G = P ? playGeom(P, F) : null;
       const offTeam = G && G.team === String(F.away.team?.id) ? F.away : F.home, defTeam = offTeam === F.away ? F.home : F.away;
       const ath = (type) => { const r = (P?.participants || []).find((x) => x.type === type)?.athlete?.$ref; return r ? athCache[r] : null; };
+      const pts = G ? [G.x0, G.x1, G.xc ?? G.x0] : [50];
+      const camX = Math.max(0, Math.min(FW - W, fx((Math.min(...pts) + Math.max(...pts)) / 2) - W / 2));
+      const fromX = v.camX ?? camX; v.camX = camX;
       let svg = '<svg class="field" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Field"><defs><clipPath id="fclip"><rect width="' + W + '" height="' + H + '" rx="12"/></clipPath>' +
-        '<marker id="farw" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs><g clip-path="url(#fclip)">';
+        '<marker id="farw" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#fff"/></marker></defs><g clip-path="url(#fclip)"><g class="cam" data-to="' + camX + '" style="transform:translateX(' + -fromX + 'px)">';
       for (let y = 0; y < 100; y += 10) svg += '<rect x="' + fx(y) + '" y="0" width="' + (fx(10) - fx(0)) + '" height="' + H + '" class="' + (y / 10 % 2 ? "f-s2" : "f-s1") + '"/>';
-      svg += '<rect x="0" y="0" width="' + ez + '" height="' + H + '" fill="' + esc(col(F.home)) + '"/><rect x="' + (W - ez) + '" y="0" width="' + ez + '" height="' + H + '" fill="' + esc(col(F.away)) + '"/>';
-      svg += '<text x="' + ez / 2 + '" y="' + mid + '" class="f-ez" transform="rotate(-90 ' + ez / 2 + " " + mid + ')">' + esc(F.home.team?.name || ab(F.home)) + '</text><text x="' + (W - ez / 2) + '" y="' + mid + '" class="f-ez" transform="rotate(90 ' + (W - ez / 2) + " " + mid + ')">' + esc(F.away.team?.name || ab(F.away)) + "</text>";
+      svg += '<rect x="0" y="0" width="' + ez + '" height="' + H + '" fill="' + esc(col(F.home)) + '"/><rect x="' + fx(100) + '" y="0" width="' + ez + '" height="' + H + '" fill="' + esc(col(F.away)) + '"/>';
+      svg += '<text x="' + fx(-5) + '" y="' + mid + '" class="f-ez" transform="rotate(-90 ' + fx(-5) + " " + mid + ')">' + esc(F.home.team?.name || ab(F.home)) + '</text><text x="' + fx(105) + '" y="' + mid + '" class="f-ez" transform="rotate(90 ' + fx(105) + " " + mid + ')">' + esc(F.away.team?.name || ab(F.away)) + "</text>";
       for (let y = 0; y <= 100; y += 5) svg += '<line x1="' + fx(y) + '" x2="' + fx(y) + '" y1="0" y2="' + H + '" class="f-yl' + (y % 10 ? "" : " ten") + (y === 0 || y === 100 ? " goal" : "") + '"/>';
       for (let y = 1; y < 100; y++) if (y % 5) svg += '<line x1="' + fx(y) + '" x2="' + fx(y) + '" y1="' + (H * .36 - 3) + '" y2="' + (H * .36 + 3) + '" class="f-hash"/><line x1="' + fx(y) + '" x2="' + fx(y) + '" y1="' + (H * .64 - 3) + '" y2="' + (H * .64 + 3) + '" class="f-hash"/>';
       for (let y = 10; y < 100; y += 10) { const n = y <= 50 ? y : 100 - y; svg += '<text x="' + fx(y) + '" y="22" class="f-num">' + n + '</text><text x="' + fx(y) + '" y="' + (H - 10) + '" class="f-num">' + n + "</text>"; }
@@ -908,9 +918,9 @@
         const dist = Number(P.start.distance) || 0;
         svg += '<line x1="' + fx(G.x0) + '" x2="' + fx(G.x0) + '" y1="0" y2="' + H + '" class="f-los"/>';
         if (dist && dist < P.start.yardsToEndzone) svg += '<line x1="' + fx(G.x0 + dir * dist) + '" x2="' + fx(G.x0 + dir * dist) + '" y1="0" y2="' + H + '" class="f-1st"/>';
-        const mark = (x, y, c, a, fallback, small) => {
-          const r = small ? 9 : 12, lx = Math.max(34, Math.min(W - 34, fx(x)));
-          return '<g class="f-mark"><circle cx="' + fx(x) + '" cy="' + y + '" r="' + r + '" fill="' + c + '"/><text x="' + fx(x) + '" y="' + y + '" class="f-jn' + (small ? " s" : "") + '">' + esc(a?.jersey || "") + "</text>" +
+        const mark = (x, y, c, a, fallback, small, delay = 0) => {
+          const r = small ? 9 : 12, lx = fx(x);
+          return '<g class="f-mark" style="animation-delay:' + delay + 's"><circle cx="' + fx(x) + '" cy="' + y + '" r="' + r + '" fill="' + c + '"/><text x="' + fx(x) + '" y="' + y + '" class="f-jn' + (small ? " s" : "") + '">' + esc(a?.jersey || "") + "</text>" +
             (small ? "" : '<text x="' + lx + '" y="' + (y < mid ? y - r - 5 : y + r + 11) + '" class="f-lbl">' + esc([a?.short || fallback || "", a?.pos].filter(Boolean).join(" · ")) + "</text>") + "</g>";
         };
         const t = P.text || "";
@@ -918,23 +928,23 @@
         const lane = mid - 44;
         if (G.isPass && G.xc != null) {
           const cx = (fx(G.x0) + fx(G.xc)) / 2, path = "M" + fx(G.x0) + " " + mid + " Q" + cx + " " + (lane - 50) + " " + fx(G.xc) + " " + lane;
-          svg += '<path d="' + path + '" class="f-throw"/><path d="M' + fx(G.xc) + " " + lane + " L" + fx(G.x1) + " " + lane + '" class="f-run" marker-end="url(#farw)"/>';
-          svg += '<circle r="4" class="f-ball"><animateMotion dur="1.1s" fill="freeze" path="' + path + '"/></circle>';
-          svg += '<circle cx="' + fx(G.xc) + '" cy="' + lane + '" r="3.5" class="f-catchpt"/>';
-          svg += mark(G.x0, mid, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/)) + mark(G.x1, lane, oc, ath("receiver"), nm(/ to ([A-Z][a-z]?\.[\w'-]+)/));
+          svg += '<path d="' + path + '" class="f-throw" style="animation-delay:.4s"/><path d="M' + fx(G.xc) + " " + lane + " L" + fx(G.x1) + " " + lane + '" class="f-run draw" pathLength="1" style="animation-delay:1.1s" marker-end="url(#farw)"/>';
+          svg += '<circle r="4" class="f-ball"><animateMotion begin="0.45s" dur="0.7s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".3 0 .4 1" path="' + path + '"/></circle>';
+          svg += '<circle cx="' + fx(G.xc) + '" cy="' + lane + '" r="3.5" class="f-catchpt" style="animation-delay:1.1s"/>';
+          svg += mark(G.x0, mid, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/)) + mark(G.x1, lane, oc, ath("receiver"), nm(/ to ([A-Z][a-z]?\.[\w'-]+)/), false, 1.05);
         } else if (/incomplet/i.test(P.type?.text || "")) {
           const tx = G.x0 + dir * 12, path = "M" + fx(G.x0) + " " + mid + " Q" + (fx(G.x0) + fx(tx)) / 2 + " " + (lane - 45) + " " + fx(tx) + " " + lane;
-          svg += '<path d="' + path + '" class="f-throw"/><text x="' + fx(tx) + '" y="' + (lane + 4) + '" class="f-x">✕</text>';
+          svg += '<path d="' + path + '" class="f-throw" style="animation-delay:.4s"/><text x="' + fx(tx) + '" y="' + (lane + 4) + '" class="f-x">✕</text>';
           svg += mark(G.x0, mid, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/));
         } else {
-          if (G.x0 !== G.x1) svg += '<path d="M' + fx(G.x0) + " " + mid + " C" + (fx(G.x0) + dir * 12) + " " + (mid + 14) + " " + (fx(G.x1) - dir * 12) + " " + (mid - 14) + " " + fx(G.x1) + " " + mid + '" class="f-run" marker-end="url(#farw)"/>';
+          if (G.x0 !== G.x1) svg += '<path d="M' + fx(G.x0) + " " + mid + " C" + (fx(G.x0) + dir * 12) + " " + (mid + 14) + " " + (fx(G.x1) - dir * 12) + " " + (mid - 14) + " " + fx(G.x1) + " " + mid + '" class="f-run draw" pathLength="1" style="animation-delay:.45s;animation-duration:.8s" marker-end="url(#farw)"/>';
           const carrier = ath("rusher") || ath("passer") || ath("kicker") || ath("punter");
-          svg += mark(G.x1, mid, oc, carrier, nm(/([A-Z][a-z]?\.[\w'-]+)\s/));
+          svg += mark(G.x1, mid, oc, carrier, nm(/([A-Z][a-z]?\.[\w'-]+)\s/), false, 1.1);
         }
         const tk = ath("tackler");
-        if (tk) svg += mark(G.x1 + dir * 2, (G.isPass && G.xc != null ? lane : mid) + 18, dc, tk, "", true);
+        if (tk) svg += mark(G.x1 + dir * 2, (G.isPass && G.xc != null ? lane : mid) + 18, dc, tk, "", true, 1.5);
       }
-      svg += "</g></svg>";
+      svg += "</g></g></svg>";
       const dteam = D.team === String(F.away.team?.id) ? F.away : F.home;
       const last = D.plays[D.plays.length - 1];
       let html = '<div class="g-label">Plays</div><div class="f-nav"><button type="button" class="sheet-btn" data-drive="-1" ' + (F.di ? "" : "disabled") + '>‹</button><div><b>' + ab(dteam) + " drive " + (F.di + 1) + " of " + F.drives.length + "</b><small>" + D.plays.length + " plays · " + esc(last?.type?.text || "") + "</small></div>" +
@@ -959,6 +969,8 @@
       }
       html += '<div class="f-list">' + D.plays.map((p, i) => '<button type="button" class="f-row ' + playKind(p) + (pi === i ? " sel" : "") + '" data-play="' + i + '"><span>' + esc(p.start.shortDownDistanceText || "") + "</span><span>" + esc(p.shortText || p.text || "") + "</span><b>" + (Number(p.statYardage) > 0 ? "+" : "") + esc(p.statYardage ?? "") + "</b></button>").join("") + "</div>";
       sec.innerHTML = html;
+      const cam = sec.querySelector(".cam");
+      if (cam) requestAnimationFrame(() => requestAnimationFrame(() => { cam.style.transform = "translateX(" + -cam.dataset.to + "px)"; }));
     }
     document.addEventListener("click", (e) => {
       const sheet = e.target.closest(".sheet");
