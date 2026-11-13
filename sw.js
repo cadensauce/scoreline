@@ -18,7 +18,7 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET" || url.origin !== self.location.origin) return;
   // Network first so updates show up right away; fall back to the cached shell when offline.
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, event.request.mode === "navigate" ? { cache: "no-store" } : undefined)
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(event.request, copy));
