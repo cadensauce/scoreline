@@ -104,7 +104,8 @@
     .team.loser .score, .team.loser strong { color: var(--muted); }
     .team.winner .score::after { content: "◂"; font-size: 14px; color: var(--accent); margin-left: 4px; vertical-align: 6px; }
     .fav { border: 0; background: none; padding: 2px; color: #4a5263; font-size: 15px; line-height: 1; transition: color .2s, transform .2s; }
-    .fav:hover { color: var(--gold); transform: scale(1.15); }
+    @media (hover: hover) { .fav:hover { color: var(--gold); transform: scale(1.15); } }
+    .fav:not(.on):hover { color: #4a5263; }
     .fav.on { color: var(--gold); }
     .card-foot { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 12px; }
     .card-foot span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -162,7 +163,71 @@
     .update-bar span { color: var(--muted); font-size: 13px; }
     .update-bar .dl { background: var(--accent); color: #120a07; border-color: transparent; }
     .update-x { border: 0; background: none; color: var(--muted); font-size: 20px; padding: 0 4px; }
-    .btabs, .more-sheet, .ptr { display: none; }
+    /* ---- sheets (game + team) ---- */
+    .card[data-ev] { cursor: pointer; }
+    .sheet-bg { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.55); opacity: 0; pointer-events: none; transition: opacity .3s; }
+    .sheet-bg.show { opacity: 1; pointer-events: auto; }
+    .sheet { position: fixed; z-index: 61; top: 0; right: 0; bottom: 0; width: min(480px, 100%); background: var(--bg); border-left: 1px solid var(--line); display: flex; flex-direction: column; transform: translateX(100%); transition: transform .42s var(--ease); }
+    .sheet.show { transform: none; }
+    .sheet-bar { display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 8px; border-bottom: 1px solid var(--line); flex: none; }
+    .sheet-btn { width: 44px; height: 44px; border: 0; background: none; font-size: 22px; color: var(--text); border-radius: 50%; }
+    .sheet-title { font-family: var(--display); font-weight: 800; font-size: 20px; letter-spacing: .4px; text-transform: uppercase; }
+    .sheet-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 14px 14px calc(24px + env(safe-area-inset-bottom)); }
+    body.sheet-open { overflow: hidden; }
+    .g-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; padding: 6px 0 14px; }
+    .g-team { border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px; border-radius: 12px; }
+    .g-team img { width: 52px; height: 52px; object-fit: contain; }
+    .g-team b { font-family: var(--display); font-size: 20px; letter-spacing: .4px; }
+    .g-team small, .g-note, .muted { color: var(--muted); font-size: 12px; }
+    .g-mid { text-align: center; }
+    .g-score { font-family: var(--display); font-size: 40px; font-weight: 800; line-height: 1; }
+    .g-score i { font-style: normal; color: var(--muted); margin: 0 8px; }
+    .g-mid .status { font-size: 12px; justify-content: center; }
+    .g-sec { border-top: 1px solid var(--line); padding: 14px 0; animation: rise .4s var(--ease) both; }
+    .g-label { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+    .g-label small { font-family: Inter, sans-serif; font-weight: 600; margin-left: 4px; }
+    .wp { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+    .wp b { font-size: 16px; }
+    .wp-bar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; gap: 2px; background: var(--panel-3); }
+    .wp-bar i { display: block; height: 100%; transition: width .8s var(--ease); }
+    .wp-bar i:last-child { flex: 1; }
+    .g-note { margin-top: 6px; }
+    .ldr-cat { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin: 8px 0 4px; }
+    .ldr-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .ldr { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .ldr img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: var(--panel-2); flex: none; }
+    .ldr div { min-width: 0; display: flex; flex-direction: column; }
+    .ldr b, .ldr small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ldr b { font-size: 13px; } .ldr small { font-size: 11.5px; color: var(--muted); }
+    .inj-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .inj-team { font-weight: 800; font-size: 12px; margin-bottom: 4px; }
+    .inj { font-size: 12.5px; padding: 3px 0; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; }
+    .inj small { color: var(--muted); }
+    .badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 5px; font-size: 10.5px; font-weight: 800; background: var(--panel-3); color: var(--muted); }
+    .badge.out, .badge.injuredreserve, .badge.ir { background: rgba(255,59,78,.16); color: #ff8a96; }
+    .badge.questionable, .badge.doubtful, .badge.daytoday { background: rgba(255,200,61,.14); color: var(--gold); }
+    .t-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .t-head img { width: 56px; height: 56px; object-fit: contain; }
+    .t-head > div { flex: 1; display: flex; flex-direction: column; }
+    .t-head b { font-family: var(--display); font-size: 24px; font-weight: 800; text-transform: uppercase; line-height: 1.05; }
+    .t-head small { color: var(--muted); }
+    .t-head .fav { font-size: 22px; width: 44px; height: 44px; }
+    .list { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); }
+    .row { display: grid; grid-template-columns: 84px 1fr auto; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+    .row:last-child { border-bottom: 0; }
+    .row img { width: 18px; height: 18px; object-fit: contain; vertical-align: -4px; margin-right: 5px; }
+    .row[data-ev]:active { background: var(--panel-2); }
+    .res { font-weight: 800; } .res.w { color: #4cd486; } .res.l { color: #ff8a96; }
+    .opt { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; border: 0; background: none; text-align: left; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+    .opt:last-child { border-bottom: 0; }
+    .opt span { display: flex; flex-direction: column; }
+    .opt small { color: var(--muted); font-size: 12px; }
+    .switch { flex: none; width: 44px; height: 26px; border-radius: 99px; background: var(--panel-3); position: relative; transition: background .25s; }
+    .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .3s var(--ease); }
+    .opt.on .switch { background: var(--accent); }
+    .opt.on .switch::after { transform: translateX(18px); }
+    .opt .fav { width: 40px; height: 40px; font-size: 18px; }
+    .btabs, .ptr { display: none; }
     @media (max-width: 720px) {
       /* header: slim, shrinks on scroll */
       #updated, .tabs { display: none; }
@@ -217,10 +282,11 @@
       .btab.active { color: var(--accent); }
       .btab.active svg { transform: translateY(-1px) scale(1.08); }
       .btab .dot { position: absolute; top: 4px; left: calc(50% + 10px); width: 7px; height: 7px; border-radius: 50%; background: var(--live); animation: pulse 1.4s ease-in-out infinite; }
-      .more-sheet { display: block; position: fixed; left: 10px; right: 10px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 31; background: #1b212c; border: 1px solid var(--line-hi); border-radius: 16px; padding: 6px; box-shadow: 0 18px 44px rgba(0,0,0,.5); opacity: 0; transform: translateY(14px); pointer-events: none; transition: opacity .2s, transform .35s var(--ease); }
-      .more-sheet.show { opacity: 1; transform: none; pointer-events: auto; }
-      .more-sheet button { display: flex; width: 100%; align-items: center; gap: 12px; border: 0; background: none; padding: 14px; border-radius: 10px; font-weight: 700; text-align: left; }
-      .more-sheet button.active { color: var(--accent); background: var(--panel-3); }
+      .sheet { top: auto; height: calc(100% - 28px - env(safe-area-inset-top)); width: 100%; border: 1px solid var(--line); border-bottom: 0; border-radius: 18px 18px 0 0; transform: translateY(100%); }
+      .sheet + .sheet { transform: translateX(100%); }
+      .sheet + .sheet.show { transform: none; }
+      .btab { font-size: 10px; }
+      .btab svg { width: 22px; height: 22px; }
       .toast { bottom: calc(86px + env(safe-area-inset-bottom)); }
       .update-bar { top: calc(60px + env(safe-area-inset-top)); }
 
@@ -269,7 +335,6 @@
   <div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg></div>
   <main id="main"></main>
   <nav class="btabs" id="btabs" aria-label="Sports"></nav>
-  <div class="more-sheet" id="moreSheet"></div>
 
   <section class="get-app" id="getApp">
     <div class="get-app-inner">
@@ -293,9 +358,10 @@
       cfb:  { name: "College Football", short: "CFB", path: "football/college-football", paging: "week", extra: "&groups=80&limit=300" },
       f1:   { name: "Formula 1", short: "F1", path: "racing/f1" },
       nba:  { name: "NBA", path: "basketball/nba", paging: "day" },
-      epl:  { name: "Premier League", short: "EPL", path: "soccer/eng.1", paging: "day" },
+      mlb:  { name: "MLB", path: "baseball/mlb", paging: "day" },
     };
-    const ORDER = ["home", "nfl", "cfb", "f1", "nba", "epl"];
+    const MOBILE_APP = !!window.__PREVIEW_APP || (!!window.__TAURI__ && /android|iphone|ipad/i.test(navigator.userAgent));
+    const ORDER = ["home", "nfl", "cfb", "f1", "nba", "mlb"].concat(MOBILE_APP ? ["alerts"] : []);
     const $ = (id) => document.getElementById(id);
     const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
     const store = {
@@ -307,7 +373,7 @@
       tab: store.get("tab", "home"),
       favs: new Set(store.get("favs", [])),
       liveOnly: false,
-      offset: { nfl: 0, cfb: 0, nba: 0, epl: 0 },
+      offset: { nfl: 0, cfb: 0, nba: 0, mlb: 0 },
       f1Table: "drivers",
     };
     const cache = {};     // league -> last scoreboard JSON
@@ -382,7 +448,7 @@
       const situation = live && comp.situation?.downDistanceText ? '<span class="situation">' + esc(comp.situation.downDistanceText) + "</span>" : "";
       const venue = comp.venue?.fullName ? "<span>" + esc(comp.venue.fullName) + "</span>" : "";
       const foot = situation || tv || venue ? '<div class="card-foot">' + (situation || venue || "<span></span>") + (tv ? "<span>📺 " + esc(tv) + "</span>" : "") + "</div>" : "";
-      return '<article class="card ' + (live ? "live" : "") + '" style="animation-delay:' + Math.min(i * 30, 300) + 'ms">' +
+      return '<article data-ev="' + esc(ev.id) + '" data-lg="' + key + '" class="card ' + (live ? "live" : "") + '" style="animation-delay:' + Math.min(i * 30, 300) + 'ms">' +
         '<div class="card-head">' + statusHtml + league + "</div>" + rows + foot + "</article>";
     }
     function sortEvents(events) {
@@ -393,16 +459,15 @@
     /* ---------- render: views ---------- */
     function renderTabs() {
       $("tabs").innerHTML = ORDER.map((k) => {
-        const name = k === "home" ? "Top" : (LEAGUES[k].short || LEAGUES[k].name);
-        const live = k !== "home" && (cache[k]?.events || []).some(isLive);
+        const name = tabName(k);
+        const live = k !== "home" && k !== "alerts" && (cache[k]?.events || []).some(isLive);
         return '<button class="tab ' + (state.tab === k ? "active" : "") + '" type="button" data-tab="' + k + '">' + esc(name) + (live ? '<span class="dot" aria-label="live"></span>' : "") + "</button>";
       }).join("");
       const liveIn = (k) => (cache[k]?.events || []).some(isLive);
       const btn = (k, label, active, extra) => '<button class="btab ' + (active ? "active" : "") + '" type="button" ' + extra + ">" + ICONS[k] + label + (k !== "home" && k !== "more" && liveIn(k) ? '<span class="dot"></span>' : "") + "</button>";
-      $("btabs").innerHTML = ["home", "nfl", "cfb", "f1", "nba"].map((k) => btn(k, k === "home" ? "Top" : (LEAGUES[k].short || LEAGUES[k].name), state.tab === k, 'data-tab="' + k + '"')).join("") +
-        btn("more", "More", state.tab === "epl", 'id="moreBtn"');
-      $("moreSheet").innerHTML = '<button type="button" data-tab="epl" class="' + (state.tab === "epl" ? "active" : "") + '">' + ICONS.epl + " Premier League" + (liveIn("epl") ? ' <span class="status live">Live</span>' : "") + "</button>";
+      $("btabs").innerHTML = ORDER.map((k) => btn(k, tabName(k), state.tab === k, 'data-tab="' + k + '"')).join("");
     }
+    const tabName = (k) => k === "home" ? "Top" : k === "alerts" ? "Alerts" : (LEAGUES[k].short || LEAGUES[k].name);
     const svg = (d) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + "</svg>";
     const ICONS = {
       home: svg('<path d="M4 18h16M4 12h11M4 6h6"/>'),
@@ -410,8 +475,8 @@
       cfb: svg('<path d="M3 9l9-5 9 5-9 5z"/><path d="M7 11.5V16c0 1.5 2.5 3 5 3s5-1.5 5-3v-4.5M21 9v5"/>'),
       f1: svg('<path d="M5 21V4M5 4h13l-2.5 4L18 12H5"/>'),
       nba: svg('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.6 5.6c3 3 3 9.8 0 12.8M18.4 5.6c-3 3-3 9.8 0 12.8"/>'),
-      epl: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z"/>'),
-      more: svg('<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>'),
+      mlb: svg('<circle cx="12" cy="12" r="9"/><path d="M7.5 4.2c2 2.2 2 13.4 0 15.6M16.5 4.2c-2 2.2-2 13.4 0 15.6"/>'),
+      alerts: svg('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 21h4"/>'),
     };
     function skeleton(n = 6) { return '<div class="grid">' + '<div class="skel"></div>'.repeat(n) + "</div>"; }
 
@@ -455,7 +520,7 @@
     async function renderHome() {
       const main = $("main");
       if (!main.querySelector("[data-home]")) main.innerHTML = '<div data-home>' + barHtml("Top Scores", null) + skeleton(9) + "</div>";
-      const keys = ["nfl", "cfb", "nba", "epl"];
+      const keys = ["nfl", "cfb", "nba", "mlb"];
       const results = await Promise.allSettled(keys.map((k) => { state.offset[k] = 0; return loadLeague(k); }));
       let f1;
       try { f1 = await getJSON(API + LEAGUES.f1.path + "/scoreboard"); cache.f1 = f1; } catch {}
@@ -576,6 +641,7 @@
       store.set("tab", state.tab);
       renderTabs();
       if (state.tab !== "f1") clearInterval(countdownTimer);
+      if (state.tab === "alerts") return renderAlerts();
       if (state.tab === "home") return renderHome();
       if (state.tab === "f1") return renderF1();
       return renderLeague(state.tab);
@@ -583,8 +649,6 @@
 
     /* ---------- events ---------- */
     document.addEventListener("click", (e) => {
-      const sheet = $("moreSheet");
-      if (e.target.closest("#moreBtn")) { sheet.classList.toggle("show"); return; }
       sheet.classList.remove("show");
       const tab = e.target.closest("[data-tab]");
       if (tab) {
@@ -596,6 +660,9 @@
         const k = fav.dataset.fav;
         state.favs.has(k) ? state.favs.delete(k) : state.favs.add(k);
         store.set("favs", [...state.favs]);
+        const nm = (fav.getAttribute("aria-label") || "").replace(/^(Favorite|Follow|Unfollow) ?/, "");
+        if (nm) { teamNames[k] = nm; store.set("favNames", teamNames); }
+        if (state.tab === "alerts") renderAlerts();
         document.querySelectorAll('[data-fav="' + CSS.escape(k) + '"]').forEach((b) => b.classList.toggle("on", state.favs.has(k)));
         return;
       }
@@ -604,9 +671,166 @@
       if (e.target.closest("#liveOnly")) { state.liveOnly = !state.liveOnly; return render(); }
       const f1t = e.target.closest("[data-f1t]");
       if (f1t) { state.f1Table = f1t.dataset.f1t; return render(); }
-      const card = e.target.closest(".grid .card");
-      if (card && card.querySelector(".card-foot") && matchMedia("(max-width: 720px)").matches) card.classList.toggle("open");
+      const ap = e.target.closest("[data-ap]");
+      if (ap) { const p = alertPrefs(); p[ap.dataset.ap] = !p[ap.dataset.ap]; store.set("alertPrefs", p); ap.classList.toggle("on", p[ap.dataset.ap]); return; }
+      const team = e.target.closest("[data-team]");
+      if (team) { const [lg, id] = team.dataset.team.split("|"); return openTeam(lg, id); }
+      const card = e.target.closest("[data-ev]");
+      if (card) return openGame(card.dataset.lg, card.dataset.ev);
+      const seg = e.target.closest("[data-tseg]");
+      if (seg) { const v = views[views.length - 1]; v.seg = seg.dataset.tseg; return drawTeam(v); }
+      if (e.target.closest("[data-back]")) return history.back();
+      if (e.target.closest(".sheet-bg")) return closeSheets();
     });
+
+    /* ---------- game + team sheets ---------- */
+    const views = [];
+    const sheetRoot = document.createElement("div");
+    sheetRoot.className = "sheet-root";
+    document.body.appendChild(sheetRoot);
+    function pushView(v) {
+      views.push(v);
+      history.pushState({ sheet: views.length }, "");
+      const bg = sheetRoot.querySelector(".sheet-bg") || sheetRoot.appendChild(Object.assign(document.createElement("div"), { className: "sheet-bg" }));
+      v.el = document.createElement("section");
+      v.el.className = "sheet";
+      v.el.innerHTML = '<div class="sheet-bar"><button type="button" class="sheet-btn" data-back aria-label="Back">' + (views.length > 1 ? "‹" : "✕") + '</button><div class="sheet-title"></div></div><div class="sheet-body"><div class="skel" style="height:90px"></div><div class="skel" style="height:220px;margin-top:10px"></div></div>';
+      sheetRoot.appendChild(v.el);
+      document.body.classList.add("sheet-open");
+      requestAnimationFrame(() => { bg.classList.add("show"); v.el.classList.add("show"); });
+    }
+    function popView() {
+      const v = views.pop();
+      if (!v) return;
+      v.el.classList.remove("show");
+      setTimeout(() => v.el.remove(), 400);
+      if (!views.length) { sheetRoot.querySelector(".sheet-bg")?.classList.remove("show"); document.body.classList.remove("sheet-open"); }
+    }
+    function closeSheets() { const n = views.length; if (n) history.go(-n); }
+    addEventListener("popstate", () => { while (views.length > (history.state?.sheet || 0)) popView(); });
+    const setBody = (v, title, html) => { v.el.querySelector(".sheet-title").textContent = title; v.el.querySelector(".sheet-body").innerHTML = html; };
+
+    const pct = (x) => Math.round(x * 100);
+    function mlProb(ml) { ml = Number(ml); if (!ml) return null; return ml < 0 ? -ml / (100 - ml) : 100 / (ml + 100); }
+    function winProb(s, st) {
+      const wp = s.winprobability;
+      if (st === "in" && wp?.length) return { home: wp[wp.length - 1].homeWinPercentage, src: "Live win probability" };
+      if (st !== "pre") return null;
+      const pr = s.predictor;
+      if (pr?.homeTeam?.gameProjection) return { home: Number(pr.homeTeam.gameProjection) / 100, src: "ESPN matchup predictor" };
+      const pc = (s.pickcenter || [])[0];
+      const h = mlProb(pc?.homeTeamOdds?.moneyLine), a = mlProb(pc?.awayTeamOdds?.moneyLine);
+      if (h && a) return { home: h / (h + a), src: "Based on betting odds" };
+      return null;
+    }
+    async function openGame(lg, id) {
+      const v = { kind: "game" };
+      pushView(v);
+      let s;
+      try { s = await getJSON(API + LEAGUES[lg].path + "/summary?event=" + id); }
+      catch { return setBody(v, "Game", '<div class="error">Couldn\'t load this game.</div>'); }
+      if (!v.el.isConnected) return;
+      const comp = s.header?.competitions?.[0] || {};
+      const st = comp.status?.type || {};
+      const teams = (comp.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
+      const showScore = st.state !== "pre";
+      let h = '<div class="g-head">' + teams.map((t, i) => {
+        const logo = t.team?.logos?.[0]?.href || t.team?.logo;
+        return '<button type="button" class="g-team" data-team="' + lg + "|" + esc(t.team?.id) + '">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : "") +
+          "<b>" + esc(t.team?.abbreviation || t.team?.displayName) + '</b><small>' + esc(t.record?.[0]?.summary || t.record?.[0]?.displayValue || "") + "</small></button>" +
+          (i === 0 ? '<div class="g-mid">' + (showScore ? '<div class="g-score">' + esc(teams[0]?.score ?? "") + "<i>–</i>" + esc(teams[1]?.score ?? "") + "</div>" : "") +
+            '<div class="status ' + (st.state === "in" ? "live" : "") + '">' + esc(st.state === "pre" ? fmtDay(comp.date) + " · " + fmtTime(comp.date) : st.shortDetail || "") + "</div></div>" : "");
+      }).join("") + "</div>";
+
+      const wp = winProb(s, st.state);
+      if (wp && teams.length === 2) {
+        const hp = pct(wp.home), ap = 100 - hp;
+        const col = (t) => "#" + (t.team?.color || "8a93a5");
+        h += '<div class="g-sec"><div class="g-label">Win probability</div><div class="wp"><span>' + esc(teams[0].team?.abbreviation) + " <b>" + ap + '%</b></span><span><b>' + hp + "%</b> " + esc(teams[1].team?.abbreviation) + "</span></div>" +
+          '<div class="wp-bar"><i style="width:' + ap + "%;background:" + esc(col(teams[0])) + '"></i><i style="background:' + esc(col(teams[1])) + '"></i></div><div class="g-note">' + esc(wp.src) + "</div></div>";
+      }
+
+      const byTeam = {};
+      (s.leaders || []).forEach((L) => { byTeam[L.team?.id] = L.leaders || []; });
+      const cats = (byTeam[teams[0]?.team?.id] || []).slice(0, 4);
+      if (cats.length) {
+        h += '<div class="g-sec"><div class="g-label">' + (st.state === "pre" ? "Season leaders" : "Top players") + "</div>" + cats.map((c) => {
+          const other = (byTeam[teams[1]?.team?.id] || []).find((x) => x.name === c.name);
+          const cell = (x) => { const p = x?.leaders?.[0]; if (!p) return "<div></div>"; return '<div class="ldr">' + (p.athlete?.headshot?.href ? '<img src="' + esc(p.athlete.headshot.href) + '" alt="" loading="lazy">' : "") + "<div><b>" + esc(p.athlete?.shortName || p.athlete?.displayName) + "</b><small>" + esc(p.displayValue) + "</small></div></div>"; };
+          return '<div class="ldr-cat">' + esc(c.displayName) + '</div><div class="ldr-row">' + cell(c) + cell(other) + "</div>";
+        }).join("") + "</div>";
+      }
+
+      const inj = s.injuries || [];
+      if (inj.some((x) => x.injuries?.length)) {
+        h += '<div class="g-sec"><div class="g-label">Injuries</div><div class="inj-cols">' + teams.map((t) => {
+          const list = (inj.find((x) => x.team?.id === t.team?.id)?.injuries || []);
+          return "<div><div class=\"inj-team\">" + esc(t.team?.abbreviation) + "</div>" + (list.length ? list.slice(0, 6).map((p) =>
+            '<div class="inj"><span class="badge ' + esc(String(p.status || "").toLowerCase().replace(/\W/g, "")) + '">' + esc(String(p.status || "").slice(0, 1)) + "</span>" + esc(p.athlete?.shortName || p.athlete?.displayName) + " <small>" + esc(p.athlete?.position?.abbreviation || "") + "</small></div>").join("") +
+            (list.length > 6 ? '<div class="g-note">+' + (list.length - 6) + " more</div>" : "") : '<div class="g-note">None reported</div>') + "</div>";
+        }).join("") + "</div></div>";
+      }
+
+      const info = [s.gameInfo?.venue?.fullName, (comp.broadcasts || []).map((b) => b.media?.shortName).filter(Boolean).join(", ")].filter(Boolean);
+      if (info.length) h += '<div class="g-sec g-note">' + info.map(esc).join(" · ") + "</div>";
+      setBody(v, (teams[0]?.team?.abbreviation || "") + " @ " + (teams[1]?.team?.abbreviation || ""), h);
+    }
+
+    const ROSTER_GROUPS = { offense: "Offense", defense: "Defense", specialTeam: "Special teams", injuredReserveOrOut: "Injured reserve / out", suspended: "Suspended", practiceSquad: "Practice squad" };
+    async function openTeam(lg, id) {
+      const v = { kind: "team", lg, id, seg: "schedule" };
+      pushView(v);
+      const base = API + LEAGUES[lg].path + "/teams/" + id;
+      const [sc, ro] = await Promise.all([getJSON(base + "/schedule").catch(() => null), getJSON(base + "/roster").catch(() => null)]);
+      v.sc = sc; v.ro = ro;
+      if (v.el.isConnected) drawTeam(v);
+    }
+    function drawTeam(v) {
+      const t = v.sc?.team || v.ro?.team || {};
+      const logo = t.logo || t.logos?.[0]?.href;
+      let h = '<div class="t-head">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : "") + "<div><b>" + esc(t.displayName || "Team") + "</b><small>" + esc(t.recordSummary || "") + (t.standingSummary ? " · " + esc(t.standingSummary) : "") + "</small></div>" +
+        '<button class="fav ' + (state.favs.has(t.uid) ? "on" : "") + '" type="button" data-fav="' + esc(t.uid || t.id) + '" aria-label="Follow ' + esc(t.displayName || "") + '">★</button></div>';
+      h += '<div class="seg"><button type="button" data-tseg="schedule" class="' + (v.seg === "schedule" ? "active" : "") + '">Schedule</button><button type="button" data-tseg="roster" class="' + (v.seg === "roster" ? "active" : "") + '">Roster</button></div>';
+      if (v.seg === "schedule") {
+        const evs = v.sc?.events || [];
+        h += evs.length ? '<div class="list">' + evs.map((ev) => {
+          const c = ev.competitions?.[0] || {};
+          const me = (c.competitors || []).find((x) => x.team?.id === String(v.id) || x.id === String(v.id));
+          const opp = (c.competitors || []).find((x) => x !== me);
+          const done = c.status?.type?.state === "post";
+          const sc = (x) => x?.score?.displayValue ?? x?.score ?? "";
+          const res = done ? '<span class="res ' + (me?.winner ? "w" : "l") + '">' + (me?.winner ? "W" : "L") + "</span> " + esc(sc(me)) + "–" + esc(sc(opp)) : esc(c.status?.type?.state === "in" ? "Live" : fmtTime(ev.date));
+          return '<div class="row" data-ev="' + esc(ev.id) + '" data-lg="' + v.lg + '"><span class="muted">' + esc(fmtDay(ev.date)) + "</span><span>" + (me?.homeAway === "home" ? "vs " : "@ ") +
+            (opp?.team?.logos?.[0]?.href ? '<img src="' + esc(opp.team.logos[0].href) + '" alt="" loading="lazy">' : "") + esc(opp?.team?.abbreviation || opp?.team?.displayName || "") + "</span><span>" + res + "</span></div>";
+        }).join("") + "</div>" : '<div class="empty">No schedule available.</div>';
+      } else {
+        let groups = v.ro?.athletes || [];
+        if (groups.length && !groups[0].items) groups = [{ position: "Roster", items: groups }];
+        h += groups.filter((g) => g.items?.length).map((g) => '<div class="g-label" style="margin-top:14px">' + esc(ROSTER_GROUPS[g.position] || g.position) + " <small>" + g.items.length + '</small></div><div class="list">' +
+          g.items.map((p) => {
+            const inj = p.injuries?.[0]?.status;
+            return '<div class="row"><span class="muted">' + esc(p.jersey ? "#" + p.jersey : "") + "</span><span>" + esc(p.displayName) + ' <small class="muted">' + esc(p.position?.abbreviation || "") + "</small></span><span>" +
+              (inj ? '<span class="badge ' + esc(String(inj).toLowerCase().replace(/\W/g, "")) + '">' + esc(inj) + "</span>" : "") + "</span></div>";
+          }).join("") + "</div>").join("") || '<div class="empty">No roster available.</div>';
+      }
+      setBody(v, t.abbreviation || t.shortDisplayName || "Team", h);
+    }
+
+    /* ---------- alerts tab (mobile app only) ---------- */
+    const ALERT_DEFAULTS = { start: true, score: true, final: true, close: false };
+    const alertPrefs = () => Object.assign({}, ALERT_DEFAULTS, store.get("alertPrefs", {}));
+    const teamNames = store.get("favNames", {});
+    function renderAlerts() {
+      const p = alertPrefs();
+      const sw = (k, t, d) => '<button type="button" class="opt ' + (p[k] ? "on" : "") + '" data-ap="' + k + '"><span><b>' + t + "</b><small>" + d + '</small></span><i class="switch"></i></button>';
+      const favs = [...state.favs];
+      $("main").innerHTML = '<div class="bar"><h1>Alerts</h1></div>' +
+        '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Notifications for your ★ teams</small></span><i class="switch"></i></button></div>' +
+        '<div class="section-title"><b>Notify me about</b></div><div class="panel">' + sw("start", "Game start", "When a game kicks off or tips") + sw("score", "Scoring plays", "Every score change") + sw("close", "Close games", "Late in a tight game") + sw("final", "Final scores", "When the game ends") + "</div>" +
+        '<div class="section-title"><b>Teams you follow</b></div><div class="panel">' + (favs.length ? favs.map((k) =>
+          '<div class="opt"><span><b>' + esc(teamNames[k] || k) + '</b></span><button class="fav on" type="button" data-fav="' + esc(k) + '" aria-label="Unfollow">★</button></div>').join("") : '<div class="g-note">Tap ★ next to any team to follow it.</div>') + "</div>";
+      stamp();
+    }
 
     /* ---------- phone: shrinking header + pull to refresh ---------- */
     addEventListener("scroll", () => document.body.classList.toggle("scrolled", scrollY > 8), { passive: true });
@@ -619,7 +843,7 @@
         ptr.style.transform = "translateY(" + (Math.min(d, 90) - 40) + "px) rotate(" + d * 3 + "deg)";
         ptr.style.opacity = Math.min(1, d / 60);
       };
-      addEventListener("touchstart", (e) => { if (phone() && scrollY <= 0 && !ptr.classList.contains("go")) { y0 = e.touches[0].clientY; dy = 0; } }, { passive: true });
+      addEventListener("touchstart", (e) => { if (phone() && !views.length && scrollY <= 0 && !ptr.classList.contains("go")) { y0 = e.touches[0].clientY; dy = 0; } }, { passive: true });
       addEventListener("touchmove", (e) => { if (y0 === null) return; dy = Math.max(0, (e.touches[0].clientY - y0) * 0.5); if (scrollY > 0) dy = 0; set(dy); }, { passive: true });
       addEventListener("touchend", async () => {
         if (y0 === null) return; y0 = null;
@@ -666,7 +890,7 @@
     /* ---------- score alerts for ★ teams ---------- */
     // Watches every league's scoreboard for favorite teams' games and alerts on kickoff, score changes and final.
     // Runs while the app is open or recently used; alerts when closed need a push server.
-    let alertsOn = store.get("alerts", false) && (NATIVE_NOTIFY || ("Notification" in window && Notification.permission === "granted"));
+    let alertsOn = MOBILE_APP && store.get("alerts", false) && (NATIVE_NOTIFY || ("Notification" in window && Notification.permission === "granted"));
     async function askPermission() {
       if (NATIVE_NOTIFY) {
         if (await NATIVE_NOTIFY.isPermissionGranted()) return "granted";
@@ -678,12 +902,15 @@
     const snapshot = store.get("snap", {});
     const syncBell = () => { $("notifyBtn").classList.toggle("on", alertsOn); $("notifyBtn").title = alertsOn ? "Score alerts on for your ★ teams" : "Turn on score alerts for your ★ teams"; };
     syncBell();
+    $("notifyBtn").hidden = true;
+    document.addEventListener("click", (e) => { if (e.target.closest("#alertsMaster")) $("notifyBtn").click(); });
     $("notifyBtn").addEventListener("click", async () => {
       if (alertsOn) { alertsOn = false; store.set("alerts", false); syncBell(); toast("Score alerts off"); return; }
       const perm = await askPermission().catch(() => "denied");
       if (perm === "unsupported") { toast("This browser doesn't support notifications."); return; }
       if (perm !== "granted") { toast(TAURI ? "Notifications are blocked. Allow them for Scoreline in your system settings." : "Notifications are blocked. Allow them in your browser's site settings."); return; }
       alertsOn = true; store.set("alerts", true); syncBell();
+      if (state.tab === "alerts") renderAlerts();
       toast(state.favs.size ? "Score alerts on for your ★ teams" : "Alerts on. Tap ★ on a team to follow it.");
       checkAlerts();
     });
@@ -700,8 +927,9 @@
       return t.map((x) => (x.team?.abbreviation || x.team?.shortDisplayName) + " " + (x.score ?? "")).join(" – ");
     }
     async function checkAlerts() {
-      if (!alertsOn || !state.favs.size) return;
-      const keys = ["nfl", "cfb", "nba", "epl"];
+      const P = alertPrefs();
+      if (!MOBILE_APP || !alertsOn || !state.favs.size) return;
+      const keys = ["nfl", "cfb", "nba", "mlb"];
       const datas = await Promise.allSettled(keys.map((k) => getJSON(API + LEAGUES[k].path + "/scoreboard?" + (LEAGUES[k].extra || "").replace(/^&/, ""))));
       datas.forEach((res, i) => {
         if (res.status !== "fulfilled") return;
@@ -713,9 +941,12 @@
           if (!prev || prev === sig) return;
           const [pst] = prev.split("|");
           const league = LEAGUES[keys[i]].short || LEAGUES[keys[i]].name;
-          if (pst === "pre" && st === "in") notify(league + ": Game on", ev.name, ev.id);
-          else if (st === "post" && pst !== "post") notify(league + ": Final", line(ev), ev.id);
-          else if (st === "in") notify(league + ": Score update", line(ev) + " · " + (ev.status?.type?.shortDetail || ""), ev.id);
+          const sc = teamsOf(ev).map((x) => Number(x.score) || 0), per = ev.status?.period || 0;
+          const late = keys[i] === "mlb" ? per >= 8 && Math.abs(sc[0] - sc[1]) <= 2 : per >= 4 && Math.abs(sc[0] - sc[1]) <= 8;
+          if (P.close && st === "in" && late && !snapshot["close" + ev.id]) { snapshot["close" + ev.id] = 1; notify(league + ": Close game", line(ev) + " · " + (ev.status?.type?.shortDetail || ""), ev.id); }
+          if (pst === "pre" && st === "in") { if (P.start) notify(league + ": Game on", ev.name, ev.id); }
+          else if (st === "post" && pst !== "post") { if (P.final) notify(league + ": Final", line(ev), ev.id); }
+          else if (st === "in" && P.score) notify(league + ": Score update", line(ev) + " · " + (ev.status?.type?.shortDetail || ""), ev.id);
         });
       });
       store.set("snap", snapshot);
