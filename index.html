@@ -87,6 +87,7 @@
     .card.live { border-color: rgba(255, 59, 78, .35); }
     .card.live::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; background: linear-gradient(90deg, var(--live), transparent); }
     .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; font-size: 12px; color: var(--muted); }
+    .sep { font-style: normal; }
     .status { font-weight: 700; letter-spacing: .3px; text-transform: uppercase; }
     .status.live { color: var(--live); display: inline-flex; align-items: center; gap: 6px; }
     .status.live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--live); animation: pulse 1.4s ease-in-out infinite; }
@@ -187,15 +188,17 @@
 
       /* compact score rows */
       .grid { grid-template-columns: 1fr; gap: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
-      .card { display: grid; grid-template-columns: 1fr 76px; column-gap: 10px; align-items: center; border: 0; border-radius: 0; border-bottom: 1px solid var(--line); padding: 8px 12px; background: transparent; }
+      .grid .card { display: grid; grid-template-columns: 1fr 88px; column-gap: 10px; align-items: center; border: 0; border-radius: 0; border-bottom: 1px solid var(--line); padding: 8px 12px; background: transparent; }
       .grid .card:last-child { border-bottom: 0; }
       .card:hover { background: transparent; }
       .card:active { transform: none; background: var(--panel-2); }
       .card.live { border-color: var(--line); }
       .card.live::before { inset: 0 auto 0 0; width: 3px; height: auto; background: var(--live); }
       .card > .team { grid-column: 1; }
-      .card-head { grid-column: 2; grid-row: 1 / span 2; flex-direction: column; align-items: flex-end; justify-content: center; gap: 2px; margin: 0; text-align: right; font-size: 11px; border-left: 1px solid var(--line); padding-left: 8px; height: 100%; }
+      .grid .card-head { grid-column: 2; grid-row: 1 / span 2; flex-direction: column; align-items: flex-end; justify-content: center; gap: 2px; margin: 0; text-align: right; font-size: 11px; border-left: 1px solid var(--line); padding-left: 8px; height: 100%; }
       .card-head .status { font-size: 11px; line-height: 1.25; }
+      .grid .sep { display: none; } .grid .status .t { display: block; color: var(--text); }
+      .card { padding: 12px 14px; }
       .team { grid-template-columns: 22px 1fr auto 40px; gap: 8px; padding: 3px 0; }
       .team img, .team .ph { width: 22px; height: 22px; }
       .tname strong { font-size: 14px; }
@@ -361,7 +364,7 @@
       let statusHtml;
       if (live) statusHtml = '<span class="status live">' + esc(st.shortDetail || "Live") + "</span>";
       else if (post) statusHtml = '<span class="status final">' + esc(st.shortDetail || "Final") + "</span>";
-      else statusHtml = '<span class="status">' + esc(fmtDay(ev.date)) + " · " + esc(fmtTime(ev.date)) + "</span>";
+      else statusHtml = '<span class="status">' + esc(fmtDay(ev.date)) + '<i class="sep"> · </i><span class="t">' + esc(fmtTime(ev.date)) + "</span></span>";
       const league = state.tab === "home" ? '<span>' + esc(LEAGUES[key].short || LEAGUES[key].name) + "</span>" : "";
       const rows = teams.map((t, idx) => {
         const other = scores[1 - idx];
