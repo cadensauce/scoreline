@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794609305" />
+  <meta name="build" content="1794609346" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -796,12 +796,14 @@
       if (!T || T.loading) return;
       if (T.error) { el.innerHTML = '<div class="g-label">Track</div><div class="g-note">Car positions aren\'t available right now.</div>'; return; }
       const W = 360, H = 250, pad = 22;
-      const xs = T.outline.map((p) => p.x), ys = T.outline.map((p) => p.y);
+      const rx = Math.max(...T.outline.map((p) => p.x)) - Math.min(...T.outline.map((p) => p.x)), ry = Math.max(...T.outline.map((p) => p.y)) - Math.min(...T.outline.map((p) => p.y));
+      const rot = ry > rx * 1.15, R = (p) => rot ? { x: p.y, y: -p.x } : p;
+      const xs = T.outline.map((p) => R(p).x), ys = T.outline.map((p) => R(p).y);
       const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
       const k = Math.min((W - 2 * pad) / (maxX - minX || 1), (H - 2 * pad) / (maxY - minY || 1));
       const ox = (W - (maxX - minX) * k) / 2, oy = (H - (maxY - minY) * k) / 2;
       const sx = (x) => ox + (x - minX) * k, sy = (y) => H - (oy + (y - minY) * k);
-      const d = T.outline.map((p, i) => (i ? "L" : "M") + sx(p.x).toFixed(1) + " " + sy(p.y).toFixed(1)).join("");
+      const d = T.outline.map((p0, i) => { const p = R(p0); return (i ? "L" : "M") + sx(p.x).toFixed(1) + " " + sy(p.y).toFixed(1); }).join("");
       const nums = Object.keys(T.cars).sort((m, n) => (T.order[n] || 0) - (T.order[m] || 0));
       const ranked = nums.filter((n) => T.order[n]).sort((m, n) => T.order[m] - T.order[n]);
       const first = ranked[0], last = ranked[ranked.length - 1];
@@ -826,7 +828,7 @@
           if (c[i] && c[i].t > t) i = 0;
           while (i < c.length - 2 && c[i + 1].t <= t) i++;
           idx[n] = i;
-          const p = c[i], q2 = c[i + 1] || p, f = q2.t > p.t ? Math.max(0, Math.min(1, (t - p.t) / (q2.t - p.t))) : 0;
+          const p = R(c[i]), q2 = R(c[i + 1] || c[i]), f = (c[i + 1] || c[i]).t > c[i].t ? Math.max(0, Math.min(1, (t - c[i].t) / ((c[i + 1] || c[i]).t - c[i].t))) : 0;
           groups[n].setAttribute("transform", "translate(" + sx(p.x + (q2.x - p.x) * f).toFixed(1) + " " + sy(p.y + (q2.y - p.y) * f).toFixed(1) + ")");
         }
         if (el.isConnected) trackRaf = requestAnimationFrame(frame);
