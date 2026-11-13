@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794610419" />
+  <meta name="build" content="1794610668" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -376,6 +376,7 @@
     @keyframes splashIn { from { opacity: 0; transform: translateY(10px) scale(.94); } }
     .mobile-app .sheet-bar::before { content: ""; position: absolute; left: 50%; top: 6px; width: 36px; height: 4px; margin-left: -18px; border-radius: 99px; background: var(--line-hi); }
     .sheet-bar { position: relative; }
+    .test-btn { width: 100%; margin-top: 10px; justify-content: center; }
     .ldr-ph { width: 46px; height: 46px; border-radius: 50%; background: var(--panel-2); flex: none; }
     .ldr img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; background: var(--panel-2); flex: none; }
     .inj-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -1513,7 +1514,7 @@
       const sw = (k, t, d) => '<button type="button" class="opt ' + (p[k] ? "on" : "") + '" data-ap="' + k + '"><span><b>' + t + "</b><small>" + d + '</small></span><i class="switch"></i></button>';
       const favs = [...state.favs];
       $("main").innerHTML = '<div class="bar"><h1>Alerts</h1></div>' +
-        '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Notifications for your ★ teams</small></span><i class="switch"></i></button></div>' +
+        '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Notifications for your ★ teams</small></span><i class="switch"></i></button><button type="button" class="pill-btn test-btn" id="testNotify">Send test notification</button></div>' +
         '<div class="section-title"><b>Notify me about</b></div><div class="panel">' + sw("start", "Game start", "When a game kicks off or tips") + sw("score", "Scoring plays", "Every score change") + sw("close", "Close games", "Late in a tight game") + sw("final", "Final scores", "When the game ends") + "</div>" +
         '<div class="section-title"><b>Teams you follow</b></div><div class="panel">' + (favs.length ? favs.map((k) =>
           '<div class="opt"><span><b>' + esc(teamNames[k] || findName(k) || "Team") + '</b></span><button class="fav on" type="button" data-fav="' + esc(k) + '" aria-label="Unfollow">★</button></div>').join("") : '<div class="g-note">Tap ★ next to any team to follow it.</div>') + "</div>";
@@ -1643,6 +1644,14 @@
       if (state.tab === "alerts") renderAlerts();
       toast(state.favs.size ? "Score alerts on for your ★ teams" : "Alerts on. Tap ★ on a team to follow it.");
       checkAlerts();
+    });
+    document.addEventListener("click", async (e) => {
+      if (!e.target.closest("#testNotify")) return;
+      const perm = await askPermission().catch(() => "denied");
+      if (perm !== "granted") { toast("Allow notifications for Scoreline first."); return; }
+      buzz(12);
+      notify("NFL: Score update", "SF 21 – SEA 17 · 4th 2:14 · Touchdown 49ers! B.Purdy pass to G.Kittle for 18 yds", "test-49ers");
+      toast("Test sent: check your notifications");
     });
     async function notify(title, body, tag) {
       try {
