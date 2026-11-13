@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794606369" />
+  <meta name="build" content="1794606430" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -755,7 +755,7 @@
     function closeSheets() { const n = views.length; if (n) history.go(-n); }
     addEventListener("popstate", () => { while (views.length > (history.state?.sheet || 0)) popView(); });
     const setBody = (v, title, html) => { v.el.querySelector(".sheet-title").textContent = title; v.el.querySelector(".sheet-body").innerHTML = html + SRC_NOTE; };
-    const SRC_NOTE = '<div class="src-note">Data from ESPN public feeds; may be delayed. Scoreline is an independent fan app, not affiliated with or endorsed by ESPN or any league, team or player. Names and logos belong to their owners.</div>';
+    const SRC_NOTE = '<div class="src-note">Data from ESPN public feeds; may be delayed. Scoreline is an independent fan app, not affiliated with or endorsed by ESPN, the NFL, the NCAA, the NBA, MLB, Formula 1, or any team or player. Names and logos belong to their owners.</div>';
 
     const pct = (x) => Math.round(x * 100);
     function mlProb(ml) { ml = Number(ml); if (!ml) return null; return ml < 0 ? -ml / (100 - ml) : 100 / (ml + 100); }
