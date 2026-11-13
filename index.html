@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794608726" />
+  <meta name="build" content="1794609033" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -927,7 +927,6 @@
       for (let y = 0; y <= 100; y += 5) svg += '<line x1="0" x2="' + W + '" y1="' + Y(y) + '" y2="' + Y(y) + '" class="f-yl' + (y % 10 ? "" : " ten") + (y === 0 || y === 100 ? " goal" : "") + '"/>';
       for (let y = 1; y < 100; y++) if (y % 5) [6, W * .41, W * .59, W - 6].forEach((hx) => { svg += '<line x1="' + (hx - 5) + '" x2="' + (hx + 5) + '" y1="' + Y(y) + '" y2="' + Y(y) + '" class="f-hash"/>'; });
       for (let y = 10; y < 100; y += 10) { const n = Math.min(y, 100 - y); svg += '<text x="34" y="' + Y(y) + '" class="f-num" transform="rotate(90 34 ' + Y(y) + ')">' + n + '</text><text x="' + (W - 34) + '" y="' + Y(y) + '" class="f-num" transform="rotate(-90 ' + (W - 34) + " " + Y(y) + ')">' + n + "</text>"; }
-      svg += '<rect x="0" y="0" width="' + W + '" height="' + FH + '" fill="url(#fvig)"/>';
       if (G) {
         const oc = esc(col(offTeam)), dc = esc(col(defTeam));
         const dist = Number(P.start.distance) || 0;
@@ -958,8 +957,23 @@
           const carrier = ath("rusher") || ath("passer") || ath("kicker") || ath("punter");
           svg += mark(ex, ey, oc, carrier, nm(/([A-Z][a-z]?\.[\w'-]+)\s/), false, 1.1, true);
         }
-        const tk = ath("tackler");
-        if (tk) svg += mark((G.isPass && tc != null ? laneX : CX) + 26, Y(t1) - 14, dc, tk, "", true, 1.5);
+        // Defenders the data credits on this play (no tracking data exists publicly, so only these are shown)
+        const athAll = (type) => (P?.participants || []).filter((x) => x.type === type).map((x) => athCache[x.athlete?.$ref]).filter(Boolean);
+        const endX = G.isPass && tc != null ? laneX : /incomplet/i.test(P.type?.text || "") ? laneX : (/middle/i.test(t) || !side ? CX + 6 : CX + side * 70);
+        const endY = /incomplet/i.test(P.type?.text || "") ? Y(t0 - (/deep/i.test(t) ? 22 : 9)) : Y(t1);
+        const push = endX > CX ? -1 : 1;
+        const defs = [];
+        athAll("passDefender").forEach((a) => defs.push([a, "Coverage"]));
+        athAll("sackedBy").forEach((a) => defs.push([a, "Sack"]));
+        athAll("tackler").forEach((a) => defs.push([a, "Tackle"]));
+        athAll("assistedBy").forEach((a) => defs.push([a, "Assist"]));
+        athAll("forcedBy").forEach((a) => defs.push([a, "Forced fumble"]));
+        defs.slice(0, 3).forEach(([a, role], k) => {
+          const sack = role === "Sack";
+          const dx = (sack ? CX : endX) + push * (52 + k * 8) * (k % 2 ? -1 : 1) * (k ? 1 : 1);
+          const dy = (sack ? qbY : endY) - 30 - k * 34;
+          svg += mark(Math.max(20, Math.min(W - 20, dx)), dy, dc, { jersey: a.jersey, short: a.short, pos: role }, "", false, 1.4 + k * .12, true);
+        });
       }
       svg += "</g></g></svg>";
       const dteam = D.team === String(F.away.team?.id) ? F.away : F.home;
