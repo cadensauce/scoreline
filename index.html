@@ -820,6 +820,7 @@
     const ALERT_DEFAULTS = { start: true, score: true, final: true, close: false };
     const alertPrefs = () => Object.assign({}, ALERT_DEFAULTS, store.get("alertPrefs", {}));
     const teamNames = store.get("favNames", {});
+    function findName(k) { for (const c of Object.values(cache)) for (const ev of c?.events || []) for (const t of teamsOf(ev)) if (favKey(t) === k) return t.team?.displayName; }
     function renderAlerts() {
       const p = alertPrefs();
       const sw = (k, t, d) => '<button type="button" class="opt ' + (p[k] ? "on" : "") + '" data-ap="' + k + '"><span><b>' + t + "</b><small>" + d + '</small></span><i class="switch"></i></button>';
@@ -828,7 +829,7 @@
         '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Notifications for your ★ teams</small></span><i class="switch"></i></button></div>' +
         '<div class="section-title"><b>Notify me about</b></div><div class="panel">' + sw("start", "Game start", "When a game kicks off or tips") + sw("score", "Scoring plays", "Every score change") + sw("close", "Close games", "Late in a tight game") + sw("final", "Final scores", "When the game ends") + "</div>" +
         '<div class="section-title"><b>Teams you follow</b></div><div class="panel">' + (favs.length ? favs.map((k) =>
-          '<div class="opt"><span><b>' + esc(teamNames[k] || k) + '</b></span><button class="fav on" type="button" data-fav="' + esc(k) + '" aria-label="Unfollow">★</button></div>').join("") : '<div class="g-note">Tap ★ next to any team to follow it.</div>') + "</div>";
+          '<div class="opt"><span><b>' + esc(teamNames[k] || findName(k) || "Team") + '</b></span><button class="fav on" type="button" data-fav="' + esc(k) + '" aria-label="Unfollow">★</button></div>').join("") : '<div class="g-note">Tap ★ next to any team to follow it.</div>') + "</div>";
       stamp();
     }
 
