@@ -782,8 +782,15 @@
       if (S && sp) {
         const pcts = S.labels.map((l, i) => [l, sp.stats[i]]).filter(([l, val]) => /%$/.test(l) && val !== "" && !isNaN(parseFloat(val)));
         if (pcts.length) h += '<div class="g-sec"><div class="g-label">' + esc(S.displayName || "Season") + '</div><div class="donuts">' + pcts.slice(0, 3).map(([l, val]) => donut(val, l)).join("") + "</div></div>";
-        h += '<div class="g-sec' + (pcts.length ? " flush" : "") + '">' + (pcts.length ? "" : '<div class="g-label">' + esc(S.displayName || "Season") + "</div>") + '<div class="tiles">' +
-          S.labels.map((l, i) => /%$/.test(l) ? "" : '<div class="tile" title="' + esc(S.displayNames?.[i] || l) + '"><b>' + esc(sp.stats[i]) + "</b><small>" + esc(l) + "</small></div>").join("") + "</div></div>";
+        h += '<div class="g-sec' + (pcts.length ? " flush" : "") + '">' + (pcts.length ? "" : '<div class="g-label">' + esc(S.displayName || "Season") + "</div>") + (() => {
+          const cats = S.categories?.length ? S.categories : [{ displayName: "", count: S.labels.length }];
+          let at = 0;
+          return cats.map((c) => {
+            const idx = Array.from({ length: c.count }, (_, k) => at + k); at += c.count;
+            return (cats.length > 1 ? '<div class="ldr-cat">' + esc(c.displayName) + "</div>" : "") + '<div class="tiles">' +
+              idx.map((i) => /%$/.test(S.labels[i]) ? "" : '<div class="tile" title="' + esc(S.displayNames?.[i] || S.labels[i]) + '"><b>' + esc(sp.stats[i]) + "</b><small>" + esc(S.labels[i]) + "</small></div>").join("") + "</div>";
+          }).join("");
+        })() + "</div>";
       }
       const G = ov?.gameLog, gs = G?.statistics?.[0];
       if (gs?.events?.length) {
