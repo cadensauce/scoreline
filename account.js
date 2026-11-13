@@ -57,8 +57,6 @@ const cleanName = (s) => String(s || "").trim().toLowerCase();
 async function signUp(email, password, username) {
   username = cleanName(username);
   if (!/^[a-z0-9_]{3,20}$/.test(username)) throw new Error("Usernames are 3–20 letters, numbers or _.");
-  const taken = await fb.getDoc(fb.doc(db, "usernames", username));
-  if (taken.exists()) throw new Error("That username is taken.");
   const cred = await fb.createUserWithEmailAndPassword(auth, email, password);
   try {
     await fb.setDoc(fb.doc(db, "usernames", username), { uid: cred.user.uid });
