@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794610126" />
+  <meta name="build" content="1794610388" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -356,6 +356,26 @@
     .count i.ball.on { background: #4cd486; } .count i.strike.on { background: var(--gold); } .count i.out.on { background: var(--live); }
     .matchup { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
     .matchup span { display: flex; flex-direction: column; } .matchup small { color: var(--muted); font-size: 10.5px; text-transform: uppercase; font-weight: 700; }
+    /* ---- phone app: feel native ---- */
+    .mobile-app, .mobile-app body { overscroll-behavior: none; }
+    .mobile-app ::-webkit-scrollbar { display: none; }
+    .mobile-app * { scrollbar-width: none; }
+    .mobile-app footer, .mobile-app .get-app { display: none !important; }
+    .mobile-app body { background: var(--bg); }
+    .mobile-app .about { font-size: 12px; color: var(--muted); line-height: 1.55; } .mobile-app .about p { margin: 0 0 8px; } .mobile-app .about b { color: var(--text); }
+    @keyframes tabInR { from { opacity: 0; transform: translateX(28px); } }
+    @keyframes tabInL { from { opacity: 0; transform: translateX(-28px); } }
+    main.tab-in-r { animation: tabInR .38s var(--ease); } main.tab-in-l { animation: tabInL .38s var(--ease); }
+    .btab:active svg { transform: scale(.86); }
+    .btab { transition: color .2s, transform .15s; }
+    .mobile-app .card:active, .mobile-app .f-row:active, .mobile-app .row:active, .mobile-app button.ldr:active { background: var(--panel-2); }
+    #splash { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; transition: opacity .45s ease, transform .45s var(--ease); }
+    #splash svg { animation: splashIn .6s var(--ease) both; }
+    #splash b { font-family: var(--display); font-size: 30px; font-weight: 800; letter-spacing: 3px; animation: splashIn .6s .1s var(--ease) both; }
+    #splash.out { opacity: 0; transform: scale(1.04); pointer-events: none; }
+    @keyframes splashIn { from { opacity: 0; transform: translateY(10px) scale(.94); } }
+    .mobile-app .sheet-bar::before { content: ""; position: absolute; left: 50%; top: 6px; width: 36px; height: 4px; margin-left: -18px; border-radius: 99px; background: var(--line-hi); }
+    .sheet-bar { position: relative; }
     .ldr-ph { width: 46px; height: 46px; border-radius: 50%; background: var(--panel-2); flex: none; }
     .ldr img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; background: var(--panel-2); flex: none; }
     .inj-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -525,6 +545,25 @@
     };
     const MOBILE_APP = !!window.__PREVIEW_APP || (!!window.__TAURI__ && /android|iphone|ipad/i.test(navigator.userAgent));
     const ORDER = ["home", "nfl", "cfb", "f1", "nba", "mlb"].concat(MOBILE_APP ? ["alerts"] : []);
+    /* ---------- native-app feel (phone app only) ---------- */
+    if (MOBILE_APP) {
+      document.documentElement.classList.add("mobile-app");
+      document.querySelector('meta[name="viewport"]')?.setAttribute("content", "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover");
+      const sp = document.createElement("div");
+      sp.id = "splash";
+      sp.innerHTML = '<svg viewBox="0 0 32 32" width="64" height="64"><path d="M7 22h18M7 16h12M7 10h7" stroke="#ff5a36" stroke-width="3" stroke-linecap="round"/></svg><b>SCORELINE</b>';
+      document.body.appendChild(sp);
+    }
+    const hideSplash = () => { const sp = $("splash"); if (sp && !sp.classList.contains("out")) { sp.classList.add("out"); setTimeout(() => sp.remove(), 500); } };
+    setTimeout(hideSplash, 4000);
+    const buzz = (ms = 8) => { try { if (MOBILE_APP && navigator.vibrate) navigator.vibrate(ms); } catch {} };
+    function swapIn(dir) {
+      const m = $("main");
+      m.innerHTML = "";
+      m.classList.remove("tab-in-l", "tab-in-r");
+      void m.offsetWidth;
+      m.classList.add(dir > 0 ? "tab-in-r" : "tab-in-l");
+    }
     const $ = (id) => document.getElementById(id);
     const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
     const store = {
@@ -915,10 +954,11 @@
       if (e.target.closest(".btab, .tab") && views.length) closeSheets();
       const tab = e.target.closest("[data-tab]");
       if (tab) {
-        if (state.tab !== tab.dataset.tab) { state.tab = tab.dataset.tab; $("main").innerHTML = ""; window.scrollTo({ top: 0, behavior: "smooth" }); }
+        if (state.tab !== tab.dataset.tab) { const dir = ORDER.indexOf(tab.dataset.tab) > ORDER.indexOf(state.tab) ? 1 : -1; state.tab = tab.dataset.tab; buzz(); swapIn(dir); window.scrollTo({ top: 0, behavior: MOBILE_APP ? "auto" : "smooth" }); }
         return render();
       }
       const fav = e.target.closest("[data-fav]");
+      if (fav) buzz(12);
       if (fav) {
         const k = fav.dataset.fav;
         state.favs.has(k) ? state.favs.delete(k) : state.favs.add(k);
@@ -1477,9 +1517,40 @@
         '<div class="section-title"><b>Notify me about</b></div><div class="panel">' + sw("start", "Game start", "When a game kicks off or tips") + sw("score", "Scoring plays", "Every score change") + sw("close", "Close games", "Late in a tight game") + sw("final", "Final scores", "When the game ends") + "</div>" +
         '<div class="section-title"><b>Teams you follow</b></div><div class="panel">' + (favs.length ? favs.map((k) =>
           '<div class="opt"><span><b>' + esc(teamNames[k] || findName(k) || "Team") + '</b></span><button class="fav on" type="button" data-fav="' + esc(k) + '" aria-label="Unfollow">★</button></div>').join("") : '<div class="g-note">Tap ★ next to any team to follow it.</div>') + "</div>";
+      if (MOBILE_APP) $("main").insertAdjacentHTML("beforeend", '<div class="section-title"><b>About</b></div><div class="panel about">' + document.querySelector("footer").innerHTML + "</div>");
       stamp();
     }
 
+
+    /* ---------- gestures: swipe a sheet down to close, swipe sideways to change tabs ---------- */
+    (() => {
+      let sx = 0, sy = 0, st = 0, sheet = null, dragging = false, mode = null;
+      addEventListener("touchstart", (e) => {
+        const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); mode = null; dragging = false;
+        sheet = views.length ? e.target.closest(".sheet") : null;
+        if (sheet && !(e.target.closest(".sheet-bar") || sheet.querySelector(".sheet-body").scrollTop <= 0)) sheet = null;
+      }, { passive: true });
+      addEventListener("touchmove", (e) => {
+        if (!MOBILE_APP && !matchMedia("(max-width: 720px)").matches) return;
+        const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+        if (!mode) mode = Math.abs(dy) > Math.abs(dx) ? "v" : "h";
+        if (sheet && mode === "v" && dy > 0) { dragging = true; sheet.style.transition = "none"; sheet.style.transform = "translateY(" + dy + "px)"; }
+      }, { passive: true });
+      addEventListener("touchend", (e) => {
+        const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy, fast = Date.now() - st < 300;
+        if (dragging && sheet) {
+          sheet.style.transition = ""; sheet.style.transform = "";
+          if (dy > 120 || (fast && dy > 50)) { buzz(); history.back(); }
+          dragging = false; return;
+        }
+        if (views.length || mode !== "h" || Math.abs(dx) < 70 || Math.abs(dy) > 45) return;
+        if (!MOBILE_APP && !matchMedia("(max-width: 720px)").matches) return;
+        if (e.target.closest(".ls-wrap, .seg, .track, .court, .field, .tabs, .btabs, .pager")) return;
+        const i = ORDER.indexOf(state.tab), j = i + (dx < 0 ? 1 : -1);
+        if (j < 0 || j >= ORDER.length) return;
+        document.querySelector('.btab[data-tab="' + ORDER[j] + '"]')?.click();
+      }, { passive: true });
+    })();
     /* ---------- phone: shrinking header + pull to refresh ---------- */
     addEventListener("scroll", () => document.body.classList.toggle("scrolled", scrollY > 8), { passive: true });
     (() => {
@@ -1641,7 +1712,7 @@
     checkForAppUpdate();
 
     if (!ORDER.includes(state.tab)) state.tab = "home";
-    render();
+    Promise.resolve(render()).finally(() => setTimeout(hideSplash, 150));
   </script>
 </body>
 </html>
