@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794611549" />
+  <meta name="build" content="1794612429" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -387,6 +387,9 @@
     .privacy ul { margin: 0; padding-left: 18px; } .privacy li { margin: 4px 0; } .privacy b { color: var(--text); }
     .acct-foot { display: flex; justify-content: space-between; margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--line); }
     .acct-link.danger { color: #ff8a96; }
+    .or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin: 4px 0 12px; }
+    .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+    .g-btn { width: 100%; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 10px; background: #fff !important; color: #1f1f1f !important; border-color: transparent !important; font-weight: 700; }
     #accountBtn { position: relative; color: var(--muted); }
     #accountBtn.on { color: var(--accent); }
     #accountBtn[data-count]:not([data-count=""])::after { content: attr(data-count); position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px; background: var(--live); color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
