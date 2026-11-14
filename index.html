@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794621097" />
+  <meta name="build" content="1794621355" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -405,6 +405,7 @@
     .gtabs button.active { background: var(--panel-3); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-hi); }
     .sheet[data-cat="plays"] [data-c]:not([data-c~="plays"]), .sheet[data-cat="timeouts"] [data-c]:not([data-c~="timeouts"]), .sheet[data-cat="stats"] [data-c]:not([data-c~="stats"]), .sheet[data-cat="players"] [data-c]:not([data-c~="players"]) { display: none !important; }
     .sheet[data-cat] .g-sec { animation: rise .3s var(--ease) both; }
+    .sheet[data-cat="plays"] .sb-to { display: none; }
     .sheet.wide .sheet-body > .gtabs { grid-column: 1 / -1; margin: 0 0 10px; }
     .sheet.wide[data-cat] .sheet-body { display: block; max-width: 900px; }
     /* ---- play-by-play feed ---- */
