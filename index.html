@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794628931" />
+  <meta name="build" content="1794628965" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2397,10 +2397,13 @@
         const s = st; st = null;
         document.body.classList.remove("dragging-x");
         if (s.mode !== "h") return;
-        swallow = Math.abs(s.dx) > 10;
+        const dragged = Math.abs(s.dx) > 10;
         const go = Math.abs(s.dx) > 70 && neighbor(s, s.dx < 0 ? 1 : -1);
+        swallow = false;
         if (go) { paint(s.els, 0, false); go(); }
         else { paint(s.els, 0, true); setTimeout(() => s.els.forEach((el) => { el.style.transition = ""; }), 320); }
+        swallow = dragged;
+        setTimeout(() => { swallow = false; }, 400);
       };
       addEventListener("pointerup", end);
       addEventListener("pointercancel", end);
