@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794629353" />
+  <meta name="build" content="1794629287" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -1343,7 +1343,7 @@
       const dc = e.target.closest("[data-day]");
       if (dc) { dayOff[state.tab] = Number(dc.dataset.day); buzz(); $("main").querySelectorAll(".dchip").forEach((c) => c.classList.toggle("on", c === dc)); dc.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" }); const m = $("main"); [...m.children].filter((c) => !c.matches(".bar, .dstrip")).forEach((c) => c.remove()); m.insertAdjacentHTML("beforeend", skeleton(4)); return render(); }
       const vw = e.target.closest("[data-view]");
-      if (vw) { views0[state.tab] = vw.dataset.view; store.set("view", views0); state.offset[state.tab] = 0; buzz(); const m = $("main"); m.querySelectorAll("[data-view]").forEach((b) => b.classList.toggle("active", b === vw)); [...m.children].filter((c) => !c.matches(".bar, .search")).forEach((c) => c.remove()); m.insertAdjacentHTML("beforeend", skeleton(4)); return render(); }
+      if (vw) { views0[state.tab] = vw.dataset.view; store.set("view", views0); state.offset[state.tab] = 0; buzz(); swapIn(1); return render(); }
       const page = e.target.closest("[data-page]");
       if (page) { state.offset[state.tab] = (state.offset[state.tab] || 0) + Number(page.dataset.page); return render(); }
       const flt = e.target.closest("[data-filter]");
