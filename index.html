@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794621062" />
+  <meta name="build" content="1794621097" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2104,8 +2104,8 @@
             '<div class="status ' + (st.state === "in" ? "live" : "") + '">' + esc(st.state === "pre" ? fmtDay(comp.date) + " · " + fmtTime(comp.date) : st.shortDetail || "") + "</div></div>" : "");
       }).join("") + "</div>";
 
-      const cats = [["all", "All"], ["plays", "Plays"], ["timeouts", lg === "mlb" ? "Changes" : "Timeouts"], ["stats", "Stats"], ["players", "Players"]];
-      h += '<div class="gtabs" role="tablist">' + cats.map(([k, l]) => '<button type="button" role="tab" data-gcat="' + k + '" class="' + (k === "all" ? "active" : "") + '">' + l + "</button>").join("") + "</div>";
+      const gcats = [["all", "All"], ["plays", "Plays"], ["timeouts", lg === "mlb" ? "Changes" : "Timeouts"], ["stats", "Stats"], ["players", "Players"]];
+      h += '<div class="gtabs" role="tablist">' + gcats.map(([k, l]) => '<button type="button" role="tab" data-gcat="' + k + '" class="' + (k === "all" ? "active" : "") + '">' + l + "</button>").join("") + "</div>";
       if (lg === "nfl" || lg === "cfb") h += '<div class="g-sec" data-field data-c="plays timeouts"><div class="g-label">Plays</div><div class="skel" style="height:150px"></div></div>';
       if (lg === "nba" || lg === "mlb") { v.s = s; v.lg = lg; v.teams = teams; v.chartTeam = "all"; v.id = id; v.updated = Date.now(); h += '<div class="g-sec" data-chart data-c="plays timeouts">' + chartSecHtml(v) + "</div>"; }
       if (lg === "mlb") h += mlbSituation(lg, id, teams);
