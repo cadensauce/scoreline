@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794615970" />
+  <meta name="build" content="1794616378" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -407,6 +407,8 @@
     .sb-ball { width: 18px; height: 18px; flex: none; animation: pop .4s var(--ease) both; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
     .sb-mid small { font-size: 12.5px !important; }
     .sb-mid b { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; } .sb-mid small { font-size: 10.5px; color: var(--gold); font-weight: 700; }
+    .scorebug.nba .sb-to i { width: 7px; height: 5px; }
+    .sb-outs { display: inline-flex; gap: 3px; margin: 0 6px; vertical-align: 1px; } .sb-outs i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.2); } .sb-outs i.on { background: var(--gold); }
     .stops { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); }
     .stop { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px; padding: 9px 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
     .stop:last-child { border-bottom: 0; }
@@ -1272,7 +1274,12 @@
     const sheetRoot = document.createElement("div");
     sheetRoot.className = "sheet-root";
     document.body.appendChild(sheetRoot);
+    let lastPush = 0;
     function pushView(v) {
+      // Ignore double/spam taps: one sheet per tap, never the same page twice in a row.
+      const top = views[views.length - 1];
+      if (Date.now() - lastPush < 500 || (top && v.key && top.key === v.key)) return false;
+      lastPush = Date.now();
       views.push(v);
       history.pushState({ sheet: views.length }, "");
       const bg = sheetRoot.querySelector(".sheet-bg") || sheetRoot.appendChild(Object.assign(document.createElement("div"), { className: "sheet-bg" }));
@@ -1282,6 +1289,7 @@
       sheetRoot.appendChild(v.el);
       document.body.classList.add("sheet-open");
       requestAnimationFrame(() => { bg.classList.add("show"); v.el.classList.add("show"); });
+      return true;
     }
     function popView() {
       const v = views.pop();
@@ -1407,6 +1415,108 @@
       return '<div class="t-head"><div class="g-label" style="margin:0">Spray chart</div>' + tabs + "</div>" + svg +
         '<div class="f-key"><span><i class="k-dot"></i>Hit</span><span>○ Out</span><span>★ Home run</span></div>';
     }
+    /* ---------- NBA + MLB: themed score bar, stoppages, live refresh ---------- */
+    const BALL_ICON = {
+      nba: '<svg class="sb-ball" viewBox="0 0 24 24" aria-label="Has the ball"><circle cx="12" cy="12" r="10" fill="#e8742a" stroke="#fff" stroke-width="1.2"/><path d="M2 12h20M12 2v20M5 5c3.5 3 3.5 11 0 14M19 5c-3.5 3-3.5 11 0 14" fill="none" stroke="#3a1b08" stroke-width="1.1"/></svg>',
+      mlb: '<svg class="sb-ball" viewBox="0 0 24 24" aria-label="At bat"><circle cx="12" cy="12" r="10" fill="#fff"/><path d="M6.5 4.5c2.5 2.5 2.5 12.5 0 15M17.5 4.5c-2.5 2.5-2.5 12.5 0 15" fill="none" stroke="#d6382c" stroke-width="1.4" stroke-dasharray="1.6 1.4"/></svg>',
+    };
+    function sportState(v) {
+      const s = v.s, teams = v.teams, [away, home] = teams, plays = s.plays || [];
+      const last = plays[plays.length - 1] || {};
+      const per = last.period?.number || 0;
+      const comp = s.header?.competitions?.[0] || {};
+      const live = comp.status?.type?.state === "in";
+      const tid = (t) => t.team?.id;
+      const byName = (txt) => teams.find((t) => [t.team?.shortDisplayName, t.team?.name, t.team?.location, t.team?.displayName].some((n) => n && String(txt).toLowerCase().startsWith(String(n).toLowerCase())));
+      const stops = [];
+      if (v.lg === "nba") {
+        const used = {}, usedQ4 = {}, usedOT = {};
+        plays.forEach((p) => {
+          const ty = p.type?.text || "", tx = p.text || "", base = { per: p.period?.number, clock: p.clock?.displayValue };
+          if (/timeout/i.test(ty)) {
+            const t = byName(tx);
+            if (t) {
+              used[tid(t)] = (used[tid(t)] || 0) + 1;
+              if (p.period?.number === 4) usedQ4[tid(t)] = (usedQ4[tid(t)] || 0) + 1;
+              if (p.period?.number > 4 && p.period?.number === per) usedOT[tid(t)] = (usedOT[tid(t)] || 0) + 1;
+              stops.push({ ...base, kind: "team", label: t.team.abbreviation + " timeout" });
+            } else stops.push({ ...base, kind: "tv", label: "TV / official timeout" });
+          } else if (/end period|end of/i.test(ty) && !/game/i.test(ty)) stops.push({ ...base, kind: "break", label: p.period?.number === 2 ? "Halftime" : "End of Q" + p.period?.number });
+          if (/review|challenge/i.test(tx)) stops.push({ ...base, kind: "review", label: /challenge/i.test(tx) ? "Coach's challenge" : "Replay review" });
+          if (/injur/i.test(tx)) stops.push({ ...base, kind: "injury", label: "Injury stoppage" });
+        });
+        const left = (t) => per > 4 ? Math.max(0, 2 - (usedOT[tid(t)] || 0)) : per === 4 ? Math.max(0, Math.min(7 - (used[tid(t)] || 0), 4 - (usedQ4[tid(t)] || 0))) : Math.max(0, 7 - (used[tid(t)] || 0));
+        // Team fouls this quarter (5+ puts the other team in the bonus).
+        const fouls = {};
+        plays.forEach((p) => { if (p.period?.number === per && /foul/i.test(p.type?.text || "") && !/technical|offensive/i.test(p.type?.text || "") && p.team?.id) fouls[p.team.id] = (fouls[p.team.id] || 0) + 1; });
+        // Who has the ball, worked out from the last play.
+        let poss = null;
+        const lt = last.type?.text || "", lteam = last.team?.id, other = (id) => tid(teams.find((t) => tid(t) !== id) || {});
+        if (/rebound/i.test(lt)) poss = lteam;
+        else if (last.scoringPlay && !/free throw/i.test(lt)) poss = other(lteam);
+        else if (/turnover|bad pass|lost ball|traveling|offensive charge|offensive foul|3-second|out of bounds/i.test(lt)) poss = other(lteam);
+        else if (/steal/i.test(last.text || "")) poss = other(lteam);
+        else if (/shot|jumper|layup|dunk|hook/i.test(lt)) poss = lteam;
+        const f = (t) => fouls[tid(t)] || 0;
+        const mid = per ? "Fouls " + f(away) + " – " + f(home) + (f(away) >= 5 || f(home) >= 5 ? " · Bonus" : "") : "";
+        return { live, stops, left: { [tid(away)]: left(away), [tid(home)]: left(home) }, max: per > 4 ? 2 : per === 4 ? 4 : 7, poss: live ? poss : null, mid, last };
+      }
+      // MLB
+      plays.forEach((p) => {
+        const tx = p.text || "", base = { per: p.period?.number, half: p.period?.type, clock: "" };
+        if (/relieved|now pitching|pitching change/i.test(tx)) stops.push({ ...base, kind: "team", label: "Pitching change: " + tx.replace(/\.$/, "") });
+        else if (/challenged/i.test(tx)) stops.push({ ...base, kind: "review", label: (tx.match(/^(.*?) challenged/)?.[1]?.split(". ").pop() || "Team") + " challenge · " + (/overturned/i.test(tx) ? "overturned" : "upheld") });
+        else if (/delay/i.test(tx)) stops.push({ ...base, kind: "tv", label: "Delay" });
+        else if (/injur/i.test(tx)) stops.push({ ...base, kind: "injury", label: "Injury" });
+      });
+      const ev = (cache.mlb?.events || []).find((e) => e.id === String(v.id));
+      const sit = ev?.competitions?.[0]?.situation || {};
+      const half = last.period?.type || "", bat = live ? (half === "Bottom" ? tid(home) : tid(away)) : null;
+      const outs = sit.outs ?? last.outs ?? 0, balls = sit.balls ?? last.pitchCount?.balls, strikes = sit.strikes ?? last.pitchCount?.strikes;
+      const mid = per ? (half === "Bottom" ? "▼ " : "▲ ") + ordinal(per) + (live ? '<span class="sb-outs">' + [0, 1, 2].map((i) => '<i class="' + (i < outs ? "on" : "") + '"></i>').join("") + "</span>" + (balls != null ? " " + balls + "-" + strikes : "") : "") : "";
+      return { live, stops, left: null, poss: bat, mid, last, rawMid: true };
+    }
+    const ordinal = (n) => n + (n % 100 >= 11 && n % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" })[n % 10] || "th");
+    function sportBar(v, S) {
+      const [away, home] = v.teams;
+      const comp = v.s.header?.competitions?.[0] || {};
+      const sc = (t) => (comp.competitors || []).find((c) => c.team?.id === t.team?.id)?.score ?? "";
+      const side = (t) => {
+        const left = S.left ? S.left[t.team?.id] : null;
+        return '<div class="sb-team" style="--tc:#' + esc(t.team?.color || "8a93a5") + '"><b>' + esc(t.team?.abbreviation) + "</b>" + (S.poss === t.team?.id ? BALL_ICON[v.lg] : "") + '<span class="sb-sc">' + esc(sc(t)) + "</span>" +
+          (left != null ? '<span class="sb-to" title="' + left + ' timeouts left">' + Array.from({ length: S.max }, (_, i) => '<i class="' + (i < left ? "on" : "") + '"></i>').join("") + "</span>" : "") + "</div>";
+      };
+      return '<div class="scorebug ' + v.lg + '">' + side(away) + '<div class="sb-mid"><small>' + (S.rawMid ? S.mid : esc(S.mid)) + "</small></div>" + side(home) + "</div>";
+    }
+    function sportStops(S) {
+      const list = S.stops.slice().reverse();
+      if (!list.length) return "";
+      const when = (s) => s.half ? (s.half === "Bottom" ? "▼ " : "▲ ") + ordinal(s.per) : (s.per > 4 ? "OT" : "Q" + s.per) + (s.clock ? " " + s.clock : "");
+      return '<div class="g-label" style="margin-top:18px">' + (list[0].half != null ? "Pitching changes & challenges" : "Timeouts & stoppages") + '</div><div class="stops">' + list.slice(0, 12).map((s) =>
+        '<div class="stop ' + s.kind + '"><span class="st-ic">' + (s.half ? (s.kind === "team" ? "⚾" : STOP_ICON[s.kind]) : STOP_ICON[s.kind]) + '</span><span class="st-l">' + esc(s.label) + "</span><small>" + esc(when(s)) + "</small></div>").join("") +
+        (list.length > 12 ? '<div class="g-note" style="padding:8px 10px">+' + (list.length - 12) + " earlier</div>" : "") + "</div>";
+    }
+    function chartSecHtml(v) {
+      const S = sportState(v);
+      return sportBar(v, S) + (S.live ? '<div class="g-label f-title" style="margin-bottom:0">Live updates<span class="live-pill">Live</span><small data-ago>Updated just now · every 5 sec</small></div>' : "") + chartHtml(v) + sportStops(S);
+    }
+    async function liveSummary(v) {
+      clearInterval(v.liveTimer);
+      v.liveTimer = setInterval(async () => {
+        if (!v.el?.isConnected) return clearInterval(v.liveTimer);
+        try {
+          const s = await getJSON(API + LEAGUES[v.lg].path + "/summary?event=" + v.id);
+          const fresh = (s.plays || []).length !== (v.s.plays || []).length;
+          v.s = s; v.updated = Date.now();
+          const sec = v.el.querySelector("[data-chart]");
+          if (sec && fresh) { sec.innerHTML = chartSecHtml(v); sec.classList.add("calm-sec"); }
+          const comp = s.header?.competitions?.[0] || {}, cs = (comp.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
+          const g = v.el.querySelector(".g-score"); if (g) g.innerHTML = esc(cs[0]?.score ?? "") + "<i>–</i>" + esc(cs[1]?.score ?? "");
+          const st = v.el.querySelector(".g-mid .status"); if (st) st.textContent = comp.status?.type?.shortDetail || st.textContent;
+          if (comp.status?.type?.state !== "in") clearInterval(v.liveTimer);
+        } catch {}
+      }, 5000);
+    }
     function mlbSituation(lg, id, teams) {
       const ev = (cache.mlb?.events || []).find((e) => e.id === String(id));
       const sit = ev?.competitions?.[0]?.situation;
@@ -1426,7 +1536,7 @@
       if (!v?.s) return;
       v.chartTeam = b.dataset.ct;
       const sec = v.el.querySelector("[data-chart]");
-      if (sec) sec.innerHTML = chartHtml(v);
+      if (sec) { sec.innerHTML = chartSecHtml(v); }
     });
 
     /* ---------- play-by-play field (football) ---------- */
@@ -1503,7 +1613,8 @@
     setInterval(() => {
       views.forEach((v) => {
         const el = v.el?.querySelector("[data-ago]");
-        if (el && v.field) { const s = Math.round((Date.now() - v.field.updated) / 1000); el.textContent = (s < 5 ? "Updated just now" : "Updated " + s + "s ago") + " · every 5 sec"; }
+        const u = v.field?.updated ?? v.updated;
+        if (el && u) { const s = Math.round((Date.now() - u) / 1000); el.textContent = (s < 5 ? "Updated just now" : "Updated " + s + "s ago") + " · every 5 sec"; }
       });
     }, 1000);
     /* ---------- score bar with timeouts + stoppages log ---------- */
@@ -1687,8 +1798,8 @@
       return '<div class="donut"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="' + r + '" class="d-bg"/><circle cx="32" cy="32" r="' + r + '" class="d-fg" stroke-dasharray="' + (c * p / 100).toFixed(1) + " " + c.toFixed(1) + '"/></svg><b>' + esc(pctVal) + "%</b><small>" + esc(label) + "</small></div>";
     }
     async function openPlayer(lg, id) {
-      const v = { kind: "player" };
-      pushView(v);
+      const v = { kind: "player", key: "player|" + lg + "|" + id };
+      if (!pushView(v)) return;
       const base = "https://site.web.api.espn.com/apis/common/v3/sports/" + LEAGUES[lg].path + "/athletes/" + id;
       const [info, ov] = await Promise.all([getJSON(base).catch(() => null), getJSON(base + "/overview").catch(() => null)]);
       if (!v.el.isConnected) return;
@@ -1761,8 +1872,8 @@
       }).join("");
     }
     async function openGame(lg, id) {
-      const v = { kind: "game" };
-      pushView(v);
+      const v = { kind: "game", key: "game|" + id };
+      if (!pushView(v)) return;
       let s;
       try { s = await getJSON(API + LEAGUES[lg].path + "/summary?event=" + id); }
       catch { return setBody(v, "Game", '<div class="error">Couldn\'t load this game.</div>'); }
@@ -1780,7 +1891,7 @@
       }).join("") + "</div>";
 
       if (lg === "nfl" || lg === "cfb") h += '<div class="g-sec" data-field><div class="g-label">Plays</div><div class="skel" style="height:150px"></div></div>';
-      if (lg === "nba" || lg === "mlb") { v.s = s; v.lg = lg; v.teams = teams; v.chartTeam = "all"; h += '<div class="g-sec" data-chart>' + chartHtml(v) + "</div>"; }
+      if (lg === "nba" || lg === "mlb") { v.s = s; v.lg = lg; v.teams = teams; v.chartTeam = "all"; v.id = id; v.updated = Date.now(); h += '<div class="g-sec" data-chart>' + chartSecHtml(v) + "</div>"; }
       if (lg === "mlb") h += mlbSituation(lg, id, teams);
       h += linescoreHtml(comp, lg);
       const wp = winProb(s, st.state);
@@ -1817,12 +1928,13 @@
       if (info.length) h += '<div class="g-sec g-note">' + info.map(esc).join(" · ") + "</div>";
       setBody(v, (teams[0]?.team?.abbreviation || "") + " @ " + (teams[1]?.team?.abbreviation || ""), h);
       if (lg === "nfl" || lg === "cfb") loadField(v, lg, id, teams, st.state);
+      if ((lg === "nba" || lg === "mlb") && st.state === "in") liveSummary(v);
     }
 
     const ROSTER_GROUPS = { offense: "Offense", defense: "Defense", specialTeam: "Special teams", injuredReserveOrOut: "Injured reserve / out", suspended: "Suspended", practiceSquad: "Practice squad" };
     async function openTeam(lg, id) {
-      const v = { kind: "team", lg, id, seg: "schedule" };
-      pushView(v);
+      const v = { kind: "team", lg, id, seg: "schedule", key: "team|" + lg + "|" + id };
+      if (!pushView(v)) return;
       const base = API + LEAGUES[lg].path + "/teams/" + id;
       const [sc, ro] = await Promise.all([getJSON(base + "/schedule").catch(() => null), getJSON(base + "/roster").catch(() => null)]);
       v.sc = sc; v.ro = ro;

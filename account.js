@@ -150,7 +150,7 @@ async function openChat(uid) {
   const ex = await fb.getDoc(ref).catch(() => null);
   if (!ex?.exists()) await fb.setDoc(ref, { members: [user.uid, uid].sort(), updatedAt: fb.serverTimestamp() });
   const v = { kind: "chat" };
-  pushView(v);
+  v.key = "chat|" + uid; if (!pushView(v)) return;
   const name = await nameOf(uid);
   setBody(v, "@" + name, '<div class="chat-log" data-chatlog></div><form class="chat-form" data-chatform><input maxlength="500" placeholder="Message @' + esc(name) + '" autocomplete="off"><button class="pill-btn" type="submit">Send</button></form>');
   v.el.querySelector(".src-note")?.remove();
@@ -192,7 +192,7 @@ const PRIVACY = '<div class="privacy"><p><b>Scoreline is a free, independent fan
   "<h4>What we never do</h4><ul><li>No ads, no selling or sharing your data, no tracking across other apps or sites.</li><li>We never ask for payment info. Fantasy, when it comes, uses points only, never real money.</li></ul>" +
   "<h4>Your controls</h4><ul><li>Remove friends anytime, and only friends can message you.</li><li>Delete your account from the Account screen. This erases your profile, settings, friends and the messages you sent.</li></ul>" +
   "<h4>Where it's stored</h4><p>Google Firebase (Authentication and Firestore), which encrypts data in transit and at rest.</p></div>";
-function openPrivacy() { const v = { kind: "privacy" }; pushView(v); setBody(v, "Privacy", PRIVACY); }
+function openPrivacy() { const v = { kind: "privacy", key: "privacy" }; if (!pushView(v)) return; setBody(v, "Privacy", PRIVACY); }
 
 async function deleteAccount() {
   const uid = user.uid, uname = profile?.username;
@@ -213,8 +213,7 @@ async function deleteAccount() {
 /* ---------- account sheet UI ---------- */
 let sheetView = null, mode = "login";
 function openAccount() {
-  sheetView = { kind: "account" };
-  pushView(sheetView);
+  const sv = { kind: "account", key: "account" }; if (!pushView(sv)) return; sheetView = sv;
   refreshAccountSheet();
 }
 function refreshAccountSheet() {
