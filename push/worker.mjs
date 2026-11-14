@@ -136,6 +136,27 @@ async function checkGames() {
   firstPass = false;
 }
 
+// ---- Formula 1 (followed as a whole, key "f1"): session starting + results ------------------
+const F1_SESSIONS = { FP1: "Practice 1", FP2: "Practice 2", FP3: "Practice 3", Qual: "Qualifying", SQ: "Sprint Qualifying", SS: "Sprint Shootout", Sprint: "Sprint", Race: "Race" };
+const f1Seen = new Map();
+let f1First = true;
+async function checkF1() {
+  let ev;
+  try { ev = (await (await fetch(API + "racing/f1/scoreboard")).json()).events?.[0]; } catch { return; }
+  for (const c of ev?.competitions || []) {
+    const ab = c.type?.abbreviation || "", name = F1_SESSIONS[ab] || ab, st = c.status?.type?.state, key = "f1-" + (c.id || ab + c.date);
+    const prev = f1Seen.get(key);
+    f1Seen.set(key, st);
+    if (f1First || !prev || prev === st || !/^(Qual|SQ|SS|Sprint|Race)$/.test(ab)) continue;
+    if (prev === "pre" && st === "in") await send("f1", "start", "🏁 " + name + " is starting", ev.name, "start-" + key);
+    if (prev !== "post" && st === "post" && /^(Qual|Race|Sprint)$/.test(ab)) {
+      const top = (c.competitors || []).slice().sort((a, b) => (a.order || 99) - (b.order || 99)).slice(0, 3).map((d) => d.athlete?.shortName || d.athlete?.displayName);
+      await send("f1", "final", "🏁 " + (ab === "Qual" ? "Pole: " + top[0] : name + " result: " + top[0] + " wins"), ab === "Qual" ? ev.name : top.map((n, k) => "P" + (k + 1) + " " + n).join(" · "), "final-" + key);
+    }
+  }
+  f1First = false;
+}
+
 // ---- team news ---------------------------------------------------------------------------
 // Only big, clear-cut stories. Each rule needs a strong keyword; routine items are filtered out.
 const NEWS_RULES = [
@@ -198,6 +219,7 @@ while (Date.now() < until) {
   try {
     if (Date.now() - subsAt > SUBS_EVERY_MS) await loadSubs();
     await checkGames();
+    await checkF1();
     if (Date.now() - newsAt > NEWS_EVERY_MS) await checkNews();
   } catch (e) { console.log("tick error", e.message); }
   await new Promise((r) => setTimeout(r, Math.max(1000, TICK_MS - (Date.now() - t0))));
