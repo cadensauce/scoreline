@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794617437" />
+  <meta name="build" content="1794617489" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -79,6 +79,9 @@
     .pager .label { min-width: 140px; text-align: center; font-weight: 700; }
     .section-title { font-family: var(--display); font-weight: 700; font-size: 17px; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); margin: 22px 0 10px; display: flex; align-items: center; gap: 8px; }
     .section-title b { color: var(--text); }
+    .see-all { margin-left: auto; border: 0; background: none; color: var(--accent); font: 700 13px Inter, sans-serif; text-transform: none; letter-spacing: 0; padding: 6px 2px; }
+    .live-title .ldot { width: 9px; height: 9px; border-radius: 50%; background: var(--live); animation: pulse 1.4s ease-in-out infinite; }
+    .live-title .muted { font-family: Inter, sans-serif; font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; }
 
     /* ---- Score cards ---- */
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
@@ -1029,24 +1032,36 @@
       if (state.tab !== "home") return;
       let anyLive = false;
       let html = '<div data-home>' + barHtml("Top Scores", null);
+      const liveIds = new Set();
+      const liveEvs = [];
+      keys.forEach((k, i) => { if (results[i].status === "fulfilled") (results[i].value.events || []).filter(isLive).forEach((e) => { liveEvs.push([e, k]); liveIds.add(e.id); }); });
+      liveEvs.sort((a, b) => hasFav(b[0]) - hasFav(a[0]));
+      if (liveEvs.length && state.filter !== "fav") {
+        anyLive = true;
+        html += '<div class="section-title live-title"><span class="ldot"></span><b>Live now</b><span class="muted">' + liveEvs.length + " game" + (liveEvs.length > 1 ? "s" : "") + '</span></div><div class="grid">' + liveEvs.map(([e, k], i) => gameCard(e, k, i)).join("") + "</div>";
+      }
       const favEvents = [];
       keys.forEach((k, i) => {
         if (results[i].status !== "fulfilled") return;
-        (results[i].value.events || []).forEach((e) => { if (hasFav(e)) favEvents.push([e, k]); });
+        (results[i].value.events || []).forEach((e) => { if (hasFav(e) && !liveIds.has(e.id)) favEvents.push([e, k]); });
       });
       if (favEvents.length && state.filter !== "fav") {
-        html += '<div class="section-title">★ <b>Your teams</b></div><div class="grid">' + favEvents.map(([e, k], i) => gameCard(e, k, i)).join("") + "</div>";
+        html += '<div class="section-title"><b>★ Your teams</b></div><div class="grid">' + favEvents.map(([e, k], i) => gameCard(e, k, i)).join("") + "</div>";
       }
-      if (f1?.events?.[0]) html += f1Mini(f1.events[0]);
+      if (f1?.events?.[0] && state.filter === "all") html += f1Mini(f1.events[0]);
       keys.forEach((k, i) => {
         const L = LEAGUES[k];
         if (results[i].status !== "fulfilled") { html += '<div class="section-title"><b>' + esc(L.name) + '</b></div><div class="error">Couldn\'t load ' + esc(L.name) + ".</div>"; return; }
         let evs = sortEvents(results[i].value.events || []);
         evs = applyFilter(evs);
         if (evs.some(isLive)) anyLive = true;
+        if (state.filter === "all") evs = evs.filter((e) => !liveIds.has(e.id));
+        // Today's games first, then upcoming, then finished.
+        const t = ymd(new Date()), rank = (e) => { const d0 = ymd(new Date(e.date)); return isLive(e) ? 0 : d0 === t ? 1 : e.status?.type?.state === "pre" ? 2 : 3; };
+        evs = evs.slice().sort((a, b) => rank(a) - rank(b) || (rank(a) === 3 ? new Date(b.date) - new Date(a.date) : new Date(a.date) - new Date(b.date)));
         if (!evs.length) return;
         const show = evs.slice(0, 6);
-        html += '<div class="section-title"><b>' + esc(L.name) + "</b>" + (evs.length > show.length ? ' · <button class="pill-btn" type="button" data-tab="' + k + '">See all ' + evs.length + "</button>" : "") + "</div>";
+        html += '<div class="section-title"><b>' + esc(L.name) + "</b>" + '<button class="see-all" type="button" data-tab="' + k + '">See all ›</button></div>';
         html += '<div class="grid">' + show.map((e, j) => gameCard(e, k, j)).join("") + "</div>";
       });
       html += "</div>";
@@ -1065,7 +1080,7 @@
     function f1Mini(ev) {
       const nx = nextSession(ev);
       const label = nx ? (SESSION_NAMES[nx.type?.abbreviation] || nx.type?.abbreviation) + " · " + fmtDay(nx.date) + " " + fmtTime(nx.date) : (ev.status?.type?.shortDetail || "");
-      return '<div class="section-title"><b>Formula 1</b> · <button class="pill-btn" type="button" data-tab="f1">Open F1</button></div>' +
+      return '<div class="section-title"><b>Formula 1</b><button class="see-all" type="button" data-tab="f1">Open F1 ›</button></div>' +
         '<div class="card" style="max-width:520px"><div class="card-head"><span class="status' + (nx?.status?.type?.state === "in" ? " live" : "") + '">' + esc(nx?.status?.type?.state === "in" ? "Live now" : "Next up") + "</span><span>" + esc(ev.circuit?.fullName || "") + '</span></div><div class="gp-name" style="font-size:24px">' + esc(ev.name) + '</div><div class="gp-sub" style="margin:0">' + esc(label) + "</div></div>";
     }
     let countdownTimer = 0;
@@ -1182,7 +1197,7 @@
       let svg = '<svg class="track" viewBox="0 0 ' + W + " " + H + '"><path d="' + d + '" class="t-outer"/><path d="' + d + '" class="t-inner"/>';
       nums.forEach((n) => {
         const c = "#" + (T.drivers[n]?.team_colour || "8a93a5"), tag = n === first ? "P1" : n === last ? "P" + T.order[n] : "";
-        svg += '<g class="car' + (tag ? " key" : "") + '" data-n="' + n + '"><circle r="' + (tag ? 6.5 : 5) + '" fill="' + esc(c) + '"/>' + (tag ? '<text class="car-lbl" y="-11">' + esc(tag + " " + dname(n)) + "</text>" : "") + "</g>";
+        svg += '<g class="car' + (tag ? " key" : "") + '" data-n="' + n + '"><circle r="' + (tag ? 6.5 : 5) + '" fill="' + esc(c) + '"/>' + (tag ? '<text class="car-lbl" y="' + (n === first ? -11 : 19) + '">' + esc(tag + " " + dname(n)) + "</text>" : "") + "</g>";
       });
       svg += "</svg>";
       const chip = (n) => '<span class="t-chip"><i style="background:#' + esc(T.drivers[n]?.team_colour || "8a93a5") + '"></i>P' + esc(T.order[n]) + " " + esc(dname(n)) + "</span>";
