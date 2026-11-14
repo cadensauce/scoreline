@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794615813" />
+  <meta name="build" content="1794615970" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -404,6 +404,8 @@
     .sb-to i { width: 14px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); }
     .sb-to i.on { background: var(--gold); box-shadow: 0 0 4px rgba(255, 200, 61, .5); }
     .sb-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 12px; background: #0b0e13; min-width: 92px; }
+    .sb-ball { width: 18px; height: 18px; flex: none; animation: pop .4s var(--ease) both; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+    .sb-mid small { font-size: 12.5px !important; }
     .sb-mid b { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; } .sb-mid small { font-size: 10.5px; color: var(--gold); font-weight: 700; }
     .stops { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); }
     .stop { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px; padding: 9px 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
@@ -1484,7 +1486,8 @@
       const perHalf = 3;
       const timeouts = curPer > 4 ? null : { [away.team?.id]: Math.max(0, perHalf - (tos[away.team?.id] || 0)), [home.team?.id]: Math.max(0, perHalf - (tos[home.team?.id] || 0)) };
       const lastReal = plays[plays.length - 1];
-      v.field = { drives, h2, stops, timeouts, period: curPer, clock: lastP?.clock?.displayValue, down: lastReal?.end?.shortDownDistanceText || lastReal?.end?.downDistanceText || "", di: follow ? drives.length - 1 : prev.di, pi: follow ? null : prev.pi, away, home, lg, id, teams, state, seen, fresh, live: state === "in" && !ended, updated: Date.now() };
+      v.field = { drives, h2, stops, timeouts, period: curPer, clock: lastP?.clock?.displayValue, down: lastReal?.end?.shortDownDistanceText || lastReal?.end?.downDistanceText || "",
+        poss: refId(lastReal?.end?.team, "teams") || refId(lastReal?.start?.team, "teams"), di: follow ? drives.length - 1 : prev.di, pi: follow ? null : prev.pi, away, home, lg, id, teams, state, seen, fresh, live: state === "in" && !ended, updated: Date.now() };
       drawField(v, !!prev && !(fresh.size && follow));
       if (v.field.live) liveHeader(v, last);
       clearInterval(v.fieldTimer);
@@ -1509,11 +1512,12 @@
       const lastP = F.drives[F.drives.length - 1]?.plays.slice(-1)[0] || {};
       const side = (t, sc) => {
         const left = F.timeouts ? F.timeouts[t.team?.id] : null;
-        return '<div class="sb-team" style="--tc:#' + esc(t.team?.color || "8a93a5") + '"><b>' + esc(t.team?.abbreviation) + "</b><span class=\"sb-sc\">" + esc(sc ?? "") + "</span>" +
+        const ball = F.live && F.poss === String(t.team?.id) ? '<svg class="sb-ball" viewBox="0 0 24 24" aria-label="Has the ball"><ellipse cx="12" cy="12" rx="10" ry="6.2" transform="rotate(-35 12 12)" fill="#a0522d" stroke="#fff" stroke-width="1.2"/><path d="M9 15l6-6M10.3 11.7l1.4 1.4M11.9 10.1l1.4 1.4" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>' : "";
+        return '<div class="sb-team" style="--tc:#' + esc(t.team?.color || "8a93a5") + '"><b>' + esc(t.team?.abbreviation) + "</b>" + ball + "<span class=\"sb-sc\">" + esc(sc ?? "") + "</span>" +
           (left != null ? '<span class="sb-to" title="' + left + ' timeouts left">' + [0, 1, 2].map((i) => '<i class="' + (i < left ? "on" : "") + '"></i>').join("") + "</span>" : "") + "</div>";
       };
       const per = F.period > 4 ? "OT" : "Q" + F.period;
-      return '<div class="scorebug">' + side(F.away, lastP.awayScore) + '<div class="sb-mid"><b>' + esc(per + " · " + (F.clock || "")) + "</b><small>" + esc(F.down || "") + "</small></div>" + side(F.home, lastP.homeScore) + "</div>";
+      return '<div class="scorebug">' + side(F.away, lastP.awayScore) + '<div class="sb-mid"><small>' + esc(F.down || (F.live ? "" : "Final")) + "</small></div>" + side(F.home, lastP.homeScore) + "</div>";
     }
     const STOP_ICON = { team: "⏸", tv: "📺", injury: "✚", review: "🎥", break: "⏱" };
     function stopsHtml(F) {
