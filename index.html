@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794629353" />
+  <meta name="build" content="1794629513" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -551,6 +551,8 @@
     .past-sep { display: flex; align-items: center; gap: 10px; margin: 26px 2px 4px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; }
     .past-sep::before, .past-sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
     .vt button { min-width: 54px; }
+    .pager.ghost { visibility: hidden; pointer-events: none; }
+    .pager .label { min-width: 110px; }
 
     /* ---- account, friends, chat ---- */
     .trust { margin-top: 16px; padding: 14px; border-radius: 14px; background: rgba(76, 212, 134, .06); border: 1px solid rgba(76, 212, 134, .25); font-size: 13px; line-height: 1.5; }
@@ -1073,7 +1075,7 @@
       const L = key && LEAGUES[key];
       const paged = !!L?.paging, day = paged && viewOf(key) === "day";
       const toggle = paged ? '<div class="seg chips vt">' + [["week", "Week"], ["day", "Day"]].map(([k, l]) => '<button type="button" data-view="' + k + '" class="' + (viewOf(key) === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
-      const pager = paged && !day ? '<div class="pager"><button class="pill-btn" type="button" data-page="-1" aria-label="Previous">‹</button><span class="label">' + esc(weekLabel(key)) + '</span><button class="pill-btn" type="button" data-page="1" aria-label="Next">›</button></div>' : "";
+      const pager = paged ? '<div class="pager' + (day ? ' ghost" aria-hidden="true' : '') + '"><button class="pill-btn" type="button" data-page="-1" aria-label="Previous">‹</button><span class="label">' + esc(weekLabel(key)) + '</span><button class="pill-btn" type="button" data-page="1" aria-label="Next">›</button></div>' : "";
       const liveBtn = key !== "f1" ? '<div class="seg chips">' + [["all", "All"], ["fav", "★ My teams"], ["live", "● Live"]].map(([k, l]) => '<button type="button" data-filter="' + k + '" class="' + (state.filter === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
       const search = paged ? '<div class="search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" data-search placeholder="Search ' + esc(L.short || L.name) + ' teams" autocomplete="off" value="' + esc(searchQ[key] || "") + '"><div class="sres" data-sres></div></div>' : "";
       return '<div class="bar"><h1>' + esc(title) + "</h1>" + toggle + liveBtn + pager + "</div>" + search + (day ? stripHtml(key) : "");
