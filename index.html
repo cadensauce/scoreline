@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794680727" />
+  <meta name="build" content="1794681607" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2508,7 +2508,7 @@
     function renderAlerts() {
       const favs = [...state.favs];
       $("main").innerHTML = '<div class="bar"><h1>Alerts</h1></div>' +
-        '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Only about the teams you follow</small></span><i class="switch"></i></button><button type="button" class="pill-btn test-btn" id="testNotify">Send test notification</button></div>' +
+        '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Only about the teams you follow</small></span><i class="switch"></i></button><button type="button" class="pill-btn test-btn" id="testNotify">Send test notification</button>' + (alertsOn ? '<div class="g-note" id="pushState">' + esc(pushStatus) + "</div>" : "") + "</div>" +
         '<div class="section-title"><b>Your teams</b></div><div class="panel nteams">' + (favs.length ? favs.map((k) =>
           '<div class="opt nteam" role="button" tabindex="0" data-teamalerts="' + esc(k) + '"><span><b>' + esc(teamNames[k] || findName(k) || "Team") + "</b><small>" + esc(teamAlertSummary(k)) + '</small></span><span class="acct-acts"><button class="fav on" type="button" data-fav="' + esc(k) + '" aria-label="Unfollow">★</button><span class="chev">›</span></span></div>').join("") : '<div class="g-note">Tap ★ next to any team to follow it.</div>') + "</div>" +
         '<div class="panel nteams" style="margin-top:10px"><div class="opt nteam" role="button" tabindex="0" data-teamalerts=""><span><b>Defaults for new teams</b><small>What a team starts with when you follow it</small></span><span class="chev">›</span></div></div>';
@@ -2743,12 +2743,15 @@
       for (let i = 0; i < 20; i++) { const t = window.ScorelineNative.pushToken(); if (t) return t; await new Promise((r) => setTimeout(r, 500)); }
       return "";
     }
+    // Shown under the Alerts switch so you can tell if alerts will reach you with the app closed.
+    var pushStatus = "Checking background alerts…";
+    const setPushStatus = (s) => { pushStatus = s; const el = document.getElementById("pushState"); if (el) el.textContent = s; };
     async function pushSync(enable = alertsOn) {
-      if (!canPush()) return;
+      if (!canPush()) { if (enable) setPushStatus(TAURI ? "Background alerts need the newest app. Alerts still work while Scoreline is open." : "Alerts work while Scoreline is open."); return; }
       try {
         let endpoint, p256dh = "", auth = "", sub = null;
         if (nativePush()) {
-          const t = await nativeToken(); if (!t) { pushActive = false; return; }
+          const t = await nativeToken(); if (!t) { pushActive = false; setPushStatus("Couldn't connect background alerts (no push address from Android). Alerts still work while Scoreline is open."); return; }
           endpoint = "https://fcm.native/" + t;            // marks an app address for the push worker
         } else {
           const reg = await navigator.serviceWorker.ready;
@@ -2772,7 +2775,8 @@
         };
         const r = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fields }) });
         pushActive = r.ok;
-      } catch { pushActive = false; }
+        setPushStatus(r.ok ? (state.favs.size ? "✓ Background alerts on: they arrive even when Scoreline is closed." : "✓ Connected. Follow a team (★) to get alerts.") : "Couldn't save background alerts (error " + r.status + "). Alerts still work while Scoreline is open.");
+      } catch (e) { pushActive = false; setPushStatus("Couldn't connect background alerts (" + (e?.message || "error") + "). Alerts still work while Scoreline is open."); }
     }
     async function notify(title, body, tag) {
       if (!MOBILE_APP) return;                              // never on the desktop app or a computer browser
