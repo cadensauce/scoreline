@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794618152" />
+  <meta name="build" content="1794621062" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -398,6 +398,15 @@
     @keyframes freshIn { 0% { background: rgba(255, 90, 54, .35); transform: translateY(-6px); opacity: .4; } 15% { transform: none; opacity: 1; } 100% { background: var(--panel); } }
     .f-score { margin-top: 8px; font-size: 12.5px; color: var(--muted); } .f-score b { color: var(--text); }
 
+    /* ---- game screen tabs ---- */
+    .gtabs { position: sticky; top: -14px; z-index: 5; display: flex; gap: 4px; margin: 0 -14px 10px; padding: 8px 14px; background: var(--bg); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+    .gtabs::-webkit-scrollbar { display: none; }
+    .gtabs button { flex: none; border: 0; background: none; color: var(--muted); font-weight: 700; font-size: 13.5px; padding: 8px 14px; border-radius: 99px; transition: background .2s, color .2s; }
+    .gtabs button.active { background: var(--panel-3); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-hi); }
+    .sheet[data-cat="plays"] [data-c]:not([data-c~="plays"]), .sheet[data-cat="timeouts"] [data-c]:not([data-c~="timeouts"]), .sheet[data-cat="stats"] [data-c]:not([data-c~="stats"]), .sheet[data-cat="players"] [data-c]:not([data-c~="players"]) { display: none !important; }
+    .sheet[data-cat] .g-sec { animation: rise .3s var(--ease) both; }
+    .sheet.wide .sheet-body > .gtabs { grid-column: 1 / -1; margin: 0 0 10px; }
+    .sheet.wide[data-cat] .sheet-body { display: block; max-width: 900px; }
     /* ---- play-by-play feed ---- */
     .feed { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--panel); }
     .pf { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; width: 100%; padding: 8px 12px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; align-items: start; transition: background .2s; }
@@ -1371,7 +1380,7 @@
       const lab = (i) => lg === "mlb" ? i + 1 : i < reg ? (lg === "epl" ? "H" : "Q") + (i + 1) : "OT" + (i - reg + 1 > 1 ? i - reg + 1 : "");
       const cols = Math.max(n, lg === "mlb" ? 9 : 4);
       const extra = lg === "mlb" ? [["R", (c) => c.score], ["H", (c) => c.hits], ["E", (c) => c.errors]] : [["T", (c) => c.score]];
-      return '<div class="g-sec"><div class="g-label">' + (lg === "mlb" ? "Line score" : "Scoring") + '</div><div class="ls-wrap"><table class="ls"><thead><tr><th></th>' +
+      return '<div class="g-sec" data-c="stats"><div class="g-label">' + (lg === "mlb" ? "Line score" : "Scoring") + '</div><div class="ls-wrap"><table class="ls"><thead><tr><th></th>' +
         Array.from({ length: cols }, (_, i) => "<th>" + lab(i) + "</th>").join("") + extra.map(([l]) => '<th class="tot">' + l + "</th>").join("") + "</tr></thead><tbody>" +
         cs.map((c) => "<tr><td><b>" + esc(c.team?.abbreviation) + "</b></td>" + Array.from({ length: cols }, (_, i) => "<td>" + esc(c.linescores?.[i]?.displayValue ?? "") + "</td>").join("") +
           extra.map(([, f]) => '<td class="tot">' + esc(f(c) ?? "") + "</td>").join("") + "</tr>").join("") + "</tbody></table></div></div>";
@@ -1399,7 +1408,7 @@
       const rows = keys.filter(([k]) => A[k] != null && B[k] != null);
       if (!rows.length) return "";
       const ca = "#" + (teams[0].team?.color || "8a93a5"), cb = "#" + (teams[1].team?.color || "8a93a5");
-      return '<div class="g-sec"><div class="g-label">Team stats</div><div class="ts-head"><b>' + esc(teams[0].team?.abbreviation) + "</b><b>" + esc(teams[1].team?.abbreviation) + "</b></div>" + rows.map(([k, l]) => {
+      return '<div class="g-sec" data-c="stats"><div class="g-label">Team stats</div><div class="ts-head"><b>' + esc(teams[0].team?.abbreviation) + "</b><b>" + esc(teams[1].team?.abbreviation) + "</b></div>" + rows.map(([k, l]) => {
         const a = num(A[k]), b = num(B[k]), tot = a + b || 1;
         return '<div class="ts-row"><span>' + esc(A[k]) + "</span><small>" + l + "</small><span>" + esc(B[k]) + '</span></div><div class="ts-bar"><i style="width:' + (a / tot * 100) + "%;background:" + esc(ca) + '"></i><i style="background:' + esc(cb) + '"></i></div>';
       }).join("") + "</div>";
@@ -1526,7 +1535,7 @@
       const half = last.period?.type || "", bat = live ? (half === "Bottom" ? tid(home) : tid(away)) : null;
       const outs = sit.outs ?? last.outs ?? 0, balls = sit.balls ?? last.pitchCount?.balls, strikes = sit.strikes ?? last.pitchCount?.strikes;
       const mid = per ? (half === "Bottom" ? "▼ " : "▲ ") + ordinal(per) + (live ? '<span class="sb-outs">' + [0, 1, 2].map((i) => '<i class="' + (i < outs ? "on" : "") + '"></i>').join("") + "</span>" + (balls != null ? " " + balls + "-" + strikes : "") : "") : "";
-      return { live, stops, left: null, poss: bat, mid, last, rawMid: true };
+      return { live, stops, left: null, poss: bat, mid, last, rawMid: true, mlb: true };
     }
     const ordinal = (n) => n + (n % 100 >= 11 && n % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" })[n % 10] || "th");
     function sportBar(v, S) {
@@ -1542,7 +1551,7 @@
     }
     function sportStops(S) {
       const list = S.stops.slice().reverse();
-      if (!list.length) return "";
+      if (!list.length) return '<div class="g-note" style="margin-top:14px">' + (S.mlb ? "No pitching changes or challenges yet." : "No timeouts or stoppages yet.") + "</div>";
       const when = (s) => s.half ? (s.half === "Bottom" ? "▼ " : "▲ ") + ordinal(s.per) : (s.per > 4 ? "OT" : "Q" + s.per) + (s.clock ? " " + s.clock : "");
       return '<div class="g-label" style="margin-top:18px">' + (list[0].half != null ? "Pitching changes & challenges" : "Timeouts & stoppages") + '</div><div class="stops">' + list.slice(0, 12).map((s) =>
         '<div class="stop ' + s.kind + '"><span class="st-ic">' + (s.half ? (s.kind === "team" ? "⚾" : STOP_ICON[s.kind]) : STOP_ICON[s.kind]) + '</span><span class="st-l">' + esc(s.label) + "</span><small>" + esc(when(s)) + "</small></div>").join("") +
@@ -1599,7 +1608,7 @@
     }
     function chartSecHtml(v) {
       const S = sportState(v);
-      return sportBar(v, S) + (S.live ? '<div class="g-label f-title" style="margin-bottom:0">Live updates<span class="live-pill">Live</span><small data-ago>Updated just now · every 5 sec</small></div>' : "") + chartHtml(v) + sportStops(S);
+      return sportBar(v, S) + '<div data-c="plays">' + (S.live ? '<div class="g-label f-title" style="margin-bottom:0">Live updates<span class="live-pill">Live</span><small data-ago>Updated just now · every 5 sec</small></div>' : "") + chartHtml(v) + '</div><div data-c="timeouts">' + sportStops(S) + '</div>';
     }
     document.addEventListener("click", (e) => {
       if (!e.target.closest("[data-sfeedall]")) return;
@@ -1636,7 +1645,7 @@
       const base = (on, x, y) => '<rect x="' + (x - 9) + '" y="' + (y - 9) + '" width="18" height="18" transform="rotate(45 ' + x + " " + y + ')" class="b' + (on ? " on" : "") + '"/>';
       const dots = (n, max, cls) => Array.from({ length: max }, (_, i) => '<i class="' + cls + (i < n ? " on" : "") + '"></i>').join("");
       const who = (a) => a?.athlete?.shortName || a?.athlete?.displayName || "";
-      return '<div class="g-sec"><div class="g-label">At the plate</div><div class="sit"><svg viewBox="0 0 90 70" class="bases">' + base(sit.onSecond, 45, 14) + base(sit.onThird, 20, 38) + base(sit.onFirst, 70, 38) + "</svg>" +
+      return '<div class="g-sec" data-c="plays"><div class="g-label">At the plate</div><div class="sit"><svg viewBox="0 0 90 70" class="bases">' + base(sit.onSecond, 45, 14) + base(sit.onThird, 20, 38) + base(sit.onFirst, 70, 38) + "</svg>" +
         '<div class="count"><div><small>B</small>' + dots(sit.balls, 4, "ball") + "</div><div><small>S</small>" + dots(sit.strikes, 3, "strike") + "</div><div><small>O</small>" + dots(sit.outs, 3, "out") + "</div></div>" +
         '<div class="matchup"><span><small>Batting</small><b>' + esc(who(sit.batter)) + "</b></span><span><small>Pitching</small><b>" + esc(who(sit.pitcher)) + "</b></span></div></div>" +
         (sit.lastPlay?.text ? '<div class="g-note">' + esc(sit.lastPlay.text) + "</div>" : "") + "</div>";
@@ -1732,6 +1741,17 @@
         if (el && u) { const s = Math.round((Date.now() - u) / 1000); el.textContent = (s < 5 ? "Updated just now" : "Updated " + s + "s ago") + " · every 5 sec"; }
       });
     }, 1000);
+    document.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-gcat]");
+      if (!b) return;
+      const sheet = b.closest(".sheet"), k = b.dataset.gcat;
+      if (k === "all") delete sheet.dataset.cat; else sheet.dataset.cat = k;
+      sheet.querySelectorAll("[data-gcat]").forEach((x) => x.classList.toggle("active", x === b));
+      b.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+      const body = sheet.querySelector(".sheet-body"), tabs = sheet.querySelector(".gtabs");
+      if (body.scrollTop > tabs.offsetTop) body.scrollTo({ top: tabs.offsetTop - 8, behavior: "smooth" });
+      buzz();
+    });
     /* ---------- play-by-play feed (football) ---------- */
     const athId = (ref) => (String(ref || "").match(/athletes\/(\d+)/) || [])[1];
     const headshot = (lg, id) => id ? "https://a.espncdn.com/i/headshots/" + (lg === "cfb" ? "college-football" : lg) + "/players/full/" + id + ".png" : "";
@@ -1825,7 +1845,7 @@
     const STOP_ICON = { team: "⏸", tv: "📺", injury: "✚", review: "🎥", break: "⏱" };
     function stopsHtml(F) {
       const list = (F.stops || []).slice().reverse();
-      if (!list.length) return "";
+      if (!list.length) return '<div class="g-note" style="margin-top:14px">No timeouts or stoppages yet.</div>';
       return '<div class="g-label" style="margin-top:18px">Timeouts & stoppages</div><div class="stops">' + list.slice(0, 12).map((s) =>
         '<div class="stop ' + s.kind + '"><span class="st-ic">' + STOP_ICON[s.kind] + '</span><span class="st-l">' + esc(s.label) + '</span><small>' + esc((s.per > 4 ? "OT" : "Q" + (s.per || "")) + (s.clock ? " " + s.clock : "")) + "</small></div>").join("") +
         (list.length > 12 ? '<div class="g-note" style="padding:8px 10px">+' + (list.length - 12) + " earlier</div>" : "") + "</div>";
@@ -1934,7 +1954,7 @@
       svg += "</g></g></svg>";
       const dteam = D.team === String(F.away.team?.id) ? F.away : F.home;
       const last = D.plays[D.plays.length - 1];
-      let html = (F.h2 ? '<div class="h2"><span>2nd half</span><b>' + (F.h2.team.team?.logos?.[0]?.href ? '<img src="' + esc(F.h2.team.team.logos[0].href) + '" alt="">' : "") + esc(F.h2.team.team?.displayName || ab(F.h2.team)) + "</b><small>" + (F.h2.actual ? "received the 2nd-half kickoff" : "gets the ball first") + "</small></div>" : "") + scoreBug(F) + '<div class="g-label f-title">Plays' + (F.live ? '<span class="live-pill">Live</span><small data-ago>just now</small>' : "") + '</div><div class="f-nav"><button type="button" class="sheet-btn" data-drive="-1" ' + (F.di ? "" : "disabled") + '>‹</button><div><b>' + ab(dteam) + " drive " + (F.di + 1) + " of " + F.drives.length + "</b><small>" + D.plays.length + " plays · " + esc(last?.type?.text || "") + "</small></div>" +
+      let html = (F.h2 ? '<div class="h2"><span>2nd half</span><b>' + (F.h2.team.team?.logos?.[0]?.href ? '<img src="' + esc(F.h2.team.team.logos[0].href) + '" alt="">' : "") + esc(F.h2.team.team?.displayName || ab(F.h2.team)) + "</b><small>" + (F.h2.actual ? "received the 2nd-half kickoff" : "gets the ball first") + "</small></div>" : "") + scoreBug(F) + '<div data-c="plays"><div class="g-label f-title">Plays' + (F.live ? '<span class="live-pill">Live</span><small data-ago>just now</small>' : "") + '</div><div class="f-nav"><button type="button" class="sheet-btn" data-drive="-1" ' + (F.di ? "" : "disabled") + '>‹</button><div><b>' + ab(dteam) + " drive " + (F.di + 1) + " of " + F.drives.length + "</b><small>" + D.plays.length + " plays · " + esc(last?.type?.text || "") + "</small></div>" +
         '<button type="button" class="sheet-btn" data-drive="1" ' + (F.di < F.drives.length - 1 ? "" : "disabled") + ">›</button></div>" + svg +
         '<div class="f-key"><span><i class="k-los"></i>Line of scrimmage</span><span><i class="k-1st"></i>First down</span><span><i class="k-air"></i>Throw</span></div>';
       if (P) {
@@ -1963,7 +1983,7 @@
             '<small class="f-sc">' + dv.plays.length + " plays · " + yds + " yds" + (lp.awayScore != null ? " · " + ab(F.away) + " " + esc(lp.awayScore) + " – " + esc(lp.homeScore) + " " + ab(F.home) : "") + "</small></span><b>" + (k + 1) + "</b></button>";
         }).reverse().join("") + "</div>";
       }
-      html += stopsHtml(F);
+      html += '</div><div data-c="timeouts">' + stopsHtml(F) + '</div>';
       sec.innerHTML = html;
       sec.classList.toggle("calm-sec", !!still);
       const cam = sec.querySelector(".cam");
@@ -2084,15 +2104,17 @@
             '<div class="status ' + (st.state === "in" ? "live" : "") + '">' + esc(st.state === "pre" ? fmtDay(comp.date) + " · " + fmtTime(comp.date) : st.shortDetail || "") + "</div></div>" : "");
       }).join("") + "</div>";
 
-      if (lg === "nfl" || lg === "cfb") h += '<div class="g-sec" data-field><div class="g-label">Plays</div><div class="skel" style="height:150px"></div></div>';
-      if (lg === "nba" || lg === "mlb") { v.s = s; v.lg = lg; v.teams = teams; v.chartTeam = "all"; v.id = id; v.updated = Date.now(); h += '<div class="g-sec" data-chart>' + chartSecHtml(v) + "</div>"; }
+      const cats = [["all", "All"], ["plays", "Plays"], ["timeouts", lg === "mlb" ? "Changes" : "Timeouts"], ["stats", "Stats"], ["players", "Players"]];
+      h += '<div class="gtabs" role="tablist">' + cats.map(([k, l]) => '<button type="button" role="tab" data-gcat="' + k + '" class="' + (k === "all" ? "active" : "") + '">' + l + "</button>").join("") + "</div>";
+      if (lg === "nfl" || lg === "cfb") h += '<div class="g-sec" data-field data-c="plays timeouts"><div class="g-label">Plays</div><div class="skel" style="height:150px"></div></div>';
+      if (lg === "nba" || lg === "mlb") { v.s = s; v.lg = lg; v.teams = teams; v.chartTeam = "all"; v.id = id; v.updated = Date.now(); h += '<div class="g-sec" data-chart data-c="plays timeouts">' + chartSecHtml(v) + "</div>"; }
       if (lg === "mlb") h += mlbSituation(lg, id, teams);
       h += linescoreHtml(comp, lg);
       const wp = winProb(s, st.state);
       if (wp && teams.length === 2) {
         const hp = pct(wp.home), ap = 100 - hp;
         const col = (t) => "#" + (t.team?.color || "8a93a5");
-        h += '<div class="g-sec"><div class="g-label">Win probability</div><div class="wp"><span>' + esc(teams[0].team?.abbreviation) + " <b>" + ap + '%</b></span><span><b>' + hp + "%</b> " + esc(teams[1].team?.abbreviation) + "</span></div>" +
+        h += '<div class="g-sec" data-c="stats"><div class="g-label">Win probability</div><div class="wp"><span>' + esc(teams[0].team?.abbreviation) + " <b>" + ap + '%</b></span><span><b>' + hp + "%</b> " + esc(teams[1].team?.abbreviation) + "</span></div>" +
           '<div class="wp-bar"><i style="width:' + ap + "%;background:" + esc(col(teams[0])) + '"></i><i style="background:' + esc(col(teams[1])) + '"></i></div><div class="g-note">' + esc(wp.src) + "</div></div>";
       }
 
@@ -2101,7 +2123,7 @@
       h += teamStatsHtml(s, lg, teams);
       const cats = (byTeam[teams[0]?.team?.id] || []).slice(0, 4);
       if (cats.length) {
-        h += '<div class="g-sec"><div class="g-label">' + (st.state === "pre" ? "Season leaders" : "Top players") + "</div>" + cats.map((c) => {
+        h += '<div class="g-sec" data-c="players"><div class="g-label">' + (st.state === "pre" ? "Season leaders" : "Top players") + "</div>" + cats.map((c) => {
           const other = (byTeam[teams[1]?.team?.id] || []).find((x) => x.name === c.name);
           const cell = (x, t) => { const p = x?.leaders?.[0]; if (!p) return ""; return '<button type="button" class="ldr" data-player="' + lg + '|' + esc(p.athlete?.id) + '">' + (p.athlete?.headshot?.href ? '<img src="' + esc(p.athlete.headshot.href) + '" alt="" loading="lazy">' : '<span class="ldr-ph"></span>') + '<div class="ldr-main"><b>' + esc(p.athlete?.shortName || p.athlete?.displayName) + ' <small>' + esc(t?.team?.abbreviation || "") + (p.athlete?.position?.abbreviation ? " · " + esc(p.athlete.position.abbreviation) : "") + '</small></b><div class="stats">' + statChips(p.displayValue) + "</div></div><span class=\"chev\">›</span></button>"; };
           return '<div class="ldr-cat">' + esc(c.displayName) + '</div><div class="ldr-list">' + cell(c, teams[0]) + cell(other, teams[1]) + "</div>";
@@ -2110,7 +2132,7 @@
 
       const inj = s.injuries || [];
       if (inj.some((x) => x.injuries?.length)) {
-        h += '<div class="g-sec"><div class="g-label">Injuries</div><div class="g-note" style="margin:-4px 0 10px">OUT = out · D = doubtful · Q = questionable · IR = injured reserve · DTD = day-to-day</div><div class="inj-cols">' + teams.map((t) => {
+        h += '<div class="g-sec" data-c="players"><div class="g-label">Injuries</div><div class="g-note" style="margin:-4px 0 10px">OUT = out · D = doubtful · Q = questionable · IR = injured reserve · DTD = day-to-day</div><div class="inj-cols">' + teams.map((t) => {
           const list = (inj.find((x) => x.team?.id === t.team?.id)?.injuries || []);
           return "<div><div class=\"inj-team\">" + esc(t.team?.abbreviation) + "</div>" + (list.length ? list.slice(0, 6).map((p) =>
             '<div class="inj"><span class="badge ' + esc(String(p.status || "").toLowerCase().replace(/\W/g, "")) + '">' + esc(injAbbr(p.status)) + "</span>" + esc(p.athlete?.shortName || p.athlete?.displayName) + " <small>" + esc(p.athlete?.position?.abbreviation || "") + "</small></div>").join("") +
@@ -2119,8 +2141,8 @@
       }
 
       const info = [s.gameInfo?.venue?.fullName, (comp.broadcasts || []).map((b) => b.media?.shortName).filter(Boolean).join(", ")].filter(Boolean);
-      if (info.length) h += '<div class="g-sec g-note">' + info.map(esc).join(" · ") + "</div>";
-      h += '<div class="g-sec" data-feedsec></div>';
+      if (info.length) h += '<div class="g-sec g-note" data-c="info">' + info.map(esc).join(" · ") + "</div>";
+      h += '<div class="g-sec" data-feedsec data-c="plays"></div>';
       setBody(v, (teams[0]?.team?.abbreviation || "") + " @ " + (teams[1]?.team?.abbreviation || ""), h);
       if (lg === "nfl" || lg === "cfb") loadField(v, lg, id, teams, st.state);
       if (lg === "nba" || lg === "mlb") renderSportFeed(v, false);
