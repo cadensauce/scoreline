@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794629993" />
+  <meta name="build" content="1794630435" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -315,7 +315,7 @@
     .f-row:last-child { border-bottom: 0; }
     .f-row > span:first-child { color: var(--muted); font-size: 11px; font-weight: 700; }
     .f-row.sel { background: var(--panel-3); }
-    .f-row.score b { color: var(--gold); } .f-row.turnover b { color: #ff8a96; }
+    .f-row.scoring b { color: var(--gold); } .f-row.turnover b { color: #ff8a96; }
     .h2 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; margin-bottom: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; font-size: 13px; }
     .h2 > span { font-size: 10.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--accent); }
     .h2 b { display: flex; align-items: center; gap: 6px; } .h2 img { width: 20px; height: 20px; object-fit: contain; }
@@ -400,6 +400,11 @@
     .f-sc { color: var(--muted); font-size: 11px; font-weight: 600; }
     .f-row.fresh { animation: freshIn 2.4s var(--ease); }
     @keyframes freshIn { 0% { background: rgba(255, 90, 54, .35); transform: translateY(-6px); opacity: .4; } 15% { transform: none; opacity: 1; } 100% { background: var(--panel); } }
+    .pc-say { font-family: var(--display); font-size: 22px; font-weight: 800; line-height: 1.15; margin: 6px 0 6px; }
+    .pc-people { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+    .pc-p { display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 99px; background: var(--panel-2); border: 1px solid var(--line); }
+    .pc-p img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: var(--panel-3); }
+    .pc-p div { display: flex; flex-direction: column; line-height: 1.15; } .pc-p b { font-size: 13px; } .pc-p small { font-size: 10.5px; color: var(--muted); }
     .f-score { margin-top: 8px; font-size: 12.5px; color: var(--muted); } .f-score b { color: var(--text); }
 
     /* ---- Get the app ---- */
@@ -446,7 +451,7 @@
     .sit-line .sb-ball { width: 20px; height: 20px; } .sit-line .muted { font-weight: 600; } .sit-line .sb-outs { margin: 0 2px; }
     .sheet.wide .sheet-body > .gtabs { grid-column: 1 / -1; grid-row: 2; margin: 0 0 10px; top: -18px; min-height: 52px; align-items: center; }
     .sheet.wide .sheet-body > .g-head { grid-row: 1; }
-    .sheet.wide[data-cat] .sheet-body { display: block; max-width: 900px; }
+    .sheet.wide[data-cat] .sheet-body { display: block; padding-left: max(28px, calc((100% - 900px) / 2)); padding-right: max(28px, calc((100% - 900px) / 2)); }
     /* ---- play-by-play feed ---- */
     .feed { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--panel); }
     .pf { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; width: 100%; padding: 8px 12px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; align-items: start; transition: background .2s; }
@@ -507,9 +512,9 @@
     .sheet.wide { width: 100%; border-left: 0; }
     .sheet-body { scrollbar-width: none; } .sheet-body::-webkit-scrollbar { display: none; }
     .sheet.wide .sheet-body > .src-note { grid-row: 99; }
-    .sheet.wide .sheet-body { max-width: 1500px; width: 100%; margin: 0 auto; }
+    .sheet.wide .sheet-body { width: 100%; padding-left: max(28px, calc((100% - 1500px) / 2)); padding-right: max(28px, calc((100% - 1500px) / 2)); }
     .calm-sec, .calm-sec * { animation: none !important; } .calm-sec .live-pill::before { animation: pulse 1.4s ease-in-out infinite !important; }
-    .sheet.wide .sheet-body { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); column-gap: 32px; align-content: start; padding: 18px 28px 40px; }
+    .sheet.wide .sheet-body { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); column-gap: 32px; align-content: start; padding-top: 18px; padding-bottom: 40px; }
     .sheet.wide .sheet-body > * { grid-column: 2; }
     .sheet.wide .sheet-body > .g-head, .sheet.wide .sheet-body > .src-note { grid-column: 1 / -1; }
     .sheet.wide .sheet-body > [data-field], .sheet.wide .sheet-body > [data-chart] { grid-column: 1; grid-row: 3 / span 30; align-self: start; }
@@ -2080,16 +2085,42 @@
         '<button type="button" class="sheet-btn" data-drive="1" ' + (F.di < F.drives.length - 1 ? "" : "disabled") + ">›</button></div>" + svg +
         '<div class="f-key"><span><i class="k-los"></i>Line of scrimmage</span><span><i class="k-1st"></i>First down</span><span><i class="k-air"></i>Throw</span></div>';
       if (P) {
-        const g = G, t = P.text || "";
-        const pl = (a, re) => a ? (a.jersey ? "#" + a.jersey + " " : "") + a.short + (a.pos ? " (" + a.pos + ")" : "") : (t.match(re) || [])[1];
-        const who = pl(ath("passer") || ath("rusher"), /([A-Z][a-z]?\.[\w'.-]+)\s(?:pass|up the|left|right|scrambles|kneels|punts|kicks|sacked|rushes)/);
-        const rec = g.isPass ? pl(ath("receiver"), / to ([A-Z][a-z]?\.[\w'.-]+)/) : null;
+        const g = G, t = P.text || "", ty = P.type?.text || "";
+        const refOf = (type) => (P.participants || []).find((x) => x.type === type)?.athlete?.$ref;
+        const nameOf = (type, re) => athCache[refOf(type)]?.short || (re ? (t.match(re) || [])[1] : "") || "";
+        const qb = nameOf("passer", /([A-Z][a-z]?\.\s?[\w'-]+) pass/), wr = nameOf("receiver", / to (?:#\d+ )?([A-Z][a-z]?\.\s?[\w'-]+)/), rb = nameOf("rusher", /([A-Z][a-z]?\.\s?[\w'-]+) (?:rush|up the|left|right|scrambles|run)/);
+        const tk = nameOf("tackler"), sk = nameOf("sackedBy"), pd = nameOf("passDefender"), kick = nameOf("kicker") || nameOf("punter"), ret = nameOf("returner");
+        const n = Math.abs(g.gain), yds = n === 1 ? "1 yard" : n + " yards";
+        const amount = g.gain > 0 ? "for a gain of " + yds : g.gain < 0 ? "for a loss of " + yds : "for no gain";
+        const dir = (t.match(/\b(up the middle|left end|right end|left tackle|right tackle|left guard|right guard|(?:short|deep) (?:left|middle|right))\b/i) || [])[1];
+        let say;
+        if (/sack/i.test(ty)) say = (qb || "Quarterback") + " sacked" + (sk ? " by " + sk : "") + " " + amount;
+        else if (/interception/i.test(ty)) say = "Pass" + (qb ? " from " + qb : "") + " intercepted" + (nameOf("interceptor") ? " by " + nameOf("interceptor") : "");
+        else if (/incomplet/i.test(ty)) say = "Incomplete pass" + (qb ? " from " + qb : "") + (wr ? " intended for " + wr : "") + (dir ? " (" + dir.toLowerCase() + ")" : "") + (pd ? ", broken up by " + pd : "");
+        else if (/pass|reception/i.test(ty)) say = "Pass" + (qb ? " from " + qb : "") + (wr ? " to " + wr : "") + (dir ? " " + dir.toLowerCase() : "") + " " + amount;
+        else if (/rush/i.test(ty)) say = "Run" + (rb ? " by " + rb : "") + (dir ? " " + dir.toLowerCase() : "") + " " + amount;
+        else if (/punt/i.test(ty)) say = (kick || "Punt") + " punts " + ((t.match(/punts? (\d+) yards?/i) || [])[1] || "") + " yards" + (/touchback/i.test(t) ? " for a touchback" : ret ? ", returned by " + ret : "");
+        else if (/field goal/i.test(ty)) say = (kick ? kick + "'s " : "") + ((t.match(/(\d+)[ -]?(?:yd|yard)/i) || [])[1] || "") + "-yard field goal is " + (/no good|missed|blocked/i.test(t) ? "no good" : "good");
+        else if (/kickoff/i.test(ty)) say = "Kickoff" + (kick ? " by " + kick : "") + (/touchback/i.test(t) ? " for a touchback" : ret ? ", returned by " + ret + " " + amount.replace("for a gain of", "for") : "");
+        else if (/penalty/i.test(ty)) say = "Penalty: " + ((t.match(/PENALTY on [^,]+, ([^,]+)/i) || [])[1] || "flag on the play");
+        else say = ty || "Play";
+        if (/touchdown/i.test(t) && !/nullified|no good/i.test(t)) say += ". Touchdown!";
+        const result = /touchdown/i.test(t) && !/nullified/i.test(t) ? ["score", "🏈 Touchdown"] : P.isTurnover || /interception|fumble/i.test(ty) ? ["bad", "⚠️ Turnover"] : /1st down|first down/i.test(t) ? ["good", "✅ First down"] : /punt/i.test(ty) ? ["", "Punt"] : /field goal/i.test(ty) ? [/no good/i.test(t) ? "bad" : "score", "Field goal " + (/no good/i.test(t) ? "missed" : "good")] : null;
+        // People involved, with photos.
+        const people = [["passer", "Quarterback"], ["receiver", "Target"], ["rusher", "Ball carrier"], ["kicker", "Kicker"], ["punter", "Punter"], ["returner", "Returner"], ["tackler", "Tackle"], ["sackedBy", "Sack"], ["passDefender", "Coverage"], ["interceptor", "Interception"]]
+          .map(([type, role]) => { const r = refOf(type); if (!r) return ""; const a = athCache[r]; const id = athId(r); return '<div class="pc-p">' + (id ? '<img src="' + esc(headshot(F.lg, id)) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + "<div><b>" + esc((a?.jersey ? "#" + a.jersey + " " : "") + (a?.short || "")) + "</b><small>" + esc(role + (a?.pos ? " · " + a.pos : "")) + "</small></div></div>"; }).join("");
         const chips = [];
-        if (g.isPass && g.air != null) chips.push(["Air", g.air], ["After catch", g.yac]);
-        chips.push(["Gain", g.gain]);
+        if (g.isPass && g.air != null) chips.push([g.air, "Air yds"], [g.yac, "After catch"]);
+        chips.push([(g.gain > 0 ? "+" : "") + g.gain, g.gain < 0 ? "Yds lost" : "Yds gained"]);
+        const from = P.start?.possessionText || (P.start?.downDistanceText || "").replace(/^.* at /, ""), to = P.end?.possessionText || "";
         html += '<div class="f-detail"><div class="f-dhead"><span>' + esc(P.start.downDistanceText || P.start.shortDownDistanceText || "") + "</span><span>Q" + esc(P.period?.number || "") + " · " + esc(P.clock?.displayValue || "") + "</span></div>" +
-          "<b>" + esc([who, rec ? "→ " + rec : ""].filter(Boolean).join(" ") || P.type?.text || "Play") + "</b>" +
-          '<div class="stats">' + chips.map(([l, n]) => '<span class="st"><b>' + esc(n) + "</b><small>" + l + " yds</small></span>").join("") + "</div>" + (P.awayScore != null ? '<div class="f-score">Score after play: <b>' + ab(F.away) + " " + esc(P.awayScore) + " – " + esc(P.homeScore) + " " + ab(F.home) + "</b></div>" : "") + "<p>" + esc(t) + "</p></div>";
+          '<div class="pc-say">' + esc(say) + "</div>" +
+          (result ? '<div class="pf-tags" style="margin:2px 0 8px"><span class="' + result[0] + '">' + esc(result[1]) + "</span></div>" : "") +
+          (people ? '<div class="pc-people">' + people + "</div>" : "") +
+          '<div class="stats">' + chips.map(([v2, l]) => '<span class="st"><b>' + esc(v2) + "</b><small>" + esc(l) + "</small></span>").join("") + "</div>" +
+          (from || to ? '<div class="f-score">Ball: <b>' + esc(from || "?") + "</b>" + (to && to !== from ? " → <b>" + esc(to) + "</b>" : "") + "</div>" : "") +
+          (P.awayScore != null ? '<div class="f-score">Score after play: <b>' + ab(F.away) + " " + esc(P.awayScore) + " – " + esc(P.homeScore) + " " + ab(F.home) + "</b></div>" : "") +
+          "<p>" + esc(t) + "</p></div>";
         const need = (P.participants || []).map((x) => x.athlete?.$ref).filter((r) => r && !(r in athCache));
         if (need.length) {
           need.forEach((r) => { athCache[r] = null; });
@@ -2101,7 +2132,7 @@
       if (v.el.classList.contains("wide") && F.drives.length > 1) {
         html += '<div class="g-label" style="margin-top:18px">All drives</div><div class="f-list drives">' + F.drives.map((dv, k) => {
           const tm = dv.team === String(F.away.team?.id) ? F.away : F.home, yds = dv.plays.reduce((s, p) => s + (Number(p.statYardage) || 0), 0), lp = dv.plays[dv.plays.length - 1];
-          return '<button type="button" class="f-row' + (k === F.di ? " sel" : "") + (lp.scoringPlay ? " score" : "") + '" data-dgo="' + k + '"><span>' + ab(tm) + "<small>Q" + esc(dv.plays[0].period?.number || "") + " " + esc(dv.plays[0].clock?.displayValue || "") + "</small></span><span>" + esc(lp.type?.text || "") +
+          return '<button type="button" class="f-row' + (k === F.di ? " sel" : "") + (lp.scoringPlay ? " scoring" : "") + '" data-dgo="' + k + '"><span>' + ab(tm) + "<small>Q" + esc(dv.plays[0].period?.number || "") + " " + esc(dv.plays[0].clock?.displayValue || "") + "</small></span><span>" + esc(lp.type?.text || "") +
             '<small class="f-sc">' + dv.plays.length + " plays · " + yds + " yds" + (lp.awayScore != null ? " · " + ab(F.away) + " " + esc(lp.awayScore) + " – " + esc(lp.homeScore) + " " + ab(F.home) : "") + "</small></span><b>" + (k + 1) + "</b></button>";
         }).reverse().join("") + "</div>";
       }
