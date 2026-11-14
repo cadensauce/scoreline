@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794629287" />
+  <meta name="build" content="1794629266" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2356,29 +2356,23 @@
 
     /* ---------- scrub the tab bars: hold and slide across tabs to switch as you pass each one ---------- */
     (() => {
-      let bar = null, id = null, lastKey = null, moved = false, y = 0;
+      let bar = null, id = null, last = null, moved = false;
       const BAR = ".tabs, .btabs, .gtabs, .seg";   // every row of options: tabs, Week/Day, filters, toggles
       const ITEM = "button";
-      const key = (b) => b ? b.dataset.tab || b.dataset.gcat || b.dataset.view || b.dataset.filter || b.dataset.ct || b.dataset.f1t || b.dataset.tseg || b.dataset.amode || b.dataset.gaplat || b.textContent.trim() : null;
       addEventListener("pointerdown", (e) => {
         if (e.pointerType === "mouse" && e.button !== 0) return;
         const b = e.target.closest?.(BAR);
         if (!b) return;
-        const r = b.getBoundingClientRect();
-        bar = b; id = e.pointerId; moved = false; y = r.top + r.height / 2;
-        lastKey = key(e.target.closest(ITEM));
+        bar = b; id = e.pointerId; moved = false;
+        last = e.target.closest(ITEM);
         b.classList.add("scrubbing");
       });
       addEventListener("pointermove", (e) => {
         if (!bar || e.pointerId !== id) return;
-        // Rows like Week/Day redraw when tapped, so look up whatever row is under the pointer now.
-        const el = document.elementFromPoint(e.clientX, y);
-        const row = el?.closest(BAR), item = el?.closest(ITEM);
-        if (!row || !item || !row.contains(item)) return;
-        if (row !== bar) { bar.classList.remove("scrubbing"); bar = row; bar.classList.add("scrubbing"); }
-        const k = key(item);
-        if (k === lastKey || item.classList.contains("active") || item.classList.contains("on")) { lastKey = k; return; }
-        lastKey = k; moved = true;
+        const el = document.elementFromPoint(e.clientX, Math.max(bar.getBoundingClientRect().top + 2, Math.min(e.clientY, bar.getBoundingClientRect().bottom - 2)));
+        const item = el?.closest(ITEM);
+        if (!item || !bar.contains(item) || item === last) return;
+        last = item; moved = true;
         item.click();
         buzz(6);
       });
