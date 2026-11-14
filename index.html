@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794614364" />
+  <meta name="build" content="1794614589" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -377,6 +377,19 @@
     .mobile-app .sheet-bar::before { content: ""; position: absolute; left: 50%; top: 6px; width: 36px; height: 4px; margin-left: -18px; border-radius: 99px; background: var(--line-hi); }
     .sheet-bar { position: relative; }
     .test-btn { width: 100%; margin-top: 10px; justify-content: center; }
+    /* ---- team search ---- */
+    .search { position: relative; display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 0 14px; height: 44px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); transition: border-color .2s; }
+    .search:focus-within { border-color: var(--accent); color: var(--text); }
+    .search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: none; background: none; color: var(--text); font: inherit; font-size: 15px; -webkit-user-select: text; user-select: text; }
+    .search input::-webkit-search-cancel-button { filter: invert(1) opacity(.5); }
+    .sres { position: absolute; left: -1px; right: -1px; top: calc(100% + 6px); z-index: 25; background: #1b212c; border: 1px solid var(--line-hi); border-radius: 14px; overflow: hidden; box-shadow: 0 18px 40px rgba(0,0,0,.5); }
+    .sres:empty { display: none; }
+    .sres-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 14px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; animation: rise .2s var(--ease) both; }
+    .sres-row:last-child { border-bottom: 0; } .sres-row:active { background: var(--panel-3); }
+    .sres-row img, .sres-row span { width: 26px; height: 26px; object-fit: contain; flex: none; }
+    .sres-row b { flex: 1; font-size: 14.5px; } .sres-row small { color: var(--muted); font-size: 11.5px; }
+    @media (min-width: 721px) { .search { max-width: 420px; } }
+
     /* ---- day strip ---- */
     .dstrip { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 2px 12px; margin: 0 -2px 4px; scroll-snap-type: x proximity; -webkit-mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent); mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent); }
     .dstrip::-webkit-scrollbar { display: none; }
@@ -760,7 +773,7 @@
 
     /* ---------- day strip + Day/Week views ---------- */
     const views0 = store.get("view", {});
-    const viewOf = (key) => views0[key] || "day";
+    const viewOf = (key) => views0[key] || "week";
     const dayOff = {};                      // key -> days from today (day view)
     const gameDays = {};                    // key -> Set of "YYYYMMDD" that have games
     const DAY = 86400000;
@@ -840,6 +853,46 @@
           '<div class="grid">' + sortEvents(evs).map((e) => gameCard(e, key, i++)).join("") + "</div>";
       }).join("");
     }
+    /* ---------- team search (every sport) ---------- */
+    const searchQ = {};
+    const teamLists = {};
+    async function teamList(key) {
+      if (teamLists[key]) return teamLists[key];
+      const L = LEAGUES[key];
+      const data = await getJSON(API + L.path + "/teams?limit=1000" + (key === "cfb" ? "&groups=80" : "")).catch(() => null);
+      const raw = data?.sports?.[0]?.leagues?.[0]?.teams || [];
+      return (teamLists[key] = raw.map((x) => x.team).filter(Boolean).map((t) => ({ id: t.id, name: t.displayName, short: t.shortDisplayName, abbr: t.abbreviation, loc: t.location, nick: t.name, logo: t.logos?.[0]?.href })));
+    }
+    function applySearch(key) {
+      const q = (searchQ[key] || "").trim().toLowerCase(), main = $("main");
+      main.querySelectorAll(".card[data-ev]").forEach((c) => { c.hidden = !!q && !c.textContent.toLowerCase().includes(q); });
+      main.querySelectorAll(".day-head").forEach((h) => { const g = h.nextElementSibling; h.hidden = g && ![...g.querySelectorAll(".card")].some((c) => !c.hidden); });
+      const none = main.querySelector(".s-none");
+      const any = [...main.querySelectorAll(".card[data-ev]")].some((c) => !c.hidden);
+      if (q && !any && !none) main.insertAdjacentHTML("beforeend", '<div class="empty s-none">No games for "' + esc(q) + '" in this view. Pick the team above to see their schedule.</div>');
+      if ((!q || any) && none) none.remove();
+    }
+    let searchTimer = 0;
+    document.addEventListener("input", (e) => {
+      const inp = e.target.closest("[data-search]");
+      if (!inp) return;
+      const key = state.tab, q = inp.value.trim().toLowerCase();
+      searchQ[key] = inp.value;
+      applySearch(key);
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(async () => {
+        const box = inp.parentElement.querySelector("[data-sres]");
+        if (!q) { box.innerHTML = ""; return; }
+        const list = await teamList(key);
+        const hits = list.filter((t) => [t.name, t.abbr, t.loc, t.nick].some((s) => String(s || "").toLowerCase().includes(q)))
+          .sort((a, b) => (String(a.abbr).toLowerCase() === q ? -1 : 0) - (String(b.abbr).toLowerCase() === q ? -1 : 0) || a.name.localeCompare(b.name)).slice(0, 6);
+        if ((inp.value.trim().toLowerCase()) !== q) return;
+        box.innerHTML = hits.map((t) => '<button type="button" class="sres-row" data-team="' + key + "|" + esc(t.id) + '">' + (t.logo ? '<img src="' + esc(t.logo) + '" alt="" loading="lazy">' : "<span></span>") + "<b>" + esc(t.name) + "</b><small>Schedule & roster ›</small></button>").join("");
+      }, 120);
+    });
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".search")) $("main")?.querySelectorAll("[data-sres]").forEach((b) => { b.innerHTML = ""; });
+    });
     async function renderLeague(key) {
       const L = LEAGUES[key];
       const main = $("main");
@@ -854,6 +907,7 @@
         : res.grouped ? groupByDay(events, key) : '<div class="grid">' + events.map((e, i) => gameCard(e, key, i)).join("") + "</div>";
       main.innerHTML = barHtml(L.name, key) + body;
       main.querySelector(".dchip.on")?.scrollIntoView({ inline: "center", block: "nearest" });
+      if (searchQ[key]) applySearch(key);
       renderTabs();
       stamp();
       schedule(events.some(isLive));
@@ -861,10 +915,11 @@
     function barHtml(title, key) {
       const L = key && LEAGUES[key];
       const paged = !!L?.paging, day = paged && viewOf(key) === "day";
-      const toggle = paged ? '<div class="seg chips vt">' + [["day", "Day"], ["week", "Week"]].map(([k, l]) => '<button type="button" data-view="' + k + '" class="' + (viewOf(key) === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
+      const toggle = paged ? '<div class="seg chips vt">' + [["week", "Week"], ["day", "Day"]].map(([k, l]) => '<button type="button" data-view="' + k + '" class="' + (viewOf(key) === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
       const pager = paged && !day ? '<div class="pager"><button class="pill-btn" type="button" data-page="-1" aria-label="Previous">‹</button><span class="label">' + esc(weekLabel(key)) + '</span><button class="pill-btn" type="button" data-page="1" aria-label="Next">›</button></div>' : "";
       const liveBtn = key !== "f1" ? '<div class="seg chips">' + [["all", "All"], ["fav", "★ My teams"], ["live", "● Live"]].map(([k, l]) => '<button type="button" data-filter="' + k + '" class="' + (state.filter === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
-      return '<div class="bar"><h1>' + esc(title) + "</h1>" + toggle + liveBtn + pager + "</div>" + (day ? stripHtml(key) : "");
+      const search = paged ? '<div class="search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" data-search placeholder="Search ' + esc(L.short || L.name) + ' teams" autocomplete="off" value="' + esc(searchQ[key] || "") + '"><div class="sres" data-sres></div></div>' : "";
+      return '<div class="bar"><h1>' + esc(title) + "</h1>" + toggle + liveBtn + pager + "</div>" + search + (day ? stripHtml(key) : "");
     }
 
     async function renderHome() {
@@ -1085,6 +1140,7 @@
       timer = setTimeout(render, live ? 20000 : 120000);
     }
     function render() {
+      if (document.activeElement?.matches?.("[data-search]")) { schedule(true); return; }
       clearTimeout(timer);
       store.set("tab", state.tab);
       renderTabs();
