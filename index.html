@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794616446" />
+  <meta name="build" content="1794617070" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -394,6 +394,32 @@
     @keyframes freshIn { 0% { background: rgba(255, 90, 54, .35); transform: translateY(-6px); opacity: .4; } 15% { transform: none; opacity: 1; } 100% { background: var(--panel); } }
     .f-score { margin-top: 8px; font-size: 12.5px; color: var(--muted); } .f-score b { color: var(--text); }
 
+    /* ---- play-by-play feed ---- */
+    .feed { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--panel); }
+    .pf { display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; width: 100%; padding: 14px 14px 12px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; align-items: start; transition: background .2s; }
+    .pf:last-child { border-bottom: 0; }
+    .pf.sel { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--accent); }
+    .pf.scoring { box-shadow: inset 3px 0 0 var(--gold); }
+    .pf.fresh { animation: freshIn 2.4s var(--ease); }
+    .pf-pic { position: relative; width: 52px; height: 52px; border-radius: 50%; background: var(--panel-3); overflow: visible; }
+    .pf-pic img:first-child { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; }
+    .pf-tm { position: absolute; right: -4px; bottom: -4px; width: 22px !important; height: 22px !important; border-radius: 50% !important; background: #0b0e13; padding: 2px; object-fit: contain !important; border: 1px solid var(--line); }
+    .pf-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .pf-top { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pf-top b { color: var(--text); font-weight: 700; }
+    .pf-h { font-family: var(--display); font-size: 21px; font-weight: 800; letter-spacing: .2px; line-height: 1.15; margin-top: 1px; }
+    .pf-p { font-size: 14px; font-weight: 600; } .pf-p span { color: var(--muted); font-weight: 500; }
+    .pf-s { font-size: 12.5px; color: var(--muted); }
+    .pf-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .pf-tags span { font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 7px; background: var(--panel-3); color: #c9cfda; }
+    .pf-tags .good { background: rgba(76, 212, 134, .13); color: #7ee2a8; }
+    .pf-tags .score { background: rgba(255, 200, 61, .15); color: var(--gold); }
+    .pf-tags .bad { background: rgba(255, 59, 78, .14); color: #ff8a96; }
+    .pf-tags .warn { background: rgba(255, 200, 61, .1); color: #f2d27a; }
+    .pf-g { font-family: var(--display); font-size: 20px; font-weight: 800; color: var(--muted); padding-top: 14px; }
+    .pf-g.pos { color: #7ee2a8; } .pf-g.neg { color: #ff8a96; }
+    .feed-more { width: 100%; margin-top: 8px; justify-content: center; }
+
     /* ---- TV-style score bar + stoppages ---- */
     .scorebug { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; margin-bottom: 14px; border-radius: 12px; overflow: hidden; background: #10141b; border: 1px solid var(--line-hi); }
     .sb-team { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: linear-gradient(90deg, color-mix(in srgb, var(--tc) 55%, #10141b), #10141b); position: relative; }
@@ -450,7 +476,7 @@
     @media (min-width: 721px) { .search { max-width: 420px; } }
 
     /* ---- day strip ---- */
-    .dstrip { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 2px 12px; margin: 0 -2px 4px; scroll-snap-type: x proximity; -webkit-mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent); mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent); }
+    .dstrip { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 6px 4px 12px; margin: -4px -4px 4px; scroll-snap-type: x proximity; -webkit-mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent); mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent); }
     .dstrip::-webkit-scrollbar { display: none; }
     .dchip { flex: none; width: 52px; scroll-snap-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 7px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); transition: background .25s, color .25s, border-color .25s, transform .2s var(--ease); }
     .dchip small { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
@@ -1602,7 +1628,7 @@
       const perHalf = 3;
       const timeouts = curPer > 4 ? null : { [away.team?.id]: Math.max(0, perHalf - (tos[away.team?.id] || 0)), [home.team?.id]: Math.max(0, perHalf - (tos[home.team?.id] || 0)) };
       const lastReal = plays[plays.length - 1];
-      v.field = { drives, h2, stops, timeouts, period: curPer, clock: lastP?.clock?.displayValue, down: lastReal?.end?.shortDownDistanceText || lastReal?.end?.downDistanceText || "",
+      v.field = { feedAll: prev?.feedAll, drives, h2, stops, timeouts, period: curPer, clock: lastP?.clock?.displayValue, down: lastReal?.end?.shortDownDistanceText || lastReal?.end?.downDistanceText || "",
         poss: refId(lastReal?.end?.team, "teams") || refId(lastReal?.start?.team, "teams"), di: follow ? drives.length - 1 : prev.di, pi: follow ? null : prev.pi, away, home, lg, id, teams, state, seen, fresh, live: state === "in" && !ended, updated: Date.now() };
       drawField(v, !!prev && !(fresh.size && follow));
       if (v.field.live) liveHeader(v, last);
@@ -1623,6 +1649,82 @@
         if (el && u) { const s = Math.round((Date.now() - u) / 1000); el.textContent = (s < 5 ? "Updated just now" : "Updated " + s + "s ago") + " · every 5 sec"; }
       });
     }, 1000);
+    /* ---------- play-by-play feed (football) ---------- */
+    const athId = (ref) => (String(ref || "").match(/athletes\/(\d+)/) || [])[1];
+    const headshot = (lg, id) => id ? "https://a.espncdn.com/i/headshots/" + (lg === "cfb" ? "college-football" : lg) + "/players/full/" + id + ".png" : "";
+    const ago = (iso) => { const m = Math.round((Date.now() - new Date(iso)) / 60000); return !iso || isNaN(m) || m < 0 ? "" : m < 1 ? "now" : m < 60 ? m + "m" : m < 1440 ? Math.round(m / 60) + "h" : ""; };
+    function playHeadline(p) {
+      const ty = p.type?.text || "", t = p.text || "", g = Number(p.statYardage) || 0;
+      if (/touchdown/i.test(t) && !/no good|nullified/i.test(t)) return "Touchdown! " + (/pass|reception/i.test(ty) ? g + "-yd catch" : /rush/i.test(ty) ? g + "-yd run" : "");
+      if (/field goal/i.test(ty)) return /good/i.test(t) && !/no good/i.test(t) ? "Field goal good" : "Field goal missed";
+      if (/extra point|pat/i.test(ty)) return /good/i.test(t) && !/no good/i.test(t) ? "Extra point good" : "Extra point missed";
+      if (/interception/i.test(ty)) return "Interception";
+      if (/fumble/i.test(ty) || /FUMBLES/.test(t)) return /recovery \(own\)/i.test(ty) ? "Fumble, recovered" : "Fumble";
+      if (/sack/i.test(ty)) return "Sack, " + Math.abs(g) + " yd loss";
+      if (/incomplet/i.test(ty)) return "Incomplete pass";
+      if (/pass|reception/i.test(ty)) return g + "-yd catch";
+      if (/rush/i.test(ty)) return g + "-yd " + (g < 0 ? "loss" : "rush");
+      if (/punt/i.test(ty)) return ((t.match(/punts? (\d+) yards?/i) || [])[1] || "") + "-yd punt";
+      if (/kickoff/i.test(ty)) return "Kickoff";
+      if (/penalty/i.test(ty)) return "Penalty";
+      return ty || "Play";
+    }
+    function playFeed(v, F) {
+      const all = F.drives.flatMap((d, di) => d.plays.map((p, pi) => ({ p, di, pi })));
+      // Running game stats per player, so each play shows "10 yd, 1 car" like a broadcast.
+      const st = {}, snap = {};
+      const S = (id) => (st[id] ||= { car: 0, ry: 0, rec: 0, recy: 0, c: 0, a: 0, py: 0, tkl: 0 });
+      const line = (id, kind) => { const s = st[id]; if (!s) return ""; return kind === "rush" ? s.ry + " yd, " + s.car + " car" : kind === "rec" ? s.recy + " yd, " + s.rec + " rec" : kind === "pass" ? s.py + " yd, " + s.c + "/" + s.a : kind === "tkl" ? s.tkl + " tkl" : ""; };
+      all.forEach(({ p }) => {
+        const ty = p.type?.text || "", g = Number(p.statYardage) || 0, part = (k) => athId((p.participants || []).find((x) => x.type === k)?.athlete?.$ref);
+        const ru = part("rusher"), pa = part("passer"), re = part("receiver"), tk = part("tackler");
+        if (/rush/i.test(ty) && ru) { S(ru).car++; S(ru).ry += g; }
+        if (pa && /pass/i.test(ty)) { S(pa).a++; if (!/incomplet|interception/i.test(ty)) { S(pa).c++; S(pa).py += g; } }
+        if (re && /reception|pass/i.test(ty) && !/incomplet/i.test(ty)) { S(re).rec++; S(re).recy += g; }
+        if (tk) S(tk).tkl++;
+        snap[p.id] = { ru: ru && line(ru, "rush"), pa: pa && line(pa, "pass"), re: re && line(re, "rec"), tk: tk && line(tk, "tkl") };
+      });
+      const nm = (ref, fallback) => athCache[ref]?.short || fallback || "";
+      const items = all.slice().reverse().slice(0, F.feedAll ? 400 : 25);
+      const html = items.map(({ p, di, pi }) => {
+        const ty = p.type?.text || "", t = p.text || "", sn = snap[p.id] || {};
+        const ref = (k) => (p.participants || []).find((x) => x.type === k)?.athlete?.$ref;
+        const isRec = /reception|pass/i.test(ty) && !/incomplet|interception|sack/i.test(ty);
+        const mainRef = isRec ? ref("receiver") : ref("rusher") || ref("passer") || ref("punter") || ref("kicker") || ref("returner");
+        const mainLine = isRec ? sn.re : ref("rusher") ? sn.ru : ref("passer") ? sn.pa : "";
+        const secRef = isRec || /incomplet|interception/i.test(ty) ? ref("passer") : null;
+        const tkRef = ref("tackler");
+        const tags = [];
+        if (/1st down|first down/i.test(t)) tags.push(["good", "✅ 1st down"]);
+        if (p.scoringPlay) tags.push(["score", "🏈 " + (p.scoreValue ? "+" + p.scoreValue + " " : "") + "Score"]);
+        if (isRec && p.yardsAfterCatch != null && p.yardsAfterCatch > 0) tags.push(["", "🏃 " + p.yardsAfterCatch + " yds after catch"]);
+        if (p.isTurnover) tags.push(["bad", "⚠️ Turnover"]);
+        if (/penalty|PENALTY/.test(ty + t) && !/declined/i.test(t)) tags.push(["warn", "🚩 Penalty"]);
+        if (/challenged|replay official|reviewed/i.test(t)) tags.push(["", "📺 Reviewed" + (/REVERSED/.test(t) ? ", reversed" : ", upheld")]);
+        if (/injur/i.test(t)) tags.push(["bad", "✚ Injury"]);
+        const head = headshot(F.lg, athId(mainRef));
+        const tm = refId(p.start?.team, "teams") === String(F.away.team?.id) ? F.away : F.home;
+        const sel = F.di === di && (F.pi ?? F.drives[F.di].plays.length - 1) === pi;
+        return '<button type="button" class="pf' + (sel ? " sel" : "") + (F.fresh?.has(p.id) ? " fresh" : "") + (p.scoringPlay ? " scoring" : "") + '" data-feed="' + di + "|" + pi + '">' +
+          '<div class="pf-pic">' + (head ? '<img src="' + esc(head) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + (tm.team?.logos?.[0]?.href || tm.team?.logo ? '<img class="pf-tm" src="' + esc(tm.team.logos?.[0]?.href || tm.team.logo) + '" alt="">' : "") + "</div>" +
+          '<div class="pf-body"><div class="pf-top">' + (p.awayScore != null ? "<b>" + ab(F.away) + " " + esc(p.awayScore) + "–" + esc(p.homeScore) + " " + ab(F.home) + "</b> · " : "") + "Q" + esc(p.period?.number || "") + " " + esc(p.clock?.displayValue || "") + (p.start?.shortDownDistanceText ? " · " + esc(p.start.shortDownDistanceText) : "") + (p.wallclock && ago(p.wallclock) ? " · " + ago(p.wallclock) : "") + "</div>" +
+          '<div class="pf-h">' + esc(playHeadline(p)) + "</div>" +
+          (mainRef || mainLine ? '<div class="pf-p">' + esc(nm(mainRef, (t.match(/([A-Z][a-z]?\.[\w'-]+)/) || [])[1])) + (mainLine ? '<span> · ' + esc(mainLine) + "</span>" : "") + "</div>" : '<div class="pf-p muted">' + esc(p.shortText || t) + "</div>") +
+          (secRef ? '<div class="pf-s">' + esc(nm(secRef, (t.match(/([A-Z][a-z]?\.[\w'-]+) pass/) || [])[1])) + (sn.pa ? " · " + esc(sn.pa) : "") + "</div>" : "") +
+          (tkRef && sn.tk ? '<div class="pf-s">' + esc(nm(tkRef, "")) + " · " + esc(sn.tk) + "</div>" : "") +
+          (tags.length ? '<div class="pf-tags">' + tags.map(([c, l]) => '<span class="' + c + '">' + esc(l) + "</span>").join("") + "</div>" : "") +
+          '</div><div class="pf-g ' + (Number(p.statYardage) > 0 ? "pos" : Number(p.statYardage) < 0 ? "neg" : "") + '">' + (Number(p.statYardage) > 0 ? "+" : "") + esc(p.statYardage ?? "") + "</div></button>";
+      }).join("");
+      // Load names for players in view (cached).
+      const need = [...new Set(items.flatMap(({ p }) => (p.participants || []).map((x) => x.athlete?.$ref)).filter((r) => r && !(r in athCache)))].slice(0, 40);
+      if (need.length) {
+        need.forEach((r) => { athCache[r] = null; });
+        Promise.all(need.map((r) => getJSON(r.replace("http://", "https://")).then((a) => { athCache[r] = { jersey: a.jersey, short: a.shortName || a.displayName, pos: a.position?.abbreviation }; }).catch(() => {}))).then(() => { if (v.el.isConnected && v.field === F) drawField(v, true); });
+      }
+      return '<div class="g-label" style="margin-top:18px">Play-by-play</div><div class="feed">' + html + "</div>" +
+        (all.length > 25 && !F.feedAll ? '<button type="button" class="pill-btn feed-more" data-feedall>Show all ' + all.length + " plays</button>" : "");
+    }
+
     /* ---------- score bar with timeouts + stoppages log ---------- */
     function scoreBug(F) {
       if (!F.timeouts && !F.live) return "";
@@ -1768,9 +1870,7 @@
           Promise.all(need.map((r) => getJSON(r.replace("http://", "https://")).then((a) => { athCache[r] = { jersey: a.jersey, short: a.shortName || a.displayName, pos: a.position?.abbreviation }; }).catch(() => {}))).then(() => { if (v.el.isConnected && v.field === F) drawField(v, true); });
         }
       }
-      const rowsHtml = D.plays.map((p, i) => '<button type="button" class="f-row ' + playKind(p) + (pi === i ? " sel" : "") + (F.fresh?.has(p.id) ? " fresh" : "") + '" data-play="' + i + '"><span>' + esc(p.start.shortDownDistanceText || "") + "<small>Q" + esc(p.period?.number || "") + " " + esc(p.clock?.displayValue || "") + "</small></span><span>" + esc(p.shortText || p.text || "") +
-        (p.awayScore != null ? '<small class="f-sc">' + ab(F.away) + " " + esc(p.awayScore) + " – " + esc(p.homeScore) + " " + ab(F.home) + "</small>" : "") + "</span><b>" + (Number(p.statYardage) > 0 ? "+" : "") + esc(p.statYardage ?? "") + "</b></button>").reverse().join("");
-      html += '<div class="f-list"><div class="f-list-h">' + (F.di === F.drives.length - 1 && F.live ? "Newest first" : "Plays this drive · newest first") + "</div>" + rowsHtml + "</div>";
+      html += playFeed(v, F);
       if (v.el.classList.contains("wide") && F.drives.length > 1) {
         html += '<div class="g-label" style="margin-top:18px">All drives</div><div class="f-list drives">' + F.drives.map((dv, k) => {
           const tm = dv.team === String(F.away.team?.id) ? F.away : F.home, yds = dv.plays.reduce((s, p) => s + (Number(p.statYardage) || 0), 0), lp = dv.plays[dv.plays.length - 1];
@@ -1790,6 +1890,9 @@
       const v = views.find((x) => x.el === sheet);
       if (e.target.closest("[data-wide]")) { sheet.classList.toggle("wide"); buzz(); if (v?.field) drawField(v, true); return; }
       if (!v?.field) return;
+      const fd = e.target.closest("[data-feed]");
+      if (fd) { const [a, b] = fd.dataset.feed.split("|").map(Number); v.field.di = a; v.field.pi = b; drawField(v); v.el.querySelector(".field")?.scrollIntoView({ block: "center", behavior: "smooth" }); return; }
+      if (e.target.closest("[data-feedall]")) { v.field.feedAll = true; return drawField(v, true); }
       const dg = e.target.closest("[data-dgo]");
       if (dg) { v.field.di = Number(dg.dataset.dgo); v.field.pi = null; return drawField(v); }
       const dr = e.target.closest("[data-drive]");
