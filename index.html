@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794617704" />
+  <meta name="build" content="1794617918" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -36,7 +36,8 @@
     body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
     input, textarea { -webkit-user-select: text; user-select: text; }
     button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
-    html { background: var(--bg); }
+    html { background: var(--bg); scrollbar-width: none; }
+    html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
     body {
       margin: 0; min-height: 100vh; color: var(--text);
       font: 14px/1.45 Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -399,27 +400,27 @@
 
     /* ---- play-by-play feed ---- */
     .feed { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--panel); }
-    .pf { display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; width: 100%; padding: 14px 14px 12px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; align-items: start; transition: background .2s; }
+    .pf { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; width: 100%; padding: 8px 12px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; align-items: start; transition: background .2s; }
     .pf:last-child { border-bottom: 0; }
     .pf.sel { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--accent); }
     .pf.scoring { box-shadow: inset 3px 0 0 var(--gold); }
     .pf.fresh { animation: freshIn 2.4s var(--ease); }
-    .pf-pic { position: relative; width: 52px; height: 52px; border-radius: 50%; background: var(--panel-3); overflow: visible; }
-    .pf-pic img:first-child { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; }
-    .pf-tm { position: absolute; right: -4px; bottom: -4px; width: 22px !important; height: 22px !important; border-radius: 50% !important; background: #0b0e13; padding: 2px; object-fit: contain !important; border: 1px solid var(--line); }
-    .pf-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-    .pf-top { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pf-pic { position: relative; width: 34px; height: 34px; margin-top: 2px; border-radius: 50%; background: var(--panel-3); overflow: visible; }
+    .pf-pic img:first-child { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
+    .pf-tm { position: absolute; right: -4px; bottom: -4px; width: 15px !important; height: 15px !important; padding: 1px !important; border-radius: 50% !important; background: #0b0e13; padding: 2px; object-fit: contain !important; border: 1px solid var(--line); }
+    .pf-body { min-width: 0; display: flex; flex-direction: column; gap: 0; }
+    .pf-top { font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .pf-top b { color: var(--text); font-weight: 700; }
-    .pf-h { font-family: var(--display); font-size: 21px; font-weight: 800; letter-spacing: .2px; line-height: 1.15; margin-top: 1px; }
-    .pf-p { font-size: 14px; font-weight: 600; } .pf-p span { color: var(--muted); font-weight: 500; }
-    .pf-s { font-size: 12.5px; color: var(--muted); }
-    .pf-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-    .pf-tags span { font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 7px; background: var(--panel-3); color: #c9cfda; }
+    .pf-h { font-family: var(--display); font-size: 16px; font-weight: 800; letter-spacing: .2px; line-height: 1.15; margin-top: 1px; }
+    .pf-p { font-size: 12.5px; font-weight: 600; } .pf-p span { color: var(--muted); font-weight: 500; }
+    .pf-s { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pf-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+    .pf-tags span { font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 7px; background: var(--panel-3); color: #c9cfda; }
     .pf-tags .good { background: rgba(76, 212, 134, .13); color: #7ee2a8; }
     .pf-tags .score { background: rgba(255, 200, 61, .15); color: var(--gold); }
     .pf-tags .bad { background: rgba(255, 59, 78, .14); color: #ff8a96; }
     .pf-tags .warn { background: rgba(255, 200, 61, .1); color: #f2d27a; }
-    .pf-g { font-family: var(--display); font-size: 20px; font-weight: 800; color: var(--muted); padding-top: 14px; }
+    .pf-g { font-family: var(--display); font-size: 16px; font-weight: 800; color: var(--muted); padding-top: 8px; }
     .pf-g.pos { color: #7ee2a8; } .pf-g.neg { color: #ff8a96; }
     .feed-more { width: 100%; margin-top: 8px; justify-content: center; }
 
@@ -482,6 +483,7 @@
     /* ---- day strip ---- */
     .dstrip { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 6px 4px 12px; margin: -4px -4px 4px; scroll-snap-type: x proximity; }
     .dstrip::-webkit-scrollbar { display: none; }
+    @media (hover: hover) { .dstrip { cursor: grab; -webkit-user-select: none; user-select: none; } .dstrip.dragging { cursor: grabbing; scroll-snap-type: none; } }
     .dchip { flex: none; width: 52px; scroll-snap-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 7px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); transition: background .25s, color .25s, border-color .25s, transform .2s var(--ease); }
     .dchip small { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
     .dchip b { font-family: var(--display); font-size: 21px; font-weight: 800; color: var(--text); line-height: 1; }
@@ -682,18 +684,6 @@
   <main id="main"></main>
   <nav class="btabs" id="btabs" aria-label="Sports"></nav>
 
-  <section class="get-app" id="getApp">
-    <div class="get-app-inner">
-      <div>
-        <div class="get-app-title">Get the Scoreline app</div>
-        <div class="get-app-sub">Native app built in Rust, with notifications for your ★ teams.</div>
-      </div>
-      <div class="get-app-btns">
-        <a class="pill-btn dl" href="https://github.com/cadensauce/scoreline/releases/latest/download/Scoreline-Windows-Setup.exe">⊞ Windows</a>
-        <a class="pill-btn dl" href="https://github.com/cadensauce/scoreline/releases/latest/download/Scoreline-Android.apk">▶ Android APK</a>
-      </div>
-    </div>
-  </section>
 
   <footer>
     <p><b>Scoreline is an independent fan project.</b> It is not affiliated with, endorsed by, sponsored by, or connected to ESPN, the NFL, the NCAA, Formula 1, the FIA, the NBA, MLB, or any team, player or league.</p>
@@ -897,7 +887,7 @@
       let days = [...(gameDays[key] || [])].sort();
       if (!days.includes(sel)) days = [...days, sel].sort();
       const i = days.indexOf(sel);
-      days = days.slice(Math.max(0, i - 8), i + 14);
+      days = days.slice(Math.max(0, i - 5), i + 9);
       return '<div class="dstrip" data-dstrip>' + days.map((s) => {
         const d = fromYmd(s), o = offOf(s);
         const wk = o === 0 ? "Today" : o === 1 ? "Tmrw" : d.toLocaleDateString([], { weekday: "short" });
@@ -950,6 +940,20 @@
           '<div class="grid">' + sortEvents(evs).map((e) => gameCard(e, key, i++)).join("") + "</div>";
       }).join("");
     }
+    /* ---------- date strip: mouse wheel + click-and-drag scrolling (computer) ---------- */
+    addEventListener("wheel", (e) => {
+      const s = e.target.closest?.(".dstrip");
+      if (!s || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      s.scrollBy({ left: e.deltaY, behavior: "auto" });
+    }, { passive: false });
+    (() => {
+      let strip = null, x0 = 0, left0 = 0, moved = false;
+      addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse") return; strip = e.target.closest(".dstrip"); if (!strip) return; x0 = e.clientX; left0 = strip.scrollLeft; moved = false; strip.classList.add("dragging"); });
+      addEventListener("pointermove", (e) => { if (!strip) return; const dx = e.clientX - x0; if (Math.abs(dx) > 5) moved = true; strip.scrollLeft = left0 - dx; });
+      addEventListener("pointerup", () => { if (strip) strip.classList.remove("dragging"); setTimeout(() => { moved = false; }, 0); strip = null; });
+      addEventListener("click", (e) => { if (moved && e.target.closest(".dstrip")) { e.stopPropagation(); e.preventDefault(); } }, true);
+    })();
     /* ---------- team search (every sport) ---------- */
     const searchQ = {};
     const teamLists = {};
@@ -1557,7 +1561,7 @@
           if (p.scoringPlay && pid) pts[pid] = (pts[pid] || 0) + (p.scoreValue || 0);
           return { p, pid, pts: pid ? pts[pid] || 0 : 0 };
         }).filter(({ p }) => p.text && !/substitution|end period|start period/i.test(p.type?.text || "") && (p.scoringPlay || /rebound|turnover|steal|block|foul|timeout|jump/i.test((p.type?.text || "") + " " + p.text)));
-        list = rows.slice().reverse().slice(0, v.feedAll ? 600 : 25);
+        list = rows.slice().reverse().slice(0, v.feedAll ? 600 : 12);
         html = list.map(({ p, pid, pts: n }) => {
           const ty = p.type?.text || "", tm = teamOf(p.team?.id), made = p.scoringPlay;
           const head = made ? (p.scoreValue === 3 ? "3-pointer" : p.scoreValue === 1 ? "Free throw" : /dunk/i.test(ty + p.text) ? "Dunk" : /layup/i.test(ty + p.text) ? "Layup" : "2-pointer") :
@@ -1570,7 +1574,7 @@
       } else {
         const RES = /single|double|triple|home run|walk|strikeout|out|error|hit by pitch|sacrifice|fielder|double play|reached/i;
         const rows = plays.filter((p) => (p.type?.text === "Play Result" || RES.test(p.type?.text || "")) && !/foul|strike|ball(?! in play)/i.test(p.type?.text || "") && p.text && !/^Pitch \d/.test(p.text));
-        list = rows.slice().reverse().slice(0, v.feedAll ? 600 : 25);
+        list = rows.slice().reverse().slice(0, v.feedAll ? 600 : 12);
         html = list.map((p) => {
           const bat = (p.participants || []).find((x) => x.type === "batter")?.athlete?.id;
           const tm = teamOf(p.team?.id);
@@ -1583,7 +1587,7 @@
         var total = rows.length;
       }
       if (!html) return "";
-      return '<div class="g-label" style="margin-top:18px">Play-by-play</div><div class="feed">' + html + "</div>" + (total > 25 && !v.feedAll ? '<button type="button" class="pill-btn feed-more" data-sfeedall>Show all ' + total + " plays</button>" : "");
+      return '<div class="g-label" style="margin-top:18px">Play-by-play</div><div class="feed">' + html + "</div>" + (total > 12 && !v.feedAll ? '<button type="button" class="pill-btn feed-more" data-sfeedall>Show all ' + total + " plays</button>" : "");
     }
     function feedRow(o) {
       const head = headshot(o.lg, o.pid), logo = o.tm?.team?.logos?.[0]?.href || o.tm?.team?.logo;
@@ -1764,7 +1768,7 @@
         snap[p.id] = { ru: ru && line(ru, "rush"), pa: pa && line(pa, "pass"), re: re && line(re, "rec"), tk: tk && line(tk, "tkl") };
       });
       const nm = (ref, fallback) => athCache[ref]?.short || fallback || "";
-      const items = all.slice().reverse().slice(0, F.feedAll ? 400 : 25);
+      const items = all.slice().reverse().slice(0, F.feedAll ? 400 : 12);
       const html = items.map(({ p, di, pi }) => {
         const ty = p.type?.text || "", t = p.text || "", sn = snap[p.id] || {};
         const ref = (k) => (p.participants || []).find((x) => x.type === k)?.athlete?.$ref;
@@ -1801,7 +1805,7 @@
         Promise.all(need.map((r) => getJSON(r.replace("http://", "https://")).then((a) => { athCache[r] = { jersey: a.jersey, short: a.shortName || a.displayName, pos: a.position?.abbreviation }; }).catch(() => {}))).then(() => { if (v.el.isConnected && v.field === F) drawField(v, true); });
       }
       return '<div class="g-label" style="margin-top:18px">Play-by-play</div><div class="feed">' + html + "</div>" +
-        (all.length > 25 && !F.feedAll ? '<button type="button" class="pill-btn feed-more" data-feedall>Show all ' + all.length + " plays</button>" : "");
+        (all.length > 12 && !F.feedAll ? '<button type="button" class="pill-btn feed-more" data-feedall>Show all ' + all.length + " plays</button>" : "");
     }
 
     /* ---------- score bar with timeouts + stoppages log ---------- */
