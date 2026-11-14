@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794629101" />
+  <meta name="build" content="1794629266" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -432,7 +432,7 @@
     .gtabs { position: sticky; top: -14px; z-index: 5; display: flex; gap: 4px; margin: 0 -14px 10px; padding: 8px 14px; background: var(--bg); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
     .gtabs::-webkit-scrollbar { display: none; }
     main, .sheet-body { touch-action: pan-y; }
-    .tabs, .btabs, .gtabs { touch-action: none; }
+    .tabs, .btabs, .gtabs, .seg { touch-action: none; }
     .scrubbing, .scrubbing * { cursor: grabbing !important; }
     body.dragging-x, body.dragging-x * { cursor: grabbing !important; }
     .sheet-body > :not(.g-head):not(.gtabs) { transition: opacity .16s ease, transform .24s var(--ease); }
@@ -2357,8 +2357,8 @@
     /* ---------- scrub the tab bars: hold and slide across tabs to switch as you pass each one ---------- */
     (() => {
       let bar = null, id = null, last = null, moved = false;
-      const BAR = ".tabs, .btabs, .gtabs:not(.ga-tabs)";
-      const ITEM = "[data-tab], [data-gcat]";
+      const BAR = ".tabs, .btabs, .gtabs, .seg";   // every row of options: tabs, Week/Day, filters, toggles
+      const ITEM = "button";
       addEventListener("pointerdown", (e) => {
         if (e.pointerType === "mouse" && e.button !== 0) return;
         const b = e.target.closest?.(BAR);
