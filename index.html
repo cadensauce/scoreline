@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794632290" />
+  <meta name="build" content="1794632316" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -1778,7 +1778,7 @@
       const timeouts = curPer > 4 ? null : { [away.team?.id]: Math.max(0, perHalf - (tos[away.team?.id] || 0)), [home.team?.id]: Math.max(0, perHalf - (tos[home.team?.id] || 0)) };
       const lastReal = plays[plays.length - 1];
       v.field = { feedAll: prev?.feedAll, drives, h2, stops, timeouts, period: curPer, clock: lastP?.clock?.displayValue, down: lastReal?.end?.shortDownDistanceText || lastReal?.end?.downDistanceText || "",
-        poss: (() => { const dt = drives[drives.length - 1]?.team, flip = lastReal && (lastReal.scoringPlay || lastReal.isTurnover || /punt|interception|safety/i.test(lastReal.type?.text || "")); const other = [away, home].map((t) => String(t.team?.id)).find((x) => x !== dt); return flip ? other : dt; })(), di: follow ? drives.length - 1 : prev.di, pi: follow ? null : prev.pi, away, home, lg, id, teams, state, seen, fresh, live: state === "in" && !ended, updated: Date.now() };
+        poss: (() => { const sp = (cache[lg]?.events || []).find((e) => e.id === String(id))?.competitions?.[0]?.situation?.possession; if (sp && state === "in") return String(sp); const dt = drives[drives.length - 1]?.team, flip = lastReal && (lastReal.scoringPlay || lastReal.isTurnover || /punt|interception|safety/i.test(lastReal.type?.text || "")); const other = [away, home].map((t) => String(t.team?.id)).find((x) => x !== dt); return flip ? other : dt; })(), di: follow ? drives.length - 1 : prev.di, pi: follow ? null : prev.pi, away, home, lg, id, teams, state, seen, fresh, live: state === "in" && !ended, updated: Date.now() };
       drawField(v, !!prev && !(fresh.size && follow));
       if (v.field.live) liveHeader(v, last);
       clearInterval(v.fieldTimer);
