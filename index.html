@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794617095" />
+  <meta name="build" content="1794617158" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -1528,10 +1528,66 @@
         '<div class="stop ' + s.kind + '"><span class="st-ic">' + (s.half ? (s.kind === "team" ? "⚾" : STOP_ICON[s.kind]) : STOP_ICON[s.kind]) + '</span><span class="st-l">' + esc(s.label) + "</span><small>" + esc(when(s)) + "</small></div>").join("") +
         (list.length > 12 ? '<div class="g-note" style="padding:8px 10px">+' + (list.length - 12) + " earlier</div>" : "") + "</div>";
     }
+    // Play-by-play feed for NBA (scoring + key plays) and MLB (every at-bat result).
+    function sportFeed(v) {
+      const s = v.s, [away, home] = v.teams, plays = s.plays || [], lg = v.lg;
+      const abA = esc(away.team?.abbreviation), abH = esc(home.team?.abbreviation);
+      const teamOf = (id) => v.teams.find((t) => t.team?.id === String(id));
+      let list, html;
+      if (lg === "nba") {
+        const pts = {};
+        const rows = plays.map((p) => {
+          const pid = p.participants?.[0]?.athlete?.id;
+          if (p.scoringPlay && pid) pts[pid] = (pts[pid] || 0) + (p.scoreValue || 0);
+          return { p, pid, pts: pid ? pts[pid] || 0 : 0 };
+        }).filter(({ p }) => p.text && !/substitution|end period|start period/i.test(p.type?.text || "") && (p.scoringPlay || /rebound|turnover|steal|block|foul|timeout|jump/i.test((p.type?.text || "") + " " + p.text)));
+        list = rows.slice().reverse().slice(0, v.feedAll ? 600 : 25);
+        html = list.map(({ p, pid, pts: n }) => {
+          const ty = p.type?.text || "", tm = teamOf(p.team?.id), made = p.scoringPlay;
+          const head = made ? (p.scoreValue === 3 ? "3-pointer" : p.scoreValue === 1 ? "Free throw" : /dunk/i.test(ty + p.text) ? "Dunk" : /layup/i.test(ty + p.text) ? "Layup" : "2-pointer") :
+            /block/i.test(p.text) ? "Block" : /steal/i.test(p.text) ? "Steal" : /turnover|bad pass|lost ball|traveling/i.test(ty) ? "Turnover" : /rebound/i.test(ty) ? (/offensive/i.test(ty) ? "Offensive rebound" : "Rebound") : /foul/i.test(ty) ? "Foul" : /timeout/i.test(ty) ? "Timeout" : ty;
+          const name = (p.text.match(/^([A-Z][\w.'-]+(?: [A-Z][\w.'-]+){0,2}?) (?:makes|misses|defensive|offensive|personal|shooting|bad|lost|traveling|blocks|steals|loose|offensive)/) || [])[1];
+          const tags = []; if (/assists/i.test(p.text)) tags.push(["", "🤝 " + p.text.match(/\((.*?) assists\)/)?.[1] + " assist"]);
+          return feedRow({ lg, pid, tm, top: "<b>" + abA + " " + esc(p.awayScore) + "–" + esc(p.homeScore) + " " + abH + "</b> · " + (p.period?.number > 4 ? "OT" : "Q" + p.period?.number) + " " + esc(p.clock?.displayValue || ""), head, main: name ? esc(name) + (made && n ? "<span> · " + n + " pts</span>" : "") : "", sub: esc(p.text), tags, badge: made ? "+" + p.scoreValue : "", good: made, scoring: made && p.scoreValue === 3 });
+        }).join("");
+        var total = rows.length;
+      } else {
+        const RES = /single|double|triple|home run|walk|strikeout|out|error|hit by pitch|sacrifice|fielder|double play|reached/i;
+        const rows = plays.filter((p) => (p.type?.text === "Play Result" || RES.test(p.type?.text || "")) && !/foul|strike|ball(?! in play)/i.test(p.type?.text || "") && p.text && !/^Pitch \d/.test(p.text));
+        list = rows.slice().reverse().slice(0, v.feedAll ? 600 : 25);
+        html = list.map((p) => {
+          const bat = (p.participants || []).find((x) => x.type === "batter")?.athlete?.id;
+          const tm = teamOf(p.team?.id);
+          const head = /home run|homers/i.test(p.text) ? "Home run" : /tripled/i.test(p.text) ? "Triple" : /doubled/i.test(p.text) ? "Double" : /singled/i.test(p.text) ? "Single" : /walked/i.test(p.text) ? "Walk" : /struck out/i.test(p.text) ? "Strikeout" : /relieved/i.test(p.text) ? "Pitching change" : /grounded/i.test(p.text) ? "Ground out" : /flied|fly/i.test(p.text) ? "Fly out" : /lined/i.test(p.text) ? "Line out" : /popped/i.test(p.text) ? "Pop out" : (p.type?.alternativeText || p.type?.text || "Play");
+          const tags = [];
+          if (/challenged/i.test(p.text)) tags.push(["", "📺 Challenge · " + (/overturned/i.test(p.text) ? "overturned" : "upheld")]);
+          if (p.pitchVelocity) tags.push(["", "⚡ " + p.pitchVelocity + " mph" + (p.pitchType?.text ? " " + p.pitchType.text.toLowerCase() : "")]);
+          return feedRow({ lg, pid: bat, tm, top: "<b>" + abA + " " + esc(p.awayScore) + "–" + esc(p.homeScore) + " " + abH + "</b> · " + (p.period?.type === "Bottom" ? "▼ " : "▲ ") + ordinal(p.period?.number || 1) + (p.outs != null ? " · " + p.outs + " out" : ""), head, main: "", sub: esc(p.text), tags, badge: p.scoringPlay ? "+" + (p.scoreValue || 1) : "", good: p.scoringPlay || /single|double|triple|home run/i.test(head), scoring: /home run/i.test(head) });
+        }).join("");
+        var total = rows.length;
+      }
+      if (!html) return "";
+      return '<div class="g-label" style="margin-top:18px">Play-by-play</div><div class="feed">' + html + "</div>" + (total > 25 && !v.feedAll ? '<button type="button" class="pill-btn feed-more" data-sfeedall>Show all ' + total + " plays</button>" : "");
+    }
+    function feedRow(o) {
+      const head = headshot(o.lg, o.pid), logo = o.tm?.team?.logos?.[0]?.href || o.tm?.team?.logo;
+      return '<div class="pf' + (o.scoring ? " scoring" : "") + '"><div class="pf-pic">' + (head ? '<img src="' + esc(head) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + (logo ? '<img class="pf-tm" src="' + esc(logo) + '" alt="">' : "") + "</div>" +
+        '<div class="pf-body"><div class="pf-top">' + o.top + '</div><div class="pf-h">' + esc(o.head) + "</div>" + (o.main ? '<div class="pf-p">' + o.main + "</div>" : "") + '<div class="pf-s">' + o.sub + "</div>" +
+        (o.tags.length ? '<div class="pf-tags">' + o.tags.map(([c, l]) => '<span class="' + c + '">' + esc(l) + "</span>").join("") + "</div>" : "") +
+        '</div><div class="pf-g ' + (o.good ? "pos" : "") + '">' + esc(o.badge) + "</div></div>";
+    }
     function chartSecHtml(v) {
       const S = sportState(v);
-      return sportBar(v, S) + (S.live ? '<div class="g-label f-title" style="margin-bottom:0">Live updates<span class="live-pill">Live</span><small data-ago>Updated just now · every 5 sec</small></div>' : "") + chartHtml(v) + sportStops(S);
+      return sportBar(v, S) + (S.live ? '<div class="g-label f-title" style="margin-bottom:0">Live updates<span class="live-pill">Live</span><small data-ago>Updated just now · every 5 sec</small></div>' : "") + chartHtml(v) + sportFeed(v) + sportStops(S);
     }
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest("[data-sfeedall]")) return;
+      const v = views.find((x) => x.el === e.target.closest(".sheet"));
+      if (!v?.s) return;
+      v.feedAll = true;
+      const sec = v.el.querySelector("[data-chart]");
+      if (sec) { sec.innerHTML = chartSecHtml(v); sec.classList.add("calm-sec"); }
+    });
     async function liveSummary(v) {
       clearInterval(v.liveTimer);
       v.liveTimer = setInterval(async () => {
@@ -1662,8 +1718,8 @@
       if (/fumble/i.test(ty) || /FUMBLES/.test(t)) return /recovery \(own\)/i.test(ty) ? "Fumble, recovered" : "Fumble";
       if (/sack/i.test(ty)) return "Sack, " + Math.abs(g) + " yd loss";
       if (/incomplet/i.test(ty)) return "Incomplete pass";
-      if (/pass|reception/i.test(ty)) return g + "-yd catch";
-      if (/rush/i.test(ty)) return g + "-yd " + (g < 0 ? "loss" : "rush");
+      if (/pass|reception/i.test(ty)) return g < 0 ? "Catch, " + -g + " yd loss" : g + "-yd catch";
+      if (/rush/i.test(ty)) return g < 0 ? "Run, " + -g + " yd loss" : g === 0 ? "No gain" : g + "-yd run";
       if (/punt/i.test(ty)) return ((t.match(/punts? (\d+) yards?/i) || [])[1] || "") + "-yd punt";
       if (/kickoff/i.test(ty)) return "Kickoff";
       if (/penalty/i.test(ty)) return "Penalty";
