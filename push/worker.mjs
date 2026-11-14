@@ -19,7 +19,8 @@ const LEAGUES = {
 };
 
 // Pasted secrets can pick up spaces, line breaks or a "Value:" label, so clean them first.
-const clean = (s) => String(s || "").replace(/^\s*value:\s*/i, "").replace(/[\s"]+/g, "");
+// A VAPID private key is exactly 43 URL-safe base64 characters; pick that out of whatever was pasted.
+const clean = (s) => { const t = String(s || ""); const m = t.match(/(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/); if (!m) console.log("VAPID_PRIVATE looks wrong: length " + t.trim().length); return m ? m[0] : t.trim(); };
 const VAPID_PUBLIC = "BE7gMA0rXlZpDBtTAGdfyabXR8ZeNQwgB8WnaPD6GsfNjWkwN39pVqaEJLIPS7mVERZtbWdSg8xhO_vU8ZRwxM0"; // public, same as in index.html
 webpush.setVapidDetails("https://cadensauce.github.io/scoreline/", VAPID_PUBLIC, clean(process.env.VAPID_PRIVATE));
 // The service account JSON may have been pasted with extra text around it; take the {...} part.
