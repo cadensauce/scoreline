@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794621355" />
+  <meta name="build" content="1794621761" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -405,7 +405,10 @@
     .gtabs button.active { background: var(--panel-3); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-hi); }
     .sheet[data-cat="plays"] [data-c]:not([data-c~="plays"]), .sheet[data-cat="timeouts"] [data-c]:not([data-c~="timeouts"]), .sheet[data-cat="stats"] [data-c]:not([data-c~="stats"]), .sheet[data-cat="players"] [data-c]:not([data-c~="players"]) { display: none !important; }
     .sheet[data-cat] .g-sec { animation: rise .3s var(--ease) both; }
-    .sheet[data-cat="plays"] .sb-to { display: none; }
+    .sheet[data-cat="plays"] .scorebug { display: none; }
+    .sit-line { display: none; align-items: center; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); font-size: 14px; font-weight: 700; }
+    .sheet[data-cat="plays"] .sit-line { display: flex; }
+    .sit-line .sb-ball { width: 20px; height: 20px; } .sit-line .muted { font-weight: 600; } .sit-line .sb-outs { margin: 0 2px; }
     .sheet.wide .sheet-body > .gtabs { grid-column: 1 / -1; margin: 0 0 10px; }
     .sheet.wide[data-cat] .sheet-body { display: block; max-width: 900px; }
     /* ---- play-by-play feed ---- */
@@ -1548,7 +1551,7 @@
         return '<div class="sb-team" style="--tc:#' + esc(t.team?.color || "8a93a5") + '"><b>' + esc(t.team?.abbreviation) + "</b>" + (S.poss === t.team?.id ? BALL_ICON[v.lg] : "") + '<span class="sb-sc">' + esc(sc(t)) + "</span>" +
           (left != null ? '<span class="sb-to" title="' + left + ' timeouts left">' + Array.from({ length: S.max }, (_, i) => '<i class="' + (i < left ? "on" : "") + '"></i>').join("") + "</span>" : "") + "</div>";
       };
-      return '<div class="scorebug ' + v.lg + '">' + side(away) + '<div class="sb-mid"><small>' + (S.rawMid ? S.mid : esc(S.mid)) + "</small></div>" + side(home) + "</div>";
+      return '<div class="scorebug ' + v.lg + '">' + side(away) + '<div class="sb-mid"><small>' + (S.rawMid ? S.mid : esc(S.mid)) + "</small></div>" + side(home) + "</div>" + (S.live ? '<div class="sit-line">' + ((t) => t ? BALL_ICON[v.lg] + esc(t.team.abbreviation) + (v.lg === "mlb" ? " batting" : " ball") + " · " : "")(v.teams.find((x) => x.team?.id === S.poss)) + '<span class="muted">' + (S.rawMid ? S.mid : esc(S.mid)) + "</span></div>" : "");
     }
     function sportStops(S) {
       const list = S.stops.slice().reverse();
@@ -1831,6 +1834,13 @@
     }
 
     /* ---------- score bar with timeouts + stoppages log ---------- */
+    // Plays tab: one-line situation instead of the full score bar.
+    function sitLine(F) {
+      if (!F.live) return "";
+      const t = [F.away, F.home].find((x) => String(x.team?.id) === F.poss);
+      const ball = '<svg class="sb-ball" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="6.2" transform="rotate(-35 12 12)" fill="#a0522d" stroke="#fff" stroke-width="1.2"/><path d="M9 15l6-6M10.3 11.7l1.4 1.4M11.9 10.1l1.4 1.4" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>';
+      return '<div class="sit-line">' + (t ? ball + esc(t.team.abbreviation) + ' ball' : "") + (F.down ? '<span class="muted">' + (t ? "· " : "") + esc(F.down) + "</span>" : "") + "</div>";
+    }
     function scoreBug(F) {
       if (!F.timeouts && !F.live) return "";
       const lastP = F.drives[F.drives.length - 1]?.plays.slice(-1)[0] || {};
@@ -1955,7 +1965,7 @@
       svg += "</g></g></svg>";
       const dteam = D.team === String(F.away.team?.id) ? F.away : F.home;
       const last = D.plays[D.plays.length - 1];
-      let html = (F.h2 ? '<div class="h2"><span>2nd half</span><b>' + (F.h2.team.team?.logos?.[0]?.href ? '<img src="' + esc(F.h2.team.team.logos[0].href) + '" alt="">' : "") + esc(F.h2.team.team?.displayName || ab(F.h2.team)) + "</b><small>" + (F.h2.actual ? "received the 2nd-half kickoff" : "gets the ball first") + "</small></div>" : "") + scoreBug(F) + '<div data-c="plays"><div class="g-label f-title">Plays' + (F.live ? '<span class="live-pill">Live</span><small data-ago>just now</small>' : "") + '</div><div class="f-nav"><button type="button" class="sheet-btn" data-drive="-1" ' + (F.di ? "" : "disabled") + '>‹</button><div><b>' + ab(dteam) + " drive " + (F.di + 1) + " of " + F.drives.length + "</b><small>" + D.plays.length + " plays · " + esc(last?.type?.text || "") + "</small></div>" +
+      let html = (F.h2 ? '<div class="h2"><span>2nd half</span><b>' + (F.h2.team.team?.logos?.[0]?.href ? '<img src="' + esc(F.h2.team.team.logos[0].href) + '" alt="">' : "") + esc(F.h2.team.team?.displayName || ab(F.h2.team)) + "</b><small>" + (F.h2.actual ? "received the 2nd-half kickoff" : "gets the ball first") + "</small></div>" : "") + scoreBug(F) + sitLine(F) + '<div data-c="plays"><div class="g-label f-title">Plays' + (F.live ? '<span class="live-pill">Live</span><small data-ago>just now</small>' : "") + '</div><div class="f-nav"><button type="button" class="sheet-btn" data-drive="-1" ' + (F.di ? "" : "disabled") + '>‹</button><div><b>' + ab(dteam) + " drive " + (F.di + 1) + " of " + F.drives.length + "</b><small>" + D.plays.length + " plays · " + esc(last?.type?.text || "") + "</small></div>" +
         '<button type="button" class="sheet-btn" data-drive="1" ' + (F.di < F.drives.length - 1 ? "" : "disabled") + ">›</button></div>" + svg +
         '<div class="f-key"><span><i class="k-los"></i>Line of scrimmage</span><span><i class="k-1st"></i>First down</span><span><i class="k-air"></i>Throw</span></div>';
       if (P) {
