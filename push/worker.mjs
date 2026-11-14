@@ -55,6 +55,9 @@ async function loadSubs() {
   }).filter((s) => s.sub.endpoint && s.favs.size);
   subsAt = Date.now();
   console.log(new Date().toISOString(), "subscribers:", subs.length);
+  // Health check anyone can read: just counts, no addresses or teams.
+  const apps = subs.filter((s) => s.sub.endpoint.startsWith("https://fcm.native/")).length;
+  await db.collection("public").doc("push").set({ status: { phones: subs.length, androidApp: apps, homeScreen: subs.length - apps, checkedAt: new Date().toISOString() } }, { merge: true }).catch(() => {});
 }
 
 // Each person picks, per alert and per team: always / playoffs / champ (Super Bowl, Finals...) / off.
