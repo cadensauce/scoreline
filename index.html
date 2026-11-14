@@ -3,13 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794628056" />
+  <meta name="build" content="1794628405" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#0b0e13" />
   <link rel="apple-touch-icon" href="icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Scoreline" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -398,6 +402,22 @@
     @keyframes freshIn { 0% { background: rgba(255, 90, 54, .35); transform: translateY(-6px); opacity: .4; } 15% { transform: none; opacity: 1; } 100% { background: var(--panel); } }
     .f-score { margin-top: 8px; font-size: 12.5px; color: var(--muted); } .f-score b { color: var(--text); }
 
+    /* ---- Get the app ---- */
+    .getapp-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--accent) !important; color: #120a07 !important; border-color: transparent !important; font-weight: 800; padding: 7px 12px; }
+    @media (max-width: 720px) { .getapp-btn { min-height: 34px !important; padding: 6px 10px !important; font-size: 12.5px; } }
+    .ga-tabs { position: static; margin: 0 0 16px; padding: 0; border: 0; background: none; }
+    .ga-hero { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; }
+    .ga-hero b { font-family: var(--display); font-size: 30px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; line-height: 1; }
+    .ga-hero span { color: var(--muted); font-size: 13px; }
+    .ga-step { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 15px; line-height: 1.45; }
+    .ga-step:last-of-type { border-bottom: 0; }
+    .ga-n { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #120a07; font-weight: 800; font-size: 14px; }
+    .ga-ic { width: 22px; height: 22px; vertical-align: -6px; margin: 0 2px; }
+    .ga-dl { display: flex; justify-content: center; width: 100%; padding: 14px; margin-bottom: 8px; background: var(--accent) !important; color: #120a07 !important; border-color: transparent !important; font-weight: 800; text-decoration: none; font-size: 15px; }
+    .ga-note { margin-top: 14px; padding: 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+    .ga-warn { margin-bottom: 8px; padding: 12px; border-radius: 12px; background: rgba(255, 200, 61, .1); border: 1px solid rgba(255, 200, 61, .35); color: #f2d27a; font-size: 13.5px; }
+    .ga-copy { width: 100%; margin-top: 12px; justify-content: center; display: flex; padding: 12px; }
+
     /* ---- game screen tabs ---- */
     .gtabs { position: sticky; top: -14px; z-index: 5; display: flex; gap: 4px; margin: 0 -14px 10px; padding: 8px 14px; background: var(--bg); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
     .gtabs::-webkit-scrollbar { display: none; }
@@ -685,6 +705,7 @@
       </div>
       <nav class="tabs" id="tabs" aria-label="Sports"></nav>
       <div class="top-right">
+        <button class="pill-btn getapp-btn" id="getAppBtn" type="button" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Get the app</span></button>
         <button class="pill-btn install-btn" id="installBtn" type="button" hidden>⤓ Install app</button>
         <button class="refresh" id="accountBtn" type="button" aria-label="Account" title="Account"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></button>
         <button class="refresh" id="notifyBtn" type="button" aria-label="Score alerts" title="Score alerts for your ★ teams">🔔</button>
@@ -714,7 +735,10 @@
       nba:  { name: "NBA", path: "basketball/nba", paging: "day" },
       mlb:  { name: "MLB", path: "baseball/mlb", paging: "day" },
     };
-    const MOBILE_APP = !!window.__PREVIEW_APP || (!!window.__TAURI__ && /android|iphone|ipad/i.test(navigator.userAgent));
+    // Phone app mode: the Android app, or Scoreline added to an iPhone/Android home screen.
+    const STANDALONE = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+    const IS_PHONE = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+    const MOBILE_APP = !!window.__PREVIEW_APP || (IS_PHONE && (!!window.__TAURI__ || STANDALONE));
     const ORDER = ["home", "nfl", "cfb", "f1", "nba", "mlb"].concat(MOBILE_APP ? ["alerts"] : []);
     /* ---------- native-app feel (phone app only) ---------- */
     if (MOBILE_APP) {
@@ -1757,6 +1781,57 @@
       if (body.scrollTop > tabs.offsetTop) body.scrollTo({ top: tabs.offsetTop - 8, behavior: "smooth" });
       buzz();
     });
+    /* ---------- Get the app (download screen for iPhone, Android, Windows) ---------- */
+    const REL = "https://github.com/cadensauce/scoreline/releases/latest/download/";
+    const PLATFORM = /iphone|ipad|ipod/i.test(navigator.userAgent) ? "ios" : /android/i.test(navigator.userAgent) ? "android" : "windows";
+    if (!window.__TAURI__ && !STANDALONE) $("getAppBtn").hidden = false;
+    const SHARE_ICON = '<svg class="ga-ic" viewBox="0 0 24 24" fill="none" stroke="#3b8bff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
+    const ADD_ICON = '<svg class="ga-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+    function getAppHtml(p) {
+      const tab = (k, l) => '<button type="button" data-gaplat="' + k + '" class="' + (p === k ? "active" : "") + '">' + l + "</button>";
+      const step = (n, html) => '<div class="ga-step"><span class="ga-n">' + n + "</span><div>" + html + "</div></div>";
+      let body;
+      if (p === "ios") {
+        const notSafari = /iphone|ipad|ipod/i.test(navigator.userAgent) && /crios|fxios|edgios|gsa/i.test(navigator.userAgent);
+        body = '<div class="ga-hero"><b>Scoreline for iPhone</b><span>Free · no App Store needed · takes 20 seconds</span></div>' +
+          (notSafari ? '<div class="ga-warn">Open this page in <b>Safari</b> first. Other browsers on iPhone can\'t add apps to the home screen.</div>' : "") +
+          step(1, "Open <b>cadensauce.github.io/scoreline</b> in <b>Safari</b>.") +
+          step(2, "Tap the <b>Share</b> button " + SHARE_ICON + " at the bottom of the screen.") +
+          step(3, "Scroll down and tap <b>Add to Home Screen</b> " + ADD_ICON + ".") +
+          step(4, "Tap <b>Add</b>. Scoreline is now on your home screen. Open it from there.") +
+          '<div class="ga-note">Opened from the home screen, Scoreline runs full-screen like an app, with the Alerts tab for score notifications (iOS 16.4 or newer).</div>' +
+          '<button type="button" class="pill-btn ga-copy" data-gacopy>Copy link to send to a friend</button>';
+      } else if (p === "android") {
+        body = '<div class="ga-hero"><b>Scoreline for Android</b><span>Free · native app · updates itself</span></div>' +
+          '<a class="pill-btn ga-dl" href="' + REL + 'Scoreline-Android.apk">Download for Android (APK)</a>' +
+          step(1, "Tap <b>Download</b> above and open the file when it finishes.") +
+          step(2, "If Android asks, tap <b>Settings</b> and turn on <b>Allow from this source</b>, then go back.") +
+          step(3, "Tap <b>Install</b>, then <b>Open</b>.") +
+          '<div class="ga-note">Scoreline isn\'t on the Play Store yet, so Android shows a safety prompt the first time. New versions install from the banner inside the app.</div>';
+      } else {
+        body = '<div class="ga-hero"><b>Scoreline for Windows</b><span>Free · Windows 10 and 11</span></div>' +
+          '<a class="pill-btn ga-dl" href="' + REL + 'Scoreline-Windows-Setup.exe">Download for Windows</a>' +
+          step(1, "Run <b>Scoreline-Windows-Setup.exe</b> when the download finishes.") +
+          step(2, "If Windows shows \"Windows protected your PC\", click <b>More info</b> → <b>Run anyway</b>.") +
+          step(3, "Scoreline opens and adds itself to the Start menu.") +
+          '<div class="ga-note">The warning appears because the app isn\'t signed with a paid Microsoft certificate yet.</div>';
+      }
+      return '<div class="gtabs ga-tabs">' + tab("ios", "iPhone") + tab("android", "Android") + tab("windows", "Windows") + "</div>" + body;
+    }
+    function openGetApp(p = PLATFORM) {
+      const v = { kind: "getapp", key: "getapp", plat: p };
+      if (!pushView(v)) return;
+      setBody(v, "Get the app", getAppHtml(p));
+      v.el.querySelector(".src-note")?.remove();
+    }
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("#getAppBtn")) return openGetApp();
+      const pl = e.target.closest("[data-gaplat]");
+      if (pl) { const v = views.find((x) => x.el === pl.closest(".sheet")); if (v) { v.el.querySelector(".sheet-body").innerHTML = getAppHtml(pl.dataset.gaplat); } return; }
+      if (e.target.closest("[data-gacopy]")) { navigator.clipboard?.writeText("https://cadensauce.github.io/scoreline/").then(() => toast("Link copied"), () => toast("cadensauce.github.io/scoreline")); }
+    });
+    if (/[?&#]get(app)?\b/.test(location.search + location.hash)) setTimeout(() => openGetApp(), 600);
+
     /* ---------- play-by-play feed (football) ---------- */
     const athId = (ref) => (String(ref || "").match(/athletes\/(\d+)/) || [])[1];
     const headshot = (lg, id) => id ? "https://a.espncdn.com/i/headshots/" + (lg === "cfb" ? "college-football" : lg) + "/players/full/" + id + ".png" : "";
