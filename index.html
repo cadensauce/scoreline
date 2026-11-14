@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794615774" />
+  <meta name="build" content="1794615813" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -1466,7 +1466,8 @@
       const halfOf = (p) => (p.period?.number || 1) <= 2 ? 1 : (p.period?.number || 1) <= 4 ? 2 : 3;
       const tos = { [away.team?.id]: 0, [home.team?.id]: 0 };
       const stops = [];
-      const who = (txt) => { const m = String(txt).match(/by ([A-Z]{2,5})\b/); return m ? [away, home].find((t) => t.team?.abbreviation === m[1]) : null; };
+      const ALIAS = { WAS: "WSH", WSH: "WAS", JAC: "JAX", JAX: "JAC", LA: "LAR", LAR: "LA", ARZ: "ARI", BLT: "BAL", CLV: "CLE", HST: "HOU" };
+      const who = (txt) => { const m = String(txt).match(/by ([A-Z]{2,5})\b/); return m ? [away, home].find((t) => t.team?.abbreviation === m[1] || t.team?.abbreviation === ALIAS[m[1]]) : null; };
       items.forEach((p) => {
         const ty = p.type?.text || "", tx = p.text || "", base = { per: p.period?.number, clock: p.clock?.displayValue, id: p.id };
         if (/^timeout$/i.test(ty)) {
