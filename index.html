@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794617190" />
+  <meta name="build" content="1794617437" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -421,15 +421,16 @@
     .feed-more { width: 100%; margin-top: 8px; justify-content: center; }
 
     /* ---- TV-style score bar + stoppages ---- */
-    .scorebug { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; margin-bottom: 14px; border-radius: 12px; overflow: hidden; background: #10141b; border: 1px solid var(--line-hi); }
-    .sb-team { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: linear-gradient(90deg, color-mix(in srgb, var(--tc) 55%, #10141b), #10141b); position: relative; }
+    .scorebug { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; margin-bottom: 14px; border-radius: 12px; overflow: hidden; background: #10141b; border: 1px solid var(--line-hi); }
+    .sb-team { min-width: 0; overflow: hidden; display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: linear-gradient(90deg, color-mix(in srgb, var(--tc) 55%, #10141b), #10141b); position: relative; }
     .sb-team:last-child { flex-direction: row-reverse; background: linear-gradient(270deg, color-mix(in srgb, var(--tc) 55%, #10141b), #10141b); }
     .sb-team b { font-family: var(--display); font-size: 18px; font-weight: 800; letter-spacing: .5px; }
     .sb-sc { font-family: var(--display); font-size: 24px; font-weight: 800; margin: 0 2px; }
     .sb-to { display: flex; gap: 3px; margin-left: auto; } .sb-team:last-child .sb-to { margin-left: 0; margin-right: auto; }
     .sb-to i { width: 14px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); }
     .sb-to i.on { background: var(--gold); box-shadow: 0 0 4px rgba(255, 200, 61, .5); }
-    .sb-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 12px; background: #0b0e13; min-width: 92px; }
+    .sb-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 8px; background: #0b0e13; min-width: 72px; text-align: center; }
+    @media (max-width: 400px) { .sb-to i { width: 10px; } .scorebug.nba .sb-to i { width: 5px; } .sb-sc { font-size: 21px; } .sb-team b { font-size: 16px; } }
     .sb-ball { width: 18px; height: 18px; flex: none; animation: pop .4s var(--ease) both; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
     .sb-mid small { font-size: 12.5px !important; }
     .sb-mid b { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; } .sb-mid small { font-size: 10.5px; color: var(--gold); font-weight: 700; }
@@ -1233,7 +1234,7 @@
     function stamp() { $("updated").textContent = "Updated " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }); }
     function schedule(live) {
       clearTimeout(timer);
-      timer = setTimeout(render, live ? 5000 : 120000);
+      timer = setTimeout(() => (document.hidden ? schedule(live) : render()), live ? 5000 : 120000);
     }
     function render() {
       if (document.activeElement?.matches?.("[data-search]")) { schedule(true); return; }
@@ -1591,6 +1592,8 @@
     async function liveSummary(v) {
       clearInterval(v.liveTimer);
       v.liveTimer = setInterval(async () => {
+        if (document.hidden || v.busy) return;
+        v.busy = true;
         if (!v.el?.isConnected) return clearInterval(v.liveTimer);
         try {
           const s = await getJSON(API + LEAGUES[v.lg].path + "/summary?event=" + v.id);
@@ -1603,6 +1606,7 @@
           const st = v.el.querySelector(".g-mid .status"); if (st) st.textContent = comp.status?.type?.shortDetail || st.textContent;
           if (comp.status?.type?.state !== "in") clearInterval(v.liveTimer);
         } catch {}
+        v.busy = false;
       }, 5000);
     }
     function mlbSituation(lg, id, teams) {
@@ -1631,6 +1635,9 @@
     // Away team attacks to the right, home team to the left. x = 0..100 yards between the goal lines.
     const refId = (r, k) => (String(r?.$ref || "").match(new RegExp("/" + k + "/(\\d+)")) || [])[1];
     async function loadField(v, lg, id, teams, state) {
+      try { await loadFieldInner(v, lg, id, teams, state); } finally { v.fieldBusy = false; }
+    }
+    async function loadFieldInner(v, lg, id, teams, state) {
       const [sport, league] = LEAGUES[lg].path.split("/");
       const url = "https://sports.core.api.espn.com/v2/sports/" + sport + "/leagues/" + league + "/events/" + id + "/competitions/" + id + "/plays?limit=500";
       const sec = () => v.el.querySelector("[data-field]");
@@ -1689,7 +1696,7 @@
       drawField(v, !!prev && !(fresh.size && follow));
       if (v.field.live) liveHeader(v, last);
       clearInterval(v.fieldTimer);
-      if (v.field.live) v.fieldTimer = setInterval(() => { if (!v.el.isConnected) return clearInterval(v.fieldTimer); loadField(v, lg, id, teams, state); }, 5000);
+      if (v.field.live) v.fieldTimer = setInterval(() => { if (!v.el.isConnected) return clearInterval(v.fieldTimer); if (document.hidden || v.fieldBusy) return; v.fieldBusy = true; setTimeout(() => { v.fieldBusy = false; }, 15000); loadField(v, lg, id, teams, state); }, 5000);
     }
     // Keep the score and clock at the top of the game sheet in step with the newest play.
     function liveHeader(v, p) {
