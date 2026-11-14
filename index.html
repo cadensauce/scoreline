@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794617158" />
+  <meta name="build" content="1794617190" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -1545,7 +1545,7 @@
         html = list.map(({ p, pid, pts: n }) => {
           const ty = p.type?.text || "", tm = teamOf(p.team?.id), made = p.scoringPlay;
           const head = made ? (p.scoreValue === 3 ? "3-pointer" : p.scoreValue === 1 ? "Free throw" : /dunk/i.test(ty + p.text) ? "Dunk" : /layup/i.test(ty + p.text) ? "Layup" : "2-pointer") :
-            /block/i.test(p.text) ? "Block" : /steal/i.test(p.text) ? "Steal" : /turnover|bad pass|lost ball|traveling/i.test(ty) ? "Turnover" : /rebound/i.test(ty) ? (/offensive/i.test(ty) ? "Offensive rebound" : "Rebound") : /foul/i.test(ty) ? "Foul" : /timeout/i.test(ty) ? "Timeout" : ty;
+            p.shootingPlay && /misses/i.test(p.text) ? (/three point/i.test(p.text) ? "Missed 3-pointer" : /free throw/i.test(p.text) ? "Missed free throw" : /layup/i.test(p.text) ? "Missed layup" : /dunk/i.test(p.text) ? "Missed dunk" : "Missed jumper") : /block/i.test(p.text) ? "Block" : /steal/i.test(p.text) ? "Steal" : /turnover|bad pass|lost ball|traveling/i.test(ty) ? "Turnover" : /rebound/i.test(ty) ? (/offensive/i.test(ty) ? "Offensive rebound" : "Rebound") : /foul/i.test(ty) ? "Foul" : /timeout/i.test(ty) ? "Timeout" : ty;
           const name = (p.text.match(/^([A-Z][\w.'-]+(?: [A-Z][\w.'-]+){0,2}?) (?:makes|misses|defensive|offensive|personal|shooting|bad|lost|traveling|blocks|steals|loose|offensive)/) || [])[1];
           const tags = []; if (/assists/i.test(p.text)) tags.push(["", "🤝 " + p.text.match(/\((.*?) assists\)/)?.[1] + " assist"]);
           return feedRow({ lg, pid, tm, top: "<b>" + abA + " " + esc(p.awayScore) + "–" + esc(p.homeScore) + " " + abH + "</b> · " + (p.period?.number > 4 ? "OT" : "Q" + p.period?.number) + " " + esc(p.clock?.displayValue || ""), head, main: name ? esc(name) + (made && n ? "<span> · " + n + " pts</span>" : "") : "", sub: esc(p.text), tags, badge: made ? "+" + p.scoreValue : "", good: made, scoring: made && p.scoreValue === 3 });
@@ -1558,7 +1558,7 @@
         html = list.map((p) => {
           const bat = (p.participants || []).find((x) => x.type === "batter")?.athlete?.id;
           const tm = teamOf(p.team?.id);
-          const head = /home run|homers/i.test(p.text) ? "Home run" : /tripled/i.test(p.text) ? "Triple" : /doubled/i.test(p.text) ? "Double" : /singled/i.test(p.text) ? "Single" : /walked/i.test(p.text) ? "Walk" : /struck out/i.test(p.text) ? "Strikeout" : /relieved/i.test(p.text) ? "Pitching change" : /grounded/i.test(p.text) ? "Ground out" : /flied|fly/i.test(p.text) ? "Fly out" : /lined/i.test(p.text) ? "Line out" : /popped/i.test(p.text) ? "Pop out" : (p.type?.alternativeText || p.type?.text || "Play");
+          const head = /home run|homer/i.test(p.text) ? (/grand slam/i.test(p.text) ? "Grand slam" : "Home run") : /tripled/i.test(p.text) ? "Triple" : /doubled/i.test(p.text) ? "Double" : /singled/i.test(p.text) ? "Single" : /walked/i.test(p.text) ? "Walk" : /struck out/i.test(p.text) ? "Strikeout" : /relieved/i.test(p.text) ? "Pitching change" : /grounded/i.test(p.text) ? "Ground out" : /flied|fly/i.test(p.text) ? "Fly out" : /lined/i.test(p.text) ? "Line out" : /popped/i.test(p.text) ? "Pop out" : (p.type?.alternativeText || p.type?.text || "Play");
           const tags = [];
           if (/challenged/i.test(p.text)) tags.push(["", "📺 Challenge · " + (/overturned/i.test(p.text) ? "overturned" : "upheld")]);
           if (p.pitchVelocity) tags.push(["", "⚡ " + p.pitchVelocity + " mph" + (p.pitchType?.text ? " " + p.pitchType.text.toLowerCase() : "")]);
