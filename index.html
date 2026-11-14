@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794615091" />
+  <meta name="build" content="1794615497" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -398,7 +398,11 @@
     .sheet-wide { margin-left: auto; color: var(--muted); }
     @media (max-width: 720px) { .sheet-wide { display: none; } }
     .sheet { transition: transform .42s var(--ease), width .45s var(--ease); }
-    .sheet.wide { width: min(1320px, 100%); }
+    .sheet.wide { width: 100%; border-left: 0; }
+    .sheet-body { scrollbar-width: none; } .sheet-body::-webkit-scrollbar { display: none; }
+    .sheet.wide .sheet-body > .src-note { grid-row: 99; }
+    .sheet.wide .sheet-body { max-width: 1500px; width: 100%; margin: 0 auto; }
+    .calm-sec, .calm-sec * { animation: none !important; } .calm-sec .live-pill::before { animation: pulse 1.4s ease-in-out infinite !important; }
     .sheet.wide .sheet-body { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); column-gap: 32px; align-content: start; padding: 18px 28px 40px; }
     .sheet.wide .sheet-body > * { grid-column: 2; }
     .sheet.wide .sheet-body > .g-head, .sheet.wide .sheet-body > .src-note { grid-column: 1 / -1; }
@@ -1178,7 +1182,7 @@
     function stamp() { $("updated").textContent = "Updated " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }); }
     function schedule(live) {
       clearTimeout(timer);
-      timer = setTimeout(render, live ? 10000 : 120000);
+      timer = setTimeout(render, live ? 5000 : 120000);
     }
     function render() {
       if (document.activeElement?.matches?.("[data-search]")) { schedule(true); return; }
@@ -1438,7 +1442,7 @@
       drawField(v, !!prev && !(fresh.size && follow));
       if (v.field.live) liveHeader(v, last);
       clearInterval(v.fieldTimer);
-      if (v.field.live) v.fieldTimer = setInterval(() => { if (!v.el.isConnected) return clearInterval(v.fieldTimer); loadField(v, lg, id, teams, state); }, 7000);
+      if (v.field.live) v.fieldTimer = setInterval(() => { if (!v.el.isConnected) return clearInterval(v.fieldTimer); loadField(v, lg, id, teams, state); }, 5000);
     }
     // Keep the score and clock at the top of the game sheet in step with the newest play.
     function liveHeader(v, p) {
@@ -1450,14 +1454,16 @@
     setInterval(() => {
       views.forEach((v) => {
         const el = v.el?.querySelector("[data-ago]");
-        if (el && v.field) { const s = Math.round((Date.now() - v.field.updated) / 1000); el.textContent = s < 5 ? "just now" : s + "s ago"; }
+        if (el && v.field) { const s = Math.round((Date.now() - v.field.updated) / 1000); el.textContent = (s < 5 ? "Updated just now" : "Updated " + s + "s ago") + " · every 5 sec"; }
       });
     }, 1000);
+    // After a punt, kickoff or turnover the end spot is measured for the other team, so flip it back.
+    const endYtez = (p) => { const a = refId(p.start?.team, "teams"), b = refId(p.end?.team, "teams"); return a && b && a !== b ? 100 - p.end.yardsToEndzone : p.end.yardsToEndzone; };
     function playGeom(p, F) {
       const team = refId(p.start.team, "teams") || refId(p.team, "teams");
       const right = team === String(F.away.team?.id);
       const pos = (ytez) => right ? 100 - ytez : ytez;
-      const x0 = pos(p.start.yardsToEndzone), x1 = pos(p.end.yardsToEndzone);
+      const x0 = pos(p.start.yardsToEndzone), x1 = pos(endYtez(p));
       const isPass = /pass/i.test(p.type?.text || "") && !/incomplet|interception|sack/i.test(p.type?.text || "");
       const yac = isPass && p.yardsAfterCatch != null ? Number(p.yardsAfterCatch) : null;
       const gain = Number(p.statYardage) || 0;
@@ -1487,7 +1493,7 @@
       const offTeam = G && G.team === String(F.away.team?.id) ? F.away : F.home, defTeam = offTeam === F.away ? F.home : F.away;
       const ath = (type) => { const r = (P?.participants || []).find((x) => x.type === type)?.athlete?.$ref; return r ? athCache[r] : null; };
       const t = P?.text || "";
-      const t0 = G ? P.start.yardsToEndzone : 50, t1 = G ? P.end.yardsToEndzone : 50;
+      const t0 = G ? P.start.yardsToEndzone : 50, t1 = G ? endYtez(P) : 50;
       const air = G?.air ?? null, tc = air != null ? t0 - air : null;
       const span = G ? Math.max(t0, t1, tc ?? t0) - Math.min(t0, t1, tc ?? t0) : 0;
       const SC = Math.max(3.4, Math.min(8.5, (H - 110) / Math.max(span + 8, 1))), Y = (yy) => (yy + 10) * SC, FH = 120 * SC;
@@ -1586,6 +1592,7 @@
         }).reverse().join("") + "</div>";
       }
       sec.innerHTML = html;
+      sec.classList.toggle("calm-sec", !!still);
       const cam = sec.querySelector(".cam");
       if (cam) requestAnimationFrame(() => requestAnimationFrame(() => { cam.style.transform = "translateY(" + -cam.dataset.to + "px)"; }));
     }
