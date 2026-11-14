@@ -18,8 +18,15 @@ const LEAGUES = {
   mlb: { name: "MLB", path: "baseball/mlb" },
 };
 
-webpush.setVapidDetails("https://cadensauce.github.io/scoreline/", process.env.VAPID_PUBLIC, process.env.VAPID_PRIVATE);
-admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SA)) });
+// Pasted secrets can pick up spaces, line breaks or a "Value:" label, so clean them first.
+const clean = (s) => String(s || "").replace(/^\s*value:\s*/i, "").replace(/[\s"]+/g, "");
+const VAPID_PUBLIC = "BE7gMA0rXlZpDBtTAGdfyabXR8ZeNQwgB8WnaPD6GsfNjWkwN39pVqaEJLIPS7mVERZtbWdSg8xhO_vU8ZRwxM0"; // public, same as in index.html
+webpush.setVapidDetails("https://cadensauce.github.io/scoreline/", VAPID_PUBLIC, clean(process.env.VAPID_PRIVATE));
+// The service account JSON may have been pasted with extra text around it; take the {...} part.
+const saRaw = String(process.env.FIREBASE_SA || "");
+const sa = JSON.parse(saRaw.slice(saRaw.indexOf("{"), saRaw.lastIndexOf("}") + 1));
+admin.initializeApp({ credential: admin.credential.cert(sa) });
+console.log("Push worker ready for project", sa.project_id);
 const db = admin.firestore();
 
 let subs = [];          // { id, sub, favs:Set, prefs }
