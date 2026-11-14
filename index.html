@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794679817" />
+  <meta name="build" content="1794680727" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2734,26 +2734,38 @@
     const PUSH_DB = "https://firestore.googleapis.com/v1/projects/scoreline-41f14/databases/(default)/documents/pushSubs/";
     const PUSH_KEY = "AIzaSyAGyc1udyqVakTuZJ0Iqb8Lb9uy4IHdO2w";
     let pushActive = false;
-    const canPush = () => MOBILE_APP && !TAURI && "serviceWorker" in navigator && "PushManager" in window;
+    // The installed Android app gets a push address from Android itself (Firebase Cloud Messaging).
+    const nativePush = () => typeof window.ScorelineNative?.pushToken === "function";
+    const canPush = () => MOBILE_APP && (nativePush() || (!TAURI && "serviceWorker" in navigator && "PushManager" in window));
     const b64u = (s) => Uint8Array.from(atob((s + "=".repeat((4 - s.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+    const sha256 = async (s) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+    async function nativeToken() {
+      for (let i = 0; i < 20; i++) { const t = window.ScorelineNative.pushToken(); if (t) return t; await new Promise((r) => setTimeout(r, 500)); }
+      return "";
+    }
     async function pushSync(enable = alertsOn) {
       if (!canPush()) return;
       try {
-        const reg = await navigator.serviceWorker.ready;
-        let sub = await reg.pushManager.getSubscription();
-        const key = enable ? await vapidKey() : null;
-        if (enable && !key) return;
-        // If the worker's key changed, re-subscribe with the new one.
-        if (sub && key && store.get("pushKey", "") !== key) { await sub.unsubscribe().catch(() => {}); sub = null; }
-        if (!sub && enable) { sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(key) }); store.set("pushKey", key); }
-        if (!sub) return;
-        const j = sub.toJSON();
-        const id = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(j.endpoint)))].map((b) => b.toString(16).padStart(2, "0")).join("");
-        const url = PUSH_DB + id + "?key=" + PUSH_KEY;
-        if (!enable) { pushActive = false; await fetch(url, { method: "DELETE" }).catch(() => {}); await sub.unsubscribe().catch(() => {}); return; }
+        let endpoint, p256dh = "", auth = "", sub = null;
+        if (nativePush()) {
+          const t = await nativeToken(); if (!t) { pushActive = false; return; }
+          endpoint = "https://fcm.native/" + t;            // marks an app address for the push worker
+        } else {
+          const reg = await navigator.serviceWorker.ready;
+          sub = await reg.pushManager.getSubscription();
+          const key = enable ? await vapidKey() : null;
+          if (enable && !key) return;
+          // If the worker's key changed, re-subscribe with the new one.
+          if (sub && key && store.get("pushKey", "") !== key) { await sub.unsubscribe().catch(() => {}); sub = null; }
+          if (!sub && enable) { sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(key) }); store.set("pushKey", key); }
+          if (!sub) return;
+          const j = sub.toJSON(); endpoint = j.endpoint; p256dh = j.keys.p256dh; auth = j.keys.auth;
+        }
+        const url = PUSH_DB + (await sha256(endpoint)) + "?key=" + PUSH_KEY;
+        if (!enable) { pushActive = false; await fetch(url, { method: "DELETE" }).catch(() => {}); if (sub) await sub.unsubscribe().catch(() => {}); return; }
         const p = alertPrefs();
         const fields = {
-          endpoint: { stringValue: j.endpoint }, p256dh: { stringValue: j.keys.p256dh }, auth: { stringValue: j.keys.auth },
+          endpoint: { stringValue: endpoint }, p256dh: { stringValue: p256dh }, auth: { stringValue: auth },
           favs: { arrayValue: { values: [...state.favs].map((f) => ({ stringValue: f })) } },
           prefs: { mapValue: { fields: Object.fromEntries(Object.entries(p).map(([k, v]) => [k, { stringValue: String(v) }])) } },
           updatedAt: { timestampValue: new Date().toISOString() },
@@ -2763,6 +2775,7 @@
       } catch { pushActive = false; }
     }
     async function notify(title, body, tag) {
+      if (!MOBILE_APP) return;                              // never on the desktop app or a computer browser
       try {
         if (NATIVE_NOTIFY) { NATIVE_NOTIFY.sendNotification({ title, body }); return; }
         const reg = await navigator.serviceWorker?.getRegistration();
@@ -2777,7 +2790,7 @@
     // Same rules as the push worker (push/worker.mjs): only your ★ teams, only things that matter.
     async function checkAlerts() {
       const P = alertPrefs();
-      // Home-screen installs get alerts from the push worker instead, so they are not doubled here.
+      // Home-screen installs and the Android app get alerts from the push worker instead, so they are not doubled here.
       if (!MOBILE_APP || !alertsOn || !state.favs.size || pushActive) return;
       const keys = ["nfl", "cfb", "nba", "mlb"], ICON = { nfl: "🏈", cfb: "🏈", nba: "🏀", mlb: "⚾" };
       const datas = await Promise.allSettled(keys.map((k) => getJSON(API + LEAGUES[k].path + "/scoreboard?" + (LEAGUES[k].extra || "").replace(/^&/, ""))));

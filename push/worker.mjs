@@ -70,15 +70,32 @@ function wants(prefs, team, kind, ev) {
 
 // Send to everyone who follows `teamKey` and wants this alert for it. One alert per person per key.
 const sentKeys = new Set();
+const FCM_PREFIX = "https://fcm.native/";
 async function send(teamKey, kind, title, body, dedupe, ev) {
   const targets = subs.filter((s) => s.favs.has(teamKey) && wants(s.prefs, teamKey, kind, ev) && !sentKeys.has(s.id + "|" + dedupe));
   if (!targets.length) return 0;
   const payload = JSON.stringify({ title, body, tag: dedupe, url: "./" });
   await Promise.all(targets.map(async (s) => {
     sentKeys.add(s.id + "|" + dedupe);
-    try { await webpush.sendNotification(s.sub, payload, { TTL: kind === "start" || kind === "score" ? 900 : 3600, urgency: "high" }); }
+    const ttl = kind === "start" || kind === "score" ? 900 : 3600;
+    const drop = async () => { await db.collection("pushSubs").doc(s.id).delete().catch(() => {}); subs = subs.filter((x) => x !== s); };
+    // The installed Android app: its address is "https://fcm.native/<token>", sent through Firebase Cloud Messaging.
+    if (s.sub.endpoint.startsWith(FCM_PREFIX)) {
+      try {
+        await admin.messaging().send({
+          token: s.sub.endpoint.slice(FCM_PREFIX.length),
+          data: { title, body, tag: String(dedupe) },
+          android: { priority: "high", ttl: ttl * 1000 },
+        });
+      } catch (e) {
+        if (/registration-token-not-registered|invalid-registration-token/.test(e.code || "")) await drop();
+        else console.log("app push failed", e.code || e.message);
+      }
+      return;
+    }
+    try { await webpush.sendNotification(s.sub, payload, { TTL: ttl, urgency: "high" }); }
     catch (e) {
-      if (e.statusCode === 404 || e.statusCode === 410) { await db.collection("pushSubs").doc(s.id).delete().catch(() => {}); subs = subs.filter((x) => x !== s); }
+      if (e.statusCode === 404 || e.statusCode === 410) await drop();
       else console.log("push failed", e.statusCode || e.message);
     }
   }));
