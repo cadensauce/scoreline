@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794630435" />
+  <meta name="build" content="1794630659" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2037,12 +2037,15 @@
         const dist = Number(P.start.distance) || 0;
         svg += '<line x1="0" x2="' + W + '" y1="' + Y(t0) + '" y2="' + Y(t0) + '" class="f-los"/>';
         if (dist && dist < t0) svg += '<line x1="0" x2="' + W + '" y1="' + Y(t0 - dist) + '" y2="' + Y(t0 - dist) + '" class="f-1st"/>';
-        const mark = (x, y, c, a, fallback, small, delay = 0, labelUp) => {
+        const mark = (x, y, c, a, fallback, small, delay = 0, labelUp, from) => {
+          // "from": start spot the player runs from (catch point, backfield) before ending at x,y.
+          const mv = from && !still && (Math.abs(from.x - x) > 1 || Math.abs(from.y - y) > 1);
+          const open = mv ? '<g transform="translate(' + (from.x - x) + " " + (from.y - y) + ')"><animateTransform attributeName="transform" type="translate" from="' + (from.x - x) + " " + (from.y - y) + '" to="0 0" begin="' + from.begin + 's" dur="' + from.dur + 's" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".35 0 .25 1"/>' : "<g>";
           const r = small ? 11 : 15, name = [a?.short || fallback || "", a?.pos].filter(Boolean).join(" · ");
           const ly = labelUp ? y - r - 9 : y + r + 15, lw = Math.max(40, name.length * 6.2 + 14);
           const lx = Math.max(lw / 2 + 4, Math.min(W - lw / 2 - 4, x));
-          return '<g class="f-mark" style="animation-delay:' + delay + 's"><circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + c + '"/><text x="' + x + '" y="' + y + '" class="f-jn' + (small ? " s" : "") + '">' + esc(a?.jersey || "") + "</text>" +
-            (small || !name ? "" : '<rect x="' + (lx - lw / 2) + '" y="' + (ly - 11) + '" width="' + lw + '" height="17" rx="8.5" class="f-pill"/><text x="' + lx + '" y="' + (ly - 2.5) + '" class="f-lbl">' + esc(name) + "</text>") + "</g>";
+          return '<g class="f-mark" style="animation-delay:' + delay + 's">' + open + '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + c + '"/><text x="' + x + '" y="' + y + '" class="f-jn' + (small ? " s" : "") + '">' + esc(a?.jersey || "") + "</text>" +
+            (small || !name ? "" : '<rect x="' + (lx - lw / 2) + '" y="' + (ly - 11) + '" width="' + lw + '" height="17" rx="8.5" class="f-pill"/><text x="' + lx + '" y="' + (ly - 2.5) + '" class="f-lbl">' + esc(name) + "</text>") + "</g></g>";
         };
         const nm = (re) => (t.match(re) || [])[1];
         const qbY = Y(t0) + (/shotgun/i.test(t) ? 5 : 2) * SC;
@@ -2051,7 +2054,7 @@
           svg += '<path d="' + path + '" class="f-throw" style="animation-delay:.4s"/><path d="M' + laneX + " " + cy + " L" + laneX + " " + Y(t1) + '" class="f-run draw" pathLength="1" style="animation-delay:1.1s" marker-end="url(#farw)"/>';
           svg += '<circle r="5" class="f-ball"><animateMotion begin="0.45s" dur="0.7s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".3 0 .4 1" path="' + path + '"/></circle>';
           svg += '<circle cx="' + laneX + '" cy="' + cy + '" r="4" class="f-catchpt" style="animation-delay:1.1s"/>';
-          svg += mark(CX, qbY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/)) + mark(laneX, Y(t1), oc, ath("receiver"), nm(/ to ([A-Z][a-z]?\.[\w'-]+)/), false, 1.05, true);
+          svg += mark(CX, qbY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/)) + mark(laneX, Y(t1), oc, ath("receiver"), nm(/ to ([A-Z][a-z]?\.[\w'-]+)/), false, 1.05, true, { x: laneX, y: cy, begin: 1.15, dur: 0.6 });
         } else if (/incomplet/i.test(P.type?.text || "")) {
           const ty = Y(t0 - (/deep/i.test(t) ? 22 : 9)), path = "M" + CX + " " + qbY + " Q" + (CX + (laneX - CX) * .35) + " " + (ty - 40) + " " + laneX + " " + ty;
           svg += '<path d="' + path + '" class="f-throw" style="animation-delay:.4s"/><text x="' + laneX + '" y="' + (ty + 5) + '" class="f-x" style="animation-delay:1s">✕</text>';
@@ -2060,7 +2063,7 @@
           const ex = /middle/i.test(t) || !side ? CX + 6 : CX + side * 70, sy = qbY, ey = Y(t1);
           if (Math.abs(sy - ey) > 2) svg += '<path d="M' + CX + " " + sy + " C" + CX + " " + (sy - 20) + " " + ex + " " + (ey + 30) + " " + ex + " " + ey + '" class="f-run draw" pathLength="1" style="animation-delay:.45s;animation-duration:.8s" marker-end="url(#farw)"/>';
           const carrier = ath("rusher") || ath("passer") || ath("kicker") || ath("punter");
-          svg += mark(ex, ey, oc, carrier, nm(/([A-Z][a-z]?\.[\w'-]+)\s/), false, 1.1, true);
+          svg += mark(ex, ey, oc, carrier, nm(/([A-Z][a-z]?\.[\w'-]+)\s/), false, 0.35, true, { x: CX, y: sy, begin: 0.45, dur: 0.8 });
         }
         // Defenders the data credits on this play (no tracking data exists publicly, so only these are shown)
         const athAll = (type) => (P?.participants || []).filter((x) => x.type === type).map((x) => athCache[x.athlete?.$ref]).filter(Boolean);
@@ -2075,7 +2078,7 @@
           const sack = role === "Sack";
           const dx = (sack ? CX : endX) + push * (58 + k * 46);
           const dy = (sack ? qbY : endY) + (k % 2 ? 26 : -4);
-          svg += mark(Math.max(20, Math.min(W - 20, dx)), dy, dc, { jersey: a.jersey }, "", true, 1.4 + k * .12);
+          svg += mark(Math.max(20, Math.min(W - 20, dx)), dy, dc, { jersey: a.jersey }, "", true, 1.75 + k * .12);
         });
       }
       svg += "</g></g></svg>";
