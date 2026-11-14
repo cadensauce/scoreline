@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794614763" />
+  <meta name="build" content="1794615091" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -377,6 +377,36 @@
     .mobile-app .sheet-bar::before { content: ""; position: absolute; left: 50%; top: 6px; width: 36px; height: 4px; margin-left: -18px; border-radius: 99px; background: var(--line-hi); }
     .sheet-bar { position: relative; }
     .test-btn { width: 100%; margin-top: 10px; justify-content: center; }
+    /* ---- calm refresh: only animate when switching tabs ---- */
+    main.calm .card, main.calm .panel, main.calm .g-sec, main.calm .day-head, main.calm .skel { animation: none !important; }
+
+    /* ---- live play feed ---- */
+    .f-title { display: flex; align-items: center; gap: 8px; }
+    .live-pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 99px; background: rgba(255,59,78,.15); color: #ff8a96; font-size: 10.5px; letter-spacing: .5px; }
+    .live-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--live); animation: pulse 1.4s ease-in-out infinite; }
+    .f-title small { font-family: Inter, sans-serif; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: none; letter-spacing: 0; }
+    .f-list-h { padding: 7px 10px; font-size: 10.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); background: var(--panel-2); border-bottom: 1px solid var(--line); }
+    .f-row > span:first-child { display: flex; flex-direction: column; gap: 2px; }
+    .f-row > span:first-child small { font-weight: 600; font-size: 10.5px; opacity: .8; }
+    .f-row > span:nth-child(2) { display: flex; flex-direction: column; gap: 3px; }
+    .f-sc { color: var(--muted); font-size: 11px; font-weight: 600; }
+    .f-row.fresh { animation: freshIn 2.4s var(--ease); }
+    @keyframes freshIn { 0% { background: rgba(255, 90, 54, .35); transform: translateY(-6px); opacity: .4; } 15% { transform: none; opacity: 1; } 100% { background: var(--panel); } }
+    .f-score { margin-top: 8px; font-size: 12.5px; color: var(--muted); } .f-score b { color: var(--text); }
+
+    /* ---- full-screen game view (computer) ---- */
+    .sheet-wide { margin-left: auto; color: var(--muted); }
+    @media (max-width: 720px) { .sheet-wide { display: none; } }
+    .sheet { transition: transform .42s var(--ease), width .45s var(--ease); }
+    .sheet.wide { width: min(1320px, 100%); }
+    .sheet.wide .sheet-body { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); column-gap: 32px; align-content: start; padding: 18px 28px 40px; }
+    .sheet.wide .sheet-body > * { grid-column: 2; }
+    .sheet.wide .sheet-body > .g-head, .sheet.wide .sheet-body > .src-note { grid-column: 1 / -1; }
+    .sheet.wide .sheet-body > [data-field], .sheet.wide .sheet-body > [data-chart] { grid-column: 1; grid-row: 2 / span 30; align-self: start; position: sticky; top: 0; }
+    .sheet.wide .field { max-width: 560px; margin-left: auto; margin-right: auto; }
+    .sheet.wide .f-list.drives { max-height: 420px; overflow-y: auto; }
+    .sheet.wide .g-team img { width: 72px; height: 72px; } .sheet.wide .g-score { font-size: 56px; }
+
     /* ---- team search ---- */
     .search { position: relative; display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 0 14px; height: 44px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); transition: border-color .2s; }
     .search:focus-within { border-color: var(--accent); color: var(--text); }
@@ -637,7 +667,7 @@
     const buzz = (ms = 8) => { try { if (MOBILE_APP && navigator.vibrate) navigator.vibrate(ms); } catch {} };
     function swapIn(dir) {
       const m = $("main");
-      m.innerHTML = "";
+      m.innerHTML = ""; m.classList.remove("calm");
       m.classList.remove("tab-in-l", "tab-in-r");
       void m.offsetWidth;
       m.classList.add(dir > 0 ? "tab-in-r" : "tab-in-l");
@@ -1148,7 +1178,7 @@
     function stamp() { $("updated").textContent = "Updated " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }); }
     function schedule(live) {
       clearTimeout(timer);
-      timer = setTimeout(render, live ? 20000 : 120000);
+      timer = setTimeout(render, live ? 10000 : 120000);
     }
     function render() {
       if (document.activeElement?.matches?.("[data-search]")) { schedule(true); return; }
@@ -1156,10 +1186,9 @@
       store.set("tab", state.tab);
       renderTabs();
       if (state.tab !== "f1") clearInterval(countdownTimer);
-      if (state.tab === "alerts") return renderAlerts();
-      if (state.tab === "home") return renderHome();
-      if (state.tab === "f1") return renderF1();
-      return renderLeague(state.tab);
+      const p = state.tab === "alerts" ? renderAlerts() : state.tab === "home" ? renderHome() : state.tab === "f1" ? renderF1() : renderLeague(state.tab);
+      Promise.resolve(p).finally(() => $("main").classList.add("calm"));
+      return p;
     }
 
     /* ---------- events ---------- */
@@ -1222,7 +1251,7 @@
       const bg = sheetRoot.querySelector(".sheet-bg") || sheetRoot.appendChild(Object.assign(document.createElement("div"), { className: "sheet-bg" }));
       v.el = document.createElement("section");
       v.el.className = "sheet";
-      v.el.innerHTML = '<div class="sheet-bar"><button type="button" class="sheet-btn" data-back aria-label="Back">' + (views.length > 1 ? "‹" : "✕") + '</button><div class="sheet-title"></div></div><div class="sheet-body"><div class="skel" style="height:90px"></div><div class="skel" style="height:220px;margin-top:10px"></div></div>';
+      v.el.innerHTML = '<div class="sheet-bar"><button type="button" class="sheet-btn" data-back aria-label="Back">' + (views.length > 1 ? "‹" : "✕") + '</button><div class="sheet-title"></div>' + (v.kind === "game" ? '<button type="button" class="sheet-btn sheet-wide" data-wide aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>' : "") + '</div><div class="sheet-body"><div class="skel" style="height:90px"></div><div class="skel" style="height:220px;margin-top:10px"></div></div>';
       sheetRoot.appendChild(v.el);
       document.body.classList.add("sheet-open");
       requestAnimationFrame(() => { bg.classList.add("show"); v.el.classList.add("show"); });
@@ -1393,18 +1422,37 @@
         if (!cur || cur.id !== d) { cur = { id: d, team: refId(p.start.team, "teams") || refId(p.team, "teams"), plays: [] }; drives.push(cur); }
         cur.plays.push(p);
       });
-      const prev = v.field, stay = prev && prev.di < prev.drives.length - 1;
+      const prev = v.field;
       const kicks = (data.items || []).filter((p) => /kickoff/i.test(p.type?.text || ""));
       const q3 = kicks.find((p) => p.period?.number === 3), q1 = kicks.find((p) => p.period?.number === 1);
       const h2id = q3 ? refId(q3.team, "teams") : q1 ? refId(q1.start?.team, "teams") : null;
       const h2 = h2id ? { team: h2id === String(away.team?.id) ? away : home, actual: !!q3 } : null;
-      v.field = { drives, h2, di: stay ? prev.di : drives.length - 1, pi: stay ? prev.pi : null, away, home, lg, id, teams, state };
-      drawField(v, !!prev && prev.drives.length === drives.length && prev.drives[prev.drives.length - 1].plays.length === drives[drives.length - 1].plays.length);
-      if (state === "in") {
-        clearInterval(v.fieldTimer);
-        v.fieldTimer = setInterval(() => { if (!v.el.isConnected) return clearInterval(v.fieldTimer); loadField(v, lg, id, teams, state); }, 20000);
-      }
+      const last = plays[plays.length - 1];
+      const ended = (data.items || []).some((p) => /end of game|end game/i.test(p.type?.text || ""));
+      // Follow the newest play unless the user is looking at an older one.
+      const follow = !prev || (prev.di === prev.drives.length - 1 && (prev.pi == null || prev.pi === prev.drives[prev.di].plays.length - 1));
+      const seen = prev?.seen || new Set();
+      const fresh = prev ? new Set(plays.filter((p) => !seen.has(p.id)).map((p) => p.id)) : new Set();
+      plays.forEach((p) => seen.add(p.id));
+      v.field = { drives, h2, di: follow ? drives.length - 1 : prev.di, pi: follow ? null : prev.pi, away, home, lg, id, teams, state, seen, fresh, live: state === "in" && !ended, updated: Date.now() };
+      drawField(v, !!prev && !(fresh.size && follow));
+      if (v.field.live) liveHeader(v, last);
+      clearInterval(v.fieldTimer);
+      if (v.field.live) v.fieldTimer = setInterval(() => { if (!v.el.isConnected) return clearInterval(v.fieldTimer); loadField(v, lg, id, teams, state); }, 7000);
     }
+    // Keep the score and clock at the top of the game sheet in step with the newest play.
+    function liveHeader(v, p) {
+      const sc = v.el.querySelector(".g-score");
+      if (sc && p.awayScore != null) sc.innerHTML = esc(p.awayScore) + "<i>–</i>" + esc(p.homeScore);
+      const st = v.el.querySelector(".g-mid .status");
+      if (st && p.period?.number) st.textContent = (p.period.number > 4 ? "OT" : "Q" + p.period.number) + " · " + (p.clock?.displayValue || "");
+    }
+    setInterval(() => {
+      views.forEach((v) => {
+        const el = v.el?.querySelector("[data-ago]");
+        if (el && v.field) { const s = Math.round((Date.now() - v.field.updated) / 1000); el.textContent = s < 5 ? "just now" : s + "s ago"; }
+      });
+    }, 1000);
     function playGeom(p, F) {
       const team = refId(p.start.team, "teams") || refId(p.team, "teams");
       const right = team === String(F.away.team?.id);
@@ -1507,7 +1555,7 @@
       svg += "</g></g></svg>";
       const dteam = D.team === String(F.away.team?.id) ? F.away : F.home;
       const last = D.plays[D.plays.length - 1];
-      let html = (F.h2 ? '<div class="h2"><span>2nd half</span><b>' + (F.h2.team.team?.logos?.[0]?.href ? '<img src="' + esc(F.h2.team.team.logos[0].href) + '" alt="">' : "") + esc(F.h2.team.team?.displayName || ab(F.h2.team)) + "</b><small>" + (F.h2.actual ? "received the 2nd-half kickoff" : "gets the ball first") + "</small></div>" : "") + '<div class="g-label">Plays</div><div class="f-nav"><button type="button" class="sheet-btn" data-drive="-1" ' + (F.di ? "" : "disabled") + '>‹</button><div><b>' + ab(dteam) + " drive " + (F.di + 1) + " of " + F.drives.length + "</b><small>" + D.plays.length + " plays · " + esc(last?.type?.text || "") + "</small></div>" +
+      let html = (F.h2 ? '<div class="h2"><span>2nd half</span><b>' + (F.h2.team.team?.logos?.[0]?.href ? '<img src="' + esc(F.h2.team.team.logos[0].href) + '" alt="">' : "") + esc(F.h2.team.team?.displayName || ab(F.h2.team)) + "</b><small>" + (F.h2.actual ? "received the 2nd-half kickoff" : "gets the ball first") + "</small></div>" : "") + '<div class="g-label f-title">Plays' + (F.live ? '<span class="live-pill">Live</span><small data-ago>just now</small>' : "") + '</div><div class="f-nav"><button type="button" class="sheet-btn" data-drive="-1" ' + (F.di ? "" : "disabled") + '>‹</button><div><b>' + ab(dteam) + " drive " + (F.di + 1) + " of " + F.drives.length + "</b><small>" + D.plays.length + " plays · " + esc(last?.type?.text || "") + "</small></div>" +
         '<button type="button" class="sheet-btn" data-drive="1" ' + (F.di < F.drives.length - 1 ? "" : "disabled") + ">›</button></div>" + svg +
         '<div class="f-key"><span><i class="k-los"></i>Line of scrimmage</span><span><i class="k-1st"></i>First down</span><span><i class="k-air"></i>Throw</span></div>';
       if (P) {
@@ -1520,14 +1568,23 @@
         chips.push(["Gain", g.gain]);
         html += '<div class="f-detail"><div class="f-dhead"><span>' + esc(P.start.downDistanceText || P.start.shortDownDistanceText || "") + "</span><span>Q" + esc(P.period?.number || "") + " · " + esc(P.clock?.displayValue || "") + "</span></div>" +
           "<b>" + esc([who, rec ? "→ " + rec : ""].filter(Boolean).join(" ") || P.type?.text || "Play") + "</b>" +
-          '<div class="stats">' + chips.map(([l, n]) => '<span class="st"><b>' + esc(n) + "</b><small>" + l + " yds</small></span>").join("") + "</div><p>" + esc(t) + "</p></div>";
+          '<div class="stats">' + chips.map(([l, n]) => '<span class="st"><b>' + esc(n) + "</b><small>" + l + " yds</small></span>").join("") + "</div>" + (P.awayScore != null ? '<div class="f-score">Score after play: <b>' + ab(F.away) + " " + esc(P.awayScore) + " – " + esc(P.homeScore) + " " + ab(F.home) + "</b></div>" : "") + "<p>" + esc(t) + "</p></div>";
         const need = (P.participants || []).map((x) => x.athlete?.$ref).filter((r) => r && !(r in athCache));
         if (need.length) {
           need.forEach((r) => { athCache[r] = null; });
           Promise.all(need.map((r) => getJSON(r.replace("http://", "https://")).then((a) => { athCache[r] = { jersey: a.jersey, short: a.shortName || a.displayName, pos: a.position?.abbreviation }; }).catch(() => {}))).then(() => { if (v.el.isConnected && v.field === F) drawField(v, true); });
         }
       }
-      html += '<div class="f-list">' + D.plays.map((p, i) => '<button type="button" class="f-row ' + playKind(p) + (pi === i ? " sel" : "") + '" data-play="' + i + '"><span>' + esc(p.start.shortDownDistanceText || "") + "</span><span>" + esc(p.shortText || p.text || "") + "</span><b>" + (Number(p.statYardage) > 0 ? "+" : "") + esc(p.statYardage ?? "") + "</b></button>").join("") + "</div>";
+      const rowsHtml = D.plays.map((p, i) => '<button type="button" class="f-row ' + playKind(p) + (pi === i ? " sel" : "") + (F.fresh?.has(p.id) ? " fresh" : "") + '" data-play="' + i + '"><span>' + esc(p.start.shortDownDistanceText || "") + "<small>Q" + esc(p.period?.number || "") + " " + esc(p.clock?.displayValue || "") + "</small></span><span>" + esc(p.shortText || p.text || "") +
+        (p.awayScore != null ? '<small class="f-sc">' + ab(F.away) + " " + esc(p.awayScore) + " – " + esc(p.homeScore) + " " + ab(F.home) + "</small>" : "") + "</span><b>" + (Number(p.statYardage) > 0 ? "+" : "") + esc(p.statYardage ?? "") + "</b></button>").reverse().join("");
+      html += '<div class="f-list"><div class="f-list-h">' + (F.di === F.drives.length - 1 && F.live ? "Newest first" : "Plays this drive · newest first") + "</div>" + rowsHtml + "</div>";
+      if (v.el.classList.contains("wide") && F.drives.length > 1) {
+        html += '<div class="g-label" style="margin-top:18px">All drives</div><div class="f-list drives">' + F.drives.map((dv, k) => {
+          const tm = dv.team === String(F.away.team?.id) ? F.away : F.home, yds = dv.plays.reduce((s, p) => s + (Number(p.statYardage) || 0), 0), lp = dv.plays[dv.plays.length - 1];
+          return '<button type="button" class="f-row' + (k === F.di ? " sel" : "") + (lp.scoringPlay ? " score" : "") + '" data-dgo="' + k + '"><span>' + ab(tm) + "<small>Q" + esc(dv.plays[0].period?.number || "") + " " + esc(dv.plays[0].clock?.displayValue || "") + "</small></span><span>" + esc(lp.type?.text || "") +
+            '<small class="f-sc">' + dv.plays.length + " plays · " + yds + " yds" + (lp.awayScore != null ? " · " + ab(F.away) + " " + esc(lp.awayScore) + " – " + esc(lp.homeScore) + " " + ab(F.home) : "") + "</small></span><b>" + (k + 1) + "</b></button>";
+        }).reverse().join("") + "</div>";
+      }
       sec.innerHTML = html;
       const cam = sec.querySelector(".cam");
       if (cam) requestAnimationFrame(() => requestAnimationFrame(() => { cam.style.transform = "translateY(" + -cam.dataset.to + "px)"; }));
@@ -1536,7 +1593,10 @@
       const sheet = e.target.closest(".sheet");
       if (!sheet) return;
       const v = views.find((x) => x.el === sheet);
+      if (e.target.closest("[data-wide]")) { sheet.classList.toggle("wide"); buzz(); if (v?.field) drawField(v, true); return; }
       if (!v?.field) return;
+      const dg = e.target.closest("[data-dgo]");
+      if (dg) { v.field.di = Number(dg.dataset.dgo); v.field.pi = null; return drawField(v); }
       const dr = e.target.closest("[data-drive]");
       if (dr) { v.field.di = Math.max(0, Math.min(v.field.drives.length - 1, v.field.di + Number(dr.dataset.drive))); v.field.pi = null; return drawField(v); }
       const pl = e.target.closest("[data-play]");
