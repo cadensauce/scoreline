@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794632316" />
+  <meta name="build" content="1794632378" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -336,7 +336,7 @@
     .car circle { stroke: #0b0e13; stroke-width: 1.5; }
     .car.key circle { stroke: #fff; stroke-width: 2; }
     .car { transition: none; }
-    .car-lbl { fill: #fff; font: 800 10.5px Inter, sans-serif; text-anchor: middle; paint-order: stroke; stroke: #0b0e13; stroke-width: 3px; }
+    .car-lbl { transition: opacity var(--t); fill: #fff; font: 800 10.5px Inter, sans-serif; text-anchor: middle; paint-order: stroke; stroke: #0b0e13; stroke-width: 3px; }
     .t-order { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; justify-content: center; }
     .t-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; background: var(--panel-2); font-size: 12px; font-weight: 600; }
     .t-chip i { width: 8px; height: 8px; border-radius: 50%; }
@@ -1275,6 +1275,7 @@
         '<div class="g-note" style="margin:2px 0 6px">' + esc([T.s.circuit_short_name, T.s.session_name, T.live ? "" : new Date(T.s.date_start).toLocaleDateString([], { month: "short", day: "numeric" })].filter(Boolean).join(" · ")) + "</div>" + svg +
         '<div class="t-order">' + ranked.slice(0, 3).map(chip).join("") + (ranked.length > 3 ? '<span class="muted">…</span>' + chip(last) : "") + "</div>";
       const groups = Object.fromEntries([...el.querySelectorAll(".car")].map((g) => [g.dataset.n, g]));
+      const pos = {}, lastLbl = groups[last]?.querySelector(".car-lbl");
       const idx = {};
       const span = T.b - T.a, wall0 = performance.now();
       const frame = () => {
@@ -1285,8 +1286,12 @@
           while (i < c.length - 2 && c[i + 1].t <= t) i++;
           idx[n] = i;
           const p = R(c[i]), q2 = R(c[i + 1] || c[i]), f = (c[i + 1] || c[i]).t > c[i].t ? Math.max(0, Math.min(1, (t - c[i].t) / ((c[i + 1] || c[i]).t - c[i].t))) : 0;
-          groups[n].setAttribute("transform", "translate(" + sx(p.x + (q2.x - p.x) * f).toFixed(1) + " " + sy(p.y + (q2.y - p.y) * f).toFixed(1) + ")");
+          const gx = sx(p.x + (q2.x - p.x) * f), gy = sy(p.y + (q2.y - p.y) * f);
+          pos[n] = [gx, gy];
+          groups[n].setAttribute("transform", "translate(" + gx.toFixed(1) + " " + gy.toFixed(1) + ")");
         }
+        // Hide the last-place label when that car is right next to the leader so the labels never overlap.
+        if (lastLbl && pos[first] && pos[last]) lastLbl.style.opacity = Math.hypot(pos[first][0] - pos[last][0], pos[first][1] - pos[last][1]) < 60 ? "0" : "1";
         if (el.isConnected) trackRaf = requestAnimationFrame(frame);
       };
       frame();
