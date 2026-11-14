@@ -117,6 +117,15 @@ jobs:
           grep -q 'android.permission.POST_NOTIFICATIONS' "$M" || sed -i 's#<application#<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <application#' "$M"
           G=$A/build.gradle.kts
           grep -q firebase-messaging "$G" || sed -i '0,/^dependencies {/s//dependencies {\n    implementation("com.google.firebase:firebase-messaging:24.1.0")/' "$G"
+          # Release builds shrink code and resources; keep the page bridge, the alert service and Firebase's settings.
+          printf '%s\n' '-keep class io.github.cadensauce.scoreline.MainActivity$Bridge { *; }' \
+            '-keepclassmembers class * { @android.webkit.JavascriptInterface <methods>; }' \
+            '-keep class io.github.cadensauce.scoreline.ScorelineMessagingService { *; }' >> $A/proguard-rules.pro
+          mkdir -p $A/src/main/res/raw
+          printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' \
+            '<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@string/google_app_id,@string/gcm_defaultSenderId,@string/google_api_key,@string/project_id,@drawable/ic_stat_scoreline" />' > $A/src/main/res/raw/scoreline_keep.xml
+          grep -n "proguard\|minify\|shrink" "$G" || true
+          tail -4 $A/proguard-rules.pro
           grep -n firebase "$G" "$M"
       - name: Build APK
         run: npm run tauri -- android build --apk --ci
