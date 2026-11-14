@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794614641" />
+  <meta name="build" content="1794614763" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -407,6 +407,9 @@
     .day-head:first-of-type { margin-top: 6px; }
     .day-head b { font-family: var(--display); font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; }
     .day-head span { color: var(--muted); font-size: 12.5px; }
+    .day-head.past b { color: var(--muted); }
+    .past-sep { display: flex; align-items: center; gap: 10px; margin: 26px 2px 4px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; }
+    .past-sep::before, .past-sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
     .vt button { min-width: 54px; }
 
     /* ---- account, friends, chat ---- */
@@ -847,9 +850,14 @@
       const by = {};
       events.slice().sort((a, b) => new Date(a.date) - new Date(b.date)).forEach((e) => { (by[ymd(new Date(e.date))] ||= []).push(e); });
       let i = start;
-      return Object.entries(by).map(([k, evs]) => {
+      const t = ymd(dateAt(0)), rank = (k) => k === t ? 0 : k > t ? 1 : 2;
+      const order = Object.entries(by).sort(([a], [b]) => rank(a) - rank(b) || (rank(a) === 2 ? b.localeCompare(a) : a.localeCompare(b)));
+      let pastShown = false;
+      return order.map(([k, evs]) => {
+        const past = rank(k) === 2, sep = past && !pastShown && order.some(([x]) => rank(x) < 2) ? '<div class="past-sep"><span>Earlier this week</span></div>' : "";
+        if (past) pastShown = true;
         const d = new Date(evs[0].date), today = ymd(dateAt(0)) === k;
-        return '<div class="day-head"><b>' + esc(today ? "Today" : d.toLocaleDateString([], { weekday: "long" })) + "</b><span>" + esc(d.toLocaleDateString([], { month: "short", day: "numeric" })) + "</span></div>" +
+        return sep + '<div class="day-head' + (past ? " past" : "") + '"><b>' + esc(today ? "Today" : d.toLocaleDateString([], { weekday: "long" })) + "</b><span>" + esc(d.toLocaleDateString([], { month: "short", day: "numeric" })) + "</span></div>" +
           '<div class="grid">' + sortEvents(evs).map((e) => gameCard(e, key, i++)).join("") + "</div>";
       }).join("");
     }
