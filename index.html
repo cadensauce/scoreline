@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794629668" />
+  <meta name="build" content="1794629937" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -472,6 +472,7 @@
     .pf-g { font-family: var(--display); font-size: 16px; font-weight: 800; color: var(--muted); padding-top: 8px; }
     .pf-g.pos { color: #7ee2a8; } .pf-g.neg { color: #ff8a96; }
     .feed-more { width: 100%; margin-top: 8px; justify-content: center; }
+    .pf-s.inj-note { white-space: normal; line-height: 1.4; margin-top: 2px; }
 
     /* ---- TV-style score bar + stoppages ---- */
     .scorebug { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; margin-bottom: 14px; border-radius: 12px; overflow: hidden; background: #10141b; border: 1px solid var(--line-hi); }
@@ -2279,12 +2280,45 @@
       v.sc = sc; v.ro = ro;
       if (v.el.isConnected) drawTeam(v);
     }
+    /* ---------- team injury report (all sports) ---------- */
+    async function loadInjuries(v) {
+      if (v.inj) return;
+      v.inj = { loading: true };
+      const [sport, league] = LEAGUES[v.lg].path.split("/");
+      try {
+        const list = await getJSON("https://sports.core.api.espn.com/v2/sports/" + sport + "/leagues/" + league + "/teams/" + v.id + "/injuries?limit=60");
+        const items = await Promise.all((list.items || []).slice(0, 40).map((x) => getJSON(x.$ref.replace("http://", "https://")).catch(() => null)));
+        v.inj = { items: items.filter(Boolean) };
+      } catch { v.inj = { items: [], error: true }; }
+      if (v.el.isConnected && v.seg === "injuries") drawTeam(v);
+    }
+    function injuriesHtml(v) {
+      if (!v.inj) { loadInjuries(v); return '<div class="skel" style="height:180px;margin-top:12px"></div>'; }
+      if (v.inj.loading) return '<div class="skel" style="height:180px;margin-top:12px"></div>';
+      const roster = {};
+      const groups = v.ro?.athletes || [];
+      (groups[0]?.items ? groups.flatMap((g) => g.items || []) : groups).forEach((p) => { roster[p.id] = p; });
+      const rows = (v.inj.items || []).map((i) => ({ i, id: (String(i.athlete?.$ref || "").match(/athletes\/(\d+)/) || [])[1] })).filter((x) => x.id);
+      if (!rows.length) return '<div class="empty" style="margin-top:12px">' + (v.lg === "cfb" ? "College teams don't publish official injury reports, so ESPN has none for this team. Injury notes still show on player pages and game screens when available." : "No injuries reported. Everyone's healthy.") + "</div>";
+      const order = { "injured reserve": 0, "out": 1, "suspension": 2, "doubtful": 3, "questionable": 4, "day-to-day": 5, "probable": 6 };
+      rows.sort((a, b) => (order[String(a.i.status).toLowerCase()] ?? 9) - (order[String(b.i.status).toLowerCase()] ?? 9));
+      return '<div class="g-label" style="margin-top:14px">Injury report <small>' + rows.length + "</small></div><div class=\"feed\">" + rows.map(({ i, id }) => {
+        const p = roster[id] || {}, st = String(i.status || ""), det = i.details || {};
+        const ret = det.returnDate ? "Possible return " + fmtDay(det.returnDate) : "";
+        const what = [det.type, det.side && det.side !== "Not Specified" ? det.side : ""].filter(Boolean).join(", ");
+        return '<button type="button" class="pf" data-player="' + v.lg + "|" + esc(id) + '"><div class="pf-pic"><img src="' + esc(headshot(v.lg, id)) + '" alt="" loading="lazy" onerror="this.remove()"></div>' +
+          '<div class="pf-body"><div class="pf-top">' + esc([p.position?.abbreviation, p.jersey ? "#" + p.jersey : "", i.date ? "Updated " + fmtDay(i.date) : ""].filter(Boolean).join(" · ")) + '</div><div class="pf-h">' + esc(p.displayName || p.fullName || "Player") + "</div>" +
+          (what || ret ? '<div class="pf-p"><span>' + esc([what, ret].filter(Boolean).join(" · ")) + "</span></div>" : "") +
+          (i.shortComment ? '<div class="pf-s inj-note">' + esc(i.shortComment) + "</div>" : "") +
+          '</div><div><span class="badge ' + esc(st.toLowerCase().replace(/\W/g, "")) + '">' + esc(injAbbr(st)) + "</span></div></button>";
+      }).join("") + "</div>";
+    }
     function drawTeam(v) {
       const t = v.sc?.team || v.ro?.team || {};
       const logo = t.logo || t.logos?.[0]?.href;
       let h = '<div class="t-head">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : "") + "<div><b>" + esc(t.displayName || "Team") + "</b><small>" + esc(t.recordSummary || "") + (t.standingSummary ? " · " + esc(t.standingSummary) : "") + "</small></div>" +
         '<button class="fav ' + (state.favs.has(t.uid) ? "on" : "") + '" type="button" data-fav="' + esc(t.uid || t.id) + '" aria-label="Follow ' + esc(t.displayName || "") + '">★</button></div>';
-      h += '<div class="seg"><button type="button" data-tseg="schedule" class="' + (v.seg === "schedule" ? "active" : "") + '">Schedule</button><button type="button" data-tseg="roster" class="' + (v.seg === "roster" ? "active" : "") + '">Roster</button></div>';
+      h += '<div class="seg"><button type="button" data-tseg="schedule" class="' + (v.seg === "schedule" ? "active" : "") + '">Schedule</button><button type="button" data-tseg="roster" class="' + (v.seg === "roster" ? "active" : "") + '">Roster</button><button type="button" data-tseg="injuries" class="' + (v.seg === "injuries" ? "active" : "") + '">Injuries</button></div>';
       if (v.seg === "schedule") {
         const evs = v.sc?.events || [];
         h += evs.length ? '<div class="list">' + evs.map((ev) => {
@@ -2297,6 +2331,8 @@
           return '<div class="row" data-ev="' + esc(ev.id) + '" data-lg="' + v.lg + '"><span class="muted">' + esc(fmtDay(ev.date)) + "</span><span>" + (me?.homeAway === "home" ? "vs " : "@ ") +
             (opp?.team?.logos?.[0]?.href ? '<img src="' + esc(opp.team.logos[0].href) + '" alt="" loading="lazy">' : "") + esc(opp?.team?.abbreviation || opp?.team?.displayName || "") + "</span><span>" + res + "</span></div>";
         }).join("") + "</div>" : '<div class="empty">No schedule available.</div>';
+      } else if (v.seg === "injuries") {
+        h += injuriesHtml(v);
       } else {
         let groups = v.ro?.athletes || [];
         if (groups.length && !groups[0].items) groups = [{ position: "Roster", items: groups }];
