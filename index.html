@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794681607" />
+  <meta name="build" content="1794681748" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -860,6 +860,11 @@
     function isLive(ev) { return ev.status?.type?.state === "in"; }
     function teamsOf(ev) { return (ev.competitions?.[0]?.competitors || []).slice().sort((a, b) => (a.homeAway === "away" ? -1 : 1)); }
     function favKey(t) { return t.team?.uid || t.team?.id; }
+    // Team pages get the team without its uid; rebuild it so the ★ matches the one on game rows.
+    const LG_UID = { nfl: "s:20~l:28", cfb: "s:20~l:23", nba: "s:40~l:46", mlb: "s:1~l:10" };
+    const teamKeyOf = (t, lg) => t.uid || (LG_UID[lg] && t.id ? LG_UID[lg] + "~t:" + t.id : t.id);
+    // Slide a chip strip sideways only. scrollIntoView would also scroll the whole page back up.
+    function centerChip(c, smooth) { const s = c?.parentElement; if (!s) return; s.scrollTo({ left: c.offsetLeft - (s.clientWidth - c.offsetWidth) / 2, behavior: smooth ? "smooth" : "auto" }); }
     function hasFav(ev) { return teamsOf(ev).some((t) => state.favs.has(favKey(t))); }
 
     /* ---------- render: game card ---------- */
@@ -1093,7 +1098,7 @@
       const body = !events.length ? '<div class="empty">' + (state.filter === "live" ? "No live games right now." : state.filter === "fav" ? "None of your ★ teams play " + esc(when) + "." : "No games " + esc(when) + ".") + "</div>"
         : res.grouped ? groupByDay(events, key) : '<div class="grid">' + events.map((e, i) => gameCard(e, key, i)).join("") + "</div>";
       main.innerHTML = barHtml(L.name, key) + body;
-      main.querySelector(".dchip.on")?.scrollIntoView({ inline: "center", block: "nearest" });
+      centerChip(main.querySelector(".dchip.on"));
       if (searchQ[key]) applySearch(key);
       renderTabs();
       stamp();
@@ -1376,7 +1381,7 @@
         return;
       }
       const dc = e.target.closest("[data-day]");
-      if (dc) { dayOff[state.tab] = Number(dc.dataset.day); buzz(); $("main").querySelectorAll(".dchip").forEach((c) => c.classList.toggle("on", c === dc)); dc.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" }); const m = $("main"); [...m.children].filter((c) => !c.matches(".bar, .dstrip")).forEach((c) => c.remove()); m.insertAdjacentHTML("beforeend", skeleton(4)); return render(); }
+      if (dc) { dayOff[state.tab] = Number(dc.dataset.day); buzz(); $("main").querySelectorAll(".dchip").forEach((c) => c.classList.toggle("on", c === dc)); centerChip(dc, true); const m = $("main"); [...m.children].filter((c) => !c.matches(".bar, .dstrip")).forEach((c) => c.remove()); m.insertAdjacentHTML("beforeend", skeleton(4)); return render(); }
       const vw = e.target.closest("[data-view]");
       if (vw) { views0[state.tab] = vw.dataset.view; store.set("view", views0); state.offset[state.tab] = 0; buzz(); swapIn(1); return render(); }
       const page = e.target.closest("[data-page]");
@@ -2385,7 +2390,7 @@
       const t = v.sc?.team || v.ro?.team || {};
       const logo = t.logo || t.logos?.[0]?.href;
       let h = '<div class="t-head">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : "") + "<div><b>" + esc(t.displayName || "Team") + "</b><small>" + esc(t.recordSummary || "") + (t.standingSummary ? " · " + esc(t.standingSummary) : "") + "</small></div>" +
-        '<button class="fav ' + (state.favs.has(t.uid) ? "on" : "") + '" type="button" data-fav="' + esc(t.uid || t.id) + '" aria-label="Follow ' + esc(t.displayName || "") + '">★</button></div>';
+        '<button class="fav ' + (state.favs.has(teamKeyOf(t, v.lg)) ? "on" : "") + '" type="button" data-fav="' + esc(teamKeyOf(t, v.lg)) + '" aria-label="Follow ' + esc(t.displayName || "") + '">★</button></div>';
       h += '<div class="seg"><button type="button" data-tseg="schedule" class="' + (v.seg === "schedule" ? "active" : "") + '">Schedule</button><button type="button" data-tseg="roster" class="' + (v.seg === "roster" ? "active" : "") + '">Roster</button><button type="button" data-tseg="injuries" class="' + (v.seg === "injuries" ? "active" : "") + '">Injuries</button></div>';
       if (v.seg === "schedule") {
         const evs = v.sc?.events || [];
