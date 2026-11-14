@@ -81,7 +81,7 @@ async function startSync() {
   unsubs.push(fb.onSnapshot(ref, (d) => {
     if (pushing || !d.exists()) return;
     const x = d.data();
-    state.favs = new Set(x.favs || []);
+    state.favs = new Set((window.cleanFavs || ((a) => a))(x.favs || []));
     store.set("favs", [...state.favs]);
     Object.assign(teamNames, x.favNames || {}); store.set("favNames", teamNames);
     if (x.alertPrefs) store.set("alertPrefs", x.alertPrefs);
