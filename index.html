@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794628756" />
+  <meta name="build" content="1794628931" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -431,6 +431,8 @@
     /* ---- game screen tabs ---- */
     .gtabs { position: sticky; top: -14px; z-index: 5; display: flex; gap: 4px; margin: 0 -14px 10px; padding: 8px 14px; background: var(--bg); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
     .gtabs::-webkit-scrollbar { display: none; }
+    main, .sheet-body { touch-action: pan-y; }
+    body.dragging-x, body.dragging-x * { cursor: grabbing !important; }
     .sheet-body > :not(.g-head):not(.gtabs) { transition: opacity .16s ease, transform .24s var(--ease); }
     .sheet-body.swap > :not(.g-head):not(.gtabs) { opacity: 0; transform: translateY(6px); }
     .gtabs button { flex: none; border: 0; background: none; color: var(--muted); font-weight: 700; font-size: 13.5px; padding: 8px 14px; border-radius: 99px; transition: background .2s, color .2s; }
@@ -2346,13 +2348,63 @@
           if (dy > 120 || (fast && dy > 50)) { buzz(); history.back(); }
           dragging = false; return;
         }
-        if (views.length || mode !== "h" || Math.abs(dx) < 70 || Math.abs(dy) > 45) return;
-        if (!MOBILE_APP && !matchMedia("(max-width: 720px)").matches) return;
-        if (e.target.closest(".ls-wrap, .seg, .track, .court, .field, .tabs, .btabs, .pager, .dstrip")) return;
-        const i = ORDER.indexOf(state.tab), j = i + (dx < 0 ? 1 : -1);
-        if (j < 0 || j >= ORDER.length) return;
-        document.querySelector('.btab[data-tab="' + ORDER[j] + '"]')?.click();
       }, { passive: true });
+    })();
+
+    /* ---------- drag sideways anywhere to switch (mouse + touch) ---------- */
+    // Main page: switch sports. Inside a game: switch All / Plays / Timeouts / Stats / Players.
+    // The page follows the pointer while dragging, then switches or snaps back.
+    (() => {
+      const SKIP = ".dstrip, .ls-wrap, .track, .court, .field, .gtabs, .tabs, .btabs, .seg, input, textarea, .search, .sres, .bars, .ga-modal, .chat-log, .feed-more";
+      const GCATS = ["all", "plays", "timeouts", "stats", "players"];
+      let st = null, swallow = false;
+      const zone = (t) => {
+        if (!t.closest || t.closest(SKIP)) return null;
+        const sh = t.closest(".sheet");
+        if (sh) return sh === views[views.length - 1]?.el && sh.querySelector(".gtabs") ? { kind: "game", sheet: sh } : null;
+        if (views.length || !t.closest("main")) return null;
+        return { kind: "tab" };
+      };
+      const targets = (s) => s.kind === "tab" ? [$("main")] : [...s.sheet.querySelector(".sheet-body").children].filter((c) => !c.matches(".g-head, .gtabs"));
+      const neighbor = (s, dir) => {
+        if (s.kind === "tab") { const j = ORDER.indexOf(state.tab) + dir; return ORDER[j] ? () => document.querySelector('.btab[data-tab="' + ORDER[j] + '"], .tab[data-tab="' + ORDER[j] + '"]')?.click() : null; }
+        const j = GCATS.indexOf(s.sheet.dataset.cat || "all") + dir;
+        return GCATS[j] ? () => s.sheet.querySelector('[data-gcat="' + GCATS[j] + '"]')?.click() : null;
+      };
+      const paint = (els, dx, anim) => els.forEach((el) => { el.style.transition = anim ? "transform .3s var(--ease), opacity .3s" : "none"; el.style.transform = dx ? "translateX(" + dx + "px)" : ""; el.style.opacity = dx ? String(Math.max(.35, 1 - Math.abs(dx) / 500)) : ""; });
+      addEventListener("pointerdown", (e) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        const z = zone(e.target);
+        st = z ? { ...z, id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, mode: null } : null;
+      });
+      addEventListener("pointermove", (e) => {
+        if (!st || e.pointerId !== st.id) return;
+        const dx = e.clientX - st.x0, dy = e.clientY - st.y0;
+        if (!st.mode) {
+          if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+          st.mode = Math.abs(dx) > Math.abs(dy) * 1.4 ? "h" : "v";
+          if (st.mode !== "h") return;
+          st.els = targets(st);
+          document.body.classList.add("dragging-x");
+        }
+        if (st.mode !== "h") return;
+        const has = neighbor(st, dx < 0 ? 1 : -1);
+        st.dx = has ? dx : dx * 0.25;          // rubber-band at the first/last tab
+        paint(st.els, st.dx * 0.85, false);
+      });
+      const end = (e) => {
+        if (!st || (e && e.pointerId !== st.id)) return;
+        const s = st; st = null;
+        document.body.classList.remove("dragging-x");
+        if (s.mode !== "h") return;
+        swallow = Math.abs(s.dx) > 10;
+        const go = Math.abs(s.dx) > 70 && neighbor(s, s.dx < 0 ? 1 : -1);
+        if (go) { paint(s.els, 0, false); go(); }
+        else { paint(s.els, 0, true); setTimeout(() => s.els.forEach((el) => { el.style.transition = ""; }), 320); }
+      };
+      addEventListener("pointerup", end);
+      addEventListener("pointercancel", end);
+      addEventListener("click", (e) => { if (swallow) { swallow = false; e.stopPropagation(); e.preventDefault(); } }, true);
     })();
     /* ---------- phone: shrinking header + pull to refresh ---------- */
     addEventListener("scroll", () => document.body.classList.toggle("scrolled", scrollY > 8), { passive: true });
