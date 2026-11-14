@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794617918" />
+  <meta name="build" content="1794618152" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -1589,6 +1589,7 @@
       if (!html) return "";
       return '<div class="g-label" style="margin-top:18px">Play-by-play</div><div class="feed">' + html + "</div>" + (total > 12 && !v.feedAll ? '<button type="button" class="pill-btn feed-more" data-sfeedall>Show all ' + total + " plays</button>" : "");
     }
+    function renderSportFeed(v, calm) { const fs = v.el.querySelector("[data-feedsec]"); if (fs) { fs.innerHTML = sportFeed(v); fs.classList.toggle("calm-sec", !!calm); } }
     function feedRow(o) {
       const head = headshot(o.lg, o.pid), logo = o.tm?.team?.logos?.[0]?.href || o.tm?.team?.logo;
       return '<div class="pf' + (o.scoring ? " scoring" : "") + '"><div class="pf-pic">' + (head ? '<img src="' + esc(head) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + (logo ? '<img class="pf-tm" src="' + esc(logo) + '" alt="">' : "") + "</div>" +
@@ -1598,7 +1599,7 @@
     }
     function chartSecHtml(v) {
       const S = sportState(v);
-      return sportBar(v, S) + (S.live ? '<div class="g-label f-title" style="margin-bottom:0">Live updates<span class="live-pill">Live</span><small data-ago>Updated just now · every 5 sec</small></div>' : "") + chartHtml(v) + sportFeed(v) + sportStops(S);
+      return sportBar(v, S) + (S.live ? '<div class="g-label f-title" style="margin-bottom:0">Live updates<span class="live-pill">Live</span><small data-ago>Updated just now · every 5 sec</small></div>' : "") + chartHtml(v) + sportStops(S);
     }
     document.addEventListener("click", (e) => {
       if (!e.target.closest("[data-sfeedall]")) return;
@@ -1606,7 +1607,7 @@
       if (!v?.s) return;
       v.feedAll = true;
       const sec = v.el.querySelector("[data-chart]");
-      if (sec) { sec.innerHTML = chartSecHtml(v); sec.classList.add("calm-sec"); }
+      if (sec) { sec.innerHTML = chartSecHtml(v); renderSportFeed(v, true); sec.classList.add("calm-sec"); }
     });
     async function liveSummary(v) {
       clearInterval(v.liveTimer);
@@ -1619,7 +1620,7 @@
           const fresh = (s.plays || []).length !== (v.s.plays || []).length;
           v.s = s; v.updated = Date.now();
           const sec = v.el.querySelector("[data-chart]");
-          if (sec && fresh) { sec.innerHTML = chartSecHtml(v); sec.classList.add("calm-sec"); }
+          if (sec && fresh) { sec.innerHTML = chartSecHtml(v); renderSportFeed(v, true); sec.classList.add("calm-sec"); }
           const comp = s.header?.competitions?.[0] || {}, cs = (comp.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
           const g = v.el.querySelector(".g-score"); if (g) g.innerHTML = esc(cs[0]?.score ?? "") + "<i>–</i>" + esc(cs[1]?.score ?? "");
           const st = v.el.querySelector(".g-mid .status"); if (st) st.textContent = comp.status?.type?.shortDetail || st.textContent;
@@ -1647,7 +1648,7 @@
       if (!v?.s) return;
       v.chartTeam = b.dataset.ct;
       const sec = v.el.querySelector("[data-chart]");
-      if (sec) { sec.innerHTML = chartSecHtml(v); }
+      if (sec) { sec.innerHTML = chartSecHtml(v); renderSportFeed(v, true); }
     });
 
     /* ---------- play-by-play field (football) ---------- */
@@ -1953,7 +1954,8 @@
           Promise.all(need.map((r) => getJSON(r.replace("http://", "https://")).then((a) => { athCache[r] = { jersey: a.jersey, short: a.shortName || a.displayName, pos: a.position?.abbreviation }; }).catch(() => {}))).then(() => { if (v.el.isConnected && v.field === F) drawField(v, true); });
         }
       }
-      html += playFeed(v, F);
+      const fs = v.el.querySelector("[data-feedsec]");
+      if (fs) { fs.innerHTML = playFeed(v, F); fs.classList.toggle("calm-sec", !!still); }
       if (v.el.classList.contains("wide") && F.drives.length > 1) {
         html += '<div class="g-label" style="margin-top:18px">All drives</div><div class="f-list drives">' + F.drives.map((dv, k) => {
           const tm = dv.team === String(F.away.team?.id) ? F.away : F.home, yds = dv.plays.reduce((s, p) => s + (Number(p.statYardage) || 0), 0), lp = dv.plays[dv.plays.length - 1];
@@ -2118,8 +2120,10 @@
 
       const info = [s.gameInfo?.venue?.fullName, (comp.broadcasts || []).map((b) => b.media?.shortName).filter(Boolean).join(", ")].filter(Boolean);
       if (info.length) h += '<div class="g-sec g-note">' + info.map(esc).join(" · ") + "</div>";
+      h += '<div class="g-sec" data-feedsec></div>';
       setBody(v, (teams[0]?.team?.abbreviation || "") + " @ " + (teams[1]?.team?.abbreviation || ""), h);
       if (lg === "nfl" || lg === "cfb") loadField(v, lg, id, teams, st.state);
+      if (lg === "nba" || lg === "mlb") renderSportFeed(v, false);
       if ((lg === "nba" || lg === "mlb") && st.state === "in") liveSummary(v);
     }
 
