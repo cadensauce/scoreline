@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794632378" />
+  <meta name="build" content="1794633042" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -1351,7 +1351,7 @@
         const k = fav.dataset.fav;
         state.favs.has(k) ? state.favs.delete(k) : state.favs.add(k);
         store.set("favs", [...state.favs]);
-        window.scorelineSettingsChanged?.();
+        window.scorelineSettingsChanged?.(); if (alertsOn) pushSync();
         const nm = (fav.getAttribute("aria-label") || "").replace(/^(Favorite|Follow|Unfollow) ?/, "");
         if (nm) { teamNames[k] = nm; store.set("favNames", teamNames); }
         if (state.tab === "alerts") renderAlerts();
@@ -1369,7 +1369,7 @@
       const f1t = e.target.closest("[data-f1t]");
       if (f1t) { state.f1Table = f1t.dataset.f1t; return render(); }
       const ap = e.target.closest("[data-ap]");
-      if (ap) { const p = alertPrefs(); p[ap.dataset.ap] = !p[ap.dataset.ap]; store.set("alertPrefs", p); window.scorelineSettingsChanged?.(); ap.classList.toggle("on", p[ap.dataset.ap]); return; }
+      if (ap) { const p = alertPrefs(); p[ap.dataset.ap] = !p[ap.dataset.ap]; store.set("alertPrefs", p); window.scorelineSettingsChanged?.(); if (alertsOn) pushSync(); ap.classList.toggle("on", p[ap.dataset.ap]); return; }
       const np = e.target.closest(".news-note p");
       if (np) { np.classList.toggle("full"); return; }
       const ext = e.target.closest("a[data-ext]");
@@ -2607,11 +2607,11 @@
     $("notifyBtn").hidden = true;
     document.addEventListener("click", (e) => { if (e.target.closest("#alertsMaster")) $("notifyBtn").click(); });
     $("notifyBtn").addEventListener("click", async () => {
-      if (alertsOn) { alertsOn = false; store.set("alerts", false); syncBell(); toast("Score alerts off"); return; }
+      if (alertsOn) { alertsOn = false; store.set("alerts", false); syncBell(); pushSync(false); toast("Score alerts off"); return; }
       const perm = await askPermission().catch(() => "denied");
       if (perm === "unsupported") { toast("This browser doesn't support notifications."); return; }
       if (perm !== "granted") { toast(TAURI ? "Notifications are blocked. Allow them for Scoreline in your system settings." : "Notifications are blocked. Allow them in your browser's site settings."); return; }
-      alertsOn = true; store.set("alerts", true); syncBell();
+      alertsOn = true; store.set("alerts", true); syncBell(); pushSync(true);
       if (state.tab === "alerts") renderAlerts();
       toast(state.favs.size ? "Score alerts on for your ★ teams" : "Alerts on. Tap ★ on a team to follow it.");
       checkAlerts();
@@ -2624,6 +2624,36 @@
       notify("NFL: Score update", "SF 21 – SEA 17 · 4th 2:14 · Touchdown 49ers! B.Purdy pass to G.Kittle for 18 yds", "test-49ers");
       toast("Test sent: check your notifications");
     });
+    /* ---------- background push (Scoreline added to a phone's home screen) ---------- */
+    // The GitHub Actions push worker reads these subscriptions and sends alerts even when the app is closed.
+    const VAPID_PUBLIC = "BE7gMA0rXlZpDBtTAGdfyabXR8ZeNQwgB8WnaPD6GsfNjWkwN39pVqaEJLIPS7mVERZtbWdSg8xhO_vU8ZRwxM0";
+    const PUSH_DB = "https://firestore.googleapis.com/v1/projects/scoreline-41f14/databases/(default)/documents/pushSubs/";
+    const PUSH_KEY = "AIzaSyAGyc1udyqVakTuZJ0Iqb8Lb9uy4IHdO2w";
+    let pushActive = false;
+    const canPush = () => MOBILE_APP && !TAURI && "serviceWorker" in navigator && "PushManager" in window;
+    const b64u = (s) => Uint8Array.from(atob((s + "=".repeat((4 - s.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+    async function pushSync(enable = alertsOn) {
+      if (!canPush()) return;
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub && enable) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(VAPID_PUBLIC) });
+        if (!sub) return;
+        const j = sub.toJSON();
+        const id = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(j.endpoint)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+        const url = PUSH_DB + id + "?key=" + PUSH_KEY;
+        if (!enable) { pushActive = false; await fetch(url, { method: "DELETE" }).catch(() => {}); await sub.unsubscribe().catch(() => {}); return; }
+        const p = alertPrefs();
+        const fields = {
+          endpoint: { stringValue: j.endpoint }, p256dh: { stringValue: j.keys.p256dh }, auth: { stringValue: j.keys.auth },
+          favs: { arrayValue: { values: [...state.favs].map((f) => ({ stringValue: f })) } },
+          prefs: { mapValue: { fields: Object.fromEntries(Object.entries(p).map(([k, v]) => [k, { booleanValue: !!v }])) } },
+          updatedAt: { timestampValue: new Date().toISOString() },
+        };
+        const r = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fields }) });
+        pushActive = r.ok;
+      } catch { pushActive = false; }
+    }
     async function notify(title, body, tag) {
       try {
         if (NATIVE_NOTIFY) { NATIVE_NOTIFY.sendNotification({ title, body }); return; }
@@ -2638,7 +2668,8 @@
     }
     async function checkAlerts() {
       const P = alertPrefs();
-      if (!MOBILE_APP || !alertsOn || !state.favs.size) return;
+      // Home-screen installs get alerts from the push worker instead, so they are not doubled here.
+      if (!MOBILE_APP || !alertsOn || !state.favs.size || pushActive) return;
       const keys = ["nfl", "cfb", "nba", "mlb"];
       const datas = await Promise.allSettled(keys.map((k) => getJSON(API + LEAGUES[k].path + "/scoreboard?" + (LEAGUES[k].extra || "").replace(/^&/, ""))));
       datas.forEach((res, i) => {
@@ -2661,6 +2692,7 @@
       });
       store.set("snap", snapshot);
     }
+    if (alertsOn) pushSync();
     setInterval(checkAlerts, 60000);
     checkAlerts();
 

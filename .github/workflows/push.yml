@@ -1,0 +1,34 @@
+# Scoreline push worker: sends score alerts to phones even when the app is closed.
+# GitHub runs it free (public repo). Each run is a ~6-hour "shift"; a new shift starts every 6 hours
+# and replaces the old one, so it runs around the clock. Start it by hand from the Actions tab too.
+name: Push worker
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: push-worker
+  cancel-in-progress: true
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 358
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install worker packages
+        working-directory: push
+        run: npm install --no-save --no-audit --no-fund web-push@3.6.7 firebase-admin@12.7.0
+      - name: Run push worker
+        working-directory: push
+        env:
+          VAPID_PUBLIC: ${{ secrets.VAPID_PUBLIC }}
+          VAPID_PRIVATE: ${{ secrets.VAPID_PRIVATE }}
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+          RUN_MINUTES: "352"
+        run: node worker.mjs

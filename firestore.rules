@@ -44,6 +44,18 @@ service cloud.firestore {
       allow delete: if signedIn() && (resource.data.from == me() || resource.data.to == me());
     }
 
+    // Push alert subscriptions (phones with Scoreline on the home screen). The id is a hash of the
+    // phone's private push address, so only that phone can update or remove its own entry.
+    // Nobody can read them from the app; only the push worker (server key) can.
+    match /pushSubs/{id} {
+      allow read: if false;
+      allow create, update: if id.matches('^[0-9a-f]{64}$')
+        && request.resource.data.keys().hasOnly(['endpoint', 'p256dh', 'auth', 'favs', 'prefs', 'updatedAt'])
+        && request.resource.data.endpoint is string && request.resource.data.endpoint.matches('^https://.*')
+        && request.resource.data.favs is list && request.resource.data.favs.size() <= 200;
+      allow delete: if id.matches('^[0-9a-f]{64}$');
+    }
+
     // Chats: only between friends, only members can read or write.
     match /chats/{chatId} {
       allow read: if signedIn() && me() in resource.data.members;

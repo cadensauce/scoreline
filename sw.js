@@ -1,6 +1,6 @@
 /* Scoreline service worker: makes the app installable and lets the app shell open offline.
    Scores are never cached here; they always come live from the network. */
-const CACHE = "scoreline-v1";
+const CACHE = "scoreline-v2";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -37,4 +37,18 @@ self.addEventListener("notificationclick", (event) => {
       return open ? open.focus() : self.clients.openWindow("./");
     })
   );
+});
+
+// Background score alerts: the GitHub Actions push worker sends these even when the app is closed.
+self.addEventListener("push", (event) => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch { d = { title: "Scoreline", body: event.data ? event.data.text() : "" }; }
+  event.waitUntil(self.registration.showNotification(d.title || "Scoreline", {
+    body: d.body || "",
+    tag: d.tag || "scoreline",
+    renotify: true,
+    icon: "icon-192.png",
+    badge: "icon-192.png",
+    data: { url: d.url || "./" },
+  }));
 });

@@ -5,3 +5,5 @@ src-tauri/icons/
 *.jks
 node_modules/
 package-lock.json
+PUSH-SETUP-SECRETS.txt
+push/node_modules/
