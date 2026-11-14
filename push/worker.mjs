@@ -1,41 +1,41 @@
 // Scoreline push worker. Runs on GitHub Actions (see .github/workflows/push.yml).
-// Every 20 seconds it checks ESPN scoreboards and sends web-push alerts to phones that
-// added Scoreline to their home screen and turned on alerts for their ★ teams.
+// Sends a small number of clear alerts, only about the teams each person follows:
+//   games: starting, your team scores (basketball: end of quarter), close finish, final
+//   news:  trades, major injuries, big moves (coach changes, suspensions, retirements, big contracts)
 //
-// Secrets (repo Settings → Secrets → Actions): VAPID_PUBLIC, VAPID_PRIVATE, FIREBASE_SA (service account JSON).
+// Secrets (repo Settings → Secrets → Actions): VAPID_PRIVATE, FIREBASE_SA (service account JSON).
 
 import webpush from "web-push";
 import admin from "firebase-admin";
 
 const RUN_FOR_MS = (Number(process.env.RUN_MINUTES) || 345) * 60_000;
-const TICK_MS = 20_000;
+const TICK_MS = 20_000;            // games
+const NEWS_EVERY_MS = 5 * 60_000;  // team news
 const SUBS_EVERY_MS = 60_000;
+const NEWS_PER_TEAM_PER_DAY = 2;
 const API = "https://site.api.espn.com/apis/site/v2/sports/";
 const LEAGUES = {
-  nfl: { name: "NFL", path: "football/nfl" },
-  cfb: { name: "CFB", path: "football/college-football", extra: "groups=80&limit=300" },
-  nba: { name: "NBA", path: "basketball/nba" },
-  mlb: { name: "MLB", path: "baseball/mlb" },
+  nfl: { name: "NFL", icon: "🏈", path: "football/nfl", league: 28 },
+  cfb: { name: "CFB", icon: "🏈", path: "football/college-football", extra: "groups=80&limit=300", league: 23 },
+  nba: { name: "NBA", icon: "🏀", path: "basketball/nba", league: 46 },
+  mlb: { name: "MLB", icon: "⚾", path: "baseball/mlb", league: 10 },
 };
 
-// Pasted secrets can pick up spaces, line breaks or a "Value:" label, so clean them first.
+// ---- setup -------------------------------------------------------------------------------
 // A VAPID private key is exactly 43 URL-safe base64 characters; pick that out of whatever was pasted.
-const clean = (s) => { const t = String(s || ""); const m = t.match(/(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/); if (!m) console.log("VAPID_PRIVATE looks wrong: length " + t.trim().length); return m ? m[0] : t.trim(); };
+const cleanKey = (s) => { const t = String(s || ""); const m = t.match(/(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/); if (!m) console.log("VAPID_PRIVATE looks wrong: length " + t.trim().length); return m ? m[0] : t.trim(); };
 const VAPID_PUBLIC = "BE7gMA0rXlZpDBtTAGdfyabXR8ZeNQwgB8WnaPD6GsfNjWkwN39pVqaEJLIPS7mVERZtbWdSg8xhO_vU8ZRwxM0"; // public, same as in index.html
-webpush.setVapidDetails("https://cadensauce.github.io/scoreline/", VAPID_PUBLIC, clean(process.env.VAPID_PRIVATE));
-// The service account JSON may have been pasted with extra text around it; take the {...} part.
+webpush.setVapidDetails("https://cadensauce.github.io/scoreline/", VAPID_PUBLIC, cleanKey(process.env.VAPID_PRIVATE));
 const saRaw = String(process.env.FIREBASE_SA || "");
 const sa = JSON.parse(saRaw.slice(saRaw.indexOf("{"), saRaw.lastIndexOf("}") + 1));
 admin.initializeApp({ credential: admin.credential.cert(sa) });
-console.log("Push worker ready for project", sa.project_id);
 const db = admin.firestore();
+const stateDoc = db.collection("meta").doc("pushState"); // server-only: news already handled, daily caps
+console.log("Push worker ready for project", sa.project_id);
 
-let subs = [];          // { id, sub, favs:Set, prefs }
+// ---- subscribers -------------------------------------------------------------------------
+let subs = [];
 let subsAt = 0;
-const seen = new Map(); // event id -> "state|away-home"
-const closeSent = new Set();
-let firstPass = true;
-
 async function loadSubs() {
   const snap = await db.collection("pushSubs").get();
   subs = snap.docs.map((d) => {
@@ -46,56 +46,145 @@ async function loadSubs() {
   console.log(new Date().toISOString(), "subscribers:", subs.length);
 }
 
-const teamsOf = (ev) => (ev.competitions?.[0]?.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
-const keyOf = (t) => t.team?.uid || t.team?.id;
-const line = (ev) => teamsOf(ev).map((t) => (t.team?.abbreviation || t.team?.shortDisplayName) + " " + (t.score ?? "")).join(" – ");
-
-async function send(ev, kind, title, body) {
-  const keys = teamsOf(ev).map(keyOf);
-  const targets = subs.filter((s) => keys.some((k) => s.favs.has(k)) && s.prefs[kind] !== false);
-  if (!targets.length) return;
-  const payload = JSON.stringify({ title, body, tag: "ev-" + ev.id, url: "./" });
+// Send to everyone who follows `teamKey` and has `kind` switched on. One alert per person per key.
+const sentKeys = new Set();
+async function send(teamKey, kind, title, body, dedupe) {
+  const targets = subs.filter((s) => s.favs.has(teamKey) && s.prefs[kind] !== false && !sentKeys.has(s.id + "|" + dedupe));
+  if (!targets.length) return 0;
+  const payload = JSON.stringify({ title, body, tag: dedupe, url: "./" });
   await Promise.all(targets.map(async (s) => {
-    try { await webpush.sendNotification(s.sub, payload, { TTL: 600, urgency: "high" }); }
+    sentKeys.add(s.id + "|" + dedupe);
+    try { await webpush.sendNotification(s.sub, payload, { TTL: kind === "start" || kind === "score" ? 900 : 3600, urgency: "high" }); }
     catch (e) {
-      // Phone unsubscribed or uninstalled: clean it up.
       if (e.statusCode === 404 || e.statusCode === 410) { await db.collection("pushSubs").doc(s.id).delete().catch(() => {}); subs = subs.filter((x) => x !== s); }
       else console.log("push failed", e.statusCode || e.message);
     }
   }));
   console.log(new Date().toISOString(), kind, "→", targets.length, "|", title, "|", body);
+  return targets.length;
 }
 
-async function tick() {
-  if (Date.now() - subsAt > SUBS_EVERY_MS) await loadSubs().catch((e) => console.log("subs error", e.message));
+// ---- games -------------------------------------------------------------------------------
+const teamsOf = (ev) => (ev.competitions?.[0]?.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
+const keyOf = (t) => t.team?.uid || t.team?.id;
+const nick = (t) => t.team?.name || t.team?.shortDisplayName || t.team?.abbreviation;
+const scoreLine = (ev) => teamsOf(ev).map((t) => (t.team?.abbreviation || nick(t)) + " " + (t.score ?? 0)).join(" – ");
+const tv = (ev) => (ev.competitions?.[0]?.broadcasts || []).flatMap((b) => b.names || [])[0];
+const footballScore = (pts) => (pts >= 6 ? "touchdown" : pts === 3 ? "field goal" : pts === 2 ? "safety" : pts === 1 ? "extra point" : "score");
+const seen = new Map();      // event id -> { st, scores:[a,h], period }
+const closeSent = new Set();
+let firstPass = true;
+
+async function checkGames() {
   for (const [lg, L] of Object.entries(LEAGUES)) {
     let data;
     try { data = await (await fetch(API + L.path + "/scoreboard" + (L.extra ? "?" + L.extra : ""))).json(); } catch { continue; }
     for (const ev of data.events || []) {
-      const st = ev.status?.type?.state;
-      const sc = teamsOf(ev).map((t) => Number(t.score) || 0);
-      const sig = st + "|" + sc.join("-");
+      const teams = teamsOf(ev);
+      if (teams.length !== 2) continue;
+      const st = ev.status?.type?.state, period = ev.status?.period || 0, clock = ev.status?.type?.shortDetail || "";
+      const sc = teams.map((t) => Number(t.score) || 0);
       const prev = seen.get(ev.id);
-      seen.set(ev.id, sig);
-      if (firstPass || !prev || prev === sig) continue;
-      const pst = prev.split("|")[0], detail = ev.status?.type?.shortDetail || "";
-      if (pst === "pre" && st === "in") await send(ev, "start", L.name + ": Game on", ev.name);
-      else if (st === "post" && pst !== "post") await send(ev, "final", L.name + ": Final", line(ev));
-      else if (st === "in") await send(ev, "score", L.name + ": Score update", line(ev) + " · " + detail);
-      // Close game, once: late in the game and within one score.
-      const per = ev.status?.period || 0, diff = Math.abs(sc[0] - sc[1]);
-      const late = lg === "mlb" ? per >= 8 && diff <= 2 : lg === "nba" ? per >= 4 && diff <= 6 : per >= 4 && diff <= 8;
-      if (st === "in" && late && !closeSent.has(ev.id)) { closeSent.add(ev.id); await send(ev, "close", L.name + ": Close game", line(ev) + " · " + detail); }
+      seen.set(ev.id, { st, sc, period });
+      if (firstPass || !prev) continue;
+
+      for (let i = 0; i < 2; i++) {
+        const me = teams[i], opp = teams[1 - i], key = keyOf(me), mine = sc[i], theirs = sc[1 - i];
+        // Game starting
+        if (prev.st === "pre" && st === "in")
+          await send(key, "start", L.icon + " " + nick(me) + " vs " + nick(opp) + " is starting", [tv(ev), "Tap to follow along"].filter(Boolean).join(" · "), "start-" + ev.id);
+        // Your team scores (basketball: end of each quarter instead of every basket)
+        if (st === "in" && lg !== "nba" && mine > prev.sc[i]) {
+          const pts = mine - prev.sc[i];
+          const what = lg === "mlb" ? (pts === 1 ? "scores a run" : "scores " + pts + " runs") : footballScore(pts);
+          await send(key, "score", L.icon + " " + nick(me) + " " + what, scoreLine(ev) + " · " + clock, "score-" + ev.id + "-" + i + "-" + mine);
+        }
+        if (lg === "nba" && st === "in" && period > prev.period && prev.period >= 1) {
+          const q = prev.period, lead = mine > theirs ? nick(me) + " lead" : mine < theirs ? nick(me) + " trail" : "Tied";
+          await send(key, "score", L.icon + " " + (q === 2 ? "Halftime" : "End of Q" + q) + ": " + lead + " " + Math.max(mine, theirs) + "–" + Math.min(mine, theirs), scoreLine(ev), "q-" + ev.id + "-" + q);
+        }
+        // Final
+        if (st === "post" && prev.st !== "post") {
+          const res = mine > theirs ? "win" : mine < theirs ? "lose" : "tie";
+          await send(key, "final", L.icon + " Final: " + nick(me) + " " + res + " " + Math.max(mine, theirs) + "–" + Math.min(mine, theirs), "vs " + (opp.team?.displayName || nick(opp)), "final-" + ev.id);
+        }
+      }
+      // Close finish, once per game
+      const diff = Math.abs(sc[0] - sc[1]);
+      const late = lg === "mlb" ? period >= 9 && diff <= 1 : lg === "nba" ? period >= 4 && diff <= 5 && /^[0-2]:\d\d/.test(clock) : period >= 4 && diff <= 8 && /^[0-4]:\d\d/.test(clock);
+      if (st === "in" && late && !closeSent.has(ev.id)) {
+        closeSent.add(ev.id);
+        for (const t of teams) await send(keyOf(t), "close", L.icon + " Close finish: " + nick(teams[0]) + " vs " + nick(teams[1]), scoreLine(ev) + " · " + clock, "close-" + ev.id);
+      }
     }
   }
   firstPass = false;
 }
 
+// ---- team news ---------------------------------------------------------------------------
+// Only big, clear-cut stories. Each rule needs a strong keyword; routine items are filtered out.
+const NEWS_RULES = [
+  { kind: "trades", label: "Trade", re: /\b(trade[sd]?|traded|acquires?|acquired|blockbuster|deal sends)\b/i },
+  { kind: "injuries", label: "Injury", re: /\b(torn|tears|ACL|Achilles|season-ending|out for (the )?season|injured reserve|placed on IR|to IR|surgery|fracture[sd]?|broken)\b/i },
+  { kind: "bignews", label: "News", re: /\b(fired|hires|hired|names? .* head coach|new head coach|suspended|suspension|retires|retirement|retiring|extension|signs? .*(year|\$|million)|agree[sd]? to .*(year|\$|million))\b/i },
+];
+const SKIP = /\b(practice squad|minor league|optioned|two-way contract|g league|mock draft|fantasy|betting|odds|picks|predictions|rankings|power rankings|takeaways|grades|what we learned|questionable|probable|game-time decision|day-to-day)\b/i;
+let newsState = { seen: [], caps: {} };
+const teamNames = {};   // team key -> ["49ers", "San Francisco", ...]
+let newsAt = 0;
+
+async function checkNews() {
+  newsAt = Date.now();
+  const teams = new Set(subs.flatMap((s) => [...s.favs]));
+  const today = new Date().toISOString().slice(0, 10);
+  const seenSet = new Set(newsState.seen);
+  const firstRun = !newsState.seen.length;
+  for (const key of teams) {
+    const m = String(key).match(/l:(\d+)~t:(\d+)/);
+    if (!m) continue;
+    const L = Object.values(LEAGUES).find((x) => String(x.league) === m[1]);
+    if (!L) continue;
+    let data;
+    try { data = await (await fetch(API + L.path + "/news?team=" + m[2] + "&limit=15")).json(); } catch { continue; }
+    // The team feed mixes in league-wide stories; only keep ones that actually name this team.
+    if (!teamNames[key]) {
+      try { const t = (await (await fetch(API + L.path + "/teams/" + m[2])).json()).team || {}; teamNames[key] = [t.name, t.location, t.shortDisplayName, t.abbreviation].filter((x) => x && x.length > 1); } catch { teamNames[key] = []; }
+    }
+    const names = teamNames[key];
+    for (const a of data.articles || []) {
+      const id = String(a.id || a.dataSourceIdentifier || a.headline);
+      if (seenSet.has(id)) continue;
+      seenSet.add(id); newsState.seen.push(id);
+      if (firstRun) continue;                                   // first run: just remember what's out there
+      const ageH = (Date.now() - new Date(a.published || a.lastModified || 0)) / 3600000;
+      if (!(ageH < 6)) continue;                               // only fresh news
+      const text = (a.headline || "") + " " + (a.description || "");
+      if (SKIP.test(text)) continue;
+      if (!names.some((nm) => new RegExp("\\b" + nm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i").test(text))) continue;
+      const rule = NEWS_RULES.find((r) => r.re.test(text));
+      if (!rule) continue;
+      const capKey = today + "|" + key;
+      if ((newsState.caps[capKey] || 0) >= NEWS_PER_TEAM_PER_DAY) continue;
+      const n = await send(key, rule.kind, L.icon + " " + rule.label + ": " + (a.headline || "").slice(0, 110), (a.description || "").slice(0, 140), "news-" + id);
+      if (n) newsState.caps[capKey] = (newsState.caps[capKey] || 0) + 1;
+    }
+  }
+  newsState.seen = newsState.seen.slice(-3000);
+  for (const k of Object.keys(newsState.caps)) if (!k.startsWith(today)) delete newsState.caps[k];
+  await stateDoc.set(newsState).catch((e) => console.log("state save failed", e.message));
+}
+
+// ---- main loop ---------------------------------------------------------------------------
+try { const d = await stateDoc.get(); if (d.exists) newsState = { seen: d.data().seen || [], caps: d.data().caps || {} }; } catch {}
 const until = Date.now() + RUN_FOR_MS;
 console.log("Push worker running until", new Date(until).toISOString());
 while (Date.now() < until) {
   const t0 = Date.now();
-  try { await tick(); } catch (e) { console.log("tick error", e.message); }
+  try {
+    if (Date.now() - subsAt > SUBS_EVERY_MS) await loadSubs();
+    await checkGames();
+    if (Date.now() - newsAt > NEWS_EVERY_MS) await checkNews();
+  } catch (e) { console.log("tick error", e.message); }
   await new Promise((r) => setTimeout(r, Math.max(1000, TICK_MS - (Date.now() - t0))));
 }
 console.log("Push worker finished this shift");

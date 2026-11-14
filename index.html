@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794633042" />
+  <meta name="build" content="1794678885" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2398,7 +2398,8 @@
     }
 
     /* ---------- alerts tab (mobile app only) ---------- */
-    const ALERT_DEFAULTS = { start: true, score: true, final: true, close: false };
+    // Defaults: only the things that matter. Everything is about your ★ teams only.
+    const ALERT_DEFAULTS = { start: true, score: true, close: true, final: true, trades: true, injuries: true, bignews: true };
     const alertPrefs = () => Object.assign({}, ALERT_DEFAULTS, store.get("alertPrefs", {}));
     const teamNames = store.get("favNames", {});
     function findName(k) { for (const c of Object.values(cache)) for (const ev of c?.events || []) for (const t of teamsOf(ev)) if (favKey(t) === k) return t.team?.displayName; }
@@ -2408,7 +2409,8 @@
       const favs = [...state.favs];
       $("main").innerHTML = '<div class="bar"><h1>Alerts</h1></div>' +
         '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Notifications for your ★ teams</small></span><i class="switch"></i></button><button type="button" class="pill-btn test-btn" id="testNotify">Send test notification</button></div>' +
-        '<div class="section-title"><b>Notify me about</b></div><div class="panel">' + sw("start", "Game start", "When a game kicks off or tips") + sw("score", "Scoring plays", "Every score change") + sw("close", "Close games", "Late in a tight game") + sw("final", "Final scores", "When the game ends") + "</div>" +
+        '<div class="section-title"><b>Games</b></div><div class="panel">' + sw("start", "Game starting", "When your team's game begins") + sw("score", "Your team scores", "Touchdowns, field goals and runs. Basketball: end of each quarter") + sw("close", "Close finish", "Once, if it's tight near the end") + sw("final", "Final score", "Win or loss, when it ends") + "</div>" +
+        '<div class="section-title"><b>Team news</b></div><div class="panel">' + sw("trades", "Trades", "A player traded to or from your team") + sw("injuries", "Major injuries", "Season-ending injuries, surgery, injured reserve") + sw("bignews", "Big moves", "Coach changes, suspensions, retirements, major contracts") + '</div><div class="g-note" style="margin:8px 2px 0">Only your ★ teams. Routine moves are skipped, and team news is capped at 2 alerts per team per day.</div>' +
         '<div class="section-title"><b>Teams you follow</b></div><div class="panel">' + (favs.length ? favs.map((k) =>
           '<div class="opt"><span><b>' + esc(teamNames[k] || findName(k) || "Team") + '</b></span><button class="fav on" type="button" data-fav="' + esc(k) + '" aria-label="Unfollow">★</button></div>').join("") : '<div class="g-note">Tap ★ next to any team to follow it.</div>') + "</div>";
       if (MOBILE_APP) $("main").insertAdjacentHTML("beforeend", '<div class="section-title"><b>About</b></div><div class="panel about">' + document.querySelector("footer").innerHTML + "</div>");
@@ -2621,7 +2623,7 @@
       const perm = await askPermission().catch(() => "denied");
       if (perm !== "granted") { toast("Allow notifications for Scoreline first."); return; }
       buzz(12);
-      notify("NFL: Score update", "SF 21 – SEA 17 · 4th 2:14 · Touchdown 49ers! B.Purdy pass to G.Kittle for 18 yds", "test-49ers");
+      notify("🏈 49ers touchdown", "SF 21 – 17 SEA · 4th 2:14", "test-49ers");
       toast("Test sent: check your notifications");
     });
     /* ---------- background push (Scoreline added to a phone's home screen) ---------- */
@@ -2666,34 +2668,45 @@
       const t = teamsOf(ev);
       return t.map((x) => (x.team?.abbreviation || x.team?.shortDisplayName) + " " + (x.score ?? "")).join(" – ");
     }
+    // Same rules as the push worker (push/worker.mjs): only your ★ teams, only things that matter.
     async function checkAlerts() {
       const P = alertPrefs();
       // Home-screen installs get alerts from the push worker instead, so they are not doubled here.
       if (!MOBILE_APP || !alertsOn || !state.favs.size || pushActive) return;
-      const keys = ["nfl", "cfb", "nba", "mlb"];
+      const keys = ["nfl", "cfb", "nba", "mlb"], ICON = { nfl: "🏈", cfb: "🏈", nba: "🏀", mlb: "⚾" };
       const datas = await Promise.allSettled(keys.map((k) => getJSON(API + LEAGUES[k].path + "/scoreboard?" + (LEAGUES[k].extra || "").replace(/^&/, ""))));
+      const nick = (t) => t.team?.name || t.team?.shortDisplayName || t.team?.abbreviation;
       datas.forEach((res, i) => {
         if (res.status !== "fulfilled") return;
+        const lg = keys[i], ic = ICON[lg];
         (res.value.events || []).filter(hasFav).forEach((ev) => {
-          const st = ev.status?.type?.state;
-          const sig = st + "|" + teamsOf(ev).map((x) => x.score).join("-");
+          const teams = teamsOf(ev); if (teams.length !== 2) return;
+          const st = ev.status?.type?.state, per = ev.status?.period || 0, clock = ev.status?.type?.shortDetail || "";
+          const sc = teams.map((x) => Number(x.score) || 0);
           const prev = snapshot[ev.id];
-          snapshot[ev.id] = sig;
-          if (!prev || prev === sig) return;
-          const [pst] = prev.split("|");
-          const league = LEAGUES[keys[i]].short || LEAGUES[keys[i]].name;
-          const sc = teamsOf(ev).map((x) => Number(x.score) || 0), per = ev.status?.period || 0;
-          const late = keys[i] === "mlb" ? per >= 8 && Math.abs(sc[0] - sc[1]) <= 2 : per >= 4 && Math.abs(sc[0] - sc[1]) <= 8;
-          if (P.close && st === "in" && late && !snapshot["close" + ev.id]) { snapshot["close" + ev.id] = 1; notify(league + ": Close game", line(ev) + " · " + (ev.status?.type?.shortDetail || ""), ev.id); }
-          if (pst === "pre" && st === "in") { if (P.start) notify(league + ": Game on", ev.name, ev.id); }
-          else if (st === "post" && pst !== "post") { if (P.final) notify(league + ": Final", line(ev), ev.id); }
-          else if (st === "in" && P.score) notify(league + ": Score update", line(ev) + " · " + (ev.status?.type?.shortDetail || ""), ev.id);
+          snapshot[ev.id] = { st, sc, per };
+          if (!prev || typeof prev !== "object") return;
+          teams.forEach((me, j) => {
+            if (!state.favs.has(favKey(me))) return;
+            const opp = teams[1 - j], mine = sc[j], theirs = sc[1 - j];
+            if (P.start && prev.st === "pre" && st === "in") notify(ic + " " + nick(me) + " vs " + nick(opp) + " is starting", "Tap to follow along", "start-" + ev.id);
+            if (P.score && st === "in" && lg !== "nba" && mine > prev.sc[j]) {
+              const pts = mine - prev.sc[j];
+              const what = lg === "mlb" ? (pts === 1 ? "scores a run" : "scores " + pts + " runs") : pts >= 6 ? "touchdown" : pts === 3 ? "field goal" : pts === 2 ? "safety" : "score";
+              notify(ic + " " + nick(me) + " " + what, line(ev) + " · " + clock, "score-" + ev.id);
+            }
+            if (P.score && lg === "nba" && st === "in" && per > prev.per && prev.per >= 1) notify(ic + " " + (prev.per === 2 ? "Halftime" : "End of Q" + prev.per) + ": " + (mine > theirs ? nick(me) + " lead" : mine < theirs ? nick(me) + " trail" : "Tied") + " " + Math.max(mine, theirs) + "–" + Math.min(mine, theirs), line(ev), "q-" + ev.id);
+            if (P.final && st === "post" && prev.st !== "post") notify(ic + " Final: " + nick(me) + " " + (mine > theirs ? "win" : mine < theirs ? "lose" : "tie") + " " + Math.max(mine, theirs) + "–" + Math.min(mine, theirs), "vs " + (opp.team?.displayName || nick(opp)), "final-" + ev.id);
+          });
+          const diff = Math.abs(sc[0] - sc[1]);
+          const late = lg === "mlb" ? per >= 9 && diff <= 1 : lg === "nba" ? per >= 4 && diff <= 5 && /^[0-2]:\d\d/.test(clock) : per >= 4 && diff <= 8 && /^[0-4]:\d\d/.test(clock);
+          if (P.close && st === "in" && late && !snapshot["close" + ev.id]) { snapshot["close" + ev.id] = 1; notify(ic + " Close finish: " + nick(teams[0]) + " vs " + nick(teams[1]), line(ev) + " · " + clock, "close-" + ev.id); }
         });
       });
       store.set("snap", snapshot);
     }
     if (alertsOn) pushSync();
-    setInterval(checkAlerts, 60000);
+    setInterval(checkAlerts, 20000);
     checkAlerts();
 
     /* ---------- in-app updates (native app only) ---------- */
