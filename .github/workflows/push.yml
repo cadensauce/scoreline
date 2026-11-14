@@ -27,8 +27,6 @@ jobs:
       - name: Run push worker
         working-directory: push
         env:
-          VAPID_PUBLIC: ${{ secrets.VAPID_PUBLIC }}
-          VAPID_PRIVATE: ${{ secrets.VAPID_PRIVATE }}
           FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
           RUN_MINUTES: "352"
         run: node worker.mjs

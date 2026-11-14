@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794679617" />
+  <meta name="build" content="1794679817" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2729,7 +2729,8 @@
     });
     /* ---------- background push (Scoreline added to a phone's home screen) ---------- */
     // The GitHub Actions push worker reads these subscriptions and sends alerts even when the app is closed.
-    const VAPID_PUBLIC = "BE7gMA0rXlZpDBtTAGdfyabXR8ZeNQwgB8WnaPD6GsfNjWkwN39pVqaEJLIPS7mVERZtbWdSg8xhO_vU8ZRwxM0";
+    // The push worker publishes its public key at public/push in the database.
+    async function vapidKey() { try { const d = await (await fetch(PUSH_DB.replace("pushSubs/", "public/push") + "?key=" + PUSH_KEY, { cache: "no-store" })).json(); return d.fields?.vapidPublic?.stringValue || null; } catch { return null; } }
     const PUSH_DB = "https://firestore.googleapis.com/v1/projects/scoreline-41f14/databases/(default)/documents/pushSubs/";
     const PUSH_KEY = "AIzaSyAGyc1udyqVakTuZJ0Iqb8Lb9uy4IHdO2w";
     let pushActive = false;
@@ -2740,7 +2741,11 @@
       try {
         const reg = await navigator.serviceWorker.ready;
         let sub = await reg.pushManager.getSubscription();
-        if (!sub && enable) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(VAPID_PUBLIC) });
+        const key = enable ? await vapidKey() : null;
+        if (enable && !key) return;
+        // If the worker's key changed, re-subscribe with the new one.
+        if (sub && key && store.get("pushKey", "") !== key) { await sub.unsubscribe().catch(() => {}); sub = null; }
+        if (!sub && enable) { sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(key) }); store.set("pushKey", key); }
         if (!sub) return;
         const j = sub.toJSON();
         const id = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(j.endpoint)))].map((b) => b.toString(16).padStart(2, "0")).join("");

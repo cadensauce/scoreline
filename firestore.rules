@@ -44,6 +44,12 @@ service cloud.firestore {
       allow delete: if signedIn() && (resource.data.from == me() || resource.data.to == me());
     }
 
+    // Public info the site needs, like the push worker's public key. Read-only for everyone.
+    match /public/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Push alert subscriptions (phones with Scoreline on the home screen). The id is a hash of the
     // phone's private push address, so only that phone can update or remove its own entry.
     // Nobody can read them from the app; only the push worker (server key) can.

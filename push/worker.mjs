@@ -3,7 +3,7 @@
 //   games: starting, your team scores (basketball: end of quarter), close finish, final
 //   news:  trades, major injuries, big moves (coach changes, suspensions, retirements, big contracts)
 //
-// Secrets (repo Settings → Secrets → Actions): VAPID_PRIVATE, FIREBASE_SA (service account JSON).
+// Secret (repo Settings → Secrets → Actions): FIREBASE_SA (service account JSON). Push keys live in Firestore.
 
 import webpush from "web-push";
 import admin from "firebase-admin";
@@ -22,15 +22,24 @@ const LEAGUES = {
 };
 
 // ---- setup -------------------------------------------------------------------------------
-// A VAPID private key is exactly 43 URL-safe base64 characters; pick that out of whatever was pasted.
-const cleanKey = (s) => { const t = String(s || ""); const m = t.match(/(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/); if (!m) console.log("VAPID_PRIVATE looks wrong: length " + t.trim().length); return m ? m[0] : t.trim(); };
-const VAPID_PUBLIC = "BE7gMA0rXlZpDBtTAGdfyabXR8ZeNQwgB8WnaPD6GsfNjWkwN39pVqaEJLIPS7mVERZtbWdSg8xhO_vU8ZRwxM0"; // public, same as in index.html
-webpush.setVapidDetails("https://cadensauce.github.io/scoreline/", VAPID_PUBLIC, cleanKey(process.env.VAPID_PRIVATE));
+// Only one secret is needed: FIREBASE_SA (the Firebase service account JSON).
 const saRaw = String(process.env.FIREBASE_SA || "");
 const sa = JSON.parse(saRaw.slice(saRaw.indexOf("{"), saRaw.lastIndexOf("}") + 1));
 admin.initializeApp({ credential: admin.credential.cert(sa) });
 const db = admin.firestore();
 const stateDoc = db.collection("meta").doc("pushState"); // server-only: news already handled, daily caps
+
+// Push (VAPID) keys: made once by the worker itself and kept in the database. The private key is in
+// meta/vapid (server-only); the public key is published at public/push so the site can subscribe phones.
+const vapidDoc = db.collection("meta").doc("vapid");
+let vapid = (await vapidDoc.get()).data();
+if (!vapid?.publicKey || !vapid?.privateKey) {
+  vapid = webpush.generateVAPIDKeys();
+  await vapidDoc.set(vapid);
+  console.log("Made new push keys");
+}
+await db.collection("public").doc("push").set({ vapidPublic: vapid.publicKey });
+webpush.setVapidDetails("https://cadensauce.github.io/scoreline/", vapid.publicKey, vapid.privateKey);
 console.log("Push worker ready for project", sa.project_id);
 
 // ---- subscribers -------------------------------------------------------------------------
