@@ -24,7 +24,9 @@ const LEAGUES = {
 // ---- setup -------------------------------------------------------------------------------
 // Only one secret is needed: FIREBASE_SA (the Firebase service account JSON).
 const saRaw = String(process.env.FIREBASE_SA || "");
-const sa = JSON.parse(saRaw.slice(saRaw.indexOf("{"), saRaw.lastIndexOf("}") + 1));
+let sa;
+try { sa = JSON.parse(saRaw.slice(saRaw.indexOf("{"), saRaw.lastIndexOf("}") + 1)); }
+catch (e) { console.log("FIREBASE_SA is not a full service-account JSON file: length " + saRaw.length + ", has { " + saRaw.includes("{") + ", has } " + saRaw.includes("}") + ", has private_key " + saRaw.includes("private_key")); process.exit(1); }
 admin.initializeApp({ credential: admin.credential.cert(sa) });
 const db = admin.firestore();
 const stateDoc = db.collection("meta").doc("pushState"); // server-only: news already handled, daily caps
