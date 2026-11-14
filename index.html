@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794628405" />
+  <meta name="build" content="1794628593" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -405,7 +405,17 @@
     /* ---- Get the app ---- */
     .getapp-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--accent) !important; color: #120a07 !important; border-color: transparent !important; font-weight: 800; padding: 7px 12px; }
     @media (max-width: 720px) { .getapp-btn { min-height: 34px !important; padding: 6px 10px !important; font-size: 12.5px; } }
-    .ga-tabs { position: static; margin: 0 0 16px; padding: 0; border: 0; background: none; }
+    .ga-modal { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; pointer-events: none; }
+    .ga-back { position: absolute; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); opacity: 0; transition: opacity .3s; }
+    .ga-box { position: relative; width: min(520px, calc(100% - 32px)); max-height: calc(100% - 40px); overflow-y: auto; scrollbar-width: none; background: var(--bg); border: 1px solid var(--line-hi); border-radius: 22px; padding: 30px 26px 22px; box-shadow: 0 30px 80px rgba(0,0,0,.6); opacity: 0; transform: translateY(18px) scale(.97); transition: opacity .3s, transform .45s var(--ease); }
+    .ga-modal.show { pointer-events: auto; } .ga-modal.show .ga-back { opacity: 1; } .ga-modal.show .ga-box { opacity: 1; transform: none; }
+    .ga-x { position: absolute; top: 10px; right: 10px; color: var(--muted); }
+    .ga-title { font-family: var(--display); font-size: 40px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; text-align: center; color: var(--accent); line-height: 1; }
+    .ga-sub { text-align: center; color: var(--muted); font-size: 14px; margin: 8px 0 20px; } .ga-sub b { color: var(--text); }
+    .ga-box .ga-hero { align-items: center; margin-bottom: 14px; } .ga-box .ga-hero b { display: none; }
+    .ga-other { margin-top: 18px; text-align: center; color: var(--muted); font-size: 13px; }
+    .ga-other button { border: 0; background: none; color: var(--accent); font-weight: 700; font-size: 13px; padding: 4px 2px; }
+    @media (max-width: 720px) { .ga-modal { place-items: end center; } .ga-box { width: 100%; border-radius: 22px 22px 0 0; padding-bottom: calc(22px + env(safe-area-inset-bottom)); transform: translateY(100%); } .ga-title { font-size: 34px; } }
     .ga-hero { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; }
     .ga-hero b { font-family: var(--display); font-size: 30px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; line-height: 1; }
     .ga-hero span { color: var(--muted); font-size: 13px; }
@@ -1816,18 +1826,31 @@
           step(3, "Scoreline opens and adds itself to the Start menu.") +
           '<div class="ga-note">The warning appears because the app isn\'t signed with a paid Microsoft certificate yet.</div>';
       }
-      return '<div class="gtabs ga-tabs">' + tab("ios", "iPhone") + tab("android", "Android") + tab("windows", "Windows") + "</div>" + body;
+      return body;
     }
+    // Centered pop-up: shows the download for the detected device; other devices are small links.
+    const PNAME = { ios: "iPhone", android: "Android", windows: "Windows" };
     function openGetApp(p = PLATFORM) {
-      const v = { kind: "getapp", key: "getapp", plat: p };
-      if (!pushView(v)) return;
-      setBody(v, "Get the app", getAppHtml(p));
-      v.el.querySelector(".src-note")?.remove();
+      let m = $("gaModal");
+      if (!m) {
+        m = document.createElement("div");
+        m.id = "gaModal";
+        m.className = "ga-modal";
+        m.innerHTML = '<div class="ga-back" data-gaclose></div><div class="ga-box" role="dialog" aria-label="Get the app"><button type="button" class="sheet-btn ga-x" data-gaclose aria-label="Close">✕</button><div class="ga-inner"></div></div>';
+        document.body.appendChild(m);
+      }
+      m.querySelector(".ga-inner").innerHTML = '<div class="ga-title">Get the app</div><div class="ga-sub">' + (p === PLATFORM ? "Looks like you're on <b>" + PNAME[p] + "</b>" : "Showing <b>" + PNAME[p] + "</b>") + "</div>" + getAppHtml(p) +
+        '<div class="ga-other">On another device? ' + ["ios", "android", "windows"].filter((k) => k !== p).map((k) => '<button type="button" data-gaplat="' + k + '">' + PNAME[k] + "</button>").join(" · ") + "</div>";
+      requestAnimationFrame(() => m.classList.add("show"));
+      document.body.classList.add("sheet-open");
     }
+    function closeGetApp() { const m = $("gaModal"); if (!m) return; m.classList.remove("show"); document.body.classList.remove("sheet-open"); }
+    addEventListener("keydown", (e) => { if (e.key === "Escape") closeGetApp(); });
     document.addEventListener("click", (e) => {
       if (e.target.closest("#getAppBtn")) return openGetApp();
       const pl = e.target.closest("[data-gaplat]");
-      if (pl) { const v = views.find((x) => x.el === pl.closest(".sheet")); if (v) { v.el.querySelector(".sheet-body").innerHTML = getAppHtml(pl.dataset.gaplat); } return; }
+      if (pl) return openGetApp(pl.dataset.gaplat);
+      if (e.target.closest("[data-gaclose]")) return closeGetApp();
       if (e.target.closest("[data-gacopy]")) { navigator.clipboard?.writeText("https://cadensauce.github.io/scoreline/").then(() => toast("Link copied"), () => toast("cadensauce.github.io/scoreline")); }
     });
     if (/[?&#]get(app)?\b/.test(location.search + location.hash)) setTimeout(() => openGetApp(), 600);
