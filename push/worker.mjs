@@ -46,10 +46,21 @@ async function loadSubs() {
   console.log(new Date().toISOString(), "subscribers:", subs.length);
 }
 
-// Send to everyone who follows `teamKey` and has `kind` switched on. One alert per person per key.
+// Each person picks, per alert and per team: always / playoffs / champ (Super Bowl, Finals...) / off.
+// Must match ALERT_DEFAULTS in index.html.
+const DEFAULTS = { start: "always", score: "always", halftime: "playoffs", second: "off", close: "playoffs", final: "always", trades: "always", injuries: "always", bignews: "always" };
+const asMode = (v) => (v === true ? "always" : v === false ? "off" : v);
+const isChampionship = (ev) => /super bowl|nba finals|world series|national championship|cfp national|championship game/i.test([ev?.name, ev?.competitions?.[0]?.notes?.[0]?.headline].join(" "));
+function wants(prefs, team, kind, ev) {
+  const m = asMode(prefs[kind + "@" + team] ?? prefs[kind] ?? DEFAULTS[kind] ?? "off");
+  if (!ev) return m !== "off";                                  // team news: on or off
+  return m === "always" || (m === "playoffs" && ev.season?.type === 3) || (m === "champ" && isChampionship(ev));
+}
+
+// Send to everyone who follows `teamKey` and wants this alert for it. One alert per person per key.
 const sentKeys = new Set();
-async function send(teamKey, kind, title, body, dedupe) {
-  const targets = subs.filter((s) => s.favs.has(teamKey) && s.prefs[kind] !== false && !sentKeys.has(s.id + "|" + dedupe));
+async function send(teamKey, kind, title, body, dedupe, ev) {
+  const targets = subs.filter((s) => s.favs.has(teamKey) && wants(s.prefs, teamKey, kind, ev) && !sentKeys.has(s.id + "|" + dedupe));
   if (!targets.length) return 0;
   const payload = JSON.stringify({ title, body, tag: dedupe, url: "./" });
   await Promise.all(targets.map(async (s) => {
@@ -85,28 +96,32 @@ async function checkGames() {
       const st = ev.status?.type?.state, period = ev.status?.period || 0, clock = ev.status?.type?.shortDetail || "";
       const sc = teams.map((t) => Number(t.score) || 0);
       const prev = seen.get(ev.id);
-      seen.set(ev.id, { st, sc, period });
+      seen.set(ev.id, { st, sc, period, clock });
       if (firstPass || !prev) continue;
 
       for (let i = 0; i < 2; i++) {
         const me = teams[i], opp = teams[1 - i], key = keyOf(me), mine = sc[i], theirs = sc[1 - i];
         // Game starting
+        const lead = (mine > theirs ? nick(me) + " lead " : mine < theirs ? nick(me) + " trail " : "Tied ") + Math.max(mine, theirs) + "–" + Math.min(mine, theirs);
         if (prev.st === "pre" && st === "in")
-          await send(key, "start", L.icon + " " + nick(me) + " vs " + nick(opp) + " is starting", [tv(ev), "Tap to follow along"].filter(Boolean).join(" · "), "start-" + ev.id);
-        // Your team scores (basketball: end of each quarter instead of every basket)
+          await send(key, "start", L.icon + " " + nick(me) + " vs " + nick(opp) + " is starting", [tv(ev), "Tap to follow along"].filter(Boolean).join(" · "), "start-" + ev.id, ev);
+        // Your team scores (basketball: end of Q1 and Q3 instead of every basket; Q2 is "halftime")
         if (st === "in" && lg !== "nba" && mine > prev.sc[i]) {
           const pts = mine - prev.sc[i];
           const what = lg === "mlb" ? (pts === 1 ? "scores a run" : "scores " + pts + " runs") : footballScore(pts);
-          await send(key, "score", L.icon + " " + nick(me) + " " + what, scoreLine(ev) + " · " + clock, "score-" + ev.id + "-" + i + "-" + mine);
+          await send(key, "score", L.icon + " " + nick(me) + " " + what, scoreLine(ev) + " · " + clock, "score-" + ev.id + "-" + i + "-" + mine, ev);
         }
-        if (lg === "nba" && st === "in" && period > prev.period && prev.period >= 1) {
-          const q = prev.period, lead = mine > theirs ? nick(me) + " lead" : mine < theirs ? nick(me) + " trail" : "Tied";
-          await send(key, "score", L.icon + " " + (q === 2 ? "Halftime" : "End of Q" + q) + ": " + lead + " " + Math.max(mine, theirs) + "–" + Math.min(mine, theirs), scoreLine(ev), "q-" + ev.id + "-" + q);
-        }
+        if (lg === "nba" && st === "in" && period > prev.period && prev.period >= 1 && prev.period !== 2)
+          await send(key, "score", L.icon + " End of Q" + prev.period + ": " + lead, scoreLine(ev), "q-" + ev.id + "-" + prev.period, ev);
+        // Halftime and second-half start (not baseball)
+        if (lg !== "mlb" && st === "in" && /halftime/i.test(clock) && !/halftime/i.test(prev.clock || ""))
+          await send(key, "halftime", L.icon + " Halftime: " + lead, scoreLine(ev), "half-" + ev.id, ev);
+        if (lg !== "mlb" && st === "in" && prev.period === 2 && period === 3)
+          await send(key, "second", L.icon + " Second half: " + nick(me) + " vs " + nick(opp), scoreLine(ev), "second-" + ev.id, ev);
         // Final
         if (st === "post" && prev.st !== "post") {
           const res = mine > theirs ? "win" : mine < theirs ? "lose" : "tie";
-          await send(key, "final", L.icon + " Final: " + nick(me) + " " + res + " " + Math.max(mine, theirs) + "–" + Math.min(mine, theirs), "vs " + (opp.team?.displayName || nick(opp)), "final-" + ev.id);
+          await send(key, "final", L.icon + " Final: " + nick(me) + " " + res + " " + Math.max(mine, theirs) + "–" + Math.min(mine, theirs), "vs " + (opp.team?.displayName || nick(opp)), "final-" + ev.id, ev);
         }
       }
       // Close finish, once per game
@@ -114,7 +129,7 @@ async function checkGames() {
       const late = lg === "mlb" ? period >= 9 && diff <= 1 : lg === "nba" ? period >= 4 && diff <= 5 && /^[0-2]:\d\d/.test(clock) : period >= 4 && diff <= 8 && /^[0-4]:\d\d/.test(clock);
       if (st === "in" && late && !closeSent.has(ev.id)) {
         closeSent.add(ev.id);
-        for (const t of teams) await send(keyOf(t), "close", L.icon + " Close finish: " + nick(teams[0]) + " vs " + nick(teams[1]), scoreLine(ev) + " · " + clock, "close-" + ev.id);
+        for (const t of teams) await send(keyOf(t), "close", L.icon + " Close finish: " + nick(teams[0]) + " vs " + nick(teams[1]), scoreLine(ev) + " · " + clock, "close-" + ev.id, ev);
       }
     }
   }
