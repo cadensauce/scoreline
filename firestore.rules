@@ -62,6 +62,19 @@ service cloud.firestore {
       allow delete: if id.matches('^[0-9a-f]{64}$');
     }
 
+    // One-time codes that move your sign-in from the website to a newly installed app.
+    // You create a code for your own account only; the push worker (server key) adds a one-time sign-in pass;
+    // anyone holding the exact code can read that one document for 10 minutes (no listing). You delete it after use.
+    match /signinCodes/{code} {
+      allow create: if signedIn() && code.matches('^[A-HJ-NP-Z2-9]{8}$')
+        && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
+        && request.resource.data.uid == me()
+        && request.resource.data.createdAt == request.time;
+      allow get: if code.matches('^[A-HJ-NP-Z2-9]{8}$') && request.time < resource.data.createdAt + duration.value(10, 'm');
+      allow list, update: if false;
+      allow delete: if signedIn() && resource.data.uid == me();
+    }
+
     // Anonymous alert-setup health reports: a short code and the app version, keyed by the same random
     // device id as pushSubs. Nothing personal. Only the push worker can read them.
     match /diag/{id} {

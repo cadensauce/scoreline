@@ -229,6 +229,7 @@ function refreshAccountSheet() {
       '<label>Email<input name="email" type="email" autocomplete="email" required></label><label>Password<input name="password" type="password" minlength="6" autocomplete="' + (mode === "signup" ? "new-password" : "current-password") + '" required></label>' +
       '<div class="acct-err" data-err></div><button class="pill-btn dl acct-go" type="submit">' + (mode === "signup" ? "Create account" : "Log in") + "</button>" +
       (mode === "login" ? '<button type="button" class="acct-link" data-forgot>Forgot password?</button>' : "") + "</form>" +
+      (mode === "login" ? '<button type="button" class="acct-link" data-usecode>Have a sign-in code from the website?</button>' : "") +
       (window.__TAURI__ ? "" : '<div class="or"><span>or</span></div><button type="button" class="pill-btn g-btn" data-google><svg viewBox="0 0 24 24" width="18" height="18"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.6 5.6 0 0 1-2.4 3.7v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.9-3c-1.1.7-2.4 1.2-4 1.2-3.1 0-5.7-2.1-6.6-4.9h-4v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.4 14.4a7.2 7.2 0 0 1 0-4.7V6.6h-4a12 12 0 0 0 0 10.9z"/><path fill="#EA4335" d="M12 4.8c1.7 0 3.3.6 4.5 1.8l3.4-3.4A12 12 0 0 0 1.4 6.6l4 3.1C6.3 6.9 8.9 4.8 12 4.8z"/></svg>Continue with Google</button>') +
       TRUST + '<button type="button" class="acct-link" data-privacy>Read the full privacy page</button>';
   } else if (!profile) {
@@ -240,6 +241,7 @@ function refreshAccountSheet() {
     const person = (uid, actions) => '<div class="opt"><span><b>@' + esc(names[uid] || "…") + "</b></span><span class=\"acct-acts\">" + actions + "</span></div>";
     h = '<div class="acct-me"><div class="avatar">' + esc((profile?.username || "?")[0].toUpperCase()) + "</div><div><b>@" + esc(profile?.username || "") + "</b><small data-email>" + emailLine() + '</small></div><button class="pill-btn" type="button" data-logout>Log out</button></div>' +
       '<div class="g-note">★ teams and alert settings are synced.</div>' +
+      (window.__TAURI__ ? "" : '<div class="signin-send"><button type="button" class="pill-btn" data-sendsignin>Send sign-in to the app</button><div data-signincode></div></div>') +
       '<div class="g-label" style="margin-top:18px">Add a friend</div><form class="acct-add" data-addf><input placeholder="Username" maxlength="21" autocomplete="off"><button class="pill-btn" type="submit">Add</button></form><div class="acct-err" data-err></div>' +
       (F.incoming.length ? '<div class="g-label" style="margin-top:16px">Friend requests</div><div class="panel">' + F.incoming.map((r) => person(r.from, '<button class="pill-btn" type="button" data-accept="' + esc(r.id) + '">Accept</button><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '">✕</button>')).join("") + "</div>" : "") +
       '<div class="g-label" style="margin-top:16px">Friends</div><div class="panel">' + (F.friends.length ? F.friends.map((uid) => person(uid, '<button class="pill-btn" type="button" data-chat="' + esc(uid) + '">Chat</button><button class="pill-btn" type="button" data-unfriend="' + esc(uid) + '" aria-label="Remove friend">✕</button>')).join("") : '<div class="g-note">No friends yet. Add someone by their username.</div>') + "</div>" +
@@ -259,6 +261,53 @@ const niceErr = (e) => {
   return e?.message || "Something went wrong.";
 };
 
+// Sign-in codes: move your sign-in from the website to a newly installed app without typing your password.
+const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // no 0/O or 1/I
+const pretty = (c) => c.slice(0, 4) + "-" + c.slice(4);
+document.addEventListener("click", async (e) => {
+  if (e.target.closest("[data-sendsignin]") && user) {
+    const out = document.querySelector("[data-signincode]");
+    const code = Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => CODE_CHARS[b % CODE_CHARS.length]).join("");
+    try {
+      await fb.setDoc(fb.doc(db, "signinCodes", code), { uid: user.uid, createdAt: fb.serverTimestamp() });
+      if (out) out.innerHTML = '<div class="signin-code">' + pretty(code) + '</div><p class="g-note">In the Scoreline app: You → Sign in → "Have a sign-in code from the website?" Works once, for 10 minutes. Don\'t share it.</p>';
+      buzz(10);
+    } catch { toast("Couldn't make a code. Try again."); }
+    return;
+  }
+  if (e.target.closest("[data-usecode]")) {
+    const body = sheetView?.el?.querySelector(".sheet-body") || e.target.parentElement;
+    const f = body.querySelector("[data-acct]");
+    if (f) f.outerHTML = '<form class="acct-form" data-codein><label>Sign-in code<input name="code" maxlength="9" autocomplete="one-time-code" autocapitalize="characters" placeholder="ABCD-2345" required></label><div class="acct-err" data-err></div><button class="pill-btn dl acct-go" type="submit">Sign in</button><p class="g-note">On the website, signed in: You → your account → "Send sign-in to the app".</p></form>';
+    e.target.remove();
+    body.querySelector("[data-codein] input")?.focus();
+  }
+});
+document.addEventListener("submit", async (e) => {
+  const f = e.target;
+  if (!f.matches("[data-codein]")) return;
+  e.preventDefault();
+  const code = String(f.code.value).toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const btn = f.querySelector("button"); btn.disabled = true; errBox(f, "");
+  try {
+    if (!/^[A-HJ-NP-Z2-9]{8}$/.test(code)) throw new Error("bad");
+    const ref = fb.doc(db, "signinCodes", code);
+    let token = null;
+    for (let i = 0; i < 20 && !token; i++) {            // the server adds the sign-in pass within a few seconds
+      const snap = await fb.getDoc(ref);
+      if (!snap.exists()) throw new Error("bad");
+      token = snap.data().token || null;
+      if (!token) await new Promise((r) => setTimeout(r, 1000));
+    }
+    if (!token) throw new Error("slow");
+    await fb.signInWithCustomToken(auth, token);
+    await fb.deleteDoc(ref).catch(() => {});             // one-time: remove it right away
+    buzz(12); toast("Signed in");
+  } catch (err) {
+    btn.disabled = false;
+    errBox(f, err.message === "slow" ? "The server didn't answer in time. Try again in a minute." : "That code didn't work. It may have expired; make a new one on the website.");
+  }
+});
 // The account email stays hidden until you confirm it's you (password, or Google for Google accounts).
 const maskEmail = (e) => { const [u, d] = String(e || "").split("@"); return d ? (u[0] || "") + "•••@" + d : "Hidden"; };
 let emailShownUntil = 0;
