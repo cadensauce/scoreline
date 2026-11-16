@@ -201,3 +201,14 @@ Next session, in order:
   of the time.") → tabs Summary/Plays/Stats/Players (timeouts inside Plays) → win probability first.
 - Design round 3 published (live screens). Themes (item 9): You → Appearance: System / Dark / Light on the same
   tokens; light contrast text 16.9:1, muted 5.4:1; applied before first paint.
+
+### Phase 2 polish pass + Phase 3 start (2026-11-16, shipped)
+- Polish: finished games show Final in the score bar; calmer latest-play headline; graph readout doesn't repeat
+  "END GAME"; league label only in mixed lists; TV channel as plain text. (A syntax error from a scripted edit was
+  caught by the tests before going live and fixed.)
+- Item 28, possession on score rows: live football shows a monochrome ball next to the team with the ball and
+  down & distance + red-zone hint under the clock; NBA only when ESPN's data includes possession. Tests render a
+  live and a finished row.
+- Item 19, Closest Games filter: live by closeness to 50/50 (ESPN's live number, our NBA model, else score gap),
+  upcoming by most even matchup from our own team ratings (no betting lines), finished last. Test checks order.
+- Profile cards rule still to publish (needs the user's Google sign-in in the browser pane).
