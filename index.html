@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794862263" />
+  <meta name="build" content="1794862398" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -826,7 +826,7 @@
     .bar { flex-wrap: nowrap; }
     .bar h1 { min-width: 0; }
     @media (max-width: 720px) {
-      .bar-row { flex-wrap: nowrap; }
+      .bar-row { flex-wrap: wrap; row-gap: 8px; }
       .bar-row .seg button { padding: 8px 11px; font-size: 14px; }
       .bar-row .seg { padding: 3px; }
     }  </style>
@@ -1223,7 +1223,7 @@
       const paged = !!L?.paging, day = paged && viewOf(key) === "day";
       const toggle = paged ? '<div class="seg chips vt">' + [["week", "Week"], ["day", "Day"]].map(([k, l]) => '<button type="button" data-view="' + k + '" class="' + (viewOf(key) === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
       const pager = paged && !day ? '<div class="pager"><button class="pill-btn" type="button" data-page="-1" aria-label="Previous">‹</button><span class="label">' + esc(weekLabel(key)) + '</span><button class="pill-btn" type="button" data-page="1" aria-label="Next">›</button></div>' : "";
-      const liveBtn = key === "f1" ? '<button type="button" class="pill-btn f1-follow ' + (state.favs.has("f1") ? "on" : "") + '" data-fav="f1" aria-label="Follow Formula 1"><span class="fo">★ Following F1</span><span class="fn">☆ Follow F1</span></button>' : key !== "f1" ? '<div class="seg chips">' + [["all", "All"], ["fav", "★ My teams"], ["live", "● Live"]].map(([k, l]) => '<button type="button" data-filter="' + k + '" class="' + (state.filter === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
+      const liveBtn = key === "f1" ? '<button type="button" class="pill-btn f1-follow ' + (state.favs.has("f1") ? "on" : "") + '" data-fav="f1" aria-label="Follow Formula 1"><span class="fo">★ Following F1</span><span class="fn">☆ Follow F1</span></button>' : key !== "f1" ? '<div class="seg chips">' + [["all", "All"], ["fav", "My teams"], ["live", "Live"]].map(([k, l]) => '<button type="button" data-filter="' + k + '" class="' + (state.filter === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
       const search = paged ? '<div class="search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" data-search placeholder="Search ' + esc(L.short || L.name) + ' teams" autocomplete="off" value="' + esc(searchQ[key] || "") + '"><div class="sres" data-sres></div></div>' : "";
       // One title row (with a search icon), one row of filters + Week/Day, then the week or day picker.
       const open = paged && (searchOpen[key] || searchQ[key]);
