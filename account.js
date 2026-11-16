@@ -213,6 +213,7 @@ async function deleteAccount() {
 /* ---------- account sheet UI ---------- */
 let sheetView = null, mode = "login";
 function openAccount() {
+  startFirebase();
   const sv = { kind: "account", key: "account" }; if (!pushView(sv)) return; sheetView = sv;
   refreshAccountSheet();
 }
@@ -337,4 +338,7 @@ document.addEventListener("click", async (e) => {
   if (ch) return openChat(ch.dataset.chat);
 }, true);
 
-boot().catch(() => {});
+// Start Firebase (~270 KB) once the scores are on screen, or right away when the account button is tapped.
+let booting = null;
+function startFirebase() { return (booting ||= boot().catch(() => {})); }
+if ("requestIdleCallback" in window) requestIdleCallback(startFirebase, { timeout: 2500 }); else setTimeout(startFirebase, 1500);
