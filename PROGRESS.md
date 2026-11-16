@@ -46,7 +46,8 @@ this on a throttled phone profile before fixing.
 11. Push worker runs 24/7 on GitHub Actions, which GitHub's terms may not allow (see PLAN decisions).
 
 ### Design decisions
-(none yet: waiting on round 1)
+- Round 1 (2026-11-16): A's open layout (no boxes, hairline rows) + B's rounded touches (floating pill bar, pill buttons, soft top glow).
+- Round 2 (2026-11-16): option 1, Inter, airy rows, medium corners. Plain-English status line under the score kept as shown. Marks icon: "Score lines" (rounded square with three lines), shown beside the balance. Applies to every screen from here on.
 
 ## Decisions (2026-11-16, from you)
 - Design: A's open layout (no boxes, hairline rows) combined with B's rounded touches (floating pill bottom bar,
