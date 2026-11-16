@@ -188,6 +188,18 @@ BrandingText " "
   SetCtlColors $R9 5E5E64 101012
   GetDlgItem $R9 $HWNDPARENT 1256
   SetCtlColors $R9 5E5E64 101012
+  ; header strip: background, title, subtitle dark; hide its divider lines
+  GetDlgItem $R9 $HWNDPARENT 1034
+  SetCtlColors $R9 ECECEE 101012
+  GetDlgItem $R9 $HWNDPARENT 1037
+  SetCtlColors $R9 ECECEE 101012
+  GetDlgItem $R9 $HWNDPARENT 1038
+  SetCtlColors $R9 8E8E95 101012
+  GetDlgItem $R9 $HWNDPARENT 1035
+  ShowWindow $R9 0
+  GetDlgItem $R9 $HWNDPARENT 1036
+  ShowWindow $R9 0
+  SetCtlColors $R9 5E5E64 101012
 !macroend
 Function ScorelineDarkPage
   !insertmacro ScorelineDark
