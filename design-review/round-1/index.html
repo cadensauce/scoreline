@@ -26,6 +26,8 @@
   figure { margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
   figure img { width: 100%; border-radius: 16px; border: 1px solid var(--line); background: var(--frame); display: block; }
   figcaption { font-size: 13px; color: var(--mut); }
+  .shots3 { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 220px) minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 720px) { .shots3 { grid-template-columns: 1fr 1fr; } .shots3 .wide { grid-column: 1 / -1; } }
   .cur { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
   ol.audit { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; counter-reset: a; }
   ol.audit li { counter-increment: a; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 4px 12px; padding: 14px 0; border-top: 1px solid var(--line); }
@@ -40,7 +42,57 @@
 
 <div class="wrap">
   <header>
-    <span class="eyebrow">Round 1 · Phase 0 · Overall direction</span>
+    <span class="eyebrow">Round 2 · Design system</span>
+    <h1>Your look, on real parts</h1>
+    <p class="lead">You picked A's open layout with B's rounded touches. Here it is applied to buttons, filters, settings rows, game rows, the floating bottom bar and a real game page (Steelers at Bengals, halftime, real win probability). The three options only differ in typeface and roundness. New here: the plain-English status line under the score and the Marks currency icons.</p>
+  </header>
+
+  <section>
+    <div class="opt">
+      <div class="opt-h"><span class="tag">1</span><h2>Inter, airy</h2></div>
+      <p>The most neutral and readable. Medium roundness, the most space between rows.</p>
+      <div class="shots3">
+        <figure><img src="r2/parts-option-1-mobile.jpg" alt="Option 1 components on a phone"><figcaption>Parts</figcaption></figure>
+        <figure><img src="r2/game-option-1-mobile.jpg" alt="Option 1 game page on a phone"><figcaption>Game page</figcaption></figure>
+        <figure class="wide"><img src="r2/game-option-1-web.jpg" alt="Option 1 game page on desktop"><figcaption>Website</figcaption></figure>
+      </div>
+    </div>
+    <div class="opt">
+      <div class="opt-h"><span class="tag">2</span><h2>Manrope, soft</h2></div>
+      <p>Rounder letters and the roundest corners, with a slightly stronger glow at the top. The friendliest of the three.</p>
+      <div class="shots3">
+        <figure><img src="r2/parts-option-2-mobile.jpg" alt="Option 2 components on a phone"><figcaption>Parts</figcaption></figure>
+        <figure><img src="r2/game-option-2-mobile.jpg" alt="Option 2 game page on a phone"><figcaption>Game page</figcaption></figure>
+        <figure class="wide"><img src="r2/game-option-2-web.jpg" alt="Option 2 game page on desktop"><figcaption>Website</figcaption></figure>
+      </div>
+    </div>
+    <div class="opt">
+      <div class="opt-h"><span class="tag">3</span><h2>Geist, crisp</h2></div>
+      <p>Tighter, more technical letters, smaller corners and denser rows. Fits the most on screen.</p>
+      <div class="shots3">
+        <figure><img src="r2/parts-option-3-mobile.jpg" alt="Option 3 components on a phone"><figcaption>Parts</figcaption></figure>
+        <figure><img src="r2/game-option-3-mobile.jpg" alt="Option 3 game page on a phone"><figcaption>Game page</figcaption></figure>
+        <figure class="wide"><img src="r2/game-option-3-web.jpg" alt="Option 3 game page on desktop"><figcaption>Website</figcaption></figure>
+      </div>
+    </div>
+    <div class="opt">
+      <div class="opt-h"><span class="tag">$</span><h2>Marks icon</h2></div>
+      <p>Three original icon ideas for the currency: Tick, Score lines, Notch. The balance line shows how it would sit on your profile.</p>
+      <div class="shots3"><figure><img src="r2/currency-marks-icons.jpg" alt="Three Marks icon options and a balance"><figcaption>Bottom of the parts page</figcaption></figure></div>
+    </div>
+  </section>
+
+  <section class="q">
+    <h2>Round 2 questions</h2>
+    <ol>
+      <li>Which option, 1, 2 or 3? (Or mix, like "2's font with 3's corners".)</li>
+      <li>Is the plain-English line under the score ("Bengals lead by 21 · Halftime…") the right size and tone?</li>
+      <li>Which Marks icon: Tick, Score lines or Notch?</li>
+    </ol>
+  </section>
+
+  <header>
+    <span class="eyebrow">Round 1 · Phase 0 · Overall direction · you chose A's layout with B's rounded touches</span>
     <h1>Three looks for Scoreline</h1>
     <p class="lead">Each option is the same home screen, drawn with today's real NFL, NBA and college games (Sunday, Nov 15, Steelers–Bengals just kicked off). All three are monochrome and drop the orange; they differ in type, spacing and how much "surface" the screen has. Pick one, or mix.</p>
   </header>
