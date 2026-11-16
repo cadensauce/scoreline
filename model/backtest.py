@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-from common import REPORTS, compare_block, fmt, plot_calibration, swings, verdict
+from common import REPORTS, bold, compare_block, fmt, plot_calibration, swings, verdict
 
 
 def espn_section(sport, label, games, y, p_ours, p_espn, periods, period_names, extra_series=()):
@@ -54,8 +54,8 @@ def rolling_section(folds):
     m = {"seasons": [f[0] for f in folds], "per_season": per, "games": int(len(np.unique(G))), "rows": int(len(Y)),
          "brier_ours": brier(Y, PO), "brier_other": brier(Y, PE), "logloss_ours": logloss(Y, PO),
          "logloss_other": logloss(Y, PE), "brier_diff_ci95": [lo, hi]}
-    md.append(f"| **All {len(folds)} pooled** | {m['games']:,} | {m['rows']:,} | **{m['brier_ours']:.4f}** | {m['brier_other']:.4f} | "
-              f"**{m['logloss_ours']:.4f}** | {m['logloss_other']:.4f} |")
+    md.append(f"| **All {len(folds)} pooled** | {m['games']:,} | {m['rows']:,} | {bold(m['brier_ours'], m['brier_other'])} | {bold(m['brier_other'], m['brier_ours'])} | "
+              f"{bold(m['logloss_ours'], m['logloss_other'])} | {bold(m['logloss_other'], m['logloss_ours'])} |")
     wins = sum(1 for r in per if r[3] < r[4] and r[5] < r[6])
     v, why = verdict(m)
     m["verdict"], m["season_wins"] = v, wins
@@ -63,3 +63,14 @@ def rolling_section(folds):
                f"(bootstrap over games). Ours is better on both metrics in {wins} of {len(folds)} seasons.", "",
            f"**Automatic verdict: {v}.** {why.replace('on the held-out season', 'across the held-out seasons')}"]
     return md, m
+
+
+def opening_strength(rows):
+    """Per game, ESPN's first published win probability (their pre-game strength, before anything has happened
+    that matters) as a home-strength logit, for the 'ESPN pre-game strength' variant. Same clip as wp.js."""
+    first = {}
+    for r in rows:
+        if r.get("_espn") is not None and r["_game"] not in first:
+            first[r["_game"]] = r["_espn"]
+    p = np.array([min(0.99, max(0.01, first.get(r["_game"], 0.5))) for r in rows])
+    return np.log(p / (1 - p))

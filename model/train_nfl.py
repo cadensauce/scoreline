@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 import football as fb
-from backtest import espn_section, rolling_section
+from backtest import espn_section, opening_strength, rolling_section
 from common import (DATA, MODELS, OUT, REPORTS, check_export, download, eval_trees, export_trees, fetch_summaries,
                     fit_gbm, js_cases, load_summary, log, run_elo, sigmoid, tune_elo, write_json, compare_block)
 from strength import strh_array
@@ -83,6 +83,8 @@ def main():
         check_export(booster, trees, X(va))
         return trees, best, tr, va
 
+    predB = {}
+
     def espn_eval(S, ev):
         tg = games[(games.season == S) & games.home_score.notna() & games.espn.notna()]
         id_of = {str(int(e)): g for e, g in zip(tg.espn, tg.game_id)}
@@ -105,6 +107,9 @@ def main():
         ef = fb.states_to_frame(rows)
         ef["strh"] = strh_array(rows, None)
         can = fb.canonical(ef, "nfl")
+        pb = can.copy()
+        pb["strh"] = opening_strength(rows)
+        predB[S] = fb.predict_home(ev, pb, "nfl")
         return rows, can, fb.predict_home(ev, can, "nfl")
 
     folds = []
@@ -136,6 +141,8 @@ def main():
     md_e, met_e = espn_section("nfl", f"NFL {TEST}", gm, y, p_ours, p_espn, per, pnames)
     folds.append((str(TEST), gm, y, p_ours, p_espn))
     md_r, met_r = rolling_section(folds)
+    foldsB = [(fo[0], fo[1], fo[2], predB[s], fo[4]) for fo, s in zip(folds, (TEST - 2, TEST - 1, TEST))]
+    md_b, met_b = rolling_section(foldsB)
     met_e["verdict"] = met_r["verdict"]
 
     # ---------------- export
@@ -177,12 +184,12 @@ def main():
           "Both models are scored on exactly the same moments: right after each play that ESPN published a win probability for. "
           "Our input is built from ESPN's play-by-play the same way the app will build it live.", "", *md_e,
           "", f"### Rolling backtest: {TEST - 2}, {TEST - 1} and {TEST} (each season predicted by a model trained only on earlier seasons)",
-          "", *md_r,
+          "", *md_r, "", "### Variant: same model, pre-game strength taken from ESPN instead of our Elo", "", "Same trees; the strength input is ESPN's first published win probability for the game (the app can read it live from the summary's first `winprobability` entry or the pre-game predictor). Everything else is ours.", "", *md_b,
           "", f"### Held-out {TEST}: ours vs nflverse on nflverse plays (before each snap)", "", *md_nv, "", *md_vg]
     with open(os.path.join(REPORTS, "results-nfl.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(md) + "\n")
     write_json(os.path.join(REPORTS, "metrics-nfl.json"),
-               {"espn": met_e, "rolling": met_r, "nflverse_wp": met_nv, "nflverse_vegas_wp": met_vg, "elo": eparams,
+               {"espn": met_e, "rolling": met_r, "rolling_espn_pregame": met_b, "nflverse_wp": met_nv, "nflverse_vegas_wp": met_vg, "elo": eparams,
                 "trees": len(trees), "best_rounds": best}, compact=False)
     log("done", met_e["brier_ours"], met_e["brier_other"])
 

@@ -369,8 +369,8 @@ def compare_block(name_ours, name_other, games, y, p_ours, p_other, periods=None
         "brier_diff_ci95": [lo, hi],
     }
     md = [f"| Model | Brier (lower is better) | Log loss (lower is better) |", "|---|---|---|",
-          f"| {name_ours} | **{fmt(m['brier_ours'])}** | **{fmt(m['logloss_ours'])}** |",
-          f"| {name_other} | {fmt(m['brier_other'])} | {fmt(m['logloss_other'])} |", "",
+          f"| {name_ours} | {bold(m['brier_ours'], m['brier_other'])} | {bold(m['logloss_ours'], m['logloss_other'])} |",
+          f"| {name_other} | {bold(m['brier_other'], m['brier_ours'])} | {bold(m['logloss_other'], m['logloss_ours'])} |", "",
           f"{m['rows']:,} plays from {m['games']:,} games. Brier difference (ours minus {name_other}): "
           f"{m['brier_ours'] - m['brier_other']:+.4f}, 95% CI {lo:+.4f} to {hi:+.4f} (bootstrap over games)."]
     if periods is not None:
@@ -409,3 +409,8 @@ def js_cases(path, states, expected):
 
 
 RE_TO = re.compile(r"timeout #\d+ by ([A-Z]{2,4})", re.I)
+
+
+def bold(x, other, d=4):
+    """Format x, in bold when it is the better (lower) of the two."""
+    return f"**{x:.{d}f}**" if x < other else f"{x:.{d}f}"

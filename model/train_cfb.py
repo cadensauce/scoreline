@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 import football as fb
-from backtest import espn_section, rolling_section
+from backtest import espn_section, opening_strength, rolling_section
 from common import (DATA, MODELS, OUT, REPORTS, check_export, download, eval_trees, export_trees, fetch_summaries,
                     fit_gbm, js_cases, load_summary, log, run_elo, sigmoid, tune_elo, write_json)
 from strength import strh_array
@@ -84,11 +84,16 @@ def main():
         check_export(booster, trees, X(va))
         return trees, best, tr, va
 
+    predB = {}
+
     def espn_eval(S, ev):
         rows = [r for r in all_rows if r["_season"] == S and r["_espn"] is not None]
         ef = fb.states_to_frame(rows)
         ef["strh"] = strh_array(rows, None)
         can = fb.canonical(ef, "cfb")
+        pb = can.copy()
+        pb["strh"] = opening_strength(rows)
+        predB[S] = fb.predict_home(ev, pb, "cfb")
         return rows, can, fb.predict_home(ev, can, "cfb")
 
     folds = []
@@ -107,6 +112,8 @@ def main():
     md_e, met_e = espn_section("cfb", f"College football {TEST}", gm, y, p_ours, p_espn, can["period"].to_numpy(), pnames)
     folds.append((str(TEST), gm, y, p_ours, p_espn))
     md_r, met_r = rolling_section(folds)
+    foldsB = [(fo[0], fo[1], fo[2], predB[s], fo[4]) for fo, s in zip(folds, (TEST - 2, TEST - 1, TEST))]
+    md_b, met_b = rolling_section(foldsB)
     met_e["verdict"] = met_r["verdict"]
 
     recent = {t for g in glist if g["season"] >= TEST - 1 for t in (g["home"], g["away"])}
@@ -147,10 +154,10 @@ def main():
           "(not reliably in the college feed) plus the period number (overtime rules change by period). "
           "Kickoff and extra-point moments are treated as the receiving team's 1st and 10 at its own 25.", "",
           f"### Held-out {TEST}: ours vs ESPN on ESPN's own plays", "", *md_e, "",
-          f"### Rolling backtest: {TEST - 2}, {TEST - 1} and {TEST} (each season predicted by a model trained only on earlier seasons)", "", *md_r]
+          f"### Rolling backtest: {TEST - 2}, {TEST - 1} and {TEST} (each season predicted by a model trained only on earlier seasons)", "", *md_r, "", "### Variant: same model, pre-game strength taken from ESPN instead of our Elo", "", "Same trees; the strength input is ESPN's first published win probability for the game (the app can read it live from the summary's first `winprobability` entry or the pre-game predictor). Everything else is ours.", "", *md_b]
     with open(os.path.join(REPORTS, "results-cfb.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(md) + "\n")
-    write_json(os.path.join(REPORTS, "metrics-cfb.json"), {"espn": met_e, "rolling": met_r, "elo": eparams, "trees": len(trees),
+    write_json(os.path.join(REPORTS, "metrics-cfb.json"), {"espn": met_e, "rolling": met_r, "rolling_espn_pregame": met_b, "elo": eparams, "trees": len(trees),
                                                             "best_rounds": best}, compact=False)
     log("done", met_e["brier_ours"], met_e["brier_other"])
 
