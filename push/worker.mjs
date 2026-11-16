@@ -96,8 +96,11 @@ async function deliver(s, title, body, tag, ttl) {
     try {
       const id = await admin.messaging().send({
         token: s.sub.endpoint.slice(FCM_PREFIX.length),
+        // A "notification" message is shown by Android itself when the app is closed (no app code has to wake up);
+        // when the app is open, the app's own service gets it and shows it the same way.
+        notification: { title, body },
         data: { title, body, tag: String(tag) },
-        android: { priority: "high", ttl: ttl * 1000 },
+        android: { priority: "high", ttl: ttl * 1000, notification: { channelId: "scores", tag: String(tag), icon: "ic_stat_scoreline", defaultSound: true } },
       });
       return "app: sent " + String(id).split("/").pop();
     } catch (e) {
