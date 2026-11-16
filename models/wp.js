@@ -35,6 +35,9 @@
  *   homeScore, awayScore, period (5+ = OT), clock (seconds left in period or "MM:SS"), neutral,
  *   possession "home" | "away" | null   (use ScorelineWP.nbaPossession(summary.plays, homeId, awayId))
  *   strength as above (pregameHomeWP, or homeTeamId/awayTeamId [+season]).
+ *   RECOMMENDED for NBA: pregameHomeWP = summary.winprobability[0].homeWinPercentage (ESPN's opening number),
+ *   or predictor.homeTeam.gameProjection / 100 before tip-off. That combination beat ESPN in the backtest;
+ *   with our Elo alone it only ties ESPN (see reports/winprob/REPORT.md).
  *
  * f1(state)  -> see the F1 section at the bottom (per-driver win probabilities).
  */
