@@ -1,6 +1,6 @@
 // Win probability: our NBA model loads in the browser and behaves sensibly; NBA game pages label it as ours.
 const { test, expect } = require("@playwright/test");
-const { espnViaRunner, goTab } = require("./helpers");
+const { espnViaRunner } = require("./helpers");
 
 test("NBA model gives sensible numbers", async ({ page }) => {
   await page.goto("index.html");
@@ -23,10 +23,15 @@ test("an NBA game page shows Scoreline win probability", async ({ page }) => {
   await espnViaRunner(page);
   await page.goto("index.html");
   await page.locator("#main [data-ev]").first().waitFor({ state: "attached", timeout: 30000 });
-  await goTab(page, "nba");
-  const card = page.locator('#main [data-ev][data-lg="nba"]').filter({ hasText: /final|q\d|\d:\d\d/i }).first();
-  test.skip(!(await card.count()), "no started NBA game in today's data");
-  await card.click();
+  // A finished game from the last few days (so the test doesn't depend on today's schedule).
+  let id = null;
+  for (let d = 1; d <= 4 && !id; d++) {
+    const day = new Date(Date.now() - d * 86400000).toISOString().slice(0, 10).replace(/-/g, "");
+    const sb = await (await fetch("https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=" + day)).json();
+    id = (sb.events || []).find((e) => e.status?.type?.state === "post")?.id || null;
+  }
+  test.skip(!id, "no finished NBA game in the last 4 days");
+  await page.evaluate((gid) => openGame("nba", gid), id);
   const sec = page.locator("[data-wpsec]").first();
   await expect(sec).toBeVisible({ timeout: 20000 });
   await expect(sec).toContainText(/Scoreline win probability|ESPN win probability/);
