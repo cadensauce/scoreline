@@ -22,13 +22,13 @@ window.scorelineMock = async function (dir, wide) {
   }[dir];
 
   const row = (g) => `<div class="m-row">${g.t.map((t) => `<div class="m-team ${g.state === "post" && !t.win ? "lose" : ""}"><img src="${t.logo}" alt=""><b>${t.name}</b>${t.poss ? '<i class="m-ball">●</i>' : ""}<small>${t.rec}</small><span class="m-sc">${g.state === "pre" ? "" : t.score}</span></div>`).join("")}
-    <div class="m-st">${g.state === "in" ? '<i class="m-dot"></i>' : ""}${g.detail}${g.down && g.state === "in" ? `<small>${g.down}</small>` : ""}</div></div>`;
+    <div class="m-st"><span>${g.state === "in" ? '<i class="m-dot"></i> ' : ""}${g.detail}</span>${g.down && g.state === "in" ? `<small>${g.down}</small>` : ""}</div></div>`;
   const block = (title, games, more) => games.length ? `<section class="m-sec"><div class="m-h"><span>${title}</span>${more ? "<a>See all</a>" : ""}</div><div class="m-list">${games.map(row).join("")}</div></section>` : "";
   const nav = ["Home", "NFL", "CFB", "F1", "Profile"];
   const html = `<style>
     @import url('https://fonts.googleapis.com/css2?family=${S.font.replace(/ /g, "+")}:wght@400;500;600;700&display=swap');
     #m-root{${S.css}--f:'${S.font}',system-ui,sans-serif;position:fixed;inset:0;z-index:2147483647;overflow:auto;background:var(--bg);color:var(--fg);font-family:var(--f);-webkit-font-smoothing:antialiased;font-feature-settings:"tnum"}
-    #m-root *{box-sizing:border-box;margin:0}
+    #m-root :where(*){box-sizing:border-box;margin:0;padding:0}
     .m-wrap{max-width:${wide ? "1120px" : "none"};margin:0 auto;padding:${wide ? "28px 40px 60px" : "16px 20px 110px"}}
     .m-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:${wide ? "36px" : "22px"}}
     .m-word{font:700 17px var(--f);letter-spacing:.02em}
@@ -43,13 +43,13 @@ window.scorelineMock = async function (dir, wide) {
     .m-row{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;column-gap:18px;row-gap:8px;padding:var(--row);border-top:1px solid ${dir === "B" ? "transparent" : "var(--line)"};position:relative}
     ${dir === "B" ? ".m-row+.m-row:before{content:'';position:absolute;left:18px;right:18px;top:0;height:1px;background:var(--line)}" : ""}
     .m-row:first-child{border-top-color:transparent}
-    .m-team{grid-column:1;display:flex;align-items:center;gap:12px;min-width:0}.m-team img{width:24px;height:24px;object-fit:contain}
+    .m-team{grid-column:1;width:100%;display:flex;align-items:center;gap:12px;min-width:0}.m-team img{width:24px;height:24px;object-fit:contain}
     .m-team b{font:var(--name);white-space:nowrap}.m-team small{color:var(--mut);font:400 14px var(--f)}.m-team .m-ball{font-style:normal;font-size:9px;color:var(--fg)}
     .m-sc{margin-left:auto;font:var(--score);min-width:34px;text-align:right}
     .m-team.lose b,.m-team.lose .m-sc{color:var(--mut);font-weight:500}
     .m-st{grid-column:2;grid-row:1/3;align-self:center;text-align:right;min-width:78px;font:500 14px var(--f);color:var(--mut);display:flex;flex-direction:column;align-items:flex-end;gap:3px}
     .m-st small{font:400 13px var(--f)}
-    .m-dot{width:7px;height:7px;border-radius:50%;background:var(--liveDot);display:inline-block;margin-bottom:2px;animation:none}
+    .m-dot{width:7px;height:7px;border-radius:50%;background:var(--liveDot);display:inline-block;margin:0 6px 1px 0;vertical-align:middle}
     .m-row:has(.m-dot) .m-st{color:var(--fg)}
     .m-nav{position:fixed;left:${dir === "B" ? "16px" : "0"};right:${dir === "B" ? "16px" : "0"};bottom:${dir === "B" ? "18px" : "0"};display:flex;justify-content:space-around;padding:${dir === "B" ? "12px 6px" : "10px 6px 26px"};background:var(--nav);border-top:1px solid var(--navLine);${dir === "B" ? "border:1px solid var(--navLine);border-radius:28px;backdrop-filter:blur(14px);" : ""}}
     .m-nav span{font:500 12px var(--f);color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:5px;min-width:56px}.m-nav span.on{color:var(--fg)}.m-nav i{width:20px;height:20px;border-radius:${dir === "B" ? "7px" : "50%"};border:1.6px solid currentColor;display:block}
