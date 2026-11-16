@@ -22,9 +22,12 @@ for (const [name, url] of Object.entries(TARGETS)) {
   test(`speed: ${name}`, async ({ page }) => {
     test.setTimeout(120000);
     const net = await phone(page);
+    page.on("pageerror", (e) => console.log("PAGEERROR", name, e.message));
+    page.on("requestfailed", (r) => console.log("REQFAIL", name, r.url().slice(0, 100), r.failure()?.errorText));
     const t0 = Date.now();
     await page.goto(url);
-    await page.locator("[data-ev]").first().waitFor({ state: "attached", timeout: 60000 });
+    try { await page.locator("[data-ev]").first().waitFor({ state: "attached", timeout: 60000 }); }
+    catch (e) { console.log("NOSCORES", name, (await page.evaluate(() => document.querySelector("#main")?.innerText.slice(0, 400))).replace(/\s+/g, " ")); throw e; }
     const firstScoresMs = Date.now() - t0;
     await page.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
     const load = net.totals();
