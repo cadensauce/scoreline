@@ -28,7 +28,7 @@ window.scorelineMock = async function (dir, wide) {
   const html = `<style>
     @import url('https://fonts.googleapis.com/css2?family=${S.font.replace(/ /g, "+")}:wght@400;500;600;700&display=swap');
     #m-root{${S.css}--f:'${S.font}',system-ui,sans-serif;position:fixed;inset:0;z-index:2147483647;overflow:auto;background:var(--bg);color:var(--fg);font-family:var(--f);-webkit-font-smoothing:antialiased;font-feature-settings:"tnum"}
-    #m-root :where(*){box-sizing:border-box;margin:0;padding:0}
+    :where(#m-root *){box-sizing:border-box;margin:0;padding:0}
     .m-wrap{max-width:${wide ? "1120px" : "none"};margin:0 auto;padding:${wide ? "28px 40px 60px" : "16px 20px 110px"}}
     .m-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:${wide ? "36px" : "22px"}}
     .m-word{font:700 17px var(--f);letter-spacing:.02em}
