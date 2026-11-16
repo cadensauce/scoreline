@@ -28,6 +28,20 @@ service cloud.firestore {
       allow delete: if member() && me() == uid;
     }
 
+    // Profile card: photo (a small JPEG made on the device), one-line bio, followed team names.
+    // Visible to you, and to your friends when you choose "Friends"; nobody else.
+    match /cards/{uid} {
+      allow read: if member() && (me() == uid || (resource.data.show == 'friends' && friends(me(), uid)));
+      allow create, update: if member() && me() == uid
+        && request.resource.data.keys().hasOnly(['avatar', 'bio', 'teams', 'show', 'updatedAt'])
+        && request.resource.data.avatar is string && request.resource.data.avatar.size() <= 60000
+        && (request.resource.data.avatar == '' || request.resource.data.avatar.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$'))
+        && request.resource.data.bio is string && request.resource.data.bio.size() <= 160
+        && request.resource.data.teams is list && request.resource.data.teams.size() <= 30
+        && request.resource.data.show in ['friends', 'me'];
+      allow delete: if member() && me() == uid;
+    }
+
     // Username -> uid lookup. First come, first served; you can only claim names for yourself.
     match /usernames/{name} {
       allow read: if member();
