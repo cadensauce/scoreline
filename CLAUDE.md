@@ -33,6 +33,9 @@ Not affiliated with any league, team or ESPN. Non-commercial (no ads, no paid fe
 
 - No local toolchain is required for the site: edit `index.html`, push to `main`, Pages deploys in ~1 min.
 - **Bump `<meta name="build" content="…">` on every push** (unix seconds). Open pages compare it and reload.
+- **Version (item 17):** `<meta name="version" content="2.0">` in index.html is the one source of truth. Bump it
+  (major.minor) for a release. The apps build reads it, so app versions are `major.minor.<build run>`; You → About
+  shows "Version 2.0 · Updated <build date>" (+ the app version inside the apps).
 - Preview a commit without deploying: load raw.githubusercontent HTML into an iframe `srcdoc` with a
   `<base href="https://cadensauce.github.io/scoreline/">` (set `window.__PREVIEW_APP=1` for phone-app mode).
 - Apps: `gh workflow run apps.yml -R cadensauce/scoreline --ref main` (~15 min). Push worker:
