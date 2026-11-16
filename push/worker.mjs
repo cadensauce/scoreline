@@ -7,6 +7,8 @@
 
 import webpush from "web-push";
 import admin from "firebase-admin";
+import nodemailer from "nodemailer";
+import crypto from "node:crypto";
 
 const RUN_FOR_MS = (Number(process.env.RUN_MINUTES) || 345) * 60_000;
 const TICK_MS = 20_000;            // games
@@ -65,7 +67,12 @@ db.collection("signinCodes").onSnapshot((snap) => {
     const x = c.doc.data();
     if (x.token || !x.uid) return;
     if (Date.now() - (x.createdAt?.toMillis?.() || 0) > CODE_TTL) { await c.doc.ref.delete().catch(() => {}); return; }
-    try { await c.doc.ref.update({ token: await admin.auth().createCustomToken(x.uid) }); console.log(new Date().toISOString(), "sign-in code ready"); }
+    try {
+      // Creating a code needed a fully signed-in device, so the new device counts as verified for two-step too.
+      const ts = (await db.collection("twoStep").doc(x.uid).get()).exists;
+      await c.doc.ref.update({ token: await admin.auth().createCustomToken(x.uid, ts ? { ts: true } : undefined) });
+      console.log(new Date().toISOString(), "sign-in code ready");
+    }
     catch (e) { console.log("sign-in code failed", e.message); }
   });
 }, (e) => console.log("sign-in code listener stopped", e.message));
@@ -74,6 +81,54 @@ setInterval(async () => {   // clean up codes nobody used
   old?.docs.forEach((d) => d.ref.delete().catch(() => {}));
 }, 5 * 60 * 1000);
 
+// ---- two-step sign-in: emailed 6-digit codes ---------------------------------------------------
+// Secrets SMTP_USER / SMTP_PASS: a Gmail account made for Scoreline and its app password.
+const mailer = process.env.SMTP_USER && process.env.SMTP_PASS
+  ? nodemailer.createTransport({ service: "gmail", auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } }) : null;
+const OTP_TTL = 10 * 60 * 1000;
+const hashCode = (uid, code) => crypto.createHash("sha256").update(uid + ":" + code).digest("hex");
+const answer = (uid, data) => db.collection("otpResults").doc(uid).set({ ...data, at: admin.firestore.FieldValue.serverTimestamp() });
+db.collection("otpRequests").onSnapshot((snap) => {
+  snap.docChanges().forEach(async (c) => {
+    if (c.type === "removed") return;
+    const uid = c.doc.id, x = c.doc.data();
+    if (Date.now() - (x.createdAt?.toMillis?.() || 0) > 2 * 60 * 1000) return;          // stale request
+    if (!mailer) { await answer(uid, { error: "Email codes aren't set up yet." }); return; }
+    try {
+      const u = await admin.auth().getUser(uid);
+      if (!u.email) { await answer(uid, { error: "This account has no email address." }); return; }
+      const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+      await db.collection("otpCodes").doc(uid).set({ hash: hashCode(uid, code), expires: Date.now() + OTP_TTL, tries: 0, purpose: x.purpose === "enable" ? "enable" : "signin" });
+      await mailer.sendMail({
+        from: `"Scoreline" <${process.env.SMTP_USER}>`, to: u.email,
+        subject: `${code} is your Scoreline code`,
+        text: `Your Scoreline sign-in code is ${code}\n\nIt works for 10 minutes. If you didn't try to sign in, you can ignore this email; someone may know your password, so consider changing it.`,
+      });
+      console.log(new Date().toISOString(), "two-step code sent");
+    } catch (e) { console.log("two-step email failed", e.message); await answer(uid, { error: "Couldn't send the email. Try again in a minute." }); }
+  });
+}, (e) => console.log("otp request listener stopped", e.message));
+db.collection("otpAttempts").onSnapshot((snap) => {
+  snap.docChanges().forEach(async (c) => {
+    if (c.type === "removed") return;
+    const uid = c.doc.id, typed = String(c.doc.data().code || "");
+    const ref = db.collection("otpCodes").doc(uid);
+    try {
+      const rec = (await ref.get()).data();
+      if (!rec) { await answer(uid, { error: "Ask for a new code." }); return; }
+      if (Date.now() > rec.expires) { await ref.delete(); await answer(uid, { error: "That code expired. Ask for a new one." }); return; }
+      if (rec.tries >= 5) { await ref.delete(); await answer(uid, { error: "Too many tries. Ask for a new code." }); return; }
+      if (!crypto.timingSafeEqual(Buffer.from(hashCode(uid, typed)), Buffer.from(rec.hash))) {
+        await ref.update({ tries: rec.tries + 1 }); await answer(uid, { error: "That code isn't right." }); return;
+      }
+      await ref.delete();
+      if (rec.purpose === "enable") await db.collection("twoStep").doc(uid).set({ since: admin.firestore.FieldValue.serverTimestamp() });
+      await answer(uid, { token: await admin.auth().createCustomToken(uid, { ts: true }), purpose: rec.purpose });
+      console.log(new Date().toISOString(), "two-step verified");
+    } catch (e) { console.log("two-step check failed", e.message); await answer(uid, { error: "Something went wrong. Try again." }); }
+    c.doc.ref.delete().catch(() => {});
+  });
+}, (e) => console.log("otp attempt listener stopped", e.message));
 // ---- subscribers -------------------------------------------------------------------------
 let subs = [];
 let subsAt = 0;

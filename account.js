@@ -38,7 +38,16 @@ async function onUser(u) {
   unsubs.forEach((f) => f()); unsubs = [];
   user = u; profile = null;
   friendState = { incoming: [], outgoing: [], friends: [] };
+  pending2 = false; twoStepOn = false; otpUnsub?.(); otpUnsub = null;
   if (u) {
+    // Two-step sign-in: with it on, this device needs the emailed code before it can use the account.
+    const verifiedHere = (await u.getIdTokenResult().catch(() => null))?.claims?.ts === true;
+    twoStepOn = !!(await fb.getDoc(fb.doc(db, "twoStep", u.uid)).catch(() => null))?.exists();
+    if (twoStepOn && !verifiedHere) {
+      pending2 = true; watchOtp(); requestCode("signin");
+      syncButton(); if (!sheetView?.el?.isConnected) openAccount(); else refreshAccountSheet();
+      return;
+    }
     const p = await fb.getDoc(fb.doc(db, "profiles", u.uid));
     profile = p.exists() ? p.data() : null;
     if (profile) names[u.uid] = profile.username;
@@ -232,7 +241,9 @@ function refreshAccountSheet() {
       (mode === "login" ? '<button type="button" class="acct-link" data-usecode>Have a sign-in code from the website?</button>' : "") +
       (window.__TAURI__ ? "" : '<div class="or"><span>or</span></div><button type="button" class="pill-btn g-btn" data-google><svg viewBox="0 0 24 24" width="18" height="18"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.6 5.6 0 0 1-2.4 3.7v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.9-3c-1.1.7-2.4 1.2-4 1.2-3.1 0-5.7-2.1-6.6-4.9h-4v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.4 14.4a7.2 7.2 0 0 1 0-4.7V6.6h-4a12 12 0 0 0 0 10.9z"/><path fill="#EA4335" d="M12 4.8c1.7 0 3.3.6 4.5 1.8l3.4-3.4A12 12 0 0 0 1.4 6.6l4 3.1C6.3 6.9 8.9 4.8 12 4.8z"/></svg>Continue with Google</button>') +
       TRUST + '<button type="button" class="acct-link" data-privacy>Read the full privacy page</button>';
-  } else if (!profile) {
+  } else if (pending2) {
+    h = otpForm("Check your email", "Two-step sign-in is on. We sent a 6-digit code to " + esc(maskEmail(user.email)) + ". It works for 10 minutes.") +
+      '<div class="acct-foot"><button type="button" class="acct-link" data-otpresend>Send a new code</button><button type="button" class="acct-link" data-logout>Log out</button></div>';  } else if (!profile) {
     h = '<div class="g-label">Pick a username</div><p class="g-note">This is the only thing other people will see. 3–20 letters, numbers or _.</p>' +
       '<form class="acct-add" data-uname><input maxlength="20" placeholder="e.g. niners_fan" autocomplete="off"><button class="pill-btn" type="submit">Save</button></form><div class="acct-err" data-err></div>' +
       '<div class="acct-foot"><button type="button" class="acct-link" data-logout>Log out</button></div>';
@@ -241,7 +252,8 @@ function refreshAccountSheet() {
     const person = (uid, actions) => '<div class="opt"><span><b>@' + esc(names[uid] || "…") + "</b></span><span class=\"acct-acts\">" + actions + "</span></div>";
     h = '<div class="acct-me"><div class="avatar">' + esc((profile?.username || "?")[0].toUpperCase()) + "</div><div><b>@" + esc(profile?.username || "") + "</b><small data-email>" + emailLine() + '</small></div><button class="pill-btn" type="button" data-logout>Log out</button></div>' +
       '<div class="g-note">★ teams and alert settings are synced.</div>' +
-      (window.__TAURI__ ? "" : '<div class="signin-send"><button type="button" class="pill-btn" data-sendsignin>Send sign-in to the app</button><div data-signincode></div></div>') +
+      '<div class="g-label" style="margin-top:18px">Two-step sign-in</div><div data-2box><div class="opt"><span><b>' + (twoStepOn ? "On" : "Off") + '</b><small>' + (twoStepOn ? "New devices need a code we email you" : "Ask for an emailed code when you sign in on a new device") + '</small></span>' +
+      (twoStepOn ? '<button class="pill-btn" type="button" data-2off>Turn off</button>' : '<button class="pill-btn" type="button" data-2on>Turn on</button>') + "</div></div>" +      (window.__TAURI__ ? "" : '<div class="signin-send"><button type="button" class="pill-btn" data-sendsignin>Send sign-in to the app</button><div data-signincode></div></div>') +
       '<div class="g-label" style="margin-top:18px">Add a friend</div><form class="acct-add" data-addf><input placeholder="Username" maxlength="21" autocomplete="off"><button class="pill-btn" type="submit">Add</button></form><div class="acct-err" data-err></div>' +
       (F.incoming.length ? '<div class="g-label" style="margin-top:16px">Friend requests</div><div class="panel">' + F.incoming.map((r) => person(r.from, '<button class="pill-btn" type="button" data-accept="' + esc(r.id) + '">Accept</button><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '">✕</button>')).join("") + "</div>" : "") +
       '<div class="g-label" style="margin-top:16px">Friends</div><div class="panel">' + (F.friends.length ? F.friends.map((uid) => person(uid, '<button class="pill-btn" type="button" data-chat="' + esc(uid) + '">Chat</button><button class="pill-btn" type="button" data-unfriend="' + esc(uid) + '" aria-label="Remove friend">✕</button>')).join("") : '<div class="g-note">No friends yet. Add someone by their username.</div>') + "</div>" +
@@ -261,6 +273,50 @@ const niceErr = (e) => {
   return e?.message || "Something went wrong.";
 };
 
+/* ---------- two-step sign-in (emailed codes; the push worker sends and checks them) ---------- */
+let pending2 = false, twoStepOn = false, otpUnsub = null, otpPurpose = null;
+async function requestCode(purpose) {
+  otpPurpose = purpose; watchOtp();
+  try { await fb.setDoc(fb.doc(db, "otpRequests", user.uid), { createdAt: fb.serverTimestamp(), purpose }); toast("Code sent. Check your email."); }
+  catch { toast("Wait a minute before asking for another code."); }
+}
+function watchOtp() {
+  if (otpUnsub || !user) return;
+  const ref = fb.doc(db, "otpResults", user.uid);
+  otpUnsub = fb.onSnapshot(ref, async (d) => {
+    if (!d.exists()) return;
+    const x = d.data();
+    await fb.deleteDoc(ref).catch(() => {});
+    if (x.token) { otpUnsub?.(); otpUnsub = null; await fb.signInWithCustomToken(auth, x.token); buzz(12); toast(x.purpose === "enable" ? "Two-step sign-in is on" : "Verified"); }
+    else if (x.error) { const f = document.querySelector("[data-otp]"); if (f) errBox(f, x.error); else toast(x.error); f?.querySelector("button")?.removeAttribute("disabled"); }
+  }, () => {});
+}
+const otpForm = (title, note) => '<div class="g-label">' + title + '</div><p class="g-note">' + note + '</p><form class="acct-add" data-otp><input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="123456" required><button class="pill-btn" type="submit">Verify</button></form><div class="acct-err" data-err></div>';
+document.addEventListener("click", async (e) => {
+  if (!user) return;
+  if (e.target.closest("[data-otpresend]")) return requestCode(otpPurpose || "signin");
+  if (e.target.closest("[data-2on]")) {
+    otpPurpose = "enable"; await requestCode("enable");
+    const box = document.querySelector("[data-2box]");
+    if (box) box.innerHTML = otpForm("Turn on two-step sign-in", "We emailed a 6-digit code to " + esc(maskEmail(user.email)) + ". Enter it to confirm your email works.") + '<button type="button" class="acct-link" data-otpresend>Send a new code</button>';
+    return;
+  }
+  if (e.target.closest("[data-2off]")) {
+    try { await fb.deleteDoc(fb.doc(db, "twoStep", user.uid)); twoStepOn = false; toast("Two-step sign-in is off"); refreshAccountSheet(); }
+    catch { toast("Log out and back in with your code, then try again."); }
+  }
+});
+document.addEventListener("submit", async (e) => {
+  const f = e.target;
+  if (!f.matches("[data-otp]") || !user) return;
+  e.preventDefault();
+  const code = String(f.code.value).replace(/\D/g, "");
+  if (code.length !== 6) { errBox(f, "Enter the 6 digits from the email."); return; }
+  f.querySelector("button").disabled = true; errBox(f, "");
+  watchOtp();
+  try { await fb.setDoc(fb.doc(db, "otpAttempts", user.uid), { code, createdAt: fb.serverTimestamp() }); }
+  catch { errBox(f, "Couldn't check the code. Try again."); f.querySelector("button").disabled = false; }
+});
 // Sign-in codes: move your sign-in from the website to a newly installed app without typing your password.
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // no 0/O or 1/I
 const pretty = (c) => c.slice(0, 4) + "-" + c.slice(4);

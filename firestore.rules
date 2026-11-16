@@ -4,6 +4,10 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function me() { return request.auth.uid; }
+    // Two-step sign-in: if you turned it on (twoStep/{uid} exists), a device only counts as signed in after it
+    // entered the emailed code; the push worker then signs it in with a token marked ts = true.
+    function verified() { return !exists(/databases/$(database)/documents/twoStep/$(request.auth.uid)) || request.auth.token.ts == true; }
+    function member() { return signedIn() && verified(); }
     function friends(a, b) {
       return (exists(/databases/$(database)/documents/requests/$(a + '_' + b)) && get(/databases/$(database)/documents/requests/$(a + '_' + b)).data.status == 'accepted')
           || (exists(/databases/$(database)/documents/requests/$(b + '_' + a)) && get(/databases/$(database)/documents/requests/$(b + '_' + a)).data.status == 'accepted');
@@ -11,37 +15,37 @@ service cloud.firestore {
 
     // Private settings: favourite teams, alert settings. Only the owner can see or change them.
     match /users/{uid} {
-      allow read, write: if signedIn() && me() == uid;
+      allow read, write: if member() && me() == uid;
     }
 
     // Public profile: just the username, so friends can find each other.
     match /profiles/{uid} {
-      allow read: if signedIn();
-      allow create, update: if signedIn() && me() == uid
+      allow read: if member();
+      allow create, update: if member() && me() == uid
         && request.resource.data.keys().hasOnly(['username', 'createdAt'])
         && request.resource.data.username is string
         && request.resource.data.username.matches('^[a-z0-9_]{3,20}$');
-      allow delete: if signedIn() && me() == uid;
+      allow delete: if member() && me() == uid;
     }
 
     // Username -> uid lookup. First come, first served; you can only claim names for yourself.
     match /usernames/{name} {
-      allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.uid == me() && name.matches('^[a-z0-9_]{3,20}$');
-      allow delete: if signedIn() && resource.data.uid == me();
+      allow read: if member();
+      allow create: if member() && request.resource.data.uid == me() && name.matches('^[a-z0-9_]{3,20}$');
+      allow delete: if member() && resource.data.uid == me();
     }
 
     // Friend requests. Document id is "<from>_<to>".
     match /requests/{id} {
-      allow read: if signedIn() && (resource.data.from == me() || resource.data.to == me());
-      allow create: if signedIn() && request.resource.data.from == me()
+      allow read: if member() && (resource.data.from == me() || resource.data.to == me());
+      allow create: if member() && request.resource.data.from == me()
         && id == me() + '_' + request.resource.data.to
         && request.resource.data.status == 'pending'
         && request.resource.data.to != me();
-      allow update: if signedIn() && resource.data.to == me()
+      allow update: if member() && resource.data.to == me()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
         && request.resource.data.status == 'accepted';
-      allow delete: if signedIn() && (resource.data.from == me() || resource.data.to == me());
+      allow delete: if member() && (resource.data.from == me() || resource.data.to == me());
     }
 
     // Public info the site needs, like the push worker's public key. Read-only for everyone.
@@ -66,15 +70,44 @@ service cloud.firestore {
     // You create a code for your own account only; the push worker (server key) adds a one-time sign-in pass;
     // anyone holding the exact code can read that one document for 10 minutes (no listing). You delete it after use.
     match /signinCodes/{code} {
-      allow create: if signedIn() && code.matches('^[A-HJ-NP-Z2-9]{8}$')
+      allow create: if member() && code.matches('^[A-HJ-NP-Z2-9]{8}$')
         && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
         && request.resource.data.uid == me()
         && request.resource.data.createdAt == request.time;
       allow get: if code.matches('^[A-HJ-NP-Z2-9]{8}$') && request.time < resource.data.createdAt + duration.value(10, 'm');
       allow list, update: if false;
-      allow delete: if signedIn() && resource.data.uid == me();
+      allow delete: if member() && resource.data.uid == me();
     }
 
+    // ---- Two-step sign-in (emailed codes) ----
+    // twoStep/{uid} exists when you turned it on. Only the push worker creates it (after you entered a code);
+    // you can turn it off from a verified device.
+    match /twoStep/{uid} {
+      allow get: if signedIn() && me() == uid;
+      allow delete: if signedIn() && me() == uid && request.auth.token.ts == true;
+      allow list, create, update: if false;
+    }
+    // Ask the push worker to email you a code (at most once a minute).
+    match /otpRequests/{uid} {
+      allow create: if signedIn() && me() == uid && request.resource.data.keys().hasOnly(['createdAt', 'purpose'])
+        && request.resource.data.createdAt == request.time && request.resource.data.purpose in ['signin', 'enable'];
+      allow update: if signedIn() && me() == uid && request.resource.data.keys().hasOnly(['createdAt', 'purpose'])
+        && request.resource.data.createdAt == request.time && request.resource.data.purpose in ['signin', 'enable']
+        && request.time > resource.data.createdAt + duration.value(60, 's');
+      allow read, delete: if false;
+    }
+    // The code you typed; only the push worker reads it (it allows 5 tries per code).
+    match /otpAttempts/{uid} {
+      allow create, update: if signedIn() && me() == uid && request.resource.data.keys().hasOnly(['code', 'createdAt'])
+        && request.resource.data.code is string && request.resource.data.code.size() == 6
+        && request.resource.data.createdAt == request.time;
+      allow read, delete: if false;
+    }
+    // The worker's answer: a one-time verified sign-in pass, or why the code didn't work.
+    match /otpResults/{uid} {
+      allow get, delete: if signedIn() && me() == uid;
+      allow list, create, update: if false;
+    }
     // Anonymous alert-setup health reports: a short code and the app version, keyed by the same random
     // device id as pushSubs. Nothing personal. Only the push worker can read them.
     match /diag/{id} {
@@ -88,21 +121,21 @@ service cloud.firestore {
 
     // Chats: only between friends, only members can read or write.
     match /chats/{chatId} {
-      allow read: if signedIn() && me() in resource.data.members;
-      allow create: if signedIn() && me() in request.resource.data.members
+      allow read: if member() && me() in resource.data.members;
+      allow create: if member() && me() in request.resource.data.members
         && request.resource.data.members.size() == 2
         && chatId == request.resource.data.members[0] + '_' + request.resource.data.members[1]
         && friends(request.resource.data.members[0], request.resource.data.members[1]);
-      allow update: if signedIn() && me() in resource.data.members
+      allow update: if member() && me() in resource.data.members
         && request.resource.data.members == resource.data.members;
 
       match /messages/{msg} {
-        allow read: if signedIn() && me() in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
-        allow create: if signedIn() && request.resource.data.from == me()
+        allow read: if member() && me() in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+        allow create: if member() && request.resource.data.from == me()
           && me() in get(/databases/$(database)/documents/chats/$(chatId)).data.members
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 500;
-        allow delete: if signedIn() && resource.data.from == me();
+        allow delete: if member() && resource.data.from == me();
       }
     }
   }
