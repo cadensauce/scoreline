@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794859380" />
+  <meta name="build" content="1794861755" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -785,6 +785,44 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     @media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; transition: none !important; } }
+    /* ---- Score rows (Phase 2 design: open rows on hairlines, no boxes) ---- */
+    .grid { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); column-gap: 48px; row-gap: 0; background: none; border: 0; border-radius: 0; overflow: visible; }
+    .grid .card { background: none; border: 0; border-radius: 0; border-top: 1px solid var(--line); padding: 16px 0; box-shadow: none; }
+    .grid .card:hover { background: none; }
+    .grid .card:active { background: var(--panel); }
+    .card.live { border-color: var(--line); }
+    .card.live::before { display: none; }
+    .card-head { margin-bottom: 8px; font-size: var(--fs-sm); }
+    .status { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted); }
+    .status.final { color: var(--muted); }
+    .status.live { color: var(--text); }
+    .status.live::before { width: 7px; height: 7px; background: var(--text); }
+    .team { grid-template-columns: 24px 1fr auto auto; gap: 12px; padding: 4px 0; }
+    .team img, .team .ph { width: 24px; height: 24px; }
+    .tname strong { font-size: 17px; font-weight: 500; }
+    .tname .rec { font-size: 13px; }
+    .score { font-family: var(--display); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 32px; }
+    .team.winner strong, .team.winner .score { font-weight: 650; }
+    .team.winner .score::after { content: none; }
+    .fmark { font-size: 11px; color: var(--muted); }
+    .card-foot { border-top: 0; padding-top: 4px; margin-top: 4px; font-size: var(--fs-xs); color: var(--faint); }
+    .section-title { font: 600 12px/1.2 var(--display); letter-spacing: .12em; margin: 32px 0 4px; }
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; column-gap: 0; background: none; border: 0; }
+      .grid .card { grid-template-columns: 1fr 84px; column-gap: 12px; padding: 14px 0; border-bottom: 0; border-top: 1px solid var(--line); }
+      .grid .card:first-child { border-top: 0; }
+      .grid .card-head { border-left: 0; font-size: var(--fs-sm); }
+      .card-head .status { font-size: 13px; }
+      .team { grid-template-columns: 22px 1fr auto auto; gap: 10px; padding: 3px 0; }
+      .team img, .team .ph { width: 22px; height: 22px; }
+      .tname strong { font-size: 16px; }
+      .score { font-size: 21px; }
+      .section-title { font-size: 12px; margin: 26px 0 2px; }
+    }    .bar-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; margin: 0 0 var(--s3); }
+    .bar-row .seg { flex: none; }
+    .icon-btn { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--panel); color: var(--muted); display: grid; place-items: center; flex: none; margin-left: auto; }
+    .icon-btn.on { background: var(--accent); color: var(--on-accent); }
+    .pager { margin-bottom: var(--s3); }    .plain-line { margin: var(--s2) 0 var(--s4); padding: var(--s3) var(--s4); background: var(--panel); border-radius: var(--r-in); font-size: var(--fs-body); line-height: 1.5; color: var(--text); }
   </style>
 </head>
 <body>
@@ -940,7 +978,7 @@
         const fk = favKey(t);
         return '<div class="team ' + cls + '">' + logo +
           '<div class="tname">' + rank + "<strong>" + esc(t.team?.shortDisplayName || t.team?.displayName || "TBD") + "</strong>" + rec + "</div>" +
-          '<button class="fav ' + (state.favs.has(fk) ? "on" : "") + '" type="button" data-fav="' + esc(fk) + '" aria-label="Favorite ' + esc(t.team?.displayName) + '">★</button>' +
+          (state.favs.has(fk) ? '<span class="fmark" title="You follow this team" aria-label="Following">★</span>' : '<span></span>') +
           '<div class="score">' + (st.state === "pre" ? "" : esc(t.score ?? "")) + "</div></div>";
       }).join("");
       const tv = comp.broadcasts?.flatMap((b) => b.names || [])?.join(", ");
@@ -1110,6 +1148,8 @@
       walk(data);
       return (teamLists[key] = out);
     }
+    const searchOpen = {};
+    document.addEventListener("click", (e) => { if (!e.target.closest("[data-searchtoggle]")) return; const k = state.tab; searchOpen[k] = !(searchOpen[k] || searchQ[k]); if (!searchOpen[k]) searchQ[k] = ""; Promise.resolve(render(false)).then(() => document.querySelector("[data-search]")?.focus()); });
     function applySearch(key) {
       const q = (searchQ[key] || "").trim().toLowerCase(), main = $("main");
       main.querySelectorAll(".card[data-ev]").forEach((c) => { c.hidden = !!q && !c.textContent.toLowerCase().includes(q); });
@@ -1179,7 +1219,11 @@
       const pager = paged && !day ? '<div class="pager"><button class="pill-btn" type="button" data-page="-1" aria-label="Previous">‹</button><span class="label">' + esc(weekLabel(key)) + '</span><button class="pill-btn" type="button" data-page="1" aria-label="Next">›</button></div>' : "";
       const liveBtn = key === "f1" ? '<button type="button" class="pill-btn f1-follow ' + (state.favs.has("f1") ? "on" : "") + '" data-fav="f1" aria-label="Follow Formula 1"><span class="fo">★ Following F1</span><span class="fn">☆ Follow F1</span></button>' : key !== "f1" ? '<div class="seg chips">' + [["all", "All"], ["fav", "★ My teams"], ["live", "● Live"]].map(([k, l]) => '<button type="button" data-filter="' + k + '" class="' + (state.filter === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
       const search = paged ? '<div class="search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" data-search placeholder="Search ' + esc(L.short || L.name) + ' teams" autocomplete="off" value="' + esc(searchQ[key] || "") + '"><div class="sres" data-sres></div></div>' : "";
-      return '<div class="bar"><h1>' + esc(title) + "</h1>" + toggle + liveBtn + pager + "</div>" + search + (day ? stripHtml(key) : "");
+      // One title row (with a search icon), one row of filters + Week/Day, then the week or day picker.
+      const open = paged && (searchOpen[key] || searchQ[key]);
+      const sBtn = paged ? '<button type="button" class="icon-btn' + (open ? " on" : "") + '" data-searchtoggle aria-label="Search ' + esc(L.short || L.name) + ' teams"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>' : "";
+      return '<div class="bar"><h1>' + esc(title) + "</h1>" + sBtn + "</div>" + (open ? search : "") +
+        '<div class="bar-row">' + liveBtn + toggle + "</div>" + pager + (day ? stripHtml(key) : "");
     }
 
     async function renderHome() {
@@ -1659,11 +1703,34 @@
           const teams = (comp.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
           const html = wpSectionHtml(s, teams, st, id, lg);
           if (html) { const t = document.createElement("template"); t.innerHTML = html; sec.replaceWith(t.content.firstElementChild); }
+          const pl = v.el.querySelector("[data-plain]"); if (pl) { const t2 = document.createElement("template"); t2.innerHTML = plainLine(s, teams, st, lg); pl.replaceWith(t2.content.firstElementChild); }
           if (st !== "in") clearInterval(v.wpTimer);
         } catch {}
       }, 15000);
     }
-    /* ---------- every sport: scores by period + team stat bars ---------- */
+    /* ---------- plain-English status line (always on, under the score) ---------- */
+    // "Bengals lead by 21 at halftime. Teams in this spot win about 98% of the time." Built only from real data.
+    function plainLine(s, teams, state, lg) {
+      if (teams.length !== 2) return "";
+      const comp = s.header?.competitions?.[0] || {}, st = comp.status?.type || {};
+      const name = (t) => t.team?.shortDisplayName || t.team?.name || t.team?.abbreviation || "Team";
+      const [away, home] = teams, a = Number(away.score), b = Number(home.score);
+      const series = state !== "pre" ? ((lg === "nba" && ourNbaSeries(s, teams)) || wpSeries(s)) : null;
+      const hp = series ? series[series.length - 1].home : (winProb(s, state)?.home ?? null);
+      let txt = "";
+      if (state === "pre") {
+        const when = fmtDay(comp.date) + " at " + fmtTime(comp.date);
+        txt = hp == null ? "Starts " + when + "." : name(hp >= .5 ? home : away) + " are favored to win (" + Math.round(Math.max(hp, 1 - hp) * 100) + "%). Starts " + when + ".";
+      } else if (state === "post") {
+        txt = a === b ? "Ended in a tie, " + a + "–" + b + "." : name(a > b ? away : home) + " won " + Math.max(a, b) + "–" + Math.min(a, b) + ".";
+      } else {
+        const lead = a === b ? null : a > b ? away : home, diff = Math.abs(a - b);
+        const when = (st.shortDetail || "").replace(/ - /, " left in the ").replace(/^Halftime$/i, "at halftime");
+        txt = lead ? name(lead) + " lead by " + diff + (when ? ", " + when : "") + "." : "Tied " + a + "–" + b + (when ? ", " + when : "") + ".";
+        if (lead && hp != null) { const pc = Math.round((lead === home ? hp : 1 - hp) * 100); if (pc >= 55) txt += " Teams in this spot win about " + pc + "% of the time."; }
+      }
+      return '<p class="plain-line" data-plain>' + esc(txt) + "</p>";
+    }    /* ---------- every sport: scores by period + team stat bars ---------- */
     function linescoreHtml(comp, lg) {
       const cs = (comp.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
       const n = Math.max(0, ...cs.map((c) => (c.linescores || []).length));
@@ -2504,13 +2571,15 @@
             '<div class="status ' + (st.state === "in" ? "live" : "") + '">' + esc(st.state === "pre" ? fmtDay(comp.date) + " · " + fmtTime(comp.date) : st.shortDetail || "") + "</div></div>" : "");
       }).join("") + "</div>";
 
-      const gcats = [["all", "All"], ["plays", "Plays"], ["timeouts", lg === "mlb" ? "Changes" : "Timeouts"], ["stats", "Stats"], ["players", "Players"]];
+      // Order: score → plain-English status → tabs → win probability → plays → the rest.
+      h += plainLine(s, teams, st.state, lg);
+      const gcats = [["all", "Summary"], ["plays", "Plays"], ["stats", "Stats"], ["players", "Players"]];
       h += '<div class="gtabs" role="tablist">' + gcats.map(([k, l]) => '<button type="button" role="tab" data-gcat="' + k + '" class="' + (k === "all" ? "active" : "") + '">' + l + "</button>").join("") + "</div>";
+      h += wpSectionHtml(s, teams, st.state, id, lg);
       if (lg === "nfl" || lg === "cfb") h += '<div class="g-sec" data-field data-c="plays timeouts"><div class="g-label">Plays</div><div class="skel" style="height:150px"></div></div>';
       if (lg === "nba" || lg === "mlb") { v.s = s; v.lg = lg; v.teams = teams; v.chartTeam = "all"; v.id = id; v.updated = Date.now(); h += '<div class="g-sec" data-chart data-c="plays timeouts">' + chartSecHtml(v) + "</div>"; }
       if (lg === "mlb") h += mlbSituation(lg, id, teams);
       h += linescoreHtml(comp, lg);
-      h += wpSectionHtml(s, teams, st.state, id, lg);
 
 
       const byTeam = {};
@@ -2822,7 +2891,7 @@
     // The page follows the pointer while dragging, then switches or snaps back.
     (() => {
       const SKIP = ".dstrip, .ls-wrap, .track, .court, .field, .gtabs, .tabs, .btabs, .seg, input, textarea, .search, .sres, .bars, .ga-modal, .chat-log, .feed-more";
-      const GCATS = ["all", "plays", "timeouts", "stats", "players"];
+      const GCATS = ["all", "plays", "stats", "players"];
       let st = null, swallow = false;
       const zone = (t) => {
         if (!t.closest || t.closest(SKIP)) return null;
