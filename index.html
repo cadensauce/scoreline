@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794861892" />
+  <meta name="build" content="1794862263" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -823,7 +823,13 @@
     .icon-btn { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--panel); color: var(--muted); display: grid; place-items: center; flex: none; margin-left: auto; }
     .icon-btn.on { background: var(--accent); color: var(--on-accent); }
     .pager { margin-bottom: var(--s3); }    .plain-line { margin: var(--s2) 0 var(--s4); padding: var(--s3) var(--s4); background: var(--panel); border-radius: var(--r-in); font-size: var(--fs-body); line-height: 1.5; color: var(--text); }
-  </style>
+    .bar { flex-wrap: nowrap; }
+    .bar h1 { min-width: 0; }
+    @media (max-width: 720px) {
+      .bar-row { flex-wrap: nowrap; }
+      .bar-row .seg button { padding: 8px 11px; font-size: 14px; }
+      .bar-row .seg { padding: 3px; }
+    }  </style>
 </head>
 <body>
   <header class="top">
@@ -1669,7 +1675,7 @@
       const line = series.map((p, i) => (i ? "L" : "M") + X(i).toFixed(1) + "," + Y(p.home).toFixed(1)).join("");
       const area = line + "L" + W + "," + H / 2 + "L0," + H / 2 + "Z";
       let marks = "";
-      series.forEach((p, i) => { if (i && p.per && p.per !== series[i - 1].per) marks += '<line x1="' + X(i).toFixed(1) + '" x2="' + X(i).toFixed(1) + '" y1="0" y2="' + H + '" class="wpg-per"/><text x="' + (X(i) + 3).toFixed(1) + '" y="' + (H - 4) + '" class="wpg-pl">' + esc(perName(lg, p.per)) + "</text>"; });
+      series.forEach((p, i) => { if (i && p.per && p.per !== series[i - 1].per && X(i) > 30) marks += '<line x1="' + X(i).toFixed(1) + '" x2="' + X(i).toFixed(1) + '" y1="0" y2="' + H + '" class="wpg-per"/><text x="' + (X(i) + 3).toFixed(1) + '" y="' + (H - 4) + '" class="wpg-pl">' + esc(perName(lg, p.per)) + "</text>"; });
       h += '<div class="wpg-read" data-wpread>' + wpReadText(id, n - 1) + "</div>" +
         '<div class="wpg"><span class="wpg-t">' + esc(home.team?.abbreviation) + '</span><span class="wpg-b">' + esc(away.team?.abbreviation) + "</span>" +
         '<svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" data-wpg="' + esc(id) + '" role="img" aria-label="Win probability over the game. Drag to see earlier moments.">' +
