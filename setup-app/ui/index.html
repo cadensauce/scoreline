@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scoreline Setup</title>
+<style>
+  /* Scoreline Setup: "every sport lights up". Same tokens as the app (monochrome, off-black, Inter/Segoe). */
+  :root { --win: #101012; --panel: #18181b; --track: #27272c; --fg: #ececee; --mut: #8e8e95; --faint: #5e5e64; --line: rgba(255,255,255,.08);
+          --f: "Inter", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--win); color: var(--fg); font: 400 15px/1.5 var(--f); -webkit-font-smoothing: antialiased; user-select: none; overflow: hidden; }
+  .glow { position: fixed; inset: -40% -20% auto; height: 80%; background: radial-gradient(closest-side, rgba(255,255,255,.07), transparent); pointer-events: none; }
+  .drag { position: fixed; inset: 0 0 auto 0; height: 44px; }
+  .x { position: fixed; top: 10px; right: 12px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: var(--faint); font-size: 15px; cursor: pointer; }
+  .x:hover { background: var(--panel); color: var(--fg); }
+  .stage { position: relative; height: 100%; padding: 26px 30px 24px; display: flex; flex-direction: column; gap: 18px; }
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-right: 34px; }
+  .top b { font: 700 22px var(--f); letter-spacing: -.01em; }
+  .top span { font: 500 13px var(--f); color: var(--mut); font-variant-numeric: tabular-nums; }
+  .sports { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; flex: 1; }
+  .sp { border-radius: 14px; background: var(--panel); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--faint); transition: background .35s, color .35s, transform .35s cubic-bezier(.22,1,.36,1); }
+  .sp svg { width: 26px; height: 26px; }
+  .sp small { font: 650 12px var(--f); letter-spacing: .04em; }
+  .sp.on { background: var(--fg); color: var(--win); transform: translateY(-3px); }
+  .line { height: 4px; border-radius: 2px; background: var(--track); overflow: hidden; }
+  .line i { display: block; height: 100%; width: 0; background: var(--fg); transition: width .25s linear; }
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
+  .say { font: 500 14px var(--f); color: var(--mut); }
+  .btn { font: 600 15px var(--f); background: var(--fg); color: var(--win); border: 0; border-radius: 999px; padding: 11px 22px; cursor: pointer; opacity: 0; transform: translateY(6px); transition: opacity .4s, transform .4s; pointer-events: none; }
+  .btn.show { opacity: 1; transform: none; pointer-events: auto; }
+  .btn:focus-visible, .x:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .err { color: #f0a0a8; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="drag" data-tauri-drag-region></div>
+  <button class="x" type="button" id="close" aria-label="Close">✕</button>
+  <div class="stage">
+    <div class="top" data-tauri-drag-region><b id="title">Setting up Scoreline</b><span id="pct">0%</span></div>
+    <div class="sports" id="sports">
+      <div class="sp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-45 12 12)"/><path d="M9.5 14.5l5-5"/></svg><small>NFL</small></div>
+      <div class="sp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 9l9-5 9 5-9 5z"/><path d="M7 11.5V16c0 1.5 2.5 3 5 3s5-1.5 5-3v-4.5"/></svg><small>CFB</small></div>
+      <div class="sp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18"/></svg><small>NBA</small></div>
+      <div class="sp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M7.5 4.2c2 2.2 2 13.4 0 15.6M16.5 4.2c-2 2.2-2 13.4 0 15.6"/></svg><small>MLB</small></div>
+      <div class="sp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h13l-2.5 4L18 12H5"/></svg><small>F1</small></div>
+    </div>
+    <div class="line"><i id="bar"></i></div>
+    <div class="foot"><span class="say" id="say">Getting the scoreboards ready</span><button class="btn" type="button" id="open">Open Scoreline</button></div>
+  </div>
+<script>
+  const T = window.__TAURI__;
+  const $ = (id) => document.getElementById(id);
+  const tiles = [...document.querySelectorAll(".sp")];
+  const SAY = ["Getting the scoreboards ready", "Copying Scoreline", "Setting up alerts", "Making your shortcut", "Almost there"];
+  let shown = 0, target = 0, finished = false;
+  // Smoothly animate toward the real progress the installer reports.
+  function frame() {
+    shown += (target - shown) * 0.18;
+    if (Math.abs(target - shown) < 0.3) shown = target;
+    const p = Math.round(shown);
+    $("bar").style.width = p + "%";
+    $("pct").textContent = p + "%";
+    tiles.forEach((t, i) => t.classList.toggle("on", p >= (i + 1) * 20 - 4 || finished));
+    if (!finished) $("say").textContent = SAY[Math.min(4, Math.floor(p / 20))];
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  T.event.listen("progress", (e) => { target = Math.max(target, Number(e.payload) || 0); });
+  async function install() {
+    $("say").classList.remove("err"); $("open").classList.remove("show"); finished = false; target = 2;
+    try {
+      await T.core.invoke("install");
+      target = 100; finished = true;
+      setTimeout(() => { $("title").textContent = "You're all set"; $("say").textContent = "All 5 sports ready"; $("open").textContent = "Open Scoreline"; $("open").classList.add("show"); $("open").focus(); }, 450);
+    } catch (err) {
+      $("title").textContent = "Setup didn't finish";
+      $("say").textContent = String(err || "Something went wrong."); $("say").classList.add("err");
+      $("open").textContent = "Try again"; $("open").classList.add("show");
+    }
+  }
+  $("open").addEventListener("click", async () => {
+    if (!finished) return install();
+    try { await T.core.invoke("open_app"); } catch {}
+    T.window.getCurrentWindow().close();
+  });
+  $("close").addEventListener("click", () => T.window.getCurrentWindow().close());
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && (finished || $("say").classList.contains("err"))) T.window.getCurrentWindow().close(); });
+  install();
+</script>
+</body>
+</html>

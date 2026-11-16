@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "identifier": "io.github.cadensauce.scoreline.setup",
   "build": {
-    "frontendDist": "../dist"
+    "frontendDist": "../ui"
   },
   "app": {
     "withGlobalTauri": true,
