@@ -35,9 +35,9 @@ for (const [size, viewport] of Object.entries(SIZES)) {
       await page.keyboard.press("Escape");
     }
     if (size === "mobile") {
-      await page.locator('[data-tab="alerts"]:visible').first().click().catch(() => {});
+      await page.locator('[data-tab="you"]:visible').first().click().catch(() => {});
       await page.waitForTimeout(1200);
-      await shot("alerts");
+      await shot("you");
     }
     await context.close();
   });
