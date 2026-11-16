@@ -59,7 +59,7 @@ this on a throttled phone profile before fixing.
   Reward formula: fixed "Upset bonus" tiers (safer for store ratings).
 
 ## Phase 1
-### Item 15: alerts on/off (in progress)
+### Item 15: alerts on/off (done 2026-11-16)
 Root cause: turning alerts OFF never redrew the Alerts screen, so the switch kept showing "on". Also: a failed
 "off" request was never retried; phones were saved under their push address, so an address change left an old
 entry that kept getting alerts; revoked notification permission still showed "on".
@@ -67,3 +67,8 @@ Fix: one `setAlerts()` for both directions; one fixed random device id per phone
 entries migrated and deleted); pending turn-off retried on launch; permission re-checked on launch; anonymous
 setup health codes (`diag/{deviceId}`, summarised by the worker into `public/push.status.setup`).
 Tests: Playwright in GitHub Actions (`tests/`), 3 regression tests + a smoke test.
+Also fixed on the way: the Android app never registered with the push worker (now registers; health shows
+"app 1.0.8 | ok"), and app alerts were sent as data-only FCM messages that a swiped-away app never woke up for.
+They are now FCM notification messages that Android shows itself. "Send test notification" now asks the
+server for a real push when background alerts are connected; verified on the user's phone with the app closed.
+Tested: 4 Playwright tests pass in CI (on/off, reload, offline turn-off retry, smoke); manual phone test passed.
