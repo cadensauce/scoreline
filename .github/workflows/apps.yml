@@ -31,7 +31,9 @@ jobs:
           mkdir -p dist
           cp index.html manifest.webmanifest icon-192.png icon-512.png dist/
           # Every build gets a higher version so it installs over the previous one.
-          sed -i -E 's/"version": "[0-9.]+"/"version": "1.0.${{ github.run_number }}"/' src-tauri/tauri.conf.json
+          # One version for site and apps: <meta name="version"> in index.html gives major.minor; the build number is the patch.
+          V=$(grep -oE 'name="version" content="[0-9]+\.[0-9]+' index.html | grep -oE '[0-9]+\.[0-9]+$')
+          sed -i -E "s/\"version\": \"[0-9.]+\"/\"version\": \"$V.${{ github.run_number }}\"/" src-tauri/tauri.conf.json
           grep '"version"' src-tauri/tauri.conf.json
       - name: Install Tauri CLI
         run: npm install
@@ -80,7 +82,9 @@ jobs:
           mkdir -p dist
           cp index.html manifest.webmanifest icon-192.png icon-512.png dist/
           # Every build gets a higher version so it installs over the previous one.
-          sed -i -E 's/"version": "[0-9.]+"/"version": "1.0.${{ github.run_number }}"/' src-tauri/tauri.conf.json
+          # One version for site and apps: <meta name="version"> in index.html gives major.minor; the build number is the patch.
+          V=$(grep -oE 'name="version" content="[0-9]+\.[0-9]+' index.html | grep -oE '[0-9]+\.[0-9]+$')
+          sed -i -E "s/\"version\": \"[0-9.]+\"/\"version\": \"$V.${{ github.run_number }}\"/" src-tauri/tauri.conf.json
           grep '"version"' src-tauri/tauri.conf.json
       - name: Install Tauri CLI
         run: npm install
