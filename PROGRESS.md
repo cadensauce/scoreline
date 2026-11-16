@@ -116,3 +116,9 @@ needs ~1.4 MB of ESPN scoreboard JSON before scores can paint, which alone takes
 measured when real scores appear, so it lands at 5–6 s however light the app is. Real phones on normal 4G see
 scores in ~2 s on first open and ~0.5 s on every later open (saved scores). Getting Lighthouse 90+ would need a
 small proxy that trims ESPN's data (for example a free Cloudflare Worker), which is new infrastructure: asking first.
+
+### Item 16: review fixes, batch 1 (shipped 2026-11-16)
+- Player stat rows (season leaders etc.) no longer wrap the last number onto its own line on phones.
+- Removed the ↻ refresh button (approved removal): scores refresh on their own; pull down to refresh on phones.
+- Profile button: account code now starts Firebase immediately when tapped (it otherwise loads after scores show).
+Remaining audit items (tabs, game page order, stars, header, wording, colours) are handled by the Phase 2 redesign.
