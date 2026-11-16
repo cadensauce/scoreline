@@ -164,3 +164,22 @@ real finished game page shows the Scoreline label. Retrain weekly in season: `gh
   (secrets SMTP_USER / SMTP_PASS — waiting on the user), 10-minute codes, 5 tries, 1 request/minute.
   Text-message codes were declined (needs the paid Firebase plan).
 - Apps rebuilt: build-10 (2.0.10) with the new icon and installer art.
+
+## Where we stopped (2026-11-16, end of day)
+Live on main: design system (Inter, monochrome), pinned-sport nav + You tab, speed fixes, NBA win-probability
+model + graph, version 2.0, new logo everywhere, email lock, sign-in codes, two-step email codes (needs secrets),
+graph drag no longer swipes categories. Apps: build-11/12 (2.0.x) with new icon.
+
+Next session, in order:
+1. **Installer with personality** (user: "needs to feel unique, not a covered-up Windows installer"). The dark
+   one-click NSIS template is on branch `dark-installer` (NOT merged; releases build-11/12 were built from it).
+   NSIS can't go much further. Real options: (a) a small custom Scoreline setup app (Tauri/WebView window we design
+   fully: animated logo, progress, "Open Scoreline") that downloads/extracts the app and writes the shortcut and
+   uninstall entry; (b) NSIS with a fully custom nsDialogs page (images + our own drawn progress). Propose (a) with
+   pictures first (design round), then build.
+2. Two-step sign-in: user to create a Scoreline Gmail + app password and add secrets SMTP_USER / SMTP_PASS; then
+   restart the push worker (`gh workflow run push.yml`) and test end to end.
+3. Phase 2 continues: list/home redesign to open rows (no per-row stars, one filter row), game page order
+   (status line, win probability first, tabs Summary/Plays/Stats/Players), design round 3, themes (light/dark),
+   profile customization; then Phases 3–5 per PLAN.md.
+4. F1 win probability needs live gaps (OpenF1 live is paid): try ESPN live order at the Las Vegas GP (Nov 21–22).
