@@ -139,3 +139,15 @@ live games refresh it every 15 s. Labelled "ESPN win probability" until our own 
   data is under 30 s old, off-screen game cards skip rendering (content-visibility) with real-size estimates.
   CI phone profile: requests on open 41 → 17, logos 105 → 35 KB, JS heap 20 → 17 MB, CLS 0.088 (good < 0.1).
   The memory-hit tab switch isn't measured by CI yet (CI visits each tab once).
+
+### Item 14: win probability models (done for NBA/NFL/CFB; F1 pending live data) — 2026-11-16
+Backtest (held-out 2023–25 seasons, `reports/winprob/REPORT.md`, calibration charts included):
+| Sport | Brier ours / ESPN | Shown in app |
+|---|---|---|
+| NBA | 0.1459 / 0.1482 (ours, fed ESPN's opening number; better in all 3 seasons; smaller swings) | **Scoreline model** |
+| NFL | 0.1545 / 0.1534 | ESPN's, labelled |
+| CFB | 0.1249 / 0.1253 (tie within noise) | ESPN's, labelled |
+| F1 | 0.279 vs 0.361 simple baseline (ESPN has none) | needs live gaps: OpenF1 live is paid; trying ESPN's live order at Las Vegas GP |
+NBA game pages compute per-play win probability with `models/wp.js` and label it "Scoreline win probability";
+falls back to ESPN's if inputs are missing. Tests: model sanity (even game ~50%, +20 with 1:00 left >97%) and a
+real finished game page shows the Scoreline label. Retrain weekly in season: `gh workflow run winprob.yml`.
