@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794682410" />
+  <meta name="build" content="1794792619" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2716,16 +2716,33 @@
     syncBell();
     $("notifyBtn").hidden = true;
     document.addEventListener("click", (e) => { if (e.target.closest("#alertsMaster")) $("notifyBtn").click(); });
-    $("notifyBtn").addEventListener("click", async () => {
-      if (alertsOn) { alertsOn = false; store.set("alerts", false); syncBell(); pushSync(false); toast("Score alerts off"); return; }
+    // One place turns alerts on or off, so the switch, the saved setting and the alert server never disagree.
+    async function setAlerts(on) {
+      if (!on) {
+        alertsOn = false; store.set("alerts", false); syncBell();
+        if (state.tab === "alerts") renderAlerts();
+        toast("Score alerts off");
+        await pushSync(false);
+        return;
+      }
       const perm = await askPermission().catch(() => "denied");
       if (perm === "unsupported") { toast("This browser doesn't support notifications."); return; }
       if (perm !== "granted") { toast(TAURI ? "Notifications are blocked. Allow them for Scoreline in your system settings." : "Notifications are blocked. Allow them in your browser's site settings."); return; }
-      alertsOn = true; store.set("alerts", true); syncBell(); pushSync(true);
+      alertsOn = true; store.set("alerts", true); syncBell();
       if (state.tab === "alerts") renderAlerts();
       toast(state.favs.size ? "Score alerts on for your ★ teams" : "Alerts on. Tap ★ on a team to follow it.");
+      pushSync(true);
       checkAlerts();
-    });
+    }
+    $("notifyBtn").addEventListener("click", () => setAlerts(!alertsOn));
+    // On launch: if notifications were blocked in system settings since last time, show alerts as off and
+    // stop server alerts; and finish any "turn off" that couldn't reach the server last time.
+    setTimeout(async () => {                                // after the rest of the script has loaded
+      let allowed = alertsOn;
+      if (alertsOn && NATIVE_NOTIFY) allowed = await NATIVE_NOTIFY.isPermissionGranted().catch(() => true);
+      if (store.get("alerts", false) && !allowed) { alertsOn = false; store.set("alerts", false); syncBell(); if (state.tab === "alerts") renderAlerts(); pushSync(false); }
+      else if (!alertsOn && store.get("pushOffPending", false)) pushSync(false);
+    }, 0);
     document.addEventListener("click", async (e) => {
       if (!e.target.closest("#testNotify")) return;
       const perm = await askPermission().catch(() => "denied");
@@ -2734,45 +2751,67 @@
       notify("🏈 49ers touchdown", "SF 21 – 17 SEA · 4th 2:14", "test-49ers");
       toast("Test sent: check your notifications");
     });
-    /* ---------- background push (Scoreline added to a phone's home screen) ---------- */
-    // The GitHub Actions push worker reads these subscriptions and sends alerts even when the app is closed.
-    // The push worker publishes its public key at public/push in the database.
-    async function vapidKey() { try { const d = await (await fetch(PUSH_DB.replace("pushSubs/", "public/push") + "?key=" + PUSH_KEY, { cache: "no-store" })).json(); return d.fields?.vapidPublic?.stringValue || null; } catch { return null; } }
+    /* ---------- background push (Android app, and Scoreline added to a phone's home screen) ---------- */
+    // The push worker reads pushSubs/{deviceId} and sends alerts even when the app is closed.
+    // Each phone gets ONE fixed random id, so turning alerts off always removes the right entry,
+    // even if the phone's push address changed or isn't available right now.
     const PUSH_DB = "https://firestore.googleapis.com/v1/projects/scoreline-41f14/databases/(default)/documents/pushSubs/";
     const PUSH_KEY = "AIzaSyAGyc1udyqVakTuZJ0Iqb8Lb9uy4IHdO2w";
+    const DOCS = PUSH_DB.replace("pushSubs/", "");
+    async function vapidKey() { try { const d = await (await fetch(DOCS + "public/push?key=" + PUSH_KEY, { cache: "no-store" })).json(); return d.fields?.vapidPublic?.stringValue || null; } catch { return null; } }
+    const hex = (bytes) => [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+    const deviceId = (() => { let id = store.get("deviceId", ""); if (!/^[0-9a-f]{64}$/.test(id)) { id = hex(crypto.getRandomValues(new Uint8Array(32))); store.set("deviceId", id); } return id; })();
+    const subUrl = (id) => PUSH_DB + id + "?key=" + PUSH_KEY;
     let pushActive = false;
     // The installed Android app gets a push address from Android itself (Firebase Cloud Messaging).
     const nativePush = () => typeof window.ScorelineNative?.pushToken === "function";
     const canPush = () => MOBILE_APP && (nativePush() || (!TAURI && "serviceWorker" in navigator && "PushManager" in window));
     const b64u = (s) => Uint8Array.from(atob((s + "=".repeat((4 - s.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
-    const sha256 = async (s) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+    const sha256 = async (s) => hex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))));
     async function nativeToken() {
       for (let i = 0; i < 20; i++) { const t = window.ScorelineNative.pushToken(); if (t) return t; await new Promise((r) => setTimeout(r, 500)); }
       return "";
     }
+    // Anonymous health report (a short code + app version, nothing personal) so setup problems can be fixed.
+    async function report(code) {
+      if (!MOBILE_APP || window.__PREVIEW_APP) return;
+      const app = TAURI?.app?.getVersion ? "app " + (await TAURI.app.getVersion().catch(() => "?")) : STANDALONE ? "home screen" : "browser";
+      fetch(DOCS + "diag/" + deviceId + "?key=" + PUSH_KEY, { method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: { code: { stringValue: String(code).slice(0, 120) }, app: { stringValue: app.slice(0, 20) }, at: { timestampValue: new Date().toISOString() } } }) }).catch(() => {});
+    }
     // Shown under the Alerts switch so you can tell if alerts will reach you with the app closed.
     var pushStatus = "Checking background alerts…";
-    const setPushStatus = (s) => { pushStatus = s; const el = document.getElementById("pushState"); if (el) el.textContent = s; };
+    const setPushStatus = (s, code) => { pushStatus = s; const el = document.getElementById("pushState"); if (el) el.textContent = s; if (code) report(code); };
+    const OPEN_ONLY = " Alerts still work while Scoreline is open.";
+    async function pushOff() {
+      pushActive = false;
+      store.set("pushOffPending", true);                    // retried on next launch if we're offline now
+      const ids = [deviceId, store.get("pushLegacyId", "")].filter(Boolean);
+      const results = await Promise.all(ids.map((id) => fetch(subUrl(id), { method: "DELETE" }).then((r) => r.ok || r.status === 404).catch(() => false)));
+      if (results.every(Boolean)) { store.set("pushOffPending", false); store.set("pushLegacyId", ""); }
+      try { const sub = await (await navigator.serviceWorker?.getRegistration())?.pushManager?.getSubscription(); await sub?.unsubscribe(); } catch {}
+      report("off");
+    }
     async function pushSync(enable = alertsOn) {
-      if (!canPush()) { if (enable) setPushStatus(TAURI ? (window.ScorelineNative ? "Background alerts: app link blocked (code B). Alerts still work while Scoreline is open." : "Background alerts need the newest app (code A). Alerts still work while Scoreline is open.") : "Alerts work while Scoreline is open."); return; }
+      if (!enable) return pushOff();
+      if (!canPush()) { setPushStatus(TAURI ? (window.ScorelineNative ? "Background alerts: app link blocked (code B)." + OPEN_ONLY : "Background alerts need the newest app (code A)." + OPEN_ONLY) : "Alerts work while Scoreline is open.", TAURI ? (window.ScorelineNative ? "B" : "A") : ""); return; }
       try {
-        let endpoint, p256dh = "", auth = "", sub = null;
+        let endpoint, p256dh = "", auth = "";
         if (nativePush()) {
-          const t = await nativeToken(); if (!t) { pushActive = false; setPushStatus("Couldn't connect background alerts (code C: " + (window.ScorelineNative.pushError?.() || "no push address from Android") + "). Alerts still work while Scoreline is open."); return; }
+          const t = await nativeToken();
+          if (!t) { pushActive = false; const why = window.ScorelineNative.pushError?.() || "no push address from Android"; setPushStatus("Couldn't connect background alerts (code C: " + why + ")." + OPEN_ONLY, "C: " + why); return; }
           endpoint = "https://fcm.native/" + t;            // marks an app address for the push worker
         } else {
           const reg = await navigator.serviceWorker.ready;
-          sub = await reg.pushManager.getSubscription();
-          const key = enable ? await vapidKey() : null;
-          if (enable && !key) return;
+          let sub = await reg.pushManager.getSubscription();
+          const key = await vapidKey();
+          if (!key) { setPushStatus("Couldn't reach the alert server." + OPEN_ONLY, "no key"); return; }
           // If the worker's key changed, re-subscribe with the new one.
-          if (sub && key && store.get("pushKey", "") !== key) { await sub.unsubscribe().catch(() => {}); sub = null; }
-          if (!sub && enable) { sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(key) }); store.set("pushKey", key); }
-          if (!sub) return;
+          if (sub && store.get("pushKey", "") !== key) { await sub.unsubscribe().catch(() => {}); sub = null; }
+          if (!sub) { sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(key) }); store.set("pushKey", key); }
           const j = sub.toJSON(); endpoint = j.endpoint; p256dh = j.keys.p256dh; auth = j.keys.auth;
         }
-        const url = PUSH_DB + (await sha256(endpoint)) + "?key=" + PUSH_KEY;
-        if (!enable) { pushActive = false; await fetch(url, { method: "DELETE" }).catch(() => {}); if (sub) await sub.unsubscribe().catch(() => {}); return; }
+        if (!alertsOn) return;                              // turned off while we were connecting
         const p = alertPrefs();
         const fields = {
           endpoint: { stringValue: endpoint }, p256dh: { stringValue: p256dh }, auth: { stringValue: auth },
@@ -2780,10 +2819,16 @@
           prefs: { mapValue: { fields: Object.fromEntries(Object.entries(p).map(([k, v]) => [k, { stringValue: String(v) }])) } },
           updatedAt: { timestampValue: new Date().toISOString() },
         };
-        const r = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fields }) });
+        const r = await fetch(subUrl(deviceId), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fields }) });
         pushActive = r.ok;
-        setPushStatus(r.ok ? (state.favs.size ? "✓ Background alerts on: they arrive even when Scoreline is closed." : "✓ Connected. Follow a team (★) to get alerts.") : "Couldn't save background alerts (error " + r.status + "). Alerts still work while Scoreline is open.");
-      } catch (e) { pushActive = false; setPushStatus("Couldn't connect background alerts (" + (e?.message || "error") + "). Alerts still work while Scoreline is open."); }
+        if (r.ok) {
+          store.set("pushOffPending", false);
+          // Older versions saved this phone under a hash of its push address; remove that copy once.
+          const legacy = await sha256(endpoint);
+          if (!store.get("pushMigrated", false)) { store.set("pushLegacyId", legacy); fetch(subUrl(legacy), { method: "DELETE" }).then((d) => { if (d.ok || d.status === 404) { store.set("pushMigrated", true); store.set("pushLegacyId", ""); } }).catch(() => {}); }
+        }
+        setPushStatus(r.ok ? (state.favs.size ? "✓ Background alerts on: they arrive even when Scoreline is closed." : "✓ Connected. Follow a team (★) to get alerts.") : "Couldn't save background alerts (error " + r.status + ")." + OPEN_ONLY, r.ok ? "ok" : "save " + r.status);
+      } catch (e) { pushActive = false; setPushStatus("Couldn't connect background alerts (" + (e?.message || "error") + ")." + OPEN_ONLY, "err: " + (e?.message || "error")); }
     }
     async function notify(title, body, tag) {
       if (!MOBILE_APP) return;                              // never on the desktop app or a computer browser
