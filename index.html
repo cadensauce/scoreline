@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794863327" />
+  <meta name="build" content="1794863375" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -866,7 +866,8 @@
     .card-view b { font-size: var(--fs-lg); }
     .card-view p { color: var(--muted); max-width: 32ch; margin: 0; }
     .card-teams { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s2); }
-    .card-teams span { background: var(--panel); border-radius: var(--r-pill); padding: 6px 12px; font-size: var(--fs-sm); }  </style>
+    .card-teams span { background: var(--panel); border-radius: var(--r-pill); padding: 6px 12px; font-size: var(--fs-sm); }    .poss { width: 14px; height: 14px; flex: none; color: var(--text); align-self: center; }
+    .sit-mini { display: block; font-size: var(--fs-xs); color: var(--muted); font-weight: 500; }  </style>
 </head>
 <body>
   <header class="top">
@@ -1009,6 +1010,10 @@
     function hasFav(ev) { return teamsOf(ev).some((t) => state.favs.has(favKey(t))); }
 
     /* ---------- render: game card ---------- */
+    // Small monochrome "has the ball" marks for list rows.
+    const POSS_ICON = (lg) => '<svg class="poss" viewBox="0 0 24 24" aria-label="Has the ball" role="img">' + (lg === "nba"
+      ? '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 12h16M12 4v16" stroke="currentColor" stroke-width="1.6"/>'
+      : '<ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-35 12 12)" fill="currentColor"/><path d="M9.5 14.5l5-5" stroke="var(--bg)" stroke-width="1.6"/>') + "</svg>";
     function gameCard(ev, key, i, mixed) {   // mixed: a list with several sports, so each row names its league
       const comp = ev.competitions?.[0] || {};
       const st = ev.status?.type || {};
@@ -1016,7 +1021,11 @@
       const teams = teamsOf(ev);
       const scores = teams.map((t) => Number(t.score));
       let statusHtml;
-      if (live) statusHtml = '<span class="status live">' + esc(st.shortDetail || "Live") + "</span>";
+      // Possession on the list (same source as the game page): only when the live data says who has the ball.
+      const sit = live ? comp.situation : null, possId = sit?.possession ? String(sit.possession) : null;
+      const football = key === "nfl" || key === "cfb";
+      const downTxt = football && sit ? [sit.shortDownDistanceText || sit.downDistanceText, sit.isRedZone ? "Red zone" : ""].filter(Boolean).join(" · ") : "";
+      if (live) statusHtml = '<span class="status live">' + esc(st.shortDetail || "Live") + "</span>" + (downTxt ? '<small class="sit-mini">' + esc(downTxt) + "</small>" : "");
       else if (post) statusHtml = '<span class="status final">' + esc(st.shortDetail || "Final") + "</span>";
       else statusHtml = '<span class="status">' + esc(fmtDay(ev.date)) + '<i class="sep"> · </i><span class="t">' + esc(fmtTime(ev.date)) + "</span></span>";
       const league = mixed ? '<span>' + esc(LEAGUES[key].short || LEAGUES[key].name) + "</span>" : "";
@@ -1028,12 +1037,12 @@
         const logo = t.team?.logo ? '<img src="' + esc(smallLogo(t.team.logo)) + '" alt="" loading="lazy" width="22" height="22">' : '<span class="ph"></span>';
         const fk = favKey(t);
         return '<div class="team ' + cls + '">' + logo +
-          '<div class="tname">' + rank + "<strong>" + esc(t.team?.shortDisplayName || t.team?.displayName || "TBD") + "</strong>" + rec + "</div>" +
+          '<div class="tname">' + rank + "<strong>" + esc(t.team?.shortDisplayName || t.team?.displayName || "TBD") + "</strong>" + (possId && possId === String(t.team?.id) ? POSS_ICON(key) : "") + rec + "</div>" +
           (state.favs.has(fk) ? '<span class="fmark" title="You follow this team" aria-label="Following">★</span>' : '<span></span>') +
           '<div class="score">' + (st.state === "pre" ? "" : esc(t.score ?? "")) + "</div></div>";
       }).join("");
       const tv = comp.broadcasts?.flatMap((b) => b.names || [])?.join(", ");
-      const situation = live && comp.situation?.downDistanceText ? '<span class="situation">' + esc(comp.situation.downDistanceText) + "</span>" : "";
+      const situation = "";   // down and distance now sits under the clock
       const venue = comp.venue?.fullName ? "<span>" + esc(comp.venue.fullName) + "</span>" : "";
       const foot = situation || tv || venue ? '<div class="card-foot">' + (situation || venue || "<span></span>") + (tv ? "<span>" + esc(tv) + "</span>" : "") + "</div>" : "";
       return '<article data-ev="' + esc(ev.id) + '" data-lg="' + key + '" class="card ' + (live ? "live" : "") + '" style="animation-delay:' + Math.min(i * 30, 300) + 'ms">' +
