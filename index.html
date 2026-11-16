@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794806385" />
+  <meta name="build" content="1794806545" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -118,7 +118,7 @@
     /* ---- Score cards ---- */
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
     @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-    .card {
+    .card { content-visibility: auto; contain-intrinsic-size: auto 96px;   /* off-screen cards skip rendering */
       background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
       padding: 14px 16px; position: relative; overflow: hidden;
       animation: fadein var(--t) ease both; transition: border-color var(--t-fast), background var(--t-fast);
@@ -1123,14 +1123,27 @@
     document.addEventListener("click", (e) => {
       if (!e.target.closest(".search")) $("main")?.querySelectorAll("[data-sres]").forEach((b) => { b.innerHTML = ""; });
     });
-    async function renderLeague(key) {
+    // Last loaded games per view, kept in memory so switching back to a tab draws instantly.
+    const viewMem = {};
+    const viewKey = (key) => [key, viewOf(key), dayOff[key], state.offset[key]].join("|");
+    async function renderLeague(key, force = true) {
       const L = LEAGUES[key];
       const main = $("main");
-      if (!main.querySelector(".grid, .empty")) main.innerHTML = savedShell(key) || barHtml(L.name, key) + skeleton();
+      const mem = viewMem[viewKey(key)];
+      if (mem) {
+        const live = drawLeague(key, mem.res);
+        // Switching tabs: if what we have is under 30 s old, don't wait on the network at all.
+        if (!force && Date.now() - mem.at < 30000) { schedule(live); return; }
+      } else if (!main.querySelector(".grid, .empty")) main.innerHTML = savedShell(key) || barHtml(L.name, key) + skeleton();
       let res;
       try { res = await loadView(key); }
-      catch (e) { main.innerHTML = barHtml(L.name, key) + '<div class="error">Couldn\'t load ' + esc(L.name) + " scores. Check your connection and try again.</div>"; return; }
+      catch (e) { if (!mem) main.innerHTML = barHtml(L.name, key) + '<div class="error">Couldn\'t load ' + esc(L.name) + " scores. Check your connection and try again.</div>"; return; }
+      viewMem[viewKey(key)] = { res, at: Date.now() };
       if (state.tab !== key) return;
+      schedule(drawLeague(key, res));
+    }
+    function drawLeague(key, res) {
+      const L = LEAGUES[key], main = $("main");
       const events = applyFilter(sortEvents(res.events));
       const when = viewOf(key) === "day" ? (dayOff[key] === 0 ? "today" : "on " + dateAt(dayOff[key]).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })) : weekLabel(key).toLowerCase();
       const body = !events.length ? '<div class="empty">' + (state.filter === "live" ? "No live games right now." : state.filter === "fav" ? "None of your ★ teams play " + esc(when) + "." : "No games " + esc(when) + ".") + "</div>"
@@ -1140,7 +1153,7 @@
       if (searchQ[key]) applySearch(key);
       renderTabs();
       stamp();
-      schedule(events.some(isLive));
+      return events.some(isLive);
     }
     function barHtml(title, key) {
       const L = key && LEAGUES[key];
@@ -1412,13 +1425,13 @@
       clearTimeout(timer);
       timer = setTimeout(() => (document.hidden ? schedule(live) : render()), live ? 10000 : 120000);   // game pages keep their own 5 s updates
     }
-    function render() {
+    function render(force = true) {   // force: fetch fresh data; tab switches pass false to use what's in memory
       if (document.activeElement?.matches?.("[data-search]")) { schedule(true); return; }
       clearTimeout(timer);
       store.set("tab", state.tab);
       renderTabs();
       if (state.tab !== "f1") clearInterval(countdownTimer);
-      const p = state.tab === "you" ? renderAlerts() : state.tab === "home" ? renderHome() : state.tab === "f1" ? renderF1() : renderLeague(state.tab);
+      const p = state.tab === "you" ? renderAlerts() : state.tab === "home" ? renderHome() : state.tab === "f1" ? renderF1() : renderLeague(state.tab, force);
       Promise.resolve(p).finally(() => $("main").classList.add("calm"));
       return p;
     }
@@ -1428,7 +1441,7 @@
       if (e.target.closest(".btab, .tab") && views.length) closeSheets();
       const tab = e.target.closest("[data-tab]");
       if (tab) {
-        if (state.tab !== tab.dataset.tab) { const o = navOrder(), dir = o.indexOf(tab.dataset.tab) > o.indexOf(state.tab) ? 1 : -1; state.tab = tab.dataset.tab; buzz(); swapIn(dir); window.scrollTo({ top: 0, behavior: MOBILE_APP ? "auto" : "smooth" }); }
+        if (state.tab !== tab.dataset.tab) { const o = navOrder(), dir = o.indexOf(tab.dataset.tab) > o.indexOf(state.tab) ? 1 : -1; state.tab = tab.dataset.tab; buzz(); swapIn(dir); window.scrollTo({ top: 0, behavior: MOBILE_APP ? "auto" : "smooth" }); return render(false); }
         return render();
       }
       const fav = e.target.closest("[data-fav]");
