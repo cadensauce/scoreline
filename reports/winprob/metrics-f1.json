@@ -1,0 +1,32 @@
+{
+ "brier_ours": 0.27878011073160236,
+ "logloss_ours": 0.5811655829735499,
+ "baselines": {
+  "Grid only (pre-race order, never updates)": {
+   "brier": 0.47764688204945005,
+   "logloss": 1.0166055751104894
+  },
+  "Position + race progress": {
+   "brier": 0.36114120890931284,
+   "logloss": 0.7749696533837713
+  }
+ },
+ "races_train": 46,
+ "races_test": 24,
+ "failed": [],
+ "weights": {
+  "lpos": -1.2512093189626232,
+  "lpos_r": -1.2978254834730751,
+  "gap_per_lap": -1.1970617859321306,
+  "gap_per_lap_sc": -0.25228054881637235,
+  "lgrid": -0.011066422525089435,
+  "lgrid_left": -0.6012353034591477,
+  "stops_vs_leader": 1.5733358256429344,
+  "stops_vs_leader_r": 0.5675030531443745,
+  "gap10": -0.43499894783273374,
+  "gap10_sc": -0.2081459796689685
+ },
+ "swings_mean": 0.006185923362678967,
+ "verdict": "ship ours (no ESPN number exists)",
+ "summary_row": "1,419 lap snapshots (24 races); Brier 0.2788 vs best baseline 0.3611 (no ESPN F1 number)"
+}

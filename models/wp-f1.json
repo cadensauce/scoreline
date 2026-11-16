@@ -1,0 +1,31 @@
+{
+ "sport": "f1",
+ "trained": "2026-11-16",
+ "kind": "conditional-logit",
+ "features": [
+  "lpos",
+  "lpos_r",
+  "gap_per_lap",
+  "gap_per_lap_sc",
+  "lgrid",
+  "lgrid_left",
+  "stops_vs_leader",
+  "stops_vs_leader_r",
+  "gap10",
+  "gap10_sc"
+ ],
+ "weights": [
+  -1.2512093189626232,
+  -1.2978254834730751,
+  -1.1970617859321306,
+  -0.25228054881637235,
+  -0.011066422525089435,
+  -0.6012353034591477,
+  1.5733358256429344,
+  0.5675030531443745,
+  -0.43499894783273374,
+  -0.2081459796689685
+ ],
+ "gapCap": 150.0,
+ "source": "OpenF1 lap times, pit stops, race control + Jolpica-F1 results, Grands Prix 2023-2024"
+}
