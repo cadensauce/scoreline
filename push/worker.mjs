@@ -49,10 +49,20 @@ let subs = [];
 let subsAt = 0;
 async function loadSubs() {
   const snap = await db.collection("pushSubs").get();
-  subs = snap.docs.map((d) => {
+  const all = snap.docs.map((d) => {
     const x = d.data();
     return { id: d.id, sub: { endpoint: x.endpoint, keys: { p256dh: x.p256dh, auth: x.auth } }, favs: new Set(x.favs || []), prefs: x.prefs || {} };
-  }).filter((s) => s.sub.endpoint && s.favs.size);
+  }).filter((s) => s.sub.endpoint);
+  // "Send test notification" in the app sets prefs.testAt; answer each new request once, within 10 minutes.
+  for (const s of all) {
+    const at = Date.parse(s.prefs.testAt || "");
+    if (at && Date.now() - at < 600000 && !sentKeys.has(s.id + "|test|" + at)) {
+      sentKeys.add(s.id + "|test|" + at);
+      await deliver(s, "✅ Scoreline alerts work", "This test came from the alert server, so alerts reach you even when the app is closed.", "test", 600);
+      console.log(new Date().toISOString(), "test →", s.id.slice(0, 8));
+    }
+  }
+  subs = all.filter((s) => s.favs.size);
   subsAt = Date.now();
   console.log(new Date().toISOString(), "subscribers:", subs.length);
   // Health check anyone can read: just counts, no addresses or teams.
@@ -77,33 +87,34 @@ function wants(prefs, team, kind, ev) {
 // Send to everyone who follows `teamKey` and wants this alert for it. One alert per person per key.
 const sentKeys = new Set();
 const FCM_PREFIX = "https://fcm.native/";
+// Deliver one alert to one phone: the Android app via Firebase Cloud Messaging, home-screen installs via web push.
+async function deliver(s, title, body, tag, ttl) {
+  const drop = async () => { await db.collection("pushSubs").doc(s.id).delete().catch(() => {}); subs = subs.filter((x) => x !== s); };
+  if (s.sub.endpoint.startsWith(FCM_PREFIX)) {
+    try {
+      await admin.messaging().send({
+        token: s.sub.endpoint.slice(FCM_PREFIX.length),
+        data: { title, body, tag: String(tag) },
+        android: { priority: "high", ttl: ttl * 1000 },
+      });
+    } catch (e) {
+      if (/registration-token-not-registered|invalid-registration-token/.test(e.code || "")) await drop();
+      else console.log("app push failed", e.code || e.message);
+    }
+    return;
+  }
+  try { await webpush.sendNotification(s.sub, JSON.stringify({ title, body, tag, url: "./" }), { TTL: ttl, urgency: "high" }); }
+  catch (e) {
+    if (e.statusCode === 404 || e.statusCode === 410) await drop();
+    else console.log("push failed", e.statusCode || e.message);
+  }
+}
 async function send(teamKey, kind, title, body, dedupe, ev) {
   const targets = subs.filter((s) => s.favs.has(teamKey) && wants(s.prefs, teamKey, kind, ev) && !sentKeys.has(s.id + "|" + dedupe));
   if (!targets.length) return 0;
-  const payload = JSON.stringify({ title, body, tag: dedupe, url: "./" });
   await Promise.all(targets.map(async (s) => {
     sentKeys.add(s.id + "|" + dedupe);
-    const ttl = kind === "start" || kind === "score" ? 900 : 3600;
-    const drop = async () => { await db.collection("pushSubs").doc(s.id).delete().catch(() => {}); subs = subs.filter((x) => x !== s); };
-    // The installed Android app: its address is "https://fcm.native/<token>", sent through Firebase Cloud Messaging.
-    if (s.sub.endpoint.startsWith(FCM_PREFIX)) {
-      try {
-        await admin.messaging().send({
-          token: s.sub.endpoint.slice(FCM_PREFIX.length),
-          data: { title, body, tag: String(dedupe) },
-          android: { priority: "high", ttl: ttl * 1000 },
-        });
-      } catch (e) {
-        if (/registration-token-not-registered|invalid-registration-token/.test(e.code || "")) await drop();
-        else console.log("app push failed", e.code || e.message);
-      }
-      return;
-    }
-    try { await webpush.sendNotification(s.sub, payload, { TTL: ttl, urgency: "high" }); }
-    catch (e) {
-      if (e.statusCode === 404 || e.statusCode === 410) await drop();
-      else console.log("push failed", e.statusCode || e.message);
-    }
+    await deliver(s, title, body, dedupe, kind === "start" || kind === "score" ? 900 : 3600);
   }));
   console.log(new Date().toISOString(), kind, "→", targets.length, "|", title, "|", body);
   return targets.length;
