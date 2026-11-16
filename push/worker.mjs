@@ -47,6 +47,7 @@ console.log("Push worker ready for project", sa.project_id);
 // ---- subscribers -------------------------------------------------------------------------
 let subs = [];
 let subsAt = 0;
+let lastTest = null;   // shown in public/push.status so a test can be checked without logs
 async function loadSubs() {
   const snap = await db.collection("pushSubs").get();
   const all = snap.docs.map((d) => {
@@ -58,8 +59,9 @@ async function loadSubs() {
     const at = Date.parse(s.prefs.testAt || "");
     if (at && Date.now() - at < 600000 && !sentKeys.has(s.id + "|test|" + at)) {
       sentKeys.add(s.id + "|test|" + at);
-      await deliver(s, "✅ Scoreline alerts work", "This test came from the alert server, so alerts reach you even when the app is closed.", "test", 600);
-      console.log(new Date().toISOString(), "test →", s.id.slice(0, 8));
+      const result = await deliver(s, "✅ Scoreline alerts work", "This test came from the alert server, so alerts reach you even when the app is closed.", "test", 600);
+      lastTest = { at: new Date().toISOString(), result };
+      console.log(new Date().toISOString(), "test →", s.id.slice(0, 8), result);
     }
   }
   subs = all.filter((s) => s.favs.size);
@@ -70,7 +72,7 @@ async function loadSubs() {
   // Setup health: how many phones reported each code in the last 2 days (e.g. "ok", "C: …", "off").
   const since = Date.now() - 2 * 86400000, codes = {};
   try { (await db.collection("diag").get()).docs.forEach((d) => { const x = d.data(); if (x.at?.toMillis?.() > since) { const k = (x.app || "?") + " | " + x.code; codes[k] = (codes[k] || 0) + 1; } }); } catch {}
-  await db.collection("public").doc("push").update({ status: { phones: subs.length, androidApp: apps, homeScreen: subs.length - apps, setup: codes, checkedAt: new Date().toISOString() } }).catch(() => {});
+  await db.collection("public").doc("push").update({ status: { phones: subs.length, androidApp: apps, homeScreen: subs.length - apps, setup: codes, lastTest, checkedAt: new Date().toISOString() } }).catch(() => {});
 }
 
 // Each person picks, per alert and per team: always / playoffs / champ (Super Bowl, Finals...) / off.
@@ -92,21 +94,21 @@ async function deliver(s, title, body, tag, ttl) {
   const drop = async () => { await db.collection("pushSubs").doc(s.id).delete().catch(() => {}); subs = subs.filter((x) => x !== s); };
   if (s.sub.endpoint.startsWith(FCM_PREFIX)) {
     try {
-      await admin.messaging().send({
+      const id = await admin.messaging().send({
         token: s.sub.endpoint.slice(FCM_PREFIX.length),
         data: { title, body, tag: String(tag) },
         android: { priority: "high", ttl: ttl * 1000 },
       });
+      return "app: sent " + String(id).split("/").pop();
     } catch (e) {
-      if (/registration-token-not-registered|invalid-registration-token/.test(e.code || "")) await drop();
-      else console.log("app push failed", e.code || e.message);
+      if (/registration-token-not-registered|invalid-registration-token/.test(e.code || "")) { await drop(); return "app: " + e.code; }
+      console.log("app push failed", e.code || e.message); return "app: " + (e.code || e.message);
     }
-    return;
   }
-  try { await webpush.sendNotification(s.sub, JSON.stringify({ title, body, tag, url: "./" }), { TTL: ttl, urgency: "high" }); }
+  try { await webpush.sendNotification(s.sub, JSON.stringify({ title, body, tag, url: "./" }), { TTL: ttl, urgency: "high" }); return "web: sent"; }
   catch (e) {
-    if (e.statusCode === 404 || e.statusCode === 410) await drop();
-    else console.log("push failed", e.statusCode || e.message);
+    if (e.statusCode === 404 || e.statusCode === 410) { await drop(); return "web: gone"; }
+    console.log("push failed", e.statusCode || e.message); return "web: " + (e.statusCode || e.message);
   }
 }
 async function send(teamKey, kind, title, body, dedupe, ev) {
