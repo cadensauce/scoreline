@@ -1,0 +1,7 @@
+numpy==1.26.4
+pandas==2.2.3
+pyarrow==17.0.0
+lightgbm==4.5.0
+matplotlib==3.9.2
+requests==2.32.3
+scipy==1.14.1
