@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794807249" />
+  <meta name="build" content="1794807414" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -1551,9 +1551,42 @@
       });
     }
     const perName = (lg, n) => !n ? "" : lg === "nba" ? (n > 4 ? "OT" + (n > 5 ? n - 4 : "") : "Q" + n) : lg === "mlb" ? "Inn " + n : lg === "cfb" || lg === "nfl" ? (n > 4 ? "OT" : "Q" + n) : "P" + n;
+    // NBA: Scoreline's own model (models/wp.js) beat ESPN in the backtest when given ESPN's pre-game number as team
+    // strength (reports/winprob/REPORT.md). Other sports show ESPN's number, labelled as ESPN's.
+    function ourNbaSeries(s, teams) {
+      const W = window.ScorelineWP;
+      if (!W?.nba) return null;
+      const pre = s.winprobability?.[0]?.homeWinPercentage ?? (s.predictor?.homeTeam?.gameProjection ? s.predictor.homeTeam.gameProjection / 100 : null);
+      const plays = s.plays || [];
+      if (pre == null || plays.length < 2) return null;
+      const homeId = teams[1]?.team?.id, awayId = teams[0]?.team?.id, neutral = !!s.header?.competitions?.[0]?.neutralSite;
+      const out = [];
+      for (let i = 0; i < plays.length; i++) {
+        const p = plays[i];
+        const home = W.nba({ homeScore: p.homeScore, awayScore: p.awayScore, period: p.period?.number, clock: p.clock?.displayValue,
+          possession: W.nbaPossession(plays.slice(0, i + 1), homeId, awayId), pregameHomeWP: pre, neutral });
+        if (home == null) return null;          // model not loaded yet, or missing inputs: fall back to ESPN
+        out.push({ home, per: p.period?.number || 0, clock: p.clock?.displayValue || "", text: p.text || p.type?.text || "" });
+      }
+      // A finished game ends at 100/0, as it does in ESPN's series.
+      const comp = s.header?.competitions?.[0];
+      if (comp?.status?.type?.state === "post") { const h = comp.competitors?.find((c) => c.homeAway === "home"); out.push({ home: h?.winner ? 1 : 0, per: out[out.length - 1].per, clock: "", text: "Final" }); }
+      return out;
+    }
+    // Load the model file the first time an NBA game is opened, then redraw that game's section.
+    function useOurModel(lg, v, s, teams, state, id) {
+      if (lg !== "nba" || !window.ScorelineWP || state === "pre") return;
+      window.ScorelineWP.ready("nba").then(() => {
+        const sec = v.el?.querySelector("[data-wpsec]");
+        if (!sec) return;
+        const html = wpSectionHtml(s, teams, state, id, lg);
+        if (html) { const t = document.createElement("template"); t.innerHTML = html; sec.replaceWith(t.content.firstElementChild); }
+      }).catch(() => {});
+    }
     function wpSectionHtml(s, teams, state, id, lg) {
-      const series = state !== "pre" ? wpSeries(s) : null;
-      const now = series ? { home: series[series.length - 1].home, src: "ESPN win probability" } : winProb(s, state);
+      const ours = state !== "pre" && lg === "nba" ? ourNbaSeries(s, teams) : null;
+      const series = ours || (state !== "pre" ? wpSeries(s) : null);
+      const now = series ? { home: series[series.length - 1].home, src: ours ? "Scoreline win probability" : "ESPN win probability" } : winProb(s, state);
       if (!now || teams.length !== 2) return "";
       const hp = pct(now.home), ap = 100 - hp, [away, home] = teams;
       let h = '<div class="g-sec" data-c="stats" data-wpsec="' + esc(id) + '"><div class="g-label">Win probability</div>' +
@@ -2492,6 +2525,7 @@
       if (lg === "nba" || lg === "mlb") renderSportFeed(v, false);
       if ((lg === "nba" || lg === "mlb") && st.state === "in") liveSummary(v);
       if (st.state === "in") wpLive(v, lg, id);
+      useOurModel(lg, v, s, teams, st.state, id);
     }
 
     const ROSTER_GROUPS = { offense: "Offense", defense: "Defense", specialTeam: "Special teams", injuredReserveOrOut: "Injured reserve / out", suspended: "Suspended", practiceSquad: "Practice squad" };
@@ -3110,6 +3144,7 @@
     if (![...ALL_SPORTS, "home", "you"].includes(state.tab)) state.tab = "home";
     Promise.all([Promise.resolve(render()).catch(() => {}), new Promise((r) => setTimeout(r, 900))]).finally(hideSplash);
   </script>
+  <script src="models/wp.js" defer></script>
   <script type="module" src="account.js"></script>
 </body>
 </html>
