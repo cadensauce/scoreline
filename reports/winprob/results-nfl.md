@@ -47,7 +47,20 @@ Calibration table (10 bins): predicted vs actual home win share.
 | 80-90% | 85.0% / 83.0% (n=4,693) | 85.0% / 89.6% (n=4,131) |
 | 90-100% | 96.8% / 96.0% (n=8,912) | 96.9% / 97.2% (n=7,145) |
 
-**Automatic verdict: show ESPN's.** Ours scores slightly better but the gap is within bootstrap noise, so it is not measurably better; show ESPN's number, labelled as ESPN's.
+Latest season alone, the automatic check says: show ESPN's (ours scores slightly better but the gap is within bootstrap noise, so it is not measurably better). The verdict below uses all held-out seasons.
+
+### Rolling backtest: 2023, 2024 and 2025 (each season predicted by a model trained only on earlier seasons)
+
+| Held-out season | Games | Plays | Brier ours | Brier ESPN | Log loss ours | Log loss ESPN |
+|---|---|---|---|---|---|---|
+| 2023 | 285 | 52,000 | 0.1576 | 0.1525 | 0.4741 | 0.4582 |
+| 2024 | 285 | 51,721 | 0.1441 | 0.1447 | 0.4318 | 0.4352 |
+| 2025 | 284 | 50,013 | 0.1621 | 0.1634 | 0.4834 | 0.4865 |
+| **All 3 pooled** | 854 | 153,734 | **0.1545** | 0.1534 | **0.4629** | 0.4597 |
+
+Pooled Brier difference (ours minus ESPN): +0.0011, 95% CI -0.0029 to +0.0047 (bootstrap over games). Ours is better on both metrics in 2 of 3 seasons.
+
+**Automatic verdict: show ESPN's.** ESPN's numbers score better than ours across the held-out seasons; show ESPN's number, labelled as ESPN's.
 
 ### Held-out 2025: ours vs nflverse on nflverse plays (before each snap)
 

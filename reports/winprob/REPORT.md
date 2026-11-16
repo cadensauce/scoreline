@@ -4,9 +4,9 @@
 
 | Sport | Latest held-out season | Brier ours / ESPN | Log loss ours / ESPN | 3 seasons pooled: Brier ours / ESPN (95% CI of gap) | Verdict |
 |---|---|---|---|---|---|
-| NFL | 50,013 plays, 284 games | 0.1621 / 0.1634 | 0.4834 / 0.4865 |  | **show ESPN's** |
-| NBA | 637,996 plays, 1,313 games | 0.1463 / 0.1473 | 0.4388 / 0.4415 |  | **show ESPN's** |
-| College football | 141,351 plays, 807 games | 0.1246 / 0.1255 | 0.3797 / 0.3816 |  | **show ESPN's** |
+| NFL | 50,013 plays, 284 games | 0.1621 / 0.1634 | 0.4834 / 0.4865 | 0.1545 / 0.1534 (-0.0029 to +0.0047) | **show ESPN's** |
+| NBA | 640,036 plays, 1,317 games | 0.1461 / 0.1473 | 0.4381 / 0.4414 | 0.1483 / 0.1482 (-0.0016 to +0.0016) | **show ESPN's** |
+| College football | 141,351 plays, 807 games | 0.1244 / 0.1255 | 0.3789 / 0.3816 | 0.1269 / 0.1253 (-0.0007 to +0.0038) | **show ESPN's** |
 | F1 | not run | | | | |
 
 ## NFL
@@ -58,7 +58,20 @@ Calibration table (10 bins): predicted vs actual home win share.
 | 80-90% | 85.0% / 83.0% (n=4,693) | 85.0% / 89.6% (n=4,131) |
 | 90-100% | 96.8% / 96.0% (n=8,912) | 96.9% / 97.2% (n=7,145) |
 
-**Automatic verdict: show ESPN's.** Ours scores slightly better but the gap is within bootstrap noise, so it is not measurably better; show ESPN's number, labelled as ESPN's.
+Latest season alone, the automatic check says: show ESPN's (ours scores slightly better but the gap is within bootstrap noise, so it is not measurably better). The verdict below uses all held-out seasons.
+
+### Rolling backtest: 2023, 2024 and 2025 (each season predicted by a model trained only on earlier seasons)
+
+| Held-out season | Games | Plays | Brier ours | Brier ESPN | Log loss ours | Log loss ESPN |
+|---|---|---|---|---|---|---|
+| 2023 | 285 | 52,000 | 0.1576 | 0.1525 | 0.4741 | 0.4582 |
+| 2024 | 285 | 51,721 | 0.1441 | 0.1447 | 0.4318 | 0.4352 |
+| 2025 | 284 | 50,013 | 0.1621 | 0.1634 | 0.4834 | 0.4865 |
+| **All 3 pooled** | 854 | 153,734 | **0.1545** | 0.1534 | **0.4629** | 0.4597 |
+
+Pooled Brier difference (ours minus ESPN): +0.0011, 95% CI -0.0029 to +0.0047 (bootstrap over games). Ours is better on both metrics in 2 of 3 seasons.
+
+**Automatic verdict: show ESPN's.** ESPN's numbers score better than ours across the held-out seasons; show ESPN's number, labelled as ESPN's.
 
 ### Held-out 2025: ours vs nflverse on nflverse plays (before each snap)
 
@@ -78,32 +91,32 @@ Calibration table (10 bins): predicted vs actual home win share.
 
 ## NBA
 
-**Data.** sportsdataverse/hoopR ESPN play-by-play releases. Training: 2015-16 to 2024-25 (12,848 games, 5,989,494 plays; the last of those seasons was used for early stopping, then folded back in). Held out: 2025-26 including playoffs. Pre-game strength: Scoreline's own Elo from final scores (k=20, home edge 40, 40% regression between seasons; pre-game log loss 0.6269). No betting lines are used.
+**Data.** sportsdataverse/hoopR ESPN play-by-play releases. Training: 2015-16 to 2024-25 (12,848 games, 5,989,494 plays; the last of those seasons was used for early stopping, then folded back in). Held out: 2025-26 including playoffs. Pre-game strength: Scoreline's own Elo from final scores (k=20, home edge 55, 40% regression between seasons; pre-game log loss 0.6268). No betting lines are used.
 
-**Model.** Gradient-boosted trees (208 trees, 15 leaves, monotone in margin, possession and strength). Inputs: margin, seconds left, overtime, period, who has the ball (inferred from the last play), pre-game strength, strength x time left, margin / sqrt(time left).
+**Model.** Gradient-boosted trees (159 trees, 31 leaves, monotone in margin, possession and strength). Inputs: margin, seconds left, overtime, period, who has the ball (inferred from the last play), pre-game strength, strength x time left, margin / sqrt(time left).
 
 ### Held-out 2025-26: ours vs ESPN on ESPN's own plays
 
 | Model | Brier (lower is better) | Log loss (lower is better) |
 |---|---|---|
-| Scoreline (ours) | **0.1463** | **0.4388** |
-| ESPN | 0.1473 | 0.4415 |
+| Scoreline (ours) | **0.1461** | **0.4381** |
+| ESPN | 0.1473 | 0.4414 |
 
-637,996 plays from 1,313 games. Brier difference (ours minus ESPN): -0.0010, 95% CI -0.0035 to +0.0015 (bootstrap over games).
+640,036 plays from 1,317 games. Brier difference (ours minus ESPN): -0.0012, 95% CI -0.0037 to +0.0011 (bootstrap over games).
 
 | Period | Plays | Brier ours | Brier ESPN |
 |---|---|---|---|
-| Q1 | 150,914 | 0.1988 | 0.1977 |
-| Q2 | 162,953 | 0.1734 | 0.1748 |
-| Q3 | 157,357 | 0.1370 | 0.1388 |
-| Q4 | 162,874 | 0.0800 | 0.0813 |
-| OT | 3,898 | 0.1406 | 0.1538 |
+| Q1 | 151,382 | 0.1981 | 0.1975 |
+| Q2 | 163,471 | 0.1731 | 0.1748 |
+| Q3 | 157,877 | 0.1367 | 0.1387 |
+| Q4 | 163,408 | 0.0799 | 0.0814 |
+| OT | 3,898 | 0.1419 | 0.1538 |
 
 **Swings check** (change in home win probability from one play to the next, same game):
 
 | Model | Mean change per play | 99th percentile | Plays with a change over 25 points |
 |---|---|---|---|
-| Scoreline (ours) | 1.09 pts | 7.6 pts | 0.03% |
+| Scoreline (ours) | 1.08 pts | 7.4 pts | 0.03% |
 | ESPN | 1.60 pts | 9.3 pts | 0.04% |
 
 ![NBA 2025-26 calibration](./calibration-nba.png)
@@ -112,47 +125,60 @@ Calibration table (10 bins): predicted vs actual home win share.
 
 | Bin | Ours: predicted / actual | ESPN: predicted / actual |
 |---|---|---|
-| 0-10% | 2.7% / 2.5% (n=76,487) | 2.9% / 4.4% (n=91,147) |
-| 10-20% | 15.1% / 15.2% (n=38,036) | 15.0% / 19.1% (n=44,231) |
-| 20-30% | 25.0% / 24.4% (n=45,422) | 25.1% / 29.0% (n=45,974) |
-| 30-40% | 35.1% / 34.2% (n=52,683) | 35.0% / 39.7% (n=47,479) |
-| 40-50% | 45.1% / 46.8% (n=52,753) | 45.0% / 48.5% (n=50,506) |
-| 50-60% | 55.0% / 55.2% (n=56,180) | 55.0% / 56.4% (n=52,684) |
-| 60-70% | 65.0% / 65.5% (n=59,145) | 65.1% / 65.0% (n=54,644) |
-| 70-80% | 75.2% / 73.2% (n=69,322) | 75.1% / 73.8% (n=58,168) |
-| 80-90% | 85.0% / 83.5% (n=72,235) | 85.1% / 82.7% (n=64,405) |
-| 90-100% | 97.0% / 97.3% (n=115,733) | 97.0% / 96.6% (n=128,758) |
+| 0-10% | 2.7% / 2.5% (n=76,305) | 2.9% / 4.4% (n=91,648) |
+| 10-20% | 15.0% / 15.0% (n=37,858) | 15.0% / 19.0% (n=44,583) |
+| 20-30% | 25.1% / 23.6% (n=46,131) | 25.1% / 28.9% (n=46,333) |
+| 30-40% | 35.1% / 34.1% (n=52,118) | 35.0% / 39.7% (n=47,870) |
+| 40-50% | 44.9% / 46.7% (n=55,626) | 45.0% / 48.5% (n=50,734) |
+| 50-60% | 55.0% / 55.0% (n=56,169) | 55.0% / 56.5% (n=52,780) |
+| 60-70% | 65.0% / 65.8% (n=59,175) | 65.1% / 65.0% (n=54,710) |
+| 70-80% | 75.2% / 73.3% (n=68,761) | 75.1% / 73.8% (n=58,192) |
+| 80-90% | 84.9% / 83.7% (n=73,155) | 85.1% / 82.7% (n=64,410) |
+| 90-100% | 97.0% / 97.5% (n=114,738) | 97.0% / 96.6% (n=128,776) |
 
-**Automatic verdict: show ESPN's.** Ours scores slightly better but the gap is within bootstrap noise, so it is not measurably better; show ESPN's number, labelled as ESPN's.
+Latest season alone, the automatic check says: show ESPN's (ours scores slightly better but the gap is within bootstrap noise, so it is not measurably better). The verdict below uses all held-out seasons.
+
+### Rolling backtest: three most recent seasons (each predicted by a model trained only on earlier seasons)
+
+| Held-out season | Games | Plays | Brier ours | Brier ESPN | Log loss ours | Log loss ESPN |
+|---|---|---|---|---|---|---|
+| 2023-24 | 1,318 | 613,470 | 0.1473 | 0.1461 | 0.4432 | 0.4413 |
+| 2024-25 | 1,321 | 624,637 | 0.1515 | 0.1513 | 0.4526 | 0.4530 |
+| 2025-26 | 1,317 | 640,036 | 0.1461 | 0.1473 | 0.4381 | 0.4414 |
+| **All 3 pooled** | 3,956 | 1,878,143 | **0.1483** | 0.1482 | **0.4446** | 0.4452 |
+
+Pooled Brier difference (ours minus ESPN): +0.0000, 95% CI -0.0016 to +0.0016 (bootstrap over games). Ours is better on both metrics in 1 of 3 seasons.
+
+**Automatic verdict: show ESPN's.** ESPN's numbers score better than ours across the held-out seasons; show ESPN's number, labelled as ESPN's.
 
 ## College football
 
-**Data.** ESPN play-by-play (summary endpoint) for FBS games, 2017-2024 for training (5,903 games, 1,054,294 plays; 2024 used for early stopping, then folded back in). Game lists and final scores: sportsdataverse `cfb_schedules` releases (2004 on). Held out: the 2025 season (807 FBS games with ESPN win probability). We used ESPN's own play-by-play instead of the cfbfastR play files because the current cfbfastR release is built from a different (NCAA) feed whose field conventions don't match what the app receives live; training on the same feed the app uses avoids that mismatch. Pre-game strength: Scoreline's own Elo over all divisions (k=40, home edge 40, 20% regression; FBS start 1500, FCS 1250, others 1000; pre-game log loss 0.5105). No betting lines.
+**Data.** ESPN play-by-play (summary endpoint) for FBS games, 2017-2024 for training (5,903 games, 1,054,294 plays; 2024 used for early stopping, then folded back in). Game lists and final scores: sportsdataverse `cfb_schedules` releases (2004 on). Held out: the 2025 season (807 FBS games with ESPN win probability). We used ESPN's own play-by-play instead of the cfbfastR play files because the current cfbfastR release is built from a different (NCAA) feed whose field conventions don't match what the app receives live; training on the same feed the app uses avoids that mismatch. Pre-game strength: Scoreline's own Elo over all divisions (k=40, home edge 55, 20% regression; FBS start 1500, FCS 1250, others 1000; pre-game log loss 0.5103). No betting lines.
 
-**Model.** Gradient-boosted trees (201 trees, 15 leaves). Same inputs as NFL minus timeouts (not reliably in the college feed) plus the period number (overtime rules change by period). Kickoff and extra-point moments are treated as the receiving team's 1st and 10 at its own 25.
+**Model.** Gradient-boosted trees (208 trees, 15 leaves). Same inputs as NFL minus timeouts (not reliably in the college feed) plus the period number (overtime rules change by period). Kickoff and extra-point moments are treated as the receiving team's 1st and 10 at its own 25.
 
 ### Held-out 2025: ours vs ESPN on ESPN's own plays
 
 | Model | Brier (lower is better) | Log loss (lower is better) |
 |---|---|---|
-| Scoreline (ours) | **0.1246** | **0.3797** |
+| Scoreline (ours) | **0.1244** | **0.3789** |
 | ESPN | 0.1255 | 0.3816 |
 
-141,351 plays from 807 games. Brier difference (ours minus ESPN): -0.0009, 95% CI -0.0047 to +0.0031 (bootstrap over games).
+141,351 plays from 807 games. Brier difference (ours minus ESPN): -0.0011, 95% CI -0.0051 to +0.0029 (bootstrap over games).
 
 | Period | Plays | Brier ours | Brier ESPN |
 |---|---|---|---|
-| Q1 | 31,445 | 0.1736 | 0.1695 |
-| Q2 | 40,417 | 0.1403 | 0.1405 |
-| Q3 | 32,348 | 0.1095 | 0.1126 |
-| Q4 | 36,826 | 0.0781 | 0.0819 |
-| OT | 315 | 0.2159 | 0.2316 |
+| Q1 | 31,445 | 0.1735 | 0.1695 |
+| Q2 | 40,417 | 0.1401 | 0.1405 |
+| Q3 | 32,348 | 0.1090 | 0.1126 |
+| Q4 | 36,826 | 0.0779 | 0.0819 |
+| OT | 315 | 0.2151 | 0.2316 |
 
 **Swings check** (change in home win probability from one play to the next, same game):
 
 | Model | Mean change per play | 99th percentile | Plays with a change over 25 points |
 |---|---|---|---|
-| Scoreline (ours) | 1.95 pts | 15.8 pts | 0.28% |
+| Scoreline (ours) | 1.98 pts | 15.9 pts | 0.28% |
 | ESPN | 1.83 pts | 15.2 pts | 0.33% |
 
 ![College football 2025 calibration](./calibration-cfb.png)
@@ -161,15 +187,28 @@ Calibration table (10 bins): predicted vs actual home win share.
 
 | Bin | Ours: predicted / actual | ESPN: predicted / actual |
 |---|---|---|
-| 0-10% | 3.4% / 2.8% (n=18,023) | 3.0% / 3.8% (n=18,978) |
-| 10-20% | 14.7% / 16.6% (n=9,442) | 14.9% / 16.6% (n=9,731) |
-| 20-30% | 24.9% / 23.5% (n=8,555) | 25.0% / 25.7% (n=8,666) |
-| 30-40% | 35.0% / 33.1% (n=8,629) | 35.0% / 38.2% (n=9,086) |
-| 40-50% | 45.1% / 46.3% (n=9,225) | 45.1% / 46.9% (n=9,402) |
-| 50-60% | 55.1% / 54.9% (n=10,511) | 55.0% / 55.0% (n=9,691) |
-| 60-70% | 65.1% / 65.5% (n=11,879) | 65.0% / 62.8% (n=10,395) |
-| 70-80% | 75.1% / 72.0% (n=12,204) | 75.2% / 72.7% (n=11,726) |
-| 80-90% | 85.2% / 86.4% (n=14,018) | 85.1% / 86.5% (n=13,816) |
-| 90-100% | 97.1% / 98.0% (n=38,865) | 97.3% / 97.7% (n=39,860) |
+| 0-10% | 3.4% / 2.9% (n=17,850) | 3.0% / 3.8% (n=18,978) |
+| 10-20% | 14.8% / 16.5% (n=9,482) | 14.9% / 16.6% (n=9,731) |
+| 20-30% | 25.0% / 23.0% (n=8,636) | 25.0% / 25.7% (n=8,666) |
+| 30-40% | 35.0% / 33.2% (n=8,868) | 35.0% / 38.2% (n=9,086) |
+| 40-50% | 45.1% / 46.1% (n=9,474) | 45.1% / 46.9% (n=9,402) |
+| 50-60% | 55.1% / 55.8% (n=10,340) | 55.0% / 55.0% (n=9,691) |
+| 60-70% | 65.1% / 65.2% (n=11,728) | 65.0% / 62.8% (n=10,395) |
+| 70-80% | 75.2% / 71.3% (n=11,851) | 75.2% / 72.7% (n=11,726) |
+| 80-90% | 85.3% / 86.5% (n=14,062) | 85.1% / 86.5% (n=13,816) |
+| 90-100% | 97.1% / 98.1% (n=39,060) | 97.3% / 97.7% (n=39,860) |
 
-**Automatic verdict: show ESPN's.** Ours scores slightly better but the gap is within bootstrap noise, so it is not measurably better; show ESPN's number, labelled as ESPN's.
+Latest season alone, the automatic check says: show ESPN's (ours scores slightly better but the gap is within bootstrap noise, so it is not measurably better). The verdict below uses all held-out seasons.
+
+### Rolling backtest: 2023, 2024 and 2025 (each season predicted by a model trained only on earlier seasons)
+
+| Held-out season | Games | Plays | Brier ours | Brier ESPN | Log loss ours | Log loss ESPN |
+|---|---|---|---|---|---|---|
+| 2023 | 787 | 135,634 | 0.1228 | 0.1201 | 0.3800 | 0.3745 |
+| 2024 | 783 | 137,253 | 0.1335 | 0.1303 | 0.4061 | 0.3989 |
+| 2025 | 807 | 141,351 | 0.1244 | 0.1255 | 0.3789 | 0.3816 |
+| **All 3 pooled** | 2,377 | 414,238 | **0.1269** | 0.1253 | **0.3883** | 0.3850 |
+
+Pooled Brier difference (ours minus ESPN): +0.0016, 95% CI -0.0007 to +0.0038 (bootstrap over games). Ours is better on both metrics in 1 of 3 seasons.
+
+**Automatic verdict: show ESPN's.** ESPN's numbers score better than ours across the held-out seasons; show ESPN's number, labelled as ESPN's.
