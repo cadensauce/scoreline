@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794862398" />
+  <meta name="build" content="1794862598" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -43,6 +43,8 @@
       --good: #8fd9b0;        /* only for win/loss and up/down meaning */
       --bad: #f0a0a8;
       --glow: rgba(255, 255, 255, .05);
+      --bar: #1c1c20;          /* floating bottom bar */
+      --tick: rgba(255, 255, 255, .15);   /* small indicator dots (timeouts) */
       /* Type: one family, a clear scale */
       --display: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
       --fs-xs: 12px; --fs-sm: 14px; --fs-body: 16px; --fs-lg: 18px; --fs-xl: 24px; --fs-2xl: 32px;
@@ -58,6 +60,28 @@
       --ease: cubic-bezier(.22, 1, .36, 1);
       --t-fast: .15s;
       --t: .25s;
+      color-scheme: dark;
+    }
+    /* Light theme (You → Appearance). Same tokens; contrast checked: text 16.9:1, muted 5.4:1 on the page. */
+    :root[data-theme="light"] {
+      --bg: #f6f6f5; --panel: #ffffff; --panel-2: #efefee; --panel-3: #e3e3e1;
+      --line: rgba(0, 0, 0, .08); --line-hi: rgba(0, 0, 0, .14);
+      --text: #161618; --muted: #66666c; --faint: #8b8b91;
+      --accent: #161618; --on-accent: #f6f6f5; --live: #161618; --win: #000000; --gold: #161618;
+      --good: #1f7a4d; --bad: #b4232f; --glow: rgba(0, 0, 0, .035); --bar: #ffffff; --tick: rgba(0, 0, 0, .15);
+      --shadow: 0 12px 32px rgba(0, 0, 0, .12);
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: light) {
+      :root[data-theme="system"] {
+        --bg: #f6f6f5; --panel: #ffffff; --panel-2: #efefee; --panel-3: #e3e3e1;
+        --line: rgba(0, 0, 0, .08); --line-hi: rgba(0, 0, 0, .14);
+        --text: #161618; --muted: #66666c; --faint: #8b8b91;
+        --accent: #161618; --on-accent: #f6f6f5; --live: #161618; --win: #000000; --gold: #161618;
+        --good: #1f7a4d; --bad: #b4232f; --glow: rgba(0, 0, 0, .035); --bar: #ffffff; --tick: rgba(0, 0, 0, .15);
+        --shadow: 0 12px 32px rgba(0, 0, 0, .12);
+        color-scheme: light;
+      }
     }
     * { box-sizing: border-box; }
     * { -webkit-tap-highlight-color: transparent; }
@@ -541,7 +565,7 @@
     .sb-team b { font-family: var(--display); font-size: 18px; font-weight: 650; letter-spacing: -.01em; }
     .sb-sc { font-family: var(--display); font-size: 24px; font-weight: 650; margin: 0 2px; }
     .sb-to { display: flex; gap: 3px; margin-left: auto; } .sb-team:last-child .sb-to { margin-left: 0; margin-right: auto; }
-    .sb-to i { width: 12px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.15); }
+    .sb-to i { width: 12px; height: 3px; border-radius: 2px; background: var(--tick); }
     .sb-to i.on { background: var(--gold); }
     .sb-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 8px; min-width: 72px; text-align: center; }
     @media (max-width: 400px) { .sb-to i { width: 10px; } .scorebug.nba .sb-to i { width: 5px; } .sb-sc { font-size: 21px; } .sb-team b { font-size: 16px; } }
@@ -748,7 +772,7 @@
       .card-foot { display: none; }
 
       /* bottom tab bar */
-      .btabs { display: flex; position: fixed; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 30; padding: 6px; border-radius: 28px; background: #1c1c20; border: 1px solid var(--line-hi); box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }   /* floating rounded bar */
+      .btabs { display: flex; position: fixed; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 30; padding: 6px; border-radius: 28px; background: var(--bar); border: 1px solid var(--line-hi); box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }   /* floating rounded bar */
       .btab { flex: 1; border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0 4px; color: var(--muted); font-size: 10.5px; font-weight: 700; letter-spacing: .3px; position: relative; transition: color .2s; }
       .btab svg { width: 24px; height: 24px; }
       .btab.active { color: var(--accent); }
@@ -900,6 +924,14 @@
     }
     const $ = (id) => document.getElementById(id);
     const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    // Appearance: "dark" (default), "light" or "system" (follows the phone/computer setting).
+    function applyTheme(t) {
+      document.documentElement.dataset.theme = t;
+      const light = t === "light" || (t === "system" && matchMedia("(prefers-color-scheme: light)").matches);
+      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", light ? "#f6f6f5" : "#101012");
+    }
+    try { applyTheme(JSON.parse(localStorage.getItem("scoreline:theme")) || "dark"); } catch { applyTheme("dark"); }
+    matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => applyTheme(document.documentElement.dataset.theme));
     const store = {
       get(k, d) { try { const v = JSON.parse(localStorage.getItem("scoreline:" + k)); return v ?? d; } catch { return d; } },
       set(k, v) { try { localStorage.setItem("scoreline:" + k, JSON.stringify(v)); } catch {} },
@@ -2807,7 +2839,8 @@
         (signedIn ? (reqs ? reqs + " friend request" + (reqs === "1" ? "" : "s") : "Friends, chat and sync") : "Keep your teams and alerts on every device") + '</small></span><span class="chev">›</span></div></div>' +
         '<div class="section-title"><b>Sports in your bar</b></div><div class="pin-row">' + ALL_SPORTS.map((k) =>
           '<button type="button" class="pin ' + (pins().includes(k) ? "on" : "") + '" data-pin="' + k + '">' + esc(tabName(k)) + "</button>").join("") + "</div>" +
-        '<div class="g-note">Pick up to ' + MAX_PINS + ". Home shows only these sports.</div>";
+        '<div class="g-note">Pick up to ' + MAX_PINS + ". Home shows only these sports.</div>" +
+        '<div class="section-title"><b>Appearance</b></div><div class="seg theme-seg">' + [["system", "System"], ["dark", "Dark"], ["light", "Light"]].map(([k, l]) => '<button type="button" data-theme-pick="' + k + '" class="' + ((document.documentElement.dataset.theme || "dark") === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>";
       if (MOBILE_APP) h += '<div class="section-title"><b>Alerts</b></div>' +
         '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Only about the teams you follow</small></span><i class="switch"></i></button><button type="button" class="pill-btn test-btn" id="testNotify">Send test notification</button>' + (alertsOn ? '<div class="g-note" id="pushState">' + esc(pushStatus) + "</div>" : "") + "</div>" +
         '<div class="section-title"><b>Your teams</b></div><div class="panel nteams">' + (favs.length ? favs.map((k) =>
@@ -2836,6 +2869,7 @@
         return;
       }
       if (e.target.closest("[data-open-account]")) $("accountBtn")?.click();
+      const tp = e.target.closest("[data-theme-pick]"); if (tp) { applyTheme(tp.dataset.themePick); store.set("theme", tp.dataset.themePick); buzz(8); renderAlerts(); }
     });
     const teamNames = store.get("favNames", {});
     function findName(k) { for (const c of Object.values(cache)) for (const ev of c?.events || []) for (const t of teamsOf(ev)) if (favKey(t) === k) return t.team?.displayName; }
