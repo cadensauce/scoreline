@@ -238,7 +238,7 @@ function refreshAccountSheet() {
   } else {
     const F = friendState;
     const person = (uid, actions) => '<div class="opt"><span><b>@' + esc(names[uid] || "…") + "</b></span><span class=\"acct-acts\">" + actions + "</span></div>";
-    h = '<div class="acct-me"><div class="avatar">' + esc((profile?.username || "?")[0].toUpperCase()) + "</div><div><b>@" + esc(profile?.username || "") + "</b><small>" + esc(user.email || "") + '</small></div><button class="pill-btn" type="button" data-logout>Log out</button></div>' +
+    h = '<div class="acct-me"><div class="avatar">' + esc((profile?.username || "?")[0].toUpperCase()) + "</div><div><b>@" + esc(profile?.username || "") + "</b><small data-email>" + emailLine() + '</small></div><button class="pill-btn" type="button" data-logout>Log out</button></div>' +
       '<div class="g-note">★ teams and alert settings are synced.</div>' +
       '<div class="g-label" style="margin-top:18px">Add a friend</div><form class="acct-add" data-addf><input placeholder="Username" maxlength="21" autocomplete="off"><button class="pill-btn" type="submit">Add</button></form><div class="acct-err" data-err></div>' +
       (F.incoming.length ? '<div class="g-label" style="margin-top:16px">Friend requests</div><div class="panel">' + F.incoming.map((r) => person(r.from, '<button class="pill-btn" type="button" data-accept="' + esc(r.id) + '">Accept</button><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '">✕</button>')).join("") + "</div>" : "") +
@@ -259,6 +259,43 @@ const niceErr = (e) => {
   return e?.message || "Something went wrong.";
 };
 
+// The account email stays hidden until you confirm it's you (password, or Google for Google accounts).
+const maskEmail = (e) => { const [u, d] = String(e || "").split("@"); return d ? (u[0] || "") + "•••@" + d : "Hidden"; };
+let emailShownUntil = 0;
+function emailLine() {
+  if (Date.now() < emailShownUntil) return esc(user.email || "");
+  return esc(maskEmail(user.email)) + ' <button type="button" class="acct-link" data-showemail>Show</button>';
+}
+function revealEmail() {
+  emailShownUntil = Date.now() + 30000;          // hides itself again after 30 seconds
+  document.querySelectorAll("[data-email]").forEach((el) => { el.innerHTML = emailLine(); });
+  setTimeout(() => document.querySelectorAll("[data-email]").forEach((el) => { el.innerHTML = emailLine(); }), 30500);
+}
+document.addEventListener("click", async (e) => {
+  if (!e.target.closest("[data-showemail]") || !user) return;
+  const google = (user.providerData || []).some((p) => p.providerId === "google.com") && !(user.providerData || []).some((p) => p.providerId === "password");
+  if (google) {
+    try { await fb.reauthenticateWithPopup(user, new fb.GoogleAuthProvider()); revealEmail(); }
+    catch (err) { if (!/popup-closed|cancelled-popup/.test(err?.code || "")) toast("Couldn't confirm it's you. Try again."); }
+    return;
+  }
+  const el = e.target.closest("[data-email]");
+  el.innerHTML = '<form class="acct-add email-pw" data-reveal><input type="password" name="pw" placeholder="Your password" autocomplete="current-password" required><button class="pill-btn" type="submit">Show</button></form>';
+  el.querySelector("input").focus();
+});
+document.addEventListener("submit", async (e) => {
+  const f = e.target;
+  if (!f.matches("[data-reveal]") || !user) return;
+  e.preventDefault();
+  const btn = f.querySelector("button"); btn.disabled = true;
+  try {
+    await fb.reauthenticateWithCredential(user, fb.EmailAuthProvider.credential(user.email, f.pw.value));
+    revealEmail();
+  } catch (err) {
+    btn.disabled = false; f.pw.value = "";
+    toast(/wrong-password|invalid-credential|invalid-login/.test(err?.code || "") ? "That password isn't right." : /too-many-requests/.test(err?.code || "") ? "Too many tries. Wait a bit and try again." : "Couldn't check your password. Try again.");
+  }
+});
 document.addEventListener("submit", async (e) => {
   const f = e.target;
   if (f.matches("[data-acct]")) {
