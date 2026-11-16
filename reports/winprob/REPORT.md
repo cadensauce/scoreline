@@ -28,12 +28,12 @@ and every "ESPN" comparison number); OpenF1 and Jolpica-F1 (F1, CC BY-NC-SA 4.0,
 
 ## Summary
 
-| Sport | Latest held-out season | Brier ours / ESPN | Log loss ours / ESPN | 3 seasons pooled: Brier ours / ESPN (95% CI of gap) | Verdict |
-|---|---|---|---|---|---|
-| NFL | 50,013 plays, 284 games | 0.1621 / 0.1634 | 0.4834 / 0.4865 | 0.1545 / 0.1534 (-0.0029 to +0.0047) | **show ESPN's** |
-| NBA | 640,036 plays, 1,317 games | 0.1461 / 0.1473 | 0.4381 / 0.4414 | 0.1483 / 0.1482 (-0.0016 to +0.0016) | **show ESPN's** |
-| College football | 141,351 plays, 807 games | 0.1244 / 0.1255 | 0.3789 / 0.3816 | 0.1269 / 0.1253 (-0.0007 to +0.0038) | **show ESPN's** |
-| F1 | 1,419 lap snapshots (24 races); Brier 0.2788 vs best baseline 0.3611 (no ESPN F1 number) | | | | **ship ours (no ESPN number exists)** |
+| Sport | Latest held-out season | Brier ours / ESPN | Log loss ours / ESPN | 3 seasons pooled: Brier ours / ESPN (95% CI of gap) | Same, ours with ESPN's pre-game strength | Verdict |
+|---|---|---|---|---|---|---|
+| NFL | 50,013 plays, 284 games | 0.1621 / 0.1634 | 0.4834 / 0.4865 | 0.1545 / 0.1534 (-0.0029 to +0.0047) | 0.1553 / 0.1534 (-0.0000 to +0.0039) | **show ESPN's** |
+| NBA | 640,036 plays, 1,317 games | 0.1461 / 0.1473 | 0.4381 / 0.4414 | 0.1483 / 0.1482 (-0.0016 to +0.0016) | 0.1459 / 0.1482 (-0.0033 to -0.0012) | **ship ours, fed ESPN's pre-game strength** |
+| College football | 141,351 plays, 807 games | 0.1244 / 0.1255 | 0.3789 / 0.3816 | 0.1269 / 0.1253 (-0.0007 to +0.0038) | 0.1249 / 0.1253 (-0.0016 to +0.0010) | **show ESPN's** |
+| F1 | 1,419 lap snapshots (24 races); Brier 0.2788 vs best baseline 0.3611 (no ESPN F1 number) | | | | | **ship ours (no ESPN number exists)** |
 
 ## NFL
 
@@ -130,6 +130,28 @@ Pooled Brier difference (ours minus ESPN): +0.0019, 95% CI -0.0000 to +0.0039 (b
 
 43,523 plays from 284 games. Brier difference (ours minus nflverse vegas_wp (uses the betting spread)): +0.0040, 95% CI -0.0016 to +0.0104 (bootstrap over games).
 
+### NFL: what we tried, weaknesses, verdict
+
+Iterations: (1) first model, 2025 only: ours slightly ahead of ESPN but inside the noise. (2) Wider Elo search and a
+rolling backtest over 2023-2025, so the verdict rests on 854 games instead of 284: ESPN comes out ahead overall
+(ours loses 2023 clearly, wins 2024 and 2025 narrowly). (3) Same trees fed ESPN's opening win probability as the
+pre-game strength: still behind ESPN pooled (+0.0019 Brier).
+
+Known weaknesses:
+- **Pre-game strength is the gap.** Our Elo uses only past scores; ESPN's numbers carry their team ratings
+  (and nflverse's `vegas_wp`, which uses the betting spread, beats ours on its own plays: 0.1597 vs 0.1637).
+  We avoided betting lines on purpose. Ours does beat nflverse's non-betting `wp` (0.1637 vs 0.1724 on 2025).
+- Late-game edge: ours is a little better than ESPN in the 4th quarter and overtime of 2025, worse early.
+- Mid-range calibration: in 2025 both models over-rated home teams between 40% and 60%; ours slightly more.
+- Swings: same average change per play as ESPN (2.1 points), slightly bigger extremes (99th pct 16.3 vs 15.4).
+- Kickoff / extra-point moments are mapped to nflverse's kickoff convention; the extra point itself is not added yet.
+- The Elo hyperparameters were tuned on all pre-2025 seasons, so the 2023/2024 folds have a small look-ahead in
+  those three settings (not in the trees).
+- Team Elo ratings ship inside `wp-nfl.json` and go stale unless the workflow is re-run (weekly in season is enough),
+  or the app passes `pregameHomeWP`.
+
+**Verdict: show ESPN's number, labelled as ESPN's.** Ours is not measurably better.
+
 ## NBA
 
 **Data.** sportsdataverse/hoopR ESPN play-by-play releases. Training: 2015-16 to 2024-25 (12,848 games, 5,989,494 plays; the last of those seasons was used for early stopping, then folded back in). Held out: 2025-26 including playoffs. Pre-game strength: Scoreline's own Elo from final scores (k=20, home edge 55, 40% regression between seasons; pre-game log loss 0.6268). No betting lines are used.
@@ -206,6 +228,30 @@ Same trees; the strength input is ESPN's first published win probability for the
 Pooled Brier difference (ours minus ESPN): -0.0023, 95% CI -0.0033 to -0.0012 (bootstrap over games). Ours is better on both metrics in 3 of 3 seasons.
 
 **Automatic verdict: ship ours.** Ours has lower Brier score and log loss than ESPN across the held-out seasons, and the Brier gap is outside the bootstrap noise.
+
+### NBA: what we tried, weaknesses, verdict
+
+Iterations: (1) first model, 2025-26 only: ours slightly ahead, inside the noise. (2) Wider Elo search, bigger trees
+(31 leaves) and a rolling backtest over three seasons (3,956 games): a dead heat (pooled Brier 0.1483 vs 0.1482).
+Ours is better in the 2nd-4th quarters and overtime and worse in the 1st quarter, which points at pre-game strength.
+(3) Same trees with ESPN's opening win probability as the strength input: **better than ESPN in all three seasons**,
+pooled Brier 0.1459 vs 0.1482, 95% CI of the gap -0.0033 to -0.0012, log loss 0.4388 vs 0.4452.
+
+What that means: our in-game model (how the lead, time left and possession move the odds) is better than ESPN's;
+ESPN's pre-game team ratings are better than our Elo. Combining the two beats ESPN's own number.
+
+Known weaknesses:
+- The shipped version depends on ESPN for one input: pass `pregameHomeWP` = the first entry of the summary's
+  `winprobability` array (or `predictor.homeTeam.gameProjection / 100` before tip-off). Without it, the model falls
+  back to our Elo and is only level with ESPN.
+- Possession is inferred from the last play (rebounds, made shots, turnovers, last free throw); unknown after a
+  missed shot until the rebound.
+- Swings are smaller than ESPN's (1.1 vs 1.6 points per play on average; 99th pct 7.4 vs 9.3).
+- This variant was a second look at the same held-out seasons, so treat the margin as slightly optimistic; it
+  held in each of the three seasons separately.
+
+**Verdict: ship ours, fed ESPN's pre-game strength** (labelled as Scoreline's estimate). If the ESPN opening
+number is missing, show ESPN's live number instead of our Elo-only version.
 
 ## College football
 
@@ -284,6 +330,24 @@ Pooled Brier difference (ours minus ESPN): -0.0004, 95% CI -0.0016 to +0.0010 (b
 
 **Automatic verdict: show ESPN's.** Ours scores slightly better but the gap is within bootstrap noise, so it is not measurably better; show ESPN's number, labelled as ESPN's.
 
+### College football: what we tried, weaknesses, verdict
+
+Iterations: (1) first model, 2025 only: ours slightly ahead, inside the noise. (2) Wider Elo search and a rolling
+backtest over 2023-2025 (2,377 games): ESPN ahead pooled (0.1269 vs 0.1253), ours loses 2023 and 2024. (3) Same trees
+with ESPN's opening win probability as strength: ours slightly ahead pooled (0.1249 vs 0.1253) but the 95% interval
+(-0.0016 to +0.0010) includes zero, and it wins only 1 of 3 seasons.
+
+Known weaknesses:
+- Pre-game strength: college ratings need recruiting, returning production and many FCS/FBS mismatches; our Elo
+  only sees scores. ESPN is clearly better in the 1st quarter, ours better in the 4th quarter and overtime.
+- No timeouts input (not reliable in the college feed). Kickoffs and extra points are treated as the receiving
+  team's 1st and 10 at its own 25.
+- Swings a little larger than ESPN's (2.0 vs 1.8 points per play).
+- Trained on ESPN's own play-by-play (2017-2024 FBS games) instead of cfbfastR files: the current cfbfastR release
+  comes from a different feed with different conventions, and training on the feed the app uses avoids mismatch.
+
+**Verdict: show ESPN's number, labelled as ESPN's.**
+
 ## F1
 
 **Data.** OpenF1 lap times, pit stops and race-control messages (CC BY-NC-SA 4.0; OpenF1 history starts in 2023) for every Grand Prix 2023-2025 that loaded, plus grid slots, race distance and winners from Jolpica-F1 (CC BY-NC-SA 4.0). Sprints excluded. FastF1 was tried first, but the F1 live-timing archive it reads now returns 401 Unauthorized, so it could not be used. Safety car, VSC and red flag laps come from race-control messages. Training: 2023-2024 (46 races, 2,769 lap snapshots, 51,285 driver-laps). Held out: 2025 (24 races, 1,419 lap snapshots, 26,325 driver-laps).
@@ -318,3 +382,18 @@ There is no ESPN F1 win probability and the app shows none today, so the compari
 | 90-100% | 260 | 95.4% | 96.5% |
 
 **Automatic verdict: ship ours (no ESPN number exists).**
+
+### F1: weaknesses and verdict
+
+- **Data limits.** FastF1 could not be used: the F1 live-timing archive it reads now returns 401 Unauthorized
+  (checked from this PC and from GitHub Actions). OpenF1 history starts in 2023, so the model is trained on only
+  46 races (2023-2024) and tested on the 24 races of 2025.
+- No ESPN (or other) F1 win probability exists to compare with; the app shows none today. Ours beats both simple
+  baselines by a wide margin (Brier 0.279 vs 0.361 for position + progress, 0.478 for grid only).
+- Calibration: slightly under-confident for front-runners in 2025 (when ours said 70-90%, they won about 85-91%),
+  likely because 2025 had one dominant team. Over-confident at 10-20% (13.6% predicted, 10.2% won).
+- No weather, tyre compound or car-pace input; a late safety car is handled only as a flag, and lapped cars get the
+  capped gap.
+- Gaps are lap-line crossing times from OpenF1 lap start times, so they update once per lap.
+
+**Verdict: ship ours** (there is no ESPN number), labelled as Scoreline's estimate.
