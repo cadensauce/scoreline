@@ -122,3 +122,9 @@ small proxy that trims ESPN's data (for example a free Cloudflare Worker), which
 - Removed the ↻ refresh button (approved removal): scores refresh on their own; pull down to refresh on phones.
 - Profile button: account code now starts Firebase immediately when tapped (it otherwise loads after scores show).
 Remaining audit items (tabs, game page order, stars, header, wording, colours) are handled by the Phase 2 redesign.
+
+### Item 14 (UI part): win probability graph (shipped 2026-11-16)
+Game pages show current win probability for both teams plus a graph over the whole game (per-play history from
+the game summary, so it works after the game too). Drag or tap to see any earlier moment with its play text;
+live games refresh it every 15 s. Labelled "ESPN win probability" until our own model passes its backtest
+(model work in progress: `model/`, `reports/winprob/`). Screenshot: `design-review/wp-graph-live-mobile.jpg`.
