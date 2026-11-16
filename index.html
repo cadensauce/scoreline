@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794808948" />
+  <meta name="build" content="1794809586" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2762,16 +2762,20 @@
       let sx = 0, sy = 0, st = 0, sheet = null, dragging = false, mode = null;
       addEventListener("touchstart", (e) => {
         const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); mode = null; dragging = false;
+        // Dragging along the win probability graph (or anything marked data-noswipe) never switches tabs or categories.
+        if (e.target.closest?.(".wpg, [data-noswipe]")) { mode = "none"; sheet = null; return; }
         sheet = views.length ? e.target.closest(".sheet") : null;
         if (sheet && !(e.target.closest(".sheet-bar") || sheet.querySelector(".sheet-body").scrollTop <= 0)) sheet = null;
       }, { passive: true });
       addEventListener("touchmove", (e) => {
         if (!MOBILE_APP && !matchMedia("(max-width: 720px)").matches) return;
         const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+        if (mode === "none") return;
         if (!mode) mode = Math.abs(dy) > Math.abs(dx) ? "v" : "h";
         if (sheet && mode === "v" && dy > 0) { dragging = true; sheet.style.transition = "none"; sheet.style.transform = "translateY(" + dy + "px)"; }
       }, { passive: true });
       addEventListener("touchend", (e) => {
+        if (mode === "none") return;
         const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy, fast = Date.now() - st < 300;
         if (dragging && sheet) {
           sheet.style.transition = ""; sheet.style.transform = "";
