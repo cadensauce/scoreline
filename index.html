@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794794686" />
+  <meta name="build" content="1794795443" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -886,7 +886,7 @@
         const cls = post && !isNaN(other) && scores[idx] !== other ? (scores[idx] > other ? "winner" : "loser") : "";
         const rank = t.curatedRank?.current && t.curatedRank.current <= 25 ? '<span class="rank">' + t.curatedRank.current + "</span>" : "";
         const rec = t.records?.[0]?.summary ? '<span class="rec">' + esc(t.records[0].summary) + "</span>" : "";
-        const logo = t.team?.logo ? '<img src="' + esc(t.team.logo) + '" alt="" loading="lazy">' : '<span class="ph"></span>';
+        const logo = t.team?.logo ? '<img src="' + esc(smallLogo(t.team.logo)) + '" alt="" loading="lazy" width="22" height="22">' : '<span class="ph"></span>';
         const fk = favKey(t);
         return '<div class="team ' + cls + '">' + logo +
           '<div class="tname">' + rank + "<strong>" + esc(t.team?.shortDisplayName || t.team?.displayName || "TBD") + "</strong>" + rec + "</div>" +
@@ -1081,7 +1081,7 @@
         const hits = list.filter((t) => [t.name, t.abbr, t.loc, t.nick].some((s) => String(s || "").toLowerCase().includes(q)))
           .sort((a, b) => (String(a.abbr).toLowerCase() === q ? -1 : 0) - (String(b.abbr).toLowerCase() === q ? -1 : 0) || a.name.localeCompare(b.name)).slice(0, 6);
         if ((inp.value.trim().toLowerCase()) !== q) return;
-        box.innerHTML = hits.map((t) => '<button type="button" class="sres-row" data-team="' + key + "|" + esc(t.id) + '">' + (t.logo ? '<img src="' + esc(t.logo) + '" alt="" loading="lazy">' : "<span></span>") + "<b>" + esc(t.name) + "</b><small>Schedule & roster ›</small></button>").join("");
+        box.innerHTML = hits.map((t) => '<button type="button" class="sres-row" data-team="' + key + "|" + esc(t.id) + '">' + (t.logo ? '<img src="' + esc(smallLogo(t.logo)) + '" alt="" loading="lazy">' : "<span></span>") + "<b>" + esc(t.name) + "</b><small>Schedule & roster ›</small></button>").join("");
       }, 120);
     });
     document.addEventListener("click", (e) => {
@@ -1090,7 +1090,7 @@
     async function renderLeague(key) {
       const L = LEAGUES[key];
       const main = $("main");
-      if (!main.querySelector(".grid, .empty")) main.innerHTML = barHtml(L.name, key) + skeleton();
+      if (!main.querySelector(".grid, .empty")) main.innerHTML = savedShell(key) || barHtml(L.name, key) + skeleton();
       let res;
       try { res = await loadView(key); }
       catch (e) { main.innerHTML = barHtml(L.name, key) + '<div class="error">Couldn\'t load ' + esc(L.name) + " scores. Check your connection and try again.</div>"; return; }
@@ -1099,7 +1099,7 @@
       const when = viewOf(key) === "day" ? (dayOff[key] === 0 ? "today" : "on " + dateAt(dayOff[key]).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })) : weekLabel(key).toLowerCase();
       const body = !events.length ? '<div class="empty">' + (state.filter === "live" ? "No live games right now." : state.filter === "fav" ? "None of your ★ teams play " + esc(when) + "." : "No games " + esc(when) + ".") + "</div>"
         : res.grouped ? groupByDay(events, key) : '<div class="grid">' + events.map((e, i) => gameCard(e, key, i)).join("") + "</div>";
-      main.innerHTML = barHtml(L.name, key) + body;
+      paint(main, barHtml(L.name, key) + body, key);
       centerChip(main.querySelector(".dchip.on"));
       if (searchQ[key]) applySearch(key);
       renderTabs();
@@ -1118,7 +1118,7 @@
 
     async function renderHome() {
       const main = $("main");
-      if (!main.querySelector("[data-home]")) main.innerHTML = '<div data-home>' + barHtml("Top Scores", null) + skeleton(9) + "</div>";
+      if (!main.querySelector("[data-home]")) main.innerHTML = savedShell("home") || '<div data-home>' + barHtml("Top Scores", null) + skeleton(9) + "</div>";
       const keys = ["nfl", "cfb", "nba", "mlb"];
       const results = await Promise.allSettled(keys.map((k) => { state.offset[k] = 0; return loadLeague(k); }));
       let f1;
@@ -1159,7 +1159,7 @@
         html += '<div class="grid">' + show.map((e, j) => gameCard(e, k, j)).join("") + "</div>";
       });
       html += "</div>";
-      main.innerHTML = html;
+      paint(main, html, "home");
       renderTabs();
       stamp();
       schedule(anyLive);
@@ -1344,11 +1344,37 @@
       countdownTimer = setInterval(tick, 1000);
     }
 
+    /* ---------- fast drawing ---------- */
+    // Small logos: ESPN serves 500px PNGs (~40 KB each); its image service returns the same logo at the size we
+    // draw (~3 KB), so the score list downloads ~13x less.
+    function smallLogo(url, px = 64) {
+      const m = String(url || "").match(/^https:\/\/a\.espncdn\.com(\/i\/teamlogos\/[^?#]+\.png)$/);
+      return m ? "https://a.espncdn.com/combiner/i?img=" + m[1] + "&w=" + px + "&h=" + px : url;
+    }
+    // Update the score list in place: when the same games are on screen, only cards whose content changed are
+    // replaced, so scrolling, images and taps aren't disturbed every few seconds.
+    function paint(main, html, key) {
+      const tpl = document.createElement("template");
+      tpl.innerHTML = html;
+      const oldCards = [...main.querySelectorAll("[data-ev]")], newCards = [...tpl.content.querySelectorAll("[data-ev]")];
+      const sameGames = oldCards.length && oldCards.length === newCards.length && oldCards.every((c, i) => c.dataset.ev === newCards[i].dataset.ev);
+      const frame = (root) => { const c = root.cloneNode(true); c.querySelectorAll("[data-ev]").forEach((x) => x.replaceWith(document.createComment("g"))); return c.innerHTML; };
+      if (sameGames && frame(main) === frame(tpl.content)) {
+        oldCards.forEach((c, i) => { if (c.outerHTML !== newCards[i].outerHTML) c.replaceWith(newCards[i]); });
+      } else {
+        main.innerHTML = html;
+      }
+      // Saved copy, shown instantly next time the app opens while fresh scores load.
+      if (key && html.length < 400000 && Date.now() - (shellSavedAt[key] || 0) > 60000) { shellSavedAt[key] = Date.now(); store.set("shell:" + key, html); }
+    }
+    const shellSavedAt = {};
+    const savedShell = (key) => store.get("shell:" + key, "");
+
     /* ---------- refresh loop ---------- */
     function stamp() { $("updated").textContent = "Updated " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }); }
     function schedule(live) {
       clearTimeout(timer);
-      timer = setTimeout(() => (document.hidden ? schedule(live) : render()), live ? 5000 : 120000);
+      timer = setTimeout(() => (document.hidden ? schedule(live) : render()), live ? 10000 : 120000);   // game pages keep their own 5 s updates
     }
     function render() {
       if (document.activeElement?.matches?.("[data-search]")) { schedule(true); return; }
