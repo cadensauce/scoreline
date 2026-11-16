@@ -8,6 +8,7 @@
   :root { --win: #101012; --panel: #18181b; --track: #27272c; --fg: #ececee; --mut: #8e8e95; --faint: #5e5e64; --line: rgba(255,255,255,.08);
           --f: "Inter", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif; }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }   /* hidden things stay hidden, even ones laid out with flex */
   html, body { margin: 0; height: 100%; background: var(--win); color: var(--fg); font: 400 15px/1.5 var(--f); -webkit-font-smoothing: antialiased; user-select: none; overflow: hidden; }
   .glow { position: fixed; inset: -40% -20% auto; height: 80%; background: radial-gradient(closest-side, rgba(255,255,255,.07), transparent); pointer-events: none; }
   .drag { position: fixed; inset: 0 0 auto 0; height: 44px; }
