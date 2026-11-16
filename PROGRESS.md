@@ -193,3 +193,11 @@ Next session, in order:
 - The NSIS installer underneath uses a dark one-click template (`src-tauri/installer/installer.nsi`, CLI pinned
   to 2.12.4). Get the app (Windows) and in-app updates download `Scoreline-Setup.exe`. Verified on the user's PC:
   install 2.0.16, uninstall, reinstall.
+
+### Phase 2: list/game redesign + themes (2026-11-16, shipped)
+- Score rows: open rows on hairlines (no boxes, no per-row star buttons; small ★ on followed teams), live = still
+  dot, one filter row + search icon, Week/Day kept (Week default). Day switching keeps the day row in place.
+- Game page: score → plain-English status line ("Bengals lead by 21 at halftime. Teams in this spot win about 98%
+  of the time.") → tabs Summary/Plays/Stats/Players (timeouts inside Plays) → win probability first.
+- Design round 3 published (live screens). Themes (item 9): You → Appearance: System / Dark / Light on the same
+  tokens; light contrast text 16.9:1, muted 5.4:1; applied before first paint.
