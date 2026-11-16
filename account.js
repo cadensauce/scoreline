@@ -51,6 +51,7 @@ async function onUser(u) {
     const p = await fb.getDoc(fb.doc(db, "profiles", u.uid));
     profile = p.exists() ? p.data() : null;
     if (profile) names[u.uid] = profile.username;
+    myCard = (await fb.getDoc(fb.doc(db, "cards", u.uid)).catch(() => null))?.data() || { avatar: "", bio: "", show: "friends" };
     await startSync();
     watchFriends();
   }
@@ -215,6 +216,7 @@ async function deleteAccount() {
   await Promise.all(reqs.map((r) => fb.deleteDoc(fb.doc(db, "requests", r)).catch(() => {})));
   await fb.deleteDoc(fb.doc(db, "users", uid)).catch(() => {});
   await fb.deleteDoc(fb.doc(db, "profiles", uid)).catch(() => {});
+  await fb.deleteDoc(fb.doc(db, "cards", uid)).catch(() => {});
   if (uname) await fb.deleteDoc(fb.doc(db, "usernames", uname)).catch(() => {});
   await user.delete();
 }
@@ -250,13 +252,18 @@ function refreshAccountSheet() {
   } else {
     const F = friendState;
     const person = (uid, actions) => '<div class="opt"><span><b>@' + esc(names[uid] || "…") + "</b></span><span class=\"acct-acts\">" + actions + "</span></div>";
-    h = '<div class="acct-me"><div class="avatar">' + esc((profile?.username || "?")[0].toUpperCase()) + "</div><div><b>@" + esc(profile?.username || "") + "</b><small data-email>" + emailLine() + '</small></div><button class="pill-btn" type="button" data-logout>Log out</button></div>' +
+    h = '<div class="acct-me">' + avatarHtml(myCard?.avatar, profile?.username) + "<div><b>@" + esc(profile?.username || "") + "</b><small data-email>" + emailLine() + '</small></div><button class="pill-btn" type="button" data-logout>Log out</button></div>' +
       '<div class="g-note">★ teams and alert settings are synced.</div>' +
+      '<div class="g-label" style="margin-top:18px">Your profile</div><div class="card-edit">' +
+        '<div class="card-photo">' + avatarHtml(myCard.avatar, profile?.username, "lg") + '<div class="card-photo-acts"><label class="pill-btn">Change photo<input type="file" accept="image/jpeg,image/png,image/webp" data-avatarfile hidden></label>' + (myCard.avatar ? '<button type="button" class="acct-link" data-avatarclear>Remove photo</button>' : "") + "</div></div>" +
+        '<textarea data-bio maxlength="160" rows="2" placeholder="A line about you and your teams">' + esc(myCard.bio || "") + "</textarea>" +
+        '<div class="card-show"><span>Who can see it</span><div class="seg">' + [["friends", "Friends"], ["me", "Only me"]].map(([k, l]) => '<button type="button" data-cardshow="' + k + '" class="' + ((myCard.show || "friends") === k ? "active" : "") + '">' + l + "</button>").join("") + "</div></div>" +
+        '<p class="g-note">Shows your photo, this line and the teams you follow (★).</p><button type="button" class="pill-btn" data-savecard>Save profile</button><div class="acct-err" data-carderr></div></div>' +
       '<div class="g-label" style="margin-top:18px">Two-step sign-in</div><div data-2box><div class="opt"><span><b>' + (twoStepOn ? "On" : "Off") + '</b><small>' + (twoStepOn ? "New devices need a code we email you" : "Ask for an emailed code when you sign in on a new device") + '</small></span>' +
       (twoStepOn ? '<button class="pill-btn" type="button" data-2off>Turn off</button>' : '<button class="pill-btn" type="button" data-2on>Turn on</button>') + "</div></div>" +      (window.__TAURI__ ? "" : '<div class="signin-send"><button type="button" class="pill-btn" data-sendsignin>Send sign-in to the app</button><div data-signincode></div></div>') +
       '<div class="g-label" style="margin-top:18px">Add a friend</div><form class="acct-add" data-addf><input placeholder="Username" maxlength="21" autocomplete="off"><button class="pill-btn" type="submit">Add</button></form><div class="acct-err" data-err></div>' +
       (F.incoming.length ? '<div class="g-label" style="margin-top:16px">Friend requests</div><div class="panel">' + F.incoming.map((r) => person(r.from, '<button class="pill-btn" type="button" data-accept="' + esc(r.id) + '">Accept</button><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '">✕</button>')).join("") + "</div>" : "") +
-      '<div class="g-label" style="margin-top:16px">Friends</div><div class="panel">' + (F.friends.length ? F.friends.map((uid) => person(uid, '<button class="pill-btn" type="button" data-chat="' + esc(uid) + '">Chat</button><button class="pill-btn" type="button" data-unfriend="' + esc(uid) + '" aria-label="Remove friend">✕</button>')).join("") : '<div class="g-note">No friends yet. Add someone by their username.</div>') + "</div>" +
+      '<div class="g-label" style="margin-top:16px">Friends</div><div class="panel">' + (F.friends.length ? F.friends.map((uid) => person(uid, '<button class="pill-btn" type="button" data-viewcard="' + esc(uid) + '">Profile</button><button class="pill-btn" type="button" data-chat="' + esc(uid) + '">Chat</button><button class="pill-btn" type="button" data-unfriend="' + esc(uid) + '" aria-label="Remove friend">✕</button>')).join("") : '<div class="g-note">No friends yet. Add someone by their username.</div>') + "</div>" +
       (F.outgoing.length ? '<div class="g-label" style="margin-top:16px">Sent</div><div class="panel">' + F.outgoing.map((r) => person(r.to, '<span class="muted">Pending</span><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '">✕</button>')).join("") + "</div>" : "") +
       '<div class="acct-foot"><button type="button" class="acct-link" data-privacy>Privacy</button><button type="button" class="acct-link danger" data-delacct>Delete my account</button></div><div class="acct-err" data-err></div>';
   }
@@ -317,6 +324,70 @@ document.addEventListener("submit", async (e) => {
   try { await fb.setDoc(fb.doc(db, "otpAttempts", user.uid), { code, createdAt: fb.serverTimestamp() }); }
   catch { errBox(f, "Couldn't check the code. Try again."); f.querySelector("button").disabled = false; }
 });
+/* ---------- profile cards: photo, bio, followed teams; visible to friends or only you ---------- */
+let myCard = null, pendingAvatar = null;
+function avatarHtml(src, name, size) {
+  const cls = "avatar" + (size === "lg" ? " lg" : "");
+  return src ? '<img class="' + cls + '" src="' + esc(src) + '" alt="">' : '<div class="' + cls + '">' + esc((name || "?")[0].toUpperCase()) + "</div>";
+}
+// Photos are cropped square and shrunk on this device to a small JPEG (well under 60 KB) before saving.
+async function shrinkPhoto(file) {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error("Pick a JPG, PNG or WebP photo.");
+  if (file.size > 10 * 1024 * 1024) throw new Error("That photo is over 10 MB. Pick a smaller one.");
+  const img = await createImageBitmap(file);
+  const size = 160, c = document.createElement("canvas"); c.width = c.height = size;
+  const k = Math.min(img.width, img.height);
+  c.getContext("2d").drawImage(img, (img.width - k) / 2, (img.height - k) / 2, k, k, 0, 0, size, size);
+  let q = 0.85, url = c.toDataURL("image/jpeg", q);
+  while (url.length > 60000 && q > 0.35) { q -= 0.1; url = c.toDataURL("image/jpeg", q); }
+  if (url.length > 60000) throw new Error("Couldn't make that photo small enough. Try another.");
+  return url;
+}
+const followedTeams = () => [...state.favs].filter((k) => k !== "f1").slice(0, 30).map((k) => teamNames[k] || "").filter(Boolean);
+document.addEventListener("change", async (e) => {
+  const inp = e.target.closest?.("[data-avatarfile]");
+  if (!inp || !inp.files?.[0]) return;
+  const err = document.querySelector("[data-carderr]");
+  try {
+    pendingAvatar = await shrinkPhoto(inp.files[0]);
+    document.querySelectorAll(".card-photo .avatar").forEach((el) => { const im = document.createElement("img"); im.className = el.className; im.src = pendingAvatar; im.alt = ""; el.replaceWith(im); });
+    if (err) err.textContent = "Photo ready. Tap Save profile.";
+  } catch (x) { if (err) err.textContent = x.message; }
+  inp.value = "";
+});
+document.addEventListener("click", async (e) => {
+  if (!user) return;
+  const sh = e.target.closest("[data-cardshow]");
+  if (sh) { document.querySelectorAll("[data-cardshow]").forEach((b) => b.classList.toggle("active", b === sh)); return; }
+  if (e.target.closest("[data-avatarclear]")) { pendingAvatar = ""; document.querySelectorAll(".card-photo img.avatar").forEach((el) => { const d = document.createElement("div"); d.className = el.className; d.textContent = (profile?.username || "?")[0].toUpperCase(); el.replaceWith(d); }); return; }
+  if (e.target.closest("[data-savecard]")) {
+    const err = document.querySelector("[data-carderr]");
+    const card = {
+      avatar: pendingAvatar != null ? pendingAvatar : (myCard?.avatar || ""),
+      bio: String(document.querySelector("[data-bio]")?.value || "").trim().slice(0, 160),
+      teams: followedTeams(),
+      show: document.querySelector("[data-cardshow].active")?.dataset.cardshow || "friends",
+      updatedAt: fb.serverTimestamp(),
+    };
+    try { await fb.setDoc(fb.doc(db, "cards", user.uid), card); myCard = card; pendingAvatar = null; buzz(10); toast("Profile saved"); refreshAccountSheet(); }
+    catch { if (err) err.textContent = "Couldn't save your profile. Try again."; }
+    return;
+  }
+  const vc = e.target.closest("[data-viewcard]");
+  if (vc) return openCard(vc.dataset.viewcard);
+});
+async function openCard(uid) {
+  const v = { kind: "card", key: "card|" + uid };
+  if (!pushView(v)) return;
+  let c = null;
+  try { const d = await fb.getDoc(fb.doc(db, "cards", uid)); c = d.exists() ? d.data() : null; } catch { c = null; }
+  const name = names[uid] || "friend";
+  const body = c
+    ? '<div class="card-view">' + avatarHtml(c.avatar, name, "lg") + "<b>@" + esc(name) + "</b>" + (c.bio ? "<p>" + esc(c.bio) + "</p>" : "") +
+      (c.teams?.length ? '<div class="g-label">Follows</div><div class="card-teams">' + c.teams.map((t) => "<span>" + esc(t) + "</span>").join("") + "</div>" : "") + "</div>"
+    : '<div class="empty">@' + esc(name) + " keeps their profile private.</div>";
+  setBody(v, "@" + name, body);
+}
 // Sign-in codes: move your sign-in from the website to a newly installed app without typing your password.
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // no 0/O or 1/I
 const pretty = (c) => c.slice(0, 4) + "-" + c.slice(4);

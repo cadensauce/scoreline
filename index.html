@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794862598" />
+  <meta name="build" content="1794862871" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -853,7 +853,20 @@
       .bar-row { flex-wrap: wrap; row-gap: 8px; }
       .bar-row .seg button { padding: 8px 11px; font-size: 14px; }
       .bar-row .seg { padding: 3px; }
-    }  </style>
+    }    /* ---- Profile cards ---- */
+    img.avatar { object-fit: cover; padding: 0; }
+    .avatar.lg { width: 72px; height: 72px; font-size: 28px; flex: none; }
+    .card-edit { display: flex; flex-direction: column; gap: var(--s3); }
+    .card-photo { display: flex; align-items: center; gap: var(--s4); }
+    .card-photo-acts { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s1); }
+    .card-photo-acts label { cursor: pointer; }
+    .card-edit textarea { width: 100%; resize: none; font: 400 var(--fs-body)/1.45 var(--display); color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-in); padding: var(--s3); }
+    .card-show { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); color: var(--muted); font-size: var(--fs-sm); }
+    .card-view { display: flex; flex-direction: column; align-items: center; gap: var(--s2); text-align: center; padding: var(--s5) 0; }
+    .card-view b { font-size: var(--fs-lg); }
+    .card-view p { color: var(--muted); max-width: 32ch; margin: 0; }
+    .card-teams { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s2); }
+    .card-teams span { background: var(--panel); border-radius: var(--r-pill); padding: 6px 12px; font-size: var(--fs-sm); }  </style>
 </head>
 <body>
   <header class="top">
