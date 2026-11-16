@@ -24,7 +24,7 @@ for (const [name, url] of Object.entries(TARGETS)) {
     const net = await phone(page);
     const t0 = Date.now();
     await page.goto(url);
-    await page.locator("[data-ev]").first().waitFor({ timeout: 60000 });
+    await page.locator("[data-ev]").first().waitFor({ state: "attached", timeout: 60000 });
     const firstScoresMs = Date.now() - t0;
     await page.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
     const load = net.totals();
@@ -32,15 +32,15 @@ for (const [name, url] of Object.entries(TARGETS)) {
     // Second open: saved scores should appear before the network answers.
     const t1 = Date.now();
     await page.reload();
-    await page.locator("[data-ev]").first().waitFor({ timeout: 60000 });
+    await page.locator("[data-ev]").first().waitFor({ state: "attached", timeout: 60000 });
     const reopenScoresMs = Date.now() - t1;
 
     const tabs = {};
     for (const tab of ["nfl", "cfb", "nba", "home"]) {
       const t = Date.now();
       await page.locator(`[data-tab="${tab}"]:visible`).first().click();
-      await page.waitForFunction((k) => window.state?.tab === k || document.querySelector("#main [data-ev]"), tab).catch(() => {});
-      await page.locator("#main [data-ev]").first().waitFor({ timeout: 30000 }).catch(() => {});
+      // Done when the new tab's own games are on screen (not the previous tab's).
+      await page.waitForFunction((k) => k === "home" ? document.querySelector("#main [data-home] [data-ev]") : document.querySelector('#main [data-lg="' + k + '"][data-ev], #main [data-ev][data-lg="' + k + '"]') || document.querySelector("#main .empty"), tab, { timeout: 30000 }).catch(() => {});
       tabs[tab] = Date.now() - t;
     }
     // Scroll the long college list and count slow frames.

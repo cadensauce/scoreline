@@ -1362,7 +1362,7 @@
       if (sameGames && frame(main) === frame(tpl.content)) {
         oldCards.forEach((c, i) => { if (c.outerHTML !== newCards[i].outerHTML) c.replaceWith(newCards[i]); });
       } else {
-        paint(main, html, "home");
+        main.innerHTML = html;
       }
       // Saved copy, shown instantly next time the app opens while fresh scores load.
       if (key && html.length < 400000 && Date.now() - (shellSavedAt[key] || 0) > 60000) { shellSavedAt[key] = Date.now(); store.set("shell:" + key, html); }
