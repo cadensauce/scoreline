@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794862871" />
+  <meta name="build" content="1794863327" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -460,7 +460,7 @@
     .f-row > span:nth-child(2) { display: flex; flex-direction: column; gap: 3px; }
     .f-sc { color: var(--muted); font-size: 11px; font-weight: 600; }
     @keyframes freshIn { from { background: rgba(255, 90, 54, .14); } }
-    .pc-say { font-family: var(--display); font-size: 22px; font-weight: 650; line-height: 1.15; margin: 6px 0 6px; }
+    .pc-say { font-family: var(--display); font-size: var(--fs-lg); font-weight: 600; line-height: 1.3; margin: 6px 0 8px; text-wrap: pretty; }
     .pc-people { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
     .pc-p { display: flex; align-items: center; gap: 8px; padding: 5px 12px 5px 5px; border-radius: 99px; background: var(--panel-2); }
     .pc-p img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: var(--panel-3); }
@@ -1009,7 +1009,7 @@
     function hasFav(ev) { return teamsOf(ev).some((t) => state.favs.has(favKey(t))); }
 
     /* ---------- render: game card ---------- */
-    function gameCard(ev, key, i) {
+    function gameCard(ev, key, i, mixed) {   // mixed: a list with several sports, so each row names its league
       const comp = ev.competitions?.[0] || {};
       const st = ev.status?.type || {};
       const live = st.state === "in", post = st.state === "post";
@@ -1019,7 +1019,7 @@
       if (live) statusHtml = '<span class="status live">' + esc(st.shortDetail || "Live") + "</span>";
       else if (post) statusHtml = '<span class="status final">' + esc(st.shortDetail || "Final") + "</span>";
       else statusHtml = '<span class="status">' + esc(fmtDay(ev.date)) + '<i class="sep"> · </i><span class="t">' + esc(fmtTime(ev.date)) + "</span></span>";
-      const league = state.tab === "home" ? '<span>' + esc(LEAGUES[key].short || LEAGUES[key].name) + "</span>" : "";
+      const league = mixed ? '<span>' + esc(LEAGUES[key].short || LEAGUES[key].name) + "</span>" : "";
       const rows = teams.map((t, idx) => {
         const other = scores[1 - idx];
         const cls = post && !isNaN(other) && scores[idx] !== other ? (scores[idx] > other ? "winner" : "loser") : "";
@@ -1035,7 +1035,7 @@
       const tv = comp.broadcasts?.flatMap((b) => b.names || [])?.join(", ");
       const situation = live && comp.situation?.downDistanceText ? '<span class="situation">' + esc(comp.situation.downDistanceText) + "</span>" : "";
       const venue = comp.venue?.fullName ? "<span>" + esc(comp.venue.fullName) + "</span>" : "";
-      const foot = situation || tv || venue ? '<div class="card-foot">' + (situation || venue || "<span></span>") + (tv ? "<span>📺 " + esc(tv) + "</span>" : "") + "</div>" : "";
+      const foot = situation || tv || venue ? '<div class="card-foot">' + (situation || venue || "<span></span>") + (tv ? "<span>" + esc(tv) + "</span>" : "") + "</div>" : "";
       return '<article data-ev="' + esc(ev.id) + '" data-lg="' + key + '" class="card ' + (live ? "live" : "") + '" style="animation-delay:' + Math.min(i * 30, 300) + 'ms">' +
         '<div class="card-head">' + statusHtml + league + "</div>" + rows + foot + "</article>";
     }
@@ -1293,7 +1293,7 @@
       liveEvs.sort((a, b) => hasFav(b[0]) - hasFav(a[0]));
       if (liveEvs.length && state.filter !== "fav") {
         anyLive = true;
-        html += '<div class="section-title live-title"><span class="ldot"></span><b>Live now</b><span class="muted">' + liveEvs.length + " game" + (liveEvs.length > 1 ? "s" : "") + '</span></div><div class="grid">' + liveEvs.map(([e, k], i) => gameCard(e, k, i)).join("") + "</div>";
+        html += '<div class="section-title live-title"><span class="ldot"></span><b>Live now</b><span class="muted">' + liveEvs.length + " game" + (liveEvs.length > 1 ? "s" : "") + '</span></div><div class="grid">' + liveEvs.map(([e, k], i) => gameCard(e, k, i, true)).join("") + "</div>";
       }
       const favEvents = [];
       keys.forEach((k, i) => {
@@ -1301,7 +1301,7 @@
         (results[i].value.events || []).forEach((e) => { if (hasFav(e) && !liveIds.has(e.id)) favEvents.push([e, k]); });
       });
       if (favEvents.length && state.filter !== "fav") {
-        html += '<div class="section-title"><b>★ Your teams</b></div><div class="grid">' + favEvents.map(([e, k], i) => gameCard(e, k, i)).join("") + "</div>";
+        html += '<div class="section-title"><b>★ Your teams</b></div><div class="grid">' + favEvents.map(([e, k], i) => gameCard(e, k, i, true)).join("") + "</div>";
       }
       if (f1?.events?.[0] && state.filter === "all") html += f1Mini(f1.events[0]);
       keys.forEach((k, i) => {
@@ -1734,7 +1734,7 @@
       const d = wpStore[id]; if (!d) return "";
       const p = d.series[i];
       const when = i === d.series.length - 1 ? (d.final ? "Final" : "Now") : [perName(d.lg, p.per), p.clock].filter(Boolean).join(" ");
-      return "<b>" + esc(when) + "</b>" + (p.text ? '<small>' + esc(p.text.length > 110 ? p.text.slice(0, 107) + "…" : p.text) + "</small>" : "");
+      const atEnd = i === d.series.length - 1 && d.final; '<small>' + esc(p.text.length > 110 ? p.text.slice(0, 107) + "…" : p.text) + "</small>" : "");
     }
     function wpScrub(svg, clientX) {
       const id = svg.dataset.wpg, d = wpStore[id]; if (!d) return;
@@ -2338,7 +2338,7 @@
           (left != null ? '<span class="sb-to" title="' + left + ' timeouts left">' + [0, 1, 2].map((i) => '<i class="' + (i < left ? "on" : "") + '"></i>').join("") + "</span>" : "") + "</div>";
       };
       const per = F.period > 4 ? "OT" : "Q" + F.period;
-      return '<div class="scorebug">' + side(F.away, lastP.awayScore) + '<div class="sb-mid"><small>' + esc(F.down || (F.live ? "" : "Final")) + "</small></div>" + side(F.home, lastP.homeScore) + "</div>";
+      return '<div class="scorebug">' + side(F.away, lastP.awayScore) + '<div class="sb-mid"><small>' + esc(F.live ? (F.down || "") : "Final") + "</small></div>" + side(F.home, lastP.homeScore) + "</div>";
     }
     const STOP_ICON = { team: "⏸", tv: "📺", injury: "✚", review: "🎥", break: "⏱" };
     function stopsHtml(F) {
