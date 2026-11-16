@@ -1,7 +1,8 @@
 """F1 race-win probability per driver, lap by lap.
 
-Data: FastF1 (MIT) lap timing for Grands Prix (no sprints); grid, classification and race distance from
-Jolpica-F1 (CC BY-NC-SA 4.0). Model: conditional logit (softmax over the drivers still running) with
+Data: OpenF1 (CC BY-NC-SA 4.0) lap times, pit stops and race-control messages for Grands Prix (no sprints);
+grid, classification and race distance from Jolpica-F1 (CC BY-NC-SA 4.0). FastF1 was the first choice, but the
+F1 live-timing archive it reads now answers 401 (checked 2026-11-15). Model: conditional logit (softmax over the drivers still running) with
 features for position, gap to the leader, laps left, safety car, pit stops vs the leader and grid slot.
 There is no ESPN F1 win probability, and the app shows none today, so the comparison is against simple
 baselines (grid only; position + race progress)."""
@@ -19,7 +20,7 @@ from scipy.optimize import minimize
 from common import DATA, MODELS, OUT, REPORTS, UA, log, plot_calibration, write_json
 
 TEST = int(os.environ.get("F1_TEST_SEASON", "2025"))
-FIRST = int(os.environ.get("F1_FIRST_SEASON", "2019"))
+FIRST = int(os.environ.get("F1_FIRST_SEASON", "2023"))  # OpenF1 history starts in 2023
 JOL = "https://api.jolpi.ca/ergast/f1"
 FEATURES = ["lpos", "lpos_r", "gap_per_lap", "gap_per_lap_sc", "lgrid", "lgrid_left", "stops_vs_leader",
             "stops_vs_leader_r", "gap10", "gap10_sc"]
@@ -66,10 +67,58 @@ def feature_rows(drivers, lap, total, sc):
     return np.array(X, dtype=float)
 
 
-def load_race(season, rnd, cache):
-    import fastf1
+OF1 = "https://api.openf1.org/v1"
 
-    res = jget(f"{JOL}/{season}/{rnd}/results.json", os.path.join(DATA, "f1", f"res_{season}_{rnd}.json"))
+
+def oget(path, fn):
+    if os.path.exists(fn):
+        return json.load(open(fn, encoding="utf-8"))
+    for a in range(6):
+        try:
+            r = requests.get(f"{OF1}/{path}", headers=UA, timeout=60)
+            if r.status_code == 429:
+                time.sleep(15 * (a + 1))
+                continue
+            if r.status_code == 404:
+                j = []
+            else:
+                r.raise_for_status()
+                j = r.json()
+            json.dump(j, open(fn, "w", encoding="utf-8"))
+            time.sleep(2.2)  # free tier: 30 requests/minute
+            return j
+        except Exception as e:  # noqa
+            log("openf1 retry", path, e)
+            time.sleep(5 * (a + 1))
+    raise RuntimeError(path)
+
+
+def ts(s):
+    return pd.Timestamp(s).timestamp() if s else None
+
+
+def sc_laps(msgs):
+    """Laps with a safety car, virtual safety car or red flag at any point, from race-control messages."""
+    out, on, start = set(), False, None
+    for m in sorted(msgs, key=lambda m: m["date"]):
+        lap = m.get("lap_number") or 0
+        txt = (m.get("message") or "").upper()
+        cat = m.get("category") or ""
+        if (cat == "SafetyCar" and "DEPLOYED" in txt) or (cat == "Flag" and m.get("flag") == "RED"):
+            if not on:
+                on, start = True, lap
+        elif on and ((cat == "SafetyCar" and ("ENDING" in txt or "IN THIS LAP" in txt)) or
+                     (cat == "Flag" and m.get("flag") == "GREEN" and m.get("scope") == "Track")):
+            out.update(range(start, lap + 1))
+            on = False
+    if on:
+        out.update(range(start, 1000))
+    return out
+
+
+def load_race(season, rnd, skey):
+    d = os.path.join(DATA, "f1")
+    res = jget(f"{JOL}/{season}/{rnd}/results.json", os.path.join(d, f"res_{season}_{rnd}.json"))
     races = res["MRData"]["RaceTable"]["Races"]
     if not races:
         return None, "no results"
@@ -80,38 +129,39 @@ def load_race(season, rnd, cache):
     total = int(win[0]["laps"])
     grid = {x["number"]: int(x["grid"]) for x in R}
     winner = win[0]["number"]
-    code = {x["number"]: x["Driver"].get("code") or x["Driver"]["driverId"] for x in R}
-    sess = fastf1.get_session(season, rnd, "R")
-    sess.load(laps=True, telemetry=False, weather=False, messages=False)
-    laps = sess.laps
-    if laps is None or len(laps) == 0:
+    laps = oget(f"laps?session_key={skey}", os.path.join(d, f"of1_laps_{skey}.json"))
+    pits = oget(f"pit?session_key={skey}", os.path.join(d, f"of1_pit_{skey}.json"))
+    rc = oget(f"race_control?session_key={skey}", os.path.join(d, f"of1_rc_{skey}.json"))
+    if not laps:
         return None, "no laps"
-    lp = pd.DataFrame({"num": laps["DriverNumber"].astype(str).to_numpy(),
-                       "lap": laps["LapNumber"].astype(float).to_numpy(),
-                       "t": laps["Time"].dt.total_seconds().to_numpy(),
-                       "pit": laps["PitInTime"].notna().to_numpy(),
-                       "ts": laps["TrackStatus"].astype(str).to_numpy(),
-                       "fpos": laps["Position"].astype(float).to_numpy()})
-    lp = lp.sort_values(["num", "lap"])
-    lp["stops"] = lp.groupby("num")["pit"].cumsum()  # pit stops made by the end of this lap
-    snaps = []
-    starters = [n for n in grid if n in code]
-    snaps.append({"lap": 0, "sc": 0.0, "drivers": [{"id": n, "position": (grid[n] if grid[n] > 0 else 20),
-                                                     "gapToLeader": 0.0, "pitStops": 0, "gridPosition": grid[n]}
-                                                    for n in starters]})
+    start = {}
+    for l in laps:
+        start[(str(l["driver_number"]), int(l["lap_number"]))] = (ts(l.get("date_start")), l.get("lap_duration"))
+    end = {}
+    for (n, L), (t0, dur) in start.items():
+        nxt = start.get((n, L + 1))
+        if nxt and nxt[0]:
+            end[(n, L)] = nxt[0]
+        elif t0 and dur:
+            end[(n, L)] = t0 + float(dur)
+    stops = {}
+    for p in pits:
+        if p.get("lap_number"):
+            stops.setdefault(str(p["driver_number"]), []).append(int(p["lap_number"]))
+    scl = sc_laps(rc)
+    snaps = [{"lap": 0, "sc": 0.0, "drivers": [{"id": n, "position": (g if g > 0 else 20), "gapToLeader": 0.0,
+                                                 "pitStops": 0, "gridPosition": g} for n, g in grid.items()]}]
     for L in range(1, total):
-        cur = lp[(lp.lap == L)]
-        cur = cur[np.isfinite(cur.t)]
-        if len(cur) < 3 or winner not in set(cur.num):
+        cur = sorted(((t, n) for (n, l), t in end.items() if l == L and t), key=lambda x: x[0])
+        if len(cur) < 3 or winner not in {n for _, n in cur}:
             continue
-        cur = cur.sort_values("t")
-        t0 = cur.t.min()
-        sc = 1.0 if any(c in "".join(cur.ts.tolist()) for c in "4567") else 0.0
-        ds = [{"id": r.num, "position": i + 1, "gapToLeader": float(r.t - t0), "pitStops": int(r.stops),
-               "gridPosition": grid.get(r.num, 20)} for i, r in enumerate(cur.itertuples())]
-        snaps.append({"lap": L, "sc": sc, "drivers": ds})
+        t0 = cur[0][0]
+        ds = [{"id": n, "position": i + 1, "gapToLeader": float(t - t0),
+               "pitStops": sum(1 for s in stops.get(n, []) if s <= L), "gridPosition": grid.get(n, 20)}
+              for i, (t, n) in enumerate(cur)]
+        snaps.append({"lap": L, "sc": 1.0 if L in scl else 0.0, "drivers": ds})
     return {"season": season, "round": rnd, "total": total, "winner": winner, "snaps": snaps,
-            "name": races[0]["raceName"], "codes": code}, None
+            "name": races[0]["raceName"], "sc_laps": sorted(x for x in scl if x <= total)}, None
 
 
 def build(races, feats=FEATURES):
@@ -161,24 +211,27 @@ def scores(X, y, grp, w):
 
 
 def main():
-    import fastf1
-
-    cache = os.path.join(DATA, "f1", "fastf1")
-    os.makedirs(cache, exist_ok=True)
-    fastf1.Cache.enable_cache(cache)
-    fastf1.set_log_level("WARNING")
+    os.makedirs(os.path.join(DATA, "f1"), exist_ok=True)
     races, fails = [], []
     for season in range(FIRST, TEST + 1):
         sch = jget(f"{JOL}/{season}.json?limit=100", os.path.join(DATA, "f1", f"sched_{season}.json"))
+        sess = oget(f"sessions?year={season}&session_name=Race", os.path.join(DATA, "f1", f"of1_sessions_{season}.json"))
+        by_date = {s["date_start"][:10]: s["session_key"] for s in sess if s.get("date_start")}
         for rc in sch["MRData"]["RaceTable"]["Races"]:
             if rc["date"] >= dt.date.today().isoformat():
                 continue
-            pk = os.path.join(DATA, "f1", f"race_{season}_{rc['round']}.json")
+            pk = os.path.join(DATA, "f1", f"race2_{season}_{rc['round']}.json")
             if os.path.exists(pk):
                 races.append(json.load(open(pk, encoding="utf-8")))
                 continue
+            d0 = dt.date.fromisoformat(rc["date"])
+            skey = next((by_date[k] for k in (str(d0), str(d0 - dt.timedelta(days=1)), str(d0 + dt.timedelta(days=1)))
+                         if k in by_date), None)
+            if skey is None:
+                fails.append((season, rc["round"], rc["raceName"], "no OpenF1 session"))
+                continue
             try:
-                r, why = load_race(season, int(rc["round"]), cache)
+                r, why = load_race(season, int(rc["round"]), skey)
             except Exception as e:  # noqa
                 r, why = None, f"{type(e).__name__}: {e}"[:160]
             if r is None:
@@ -187,7 +240,7 @@ def main():
                 continue
             json.dump(r, open(pk, "w", encoding="utf-8"))
             races.append(r)
-            log(f"{season} R{rc['round']} {rc['raceName']}: {len(r['snaps'])} laps")
+            log(f"{season} R{rc['round']} {rc['raceName']}: {len(r['snaps'])} laps, SC laps {r['sc_laps']}")
     tr = [r for r in races if r["season"] < TEST]
     te = [r for r in races if r["season"] == TEST]
     log(f"races: train {len(tr)}, test {len(te)}, failed {len(fails)}")
@@ -225,7 +278,7 @@ def main():
     write_json(os.path.join(MODELS, "wp-f1.json"),
                {"sport": "f1", "trained": dt.date.today().isoformat(), "kind": "conditional-logit",
                 "features": FEATURES, "weights": [float(x) for x in w], "gapCap": GAP_CAP,
-                "source": f"FastF1 lap timing + Jolpica-F1 results, Grands Prix {FIRST}-{TEST - 1}"}, compact=False)
+                "source": f"OpenF1 lap times, pit stops, race control + Jolpica-F1 results, Grands Prix {FIRST}-{TEST - 1}"}, compact=False)
     # JS parity cases
     random.seed(3)
     cases = []
@@ -247,8 +300,8 @@ def main():
     best_base = min(b[0] for b in base.values())
     v = "ship ours (no ESPN number exists)" if b_ours < best_base and l_ours < min(b[1] for b in base.values()) else "show nothing"
     md = ["## F1", "",
-          f"**Data.** FastF1 lap timing (MIT; data from F1 live timing) for every Grand Prix {FIRST}-{TEST} that loaded, plus grid slots, "
-          f"race distance and winners from Jolpica-F1 (CC BY-NC-SA 4.0). Sprints excluded. Training: {FIRST}-{TEST - 1} "
+          f"**Data.** OpenF1 lap times, pit stops and race-control messages (CC BY-NC-SA 4.0; OpenF1 history starts in 2023) for every Grand Prix {FIRST}-{TEST} that loaded, plus grid slots, "
+          f"race distance and winners from Jolpica-F1 (CC BY-NC-SA 4.0). Sprints excluded. FastF1 was tried first, but the F1 live-timing archive it reads now returns 401 Unauthorized, so it could not be used. Safety car, VSC and red flag laps come from race-control messages. Training: {FIRST}-{TEST - 1} "
           f"({len(tr)} races, {len(np.unique(gtr)):,} lap snapshots, {len(ytr):,} driver-laps). Held out: {TEST} "
           f"({len(te)} races, {n_snap_te:,} lap snapshots, {len(yte):,} driver-laps)."
           + (f" Races that failed to load: {len(fails)} ({'; '.join(f'{a} R{b} {c}' for a, b, c, _ in fails[:12])})." if fails else ""),
