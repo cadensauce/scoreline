@@ -129,3 +129,13 @@ Game pages show current win probability for both teams plus a graph over the who
 the game summary, so it works after the game too). Drag or tap to see any earlier moment with its play text;
 live games refresh it every 15 s. Labelled "ESPN win probability" until our own model passes its backtest
 (model work in progress: `model/`, `reports/winprob/`). Screenshot: `design-review/wp-graph-live-mobile.jpg`.
+
+### Phase 2: navigation (item 11) + phone speed fixes (shipped 2026-11-16)
+- Bottom bar = Home + pinned sports (default NFL, CFB, F1; up to 4) + You, as a floating rounded bar.
+  The You tab holds account, the pinned-sport picker, alerts (phones) and About. Every sport is one tap away
+  from chips on Home. Header account button removed (one path to the account). Swipes follow the bar order.
+- "App feels slow again" (switching tabs, scrolling) fixes: no live blur behind the bars (repainted every scroll
+  frame on phones), top glow limited to the top of the page, tab switches draw instantly from memory when the
+  data is under 30 s old, off-screen game cards skip rendering (content-visibility) with real-size estimates.
+  CI phone profile: requests on open 41 → 17, logos 105 → 35 KB, JS heap 20 → 17 MB, CLS 0.088 (good < 0.1).
+  The memory-hit tab switch isn't measured by CI yet (CI visits each tab once).
