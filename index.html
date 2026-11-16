@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794805769" />
+  <meta name="build" content="1794807249" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -65,7 +65,7 @@
     :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     button:disabled { opacity: .4; cursor: default; }
     html { background: var(--bg); scrollbar-width: none; }
-    body { background-image: radial-gradient(900px 420px at 50% -160px, var(--glow), transparent 70%); background-repeat: no-repeat; }
+    body { position: relative; }
     html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
     body {
       margin: 0; min-height: 100vh; color: var(--text);
@@ -80,7 +80,7 @@
     /* ---- Header ---- */
     .top {
       position: sticky; top: 0; z-index: 20;
-      background: rgba(10, 13, 18, .85); backdrop-filter: blur(16px) saturate(140%);
+      background: var(--bg);   /* solid: a blur here is redrawn on every scroll frame on phones */
       border-bottom: 1px solid var(--line);
     }
     .top-inner { max-width: 1180px; margin: 0 auto; padding: 0 20px; height: 62px; display: flex; align-items: center; gap: 18px; }
@@ -118,7 +118,7 @@
     /* ---- Score cards ---- */
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
     @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-    .card {
+    .card { content-visibility: auto; contain-intrinsic-size: auto 112px;   /* off-screen cards skip rendering; sized like a real card so nothing jumps */
       background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
       padding: 14px 16px; position: relative; overflow: hidden;
       animation: fadein var(--t) ease both; transition: border-color var(--t-fast), background var(--t-fast);
@@ -624,7 +624,14 @@
     .or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin: 4px 0 12px; }
     .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
     .g-btn { width: 100%; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 10px; background: #fff !important; color: #1f1f1f !important; border-color: transparent !important; font-weight: 700; }
-    #accountBtn { position: relative; color: var(--muted); }
+    /* ---- Pinned sports, sport chips, You tab ---- */
+    .pin-row, .sport-chips { display: flex; flex-wrap: wrap; gap: var(--s2); }
+    .sport-chips { margin: 0 0 var(--s5); overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+    .sport-chips::-webkit-scrollbar { display: none; }
+    .pin { flex: none; border: 0; border-radius: var(--r-pill); padding: 10px 16px; min-height: 44px; background: var(--panel); color: var(--muted); font: 500 var(--fs-sm) var(--display); transition: background var(--t-fast), color var(--t-fast); }
+    .pin.on { background: var(--accent); color: var(--on-accent); }
+    .pin:active { transform: scale(.97); }
+    #accountBtn { display: none; }   /* Account lives in the You tab now (button kept for the account code) */    #accountBtn { position: relative; color: var(--muted); }
     #accountBtn.on { color: var(--accent); }
     #accountBtn[data-count]:not([data-count=""])::after { content: attr(data-count); position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px; background: var(--live); color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
     .acct-form { display: flex; flex-direction: column; gap: 12px; margin: 14px 0; }
@@ -696,7 +703,8 @@
       .refresh { width: 40px; height: 40px; border-color: transparent; background: transparent; }
       body.scrolled .top-inner { height: 44px; }
       body.scrolled .brand { font-size: 18px; }
-      main { padding: 12px 12px calc(84px + env(safe-area-inset-bottom)); }
+      main { padding: 12px 16px calc(104px + env(safe-area-inset-bottom)); }
+      .card { contain-intrinsic-size: auto 76px; }
       footer { padding-left: 12px; padding-right: 12px; }
       footer { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
       .bar { gap: 8px; margin-bottom: 10px; }
@@ -730,7 +738,7 @@
       .card-foot { display: none; }
 
       /* bottom tab bar */
-      .btabs { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; padding: 6px max(6px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)); background: rgba(10, 13, 18, .88); backdrop-filter: blur(16px) saturate(140%); border-top: 1px solid var(--line); }
+      .btabs { display: flex; position: fixed; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 30; padding: 6px; border-radius: 28px; background: #1c1c20; border: 1px solid var(--line-hi); box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }   /* floating rounded bar */
       .btab { flex: 1; border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0 4px; color: var(--muted); font-size: 10.5px; font-weight: 700; letter-spacing: .3px; position: relative; transition: color .2s; }
       .btab svg { width: 24px; height: 24px; }
       .btab.active { color: var(--accent); }
@@ -810,7 +818,7 @@
     const STANDALONE = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
     const IS_PHONE = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
     const MOBILE_APP = !!window.__PREVIEW_APP || (IS_PHONE && (!!window.__TAURI__ || STANDALONE));
-    const ORDER = ["home", "nfl", "cfb", "f1", "nba", "mlb"].concat(MOBILE_APP ? ["alerts"] : []);
+    const navOrder = () => { const p = pins(); return ["home", ...p, ...(ALL_SPORTS.includes(state.tab) && !p.includes(state.tab) ? [state.tab] : []), "you"]; };
     /* ---------- native-app feel (phone app only) ---------- */
     if (MOBILE_APP) {
       document.documentElement.classList.add("mobile-app");
@@ -934,26 +942,29 @@
 
     /* ---------- render: views ---------- */
     function renderTabs() {
-      $("tabs").innerHTML = ORDER.map((k) => {
+      $("tabs").innerHTML = navOrder().map((k) => {
         const name = tabName(k);
-        const live = k !== "home" && k !== "alerts" && (cache[k]?.events || []).some(isLive);
+        const live = k !== "home" && k !== "you" && (cache[k]?.events || []).some(isLive);
         return '<button class="tab ' + (state.tab === k ? "active" : "") + '" type="button" data-tab="' + k + '">' + esc(name) + (live ? '<span class="dot" aria-label="live"></span>' : "") + "</button>";
       }).join("");
       const liveIn = (k) => (cache[k]?.events || []).some(isLive);
       const btn = (k, label, active, extra) => '<button class="btab ' + (active ? "active" : "") + '" type="button" ' + extra + ">" + ICONS[k] + label + (k !== "home" && k !== "more" && liveIn(k) ? '<span class="dot"></span>' : "") + "</button>";
-      $("btabs").innerHTML = ORDER.map((k) => btn(k, tabName(k), state.tab === k, 'data-tab="' + k + '"')).join("");
+      $("btabs").innerHTML = navOrder().map((k) => btn(k, tabName(k), state.tab === k, 'data-tab="' + k + '"')).join("");
     }
-    const tabName = (k) => k === "home" ? "Top" : k === "alerts" ? "Alerts" : (LEAGUES[k].short || LEAGUES[k].name);
+    const tabName = (k) => k === "home" ? "Home" : k === "you" ? "You" : (LEAGUES[k].short || LEAGUES[k].name);
     const svg = (d) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + "</svg>";
     const ICONS = {
-      home: svg('<path d="M4 18h16M4 12h11M4 6h6"/>'),
+      home: svg('<path d="M4 11l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>'),
       nfl: svg('<ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-45 12 12)"/><path d="M9.5 14.5l5-5M11 11.5l1.5 1.5M12.5 10l1.5 1.5"/>'),
       cfb: svg('<path d="M3 9l9-5 9 5-9 5z"/><path d="M7 11.5V16c0 1.5 2.5 3 5 3s5-1.5 5-3v-4.5M21 9v5"/>'),
       f1: svg('<path d="M5 21V4M5 4h13l-2.5 4L18 12H5"/>'),
       nba: svg('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.6 5.6c3 3 3 9.8 0 12.8M18.4 5.6c-3 3-3 9.8 0 12.8"/>'),
       mlb: svg('<circle cx="12" cy="12" r="9"/><path d="M7.5 4.2c2 2.2 2 13.4 0 15.6M16.5 4.2c-2 2.2-2 13.4 0 15.6"/>'),
       alerts: svg('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 21h4"/>'),
+      you: svg('<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/>'),
     };
+    // Every sport, one tap from Home (the bar only holds your pinned ones).
+    const sportChips = () => '<div class="sport-chips">' + ALL_SPORTS.map((k) => '<button type="button" class="pin" data-tab="' + k + '">' + esc(tabName(k)) + " ›</button>").join("") + "</div>";
     function skeleton(n = 6) { return '<div class="grid">' + '<div class="skel"></div>'.repeat(n) + "</div>"; }
 
     function pagerLabel(key) {
@@ -1113,14 +1124,27 @@
     document.addEventListener("click", (e) => {
       if (!e.target.closest(".search")) $("main")?.querySelectorAll("[data-sres]").forEach((b) => { b.innerHTML = ""; });
     });
-    async function renderLeague(key) {
+    // Last loaded games per view, kept in memory so switching back to a tab draws instantly.
+    const viewMem = {};
+    const viewKey = (key) => [key, viewOf(key), dayOff[key], state.offset[key]].join("|");
+    async function renderLeague(key, force = true) {
       const L = LEAGUES[key];
       const main = $("main");
-      if (!main.querySelector(".grid, .empty")) main.innerHTML = savedShell(key) || barHtml(L.name, key) + skeleton();
+      const mem = viewMem[viewKey(key)];
+      if (mem) {
+        const live = drawLeague(key, mem.res);
+        // Switching tabs: if what we have is under 30 s old, don't wait on the network at all.
+        if (!force && Date.now() - mem.at < 30000) { schedule(live); return; }
+      } else if (!main.querySelector(".grid, .empty")) main.innerHTML = savedShell(key) || barHtml(L.name, key) + skeleton();
       let res;
       try { res = await loadView(key); }
-      catch (e) { main.innerHTML = barHtml(L.name, key) + '<div class="error">Couldn\'t load ' + esc(L.name) + " scores. Check your connection and try again.</div>"; return; }
+      catch (e) { if (!mem) main.innerHTML = barHtml(L.name, key) + '<div class="error">Couldn\'t load ' + esc(L.name) + " scores. Check your connection and try again.</div>"; return; }
+      viewMem[viewKey(key)] = { res, at: Date.now() };
       if (state.tab !== key) return;
+      schedule(drawLeague(key, res));
+    }
+    function drawLeague(key, res) {
+      const L = LEAGUES[key], main = $("main");
       const events = applyFilter(sortEvents(res.events));
       const when = viewOf(key) === "day" ? (dayOff[key] === 0 ? "today" : "on " + dateAt(dayOff[key]).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })) : weekLabel(key).toLowerCase();
       const body = !events.length ? '<div class="empty">' + (state.filter === "live" ? "No live games right now." : state.filter === "fav" ? "None of your ★ teams play " + esc(when) + "." : "No games " + esc(when) + ".") + "</div>"
@@ -1130,7 +1154,7 @@
       if (searchQ[key]) applySearch(key);
       renderTabs();
       stamp();
-      schedule(events.some(isLive));
+      return events.some(isLive);
     }
     function barHtml(title, key) {
       const L = key && LEAGUES[key];
@@ -1144,14 +1168,14 @@
 
     async function renderHome() {
       const main = $("main");
-      if (!main.querySelector("[data-home]")) main.innerHTML = savedShell("home") || '<div data-home>' + barHtml("Top Scores", null) + skeleton(9) + "</div>";
+      if (!main.querySelector("[data-home]")) main.innerHTML = savedShell("home") || '<div data-home>' + barHtml("Today", null) + sportChips() + skeleton(9) + "</div>";
       const keys = ["nfl", "cfb", "nba", "mlb"];
       const results = await Promise.allSettled(keys.map((k) => { state.offset[k] = 0; return loadLeague(k); }));
       let f1;
       try { f1 = await getJSON(API + LEAGUES.f1.path + "/scoreboard"); cache.f1 = f1; } catch {}
       if (state.tab !== "home") return;
       let anyLive = false;
-      let html = '<div data-home>' + barHtml("Top Scores", null);
+      let html = '<div data-home>' + barHtml("Today", null) + sportChips();
       const liveIds = new Set();
       const liveEvs = [];
       keys.forEach((k, i) => { if (results[i].status === "fulfilled") (results[i].value.events || []).filter(isLive).forEach((e) => { liveEvs.push([e, k]); liveIds.add(e.id); }); });
@@ -1402,13 +1426,13 @@
       clearTimeout(timer);
       timer = setTimeout(() => (document.hidden ? schedule(live) : render()), live ? 10000 : 120000);   // game pages keep their own 5 s updates
     }
-    function render() {
+    function render(force = true) {   // force: fetch fresh data; tab switches pass false to use what's in memory
       if (document.activeElement?.matches?.("[data-search]")) { schedule(true); return; }
       clearTimeout(timer);
       store.set("tab", state.tab);
       renderTabs();
       if (state.tab !== "f1") clearInterval(countdownTimer);
-      const p = state.tab === "alerts" ? renderAlerts() : state.tab === "home" ? renderHome() : state.tab === "f1" ? renderF1() : renderLeague(state.tab);
+      const p = state.tab === "you" ? renderAlerts() : state.tab === "home" ? renderHome() : state.tab === "f1" ? renderF1() : renderLeague(state.tab, force);
       Promise.resolve(p).finally(() => $("main").classList.add("calm"));
       return p;
     }
@@ -1418,7 +1442,7 @@
       if (e.target.closest(".btab, .tab") && views.length) closeSheets();
       const tab = e.target.closest("[data-tab]");
       if (tab) {
-        if (state.tab !== tab.dataset.tab) { const dir = ORDER.indexOf(tab.dataset.tab) > ORDER.indexOf(state.tab) ? 1 : -1; state.tab = tab.dataset.tab; buzz(); swapIn(dir); window.scrollTo({ top: 0, behavior: MOBILE_APP ? "auto" : "smooth" }); }
+        if (state.tab !== tab.dataset.tab) { const o = navOrder(), dir = o.indexOf(tab.dataset.tab) > o.indexOf(state.tab) ? 1 : -1; state.tab = tab.dataset.tab; buzz(); swapIn(dir); window.scrollTo({ top: 0, behavior: MOBILE_APP ? "auto" : "smooth" }); return render(false); }
         return render();
       }
       const fav = e.target.closest("[data-fav]");
@@ -1430,7 +1454,7 @@
         window.scorelineSettingsChanged?.(); if (alertsOn) pushSync();
         const nm = (fav.getAttribute("aria-label") || "").replace(/^(Favorite|Follow|Unfollow) ?/, "");
         if (nm) { teamNames[k] = nm; store.set("favNames", teamNames); }
-        if (state.tab === "alerts") renderAlerts();
+        if (state.tab === "you") renderAlerts();
         document.querySelectorAll('[data-fav="' + CSS.escape(k) + '"]').forEach((b) => b.classList.toggle("on", state.favs.has(k)));
         return;
       }
@@ -2633,22 +2657,46 @@
         setMode(team || null, kind, next); buzz();
         const v = views.find((x) => x.el === b.closest(".sheet"));
         if (v) drawAlertSettings(v);
-        if (state.tab === "alerts") renderAlerts();
+        if (state.tab === "you") renderAlerts();
         return;
       }
       const t = e.target.closest("[data-teamalerts]");
       if (t && !e.target.closest("[data-fav]")) openAlertSettings(t.dataset.teamalerts || null);
     });
-    function renderAlerts() {
+    function renderAlerts() {   // the "You" tab: account, pinned sports, alerts (phones), about
       const favs = [...state.favs];
-      $("main").innerHTML = '<div class="bar"><h1>Alerts</h1></div>' +
+      const signedIn = $("accountBtn")?.classList.contains("on"), reqs = $("accountBtn")?.dataset.count || "";
+      let h = '<div class="bar"><h1>You</h1></div>' +
+        '<div class="section-title"><b>Account</b></div><div class="panel nteams"><div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>' + (signedIn ? "Your account" : "Sign in") + "</b><small>" +
+        (signedIn ? (reqs ? reqs + " friend request" + (reqs === "1" ? "" : "s") : "Friends, chat and sync") : "Keep your teams and alerts on every device") + '</small></span><span class="chev">›</span></div></div>' +
+        '<div class="section-title"><b>Sports in your bar</b></div><div class="pin-row">' + ALL_SPORTS.map((k) =>
+          '<button type="button" class="pin ' + (pins().includes(k) ? "on" : "") + '" data-pin="' + k + '">' + esc(tabName(k)) + "</button>").join("") + "</div>" +
+        '<div class="g-note">Pick up to ' + MAX_PINS + ". Every sport is also one tap away on Home.</div>";
+      if (MOBILE_APP) h += '<div class="section-title"><b>Alerts</b></div>' +
         '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Only about the teams you follow</small></span><i class="switch"></i></button><button type="button" class="pill-btn test-btn" id="testNotify">Send test notification</button>' + (alertsOn ? '<div class="g-note" id="pushState">' + esc(pushStatus) + "</div>" : "") + "</div>" +
         '<div class="section-title"><b>Your teams</b></div><div class="panel nteams">' + (favs.length ? favs.map((k) =>
-          '<div class="opt nteam" role="button" tabindex="0" data-teamalerts="' + esc(k) + '"><span><b>' + esc(teamNames[k] || findName(k) || "Team") + "</b><small>" + esc(teamAlertSummary(k)) + '</small></span><span class="acct-acts"><button class="fav on" type="button" data-fav="' + esc(k) + '" aria-label="Unfollow">★</button><span class="chev">›</span></span></div>').join("") : '<div class="g-note">Tap ★ next to any team to follow it.</div>') + "</div>" +
+          '<div class="opt nteam" role="button" tabindex="0" data-teamalerts="' + esc(k) + '"><span><b>' + esc(teamNames[k] || findName(k) || "Team") + "</b><small>" + esc(teamAlertSummary(k)) + '</small></span><span class="acct-acts"><button class="fav on" type="button" data-fav="' + esc(k) + '" aria-label="Unfollow">★</button><span class="chev">›</span></span></div>').join("") : '<div class="g-note">Follow a team from its team page to get alerts about it.</div>') + "</div>" +
         '<div class="panel nteams" style="margin-top:10px"><div class="opt nteam" role="button" tabindex="0" data-teamalerts=""><span><b>Defaults for new teams</b><small>What a team starts with when you follow it</small></span><span class="chev">›</span></div></div>';
-      if (MOBILE_APP) $("main").insertAdjacentHTML("beforeend", '<div class="section-title"><b>About</b></div><div class="panel about">' + document.querySelector("footer").innerHTML + "</div>");
+      h += '<div class="section-title"><b>About</b></div><div class="panel about">' + document.querySelector("footer").innerHTML + "</div>";
+      $("main").innerHTML = h;
       stamp();
     }
+    // Sports pinned to the bottom bar. Everything else stays one tap away on Home.
+    const ALL_SPORTS = ["nfl", "cfb", "nba", "mlb", "f1"], MAX_PINS = 4;
+    const pins = () => { const p = store.get("pins", ["nfl", "cfb", "f1"]).filter((k) => ALL_SPORTS.includes(k)); return p.length ? p.slice(0, MAX_PINS) : ["nfl"]; };
+    document.addEventListener("click", (e) => {
+      const p = e.target.closest("[data-pin]");
+      if (p) {
+        const k = p.dataset.pin, cur = pins();
+        let next = cur.includes(k) ? cur.filter((x) => x !== k) : cur.concat(k);
+        if (!next.length) { toast("Keep at least one sport in your bar."); return; }
+        if (next.length > MAX_PINS) { toast("Your bar fits " + MAX_PINS + " sports. Unpin one first."); return; }
+        next = ALL_SPORTS.filter((x) => next.includes(x));   // keep a stable order
+        store.set("pins", next); buzz(8); renderTabs(); renderAlerts();
+        return;
+      }
+      if (e.target.closest("[data-open-account]")) $("accountBtn")?.click();
+    });
     const teamNames = store.get("favNames", {});
     function findName(k) { for (const c of Object.values(cache)) for (const ev of c?.events || []) for (const t of teamsOf(ev)) if (favKey(t) === k) return t.team?.displayName; }
 
@@ -2725,7 +2773,7 @@
       };
       const targets = (s) => s.kind === "tab" ? [$("main")] : [...s.sheet.querySelector(".sheet-body").children].filter((c) => !c.matches(".g-head, .gtabs"));
       const neighbor = (s, dir) => {
-        if (s.kind === "tab") { const j = ORDER.indexOf(state.tab) + dir; return ORDER[j] ? () => document.querySelector('.btab[data-tab="' + ORDER[j] + '"], .tab[data-tab="' + ORDER[j] + '"]')?.click() : null; }
+        if (s.kind === "tab") { const o = navOrder(), j = o.indexOf(state.tab) + dir; return o[j] ? () => document.querySelector('.btab[data-tab="' + o[j] + '"], .tab[data-tab="' + o[j] + '"]')?.click() : null; }
         const j = GCATS.indexOf(s.sheet.dataset.cat || "all") + dir;
         return GCATS[j] ? () => s.sheet.querySelector('[data-gcat="' + GCATS[j] + '"]')?.click() : null;
       };
@@ -2843,7 +2891,7 @@
     async function setAlerts(on) {
       if (!on) {
         alertsOn = false; store.set("alerts", false); syncBell();
-        if (state.tab === "alerts") renderAlerts();
+        if (state.tab === "you") renderAlerts();
         toast("Score alerts off");
         await pushSync(false);
         return;
@@ -2852,7 +2900,7 @@
       if (perm === "unsupported") { toast("This browser doesn't support notifications."); return; }
       if (perm !== "granted") { toast(TAURI ? "Notifications are blocked. Allow them for Scoreline in your system settings." : "Notifications are blocked. Allow them in your browser's site settings."); return; }
       alertsOn = true; store.set("alerts", true); syncBell();
-      if (state.tab === "alerts") renderAlerts();
+      if (state.tab === "you") renderAlerts();
       toast(state.favs.size ? "Score alerts on for your ★ teams" : "Alerts on. Tap ★ on a team to follow it.");
       pushSync(true);
       checkAlerts();
@@ -2863,7 +2911,7 @@
     setTimeout(async () => {                                // after the rest of the script has loaded
       let allowed = alertsOn;
       if (alertsOn && NATIVE_NOTIFY) allowed = await NATIVE_NOTIFY.isPermissionGranted().catch(() => true);
-      if (store.get("alerts", false) && !allowed) { alertsOn = false; store.set("alerts", false); syncBell(); if (state.tab === "alerts") renderAlerts(); pushSync(false); }
+      if (store.get("alerts", false) && !allowed) { alertsOn = false; store.set("alerts", false); syncBell(); if (state.tab === "you") renderAlerts(); pushSync(false); }
       else if (!alertsOn && store.get("pushOffPending", false)) pushSync(false);
     }, 0);
     document.addEventListener("click", async (e) => {
@@ -3058,7 +3106,8 @@
     }
     checkForAppUpdate();
 
-    if (!ORDER.includes(state.tab)) state.tab = "home";
+    if (state.tab === "you") state.tab = "you";
+    if (![...ALL_SPORTS, "home", "you"].includes(state.tab)) state.tab = "home";
     Promise.all([Promise.resolve(render()).catch(() => {}), new Promise((r) => setTimeout(r, 900))]).finally(hideSplash);
   </script>
   <script type="module" src="account.js"></script>

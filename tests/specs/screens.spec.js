@@ -1,7 +1,7 @@
 // Screenshots of the main screens at phone and desktop size, with real data, for design review.
 // Saved to tests/screens/*.png and uploaded by the workflow as the "screens" artifact.
 const { test } = require("@playwright/test");
-const { espnViaRunner } = require("./helpers");
+const { espnViaRunner, goTab } = require("./helpers");
 
 const SIZES = { mobile: { width: 375, height: 812 }, web: { width: 1280, height: 800 } };
 
@@ -18,7 +18,7 @@ for (const [size, viewport] of Object.entries(SIZES)) {
     const shot = (name) => page.screenshot({ path: `screens/${name}-${size}.png` });
     await shot("home");
     for (const tab of ["nfl", "cfb", "nba", "f1"]) {
-      await page.locator(`[data-tab="${tab}"]:visible`).first().click();
+      await goTab(page, tab);
       await page.waitForTimeout(2500);
       await shot(tab);
     }
@@ -35,9 +35,9 @@ for (const [size, viewport] of Object.entries(SIZES)) {
       await page.keyboard.press("Escape");
     }
     if (size === "mobile") {
-      await page.locator('[data-tab="alerts"]:visible').first().click().catch(() => {});
+      await page.locator('[data-tab="you"]:visible').first().click().catch(() => {});
       await page.waitForTimeout(1200);
-      await shot("alerts");
+      await shot("you");
     }
     await context.close();
   });

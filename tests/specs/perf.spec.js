@@ -3,7 +3,7 @@
 // Results go to the console and to perf-results.json; they inform PROGRESS.md, they don't fail the build.
 const { test } = require("@playwright/test");
 const fs = require("fs");
-const { espnViaRunner } = require("./helpers");
+const { espnViaRunner, goTab } = require("./helpers");
 
 const TARGETS = { thisCommit: "http://127.0.0.1:8080/index.html", liveSite: "https://cadensauce.github.io/scoreline/" };
 const results = {};
@@ -40,7 +40,7 @@ for (const [name, url] of Object.entries(TARGETS)) {
     const tabs = {};
     for (const tab of ["nfl", "cfb", "nba", "home"]) {
       const t = Date.now();
-      await page.locator(`[data-tab="${tab}"]:visible`).first().click();
+      await goTab(page, tab);
       // Done when the new tab's own games are on screen (not the previous tab's).
       await page.waitForFunction((k) => k === "home" ? document.querySelector("#main [data-home] [data-ev]") : document.querySelector('#main [data-lg="' + k + '"][data-ev], #main [data-ev][data-lg="' + k + '"]') || document.querySelector("#main .empty"), tab, { timeout: 30000 }).catch(() => {});
       tabs[tab] = Date.now() - t;
