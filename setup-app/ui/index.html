@@ -73,7 +73,7 @@
     try {
       await T.core.invoke("install");
       target = 100; finished = true;
-      setTimeout(() => { $("title").textContent = "You're all set"; $("say").textContent = "All 5 sports ready"; $("open").textContent = "Open Scoreline"; $("open").classList.add("show"); $("open").focus(); }, 450);
+      setTimeout(() => { $("title").textContent = "You're all set"; $("say").textContent = "All 5 sports ready"; $("open").textContent = "Open Scoreline"; $("open").classList.add("show"); }, 450);
     } catch (err) {
       $("title").textContent = "Setup didn't finish";
       $("say").textContent = String(err || "Something went wrong."); $("say").classList.add("err");
