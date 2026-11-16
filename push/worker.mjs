@@ -55,6 +55,25 @@ console.log("Push worker ready for project", sa.project_id);
   await db.collection("public").doc("push").set({ espnCheck: check }, { merge: true }).catch(() => {});
 }
 
+// ---- one-time sign-in codes (website → newly installed app) -----------------------------------
+// A signed-in person creates signinCodes/{code} for their own uid (rules enforce that). We add a one-time
+// Firebase sign-in token; the app reads it with the exact code, signs in, and deletes the code. Codes last 10 min.
+const CODE_TTL = 10 * 60 * 1000;
+db.collection("signinCodes").onSnapshot((snap) => {
+  snap.docChanges().forEach(async (c) => {
+    if (c.type !== "added") return;
+    const x = c.doc.data();
+    if (x.token || !x.uid) return;
+    if (Date.now() - (x.createdAt?.toMillis?.() || 0) > CODE_TTL) { await c.doc.ref.delete().catch(() => {}); return; }
+    try { await c.doc.ref.update({ token: await admin.auth().createCustomToken(x.uid) }); console.log(new Date().toISOString(), "sign-in code ready"); }
+    catch (e) { console.log("sign-in code failed", e.message); }
+  });
+}, (e) => console.log("sign-in code listener stopped", e.message));
+setInterval(async () => {   // clean up codes nobody used
+  const old = await db.collection("signinCodes").where("createdAt", "<", new Date(Date.now() - CODE_TTL)).get().catch(() => null);
+  old?.docs.forEach((d) => d.ref.delete().catch(() => {}));
+}, 5 * 60 * 1000);
+
 // ---- subscribers -------------------------------------------------------------------------
 let subs = [];
 let subsAt = 0;
