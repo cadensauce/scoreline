@@ -35,7 +35,8 @@ for (const [size, viewport] of Object.entries(SIZES)) {
       await page.keyboard.press("Escape");
     }
     if (size === "mobile") {
-      await page.locator('[data-tab="you"]:visible').first().click().catch(() => {});
+      await page.waitForTimeout(800);   // let the game sheet finish closing
+      await page.locator('[data-tab="you"]:visible').first().click({ timeout: 10000 }).catch(() => {});
       await page.waitForTimeout(1200);
       await shot("you");
     }
