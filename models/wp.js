@@ -218,8 +218,41 @@
   }
 
   /* ---------- F1 ---------- */
+  /* f1(state) -> { [driverId]: win probability } over the drivers still running (sums to 1), or null.
+   *   lap          laps completed by the leader (0 = before the start)      OpenF1 /laps or ESPN status
+   *   totalLaps    scheduled race distance in laps
+   *   safetyCar    true while a safety car, virtual safety car or red flag is out (OpenF1 /race_control)
+   *   drivers[]    { id, position, gapToLeader (seconds; leader 0; null if lapped / unknown),
+   *                  pitStops (stops made so far), gridPosition (0 = pit lane), running (false = retired) }
+   *                OpenF1 /position, /intervals (gap_to_leader), /pit (count), starting grid. */
   function f1(state) {
-    return null; // F1 model: see reports/winprob/REPORT.md
+    const m = model("f1");
+    if (!m || !state || !Array.isArray(state.drivers)) return null;
+    const total = num(state.totalLaps), lap = num(state.lap);
+    if (!Number.isFinite(total) || !Number.isFinite(lap) || total <= 0) return null;
+    const ds = state.drivers.filter((d) => d && d.running !== false && Number.isFinite(num(d.position)));
+    if (!ds.length) return null;
+    const r = lap / total, left = Math.max(total - lap, 0), sc = state.safetyCar ? 1 : 0, cap = m.gapCap;
+    let leader = ds[0];
+    for (const d of ds) if (num(d.position) < num(leader.position)) leader = d;
+    const lst = leader.pitStops || 0;
+    const sc0 = ds.map((d) => {
+      const pos = Math.max(1, num(d.position));
+      let g = d.gapToLeader;
+      g = (g === null || g === undefined || !Number.isFinite(Number(g))) ? cap : clip(Number(g), 0, cap);
+      const grid = (!d.gridPosition || d.gridPosition < 1) ? 20 : Number(d.gridPosition);
+      const sv = (d.pitStops || 0) - lst, gpl = g / (left + 1);
+      const c = { lpos: Math.log(pos), lpos_r: Math.log(pos) * r, gap_per_lap: gpl, gap_per_lap_sc: gpl * sc,
+        lgrid: Math.log(grid), lgrid_left: Math.log(grid) * (1 - r), stops_vs_leader: sv, stops_vs_leader_r: sv * r,
+        gap10: g / 10, gap10_sc: g / 10 * sc };
+      return m.features.reduce((acc, n, i) => acc + m.weights[i] * c[n], 0);
+    });
+    const mx = Math.max(...sc0);
+    const e = sc0.map((v) => Math.exp(v - mx));
+    const z = e.reduce((a, b) => a + b, 0);
+    const out = {};
+    ds.forEach((d, i) => { out[d.id] = e[i] / z; });
+    return out;
   }
 
   const api = { ready, nfl: football("nfl"), cfb: football("cfb"), nba, f1, nbaPossession, parseClock,
