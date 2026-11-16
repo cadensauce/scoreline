@@ -151,3 +151,16 @@ Backtest (held-out 2023–25 seasons, `reports/winprob/REPORT.md`, calibration c
 NBA game pages compute per-play win probability with `models/wp.js` and label it "Scoreline win probability";
 falls back to ESPN's if inputs are missing. Tests: model sanity (even game ~50%, +20 with 1:00 left >97%) and a
 real finished game page shows the Scoreline label. Retrain weekly in season: `gh workflow run winprob.yml`.
+
+### User-requested additions (2026-11-16)
+- Version counter (item 17): `<meta name="version">` is the one source; apps build as major.minor.<run>; shown in You → About.
+- Polish batch: new monochrome logo everywhere (one source `icon-512.png`; tab icon, Android/Windows icons,
+  branded Windows installer sidebar/header/setup icon), centred name on phones, Home shows only pinned sports,
+  no flicker switching day/week/filter, graph drag updates the big numbers, stat rows never overlap, career ring fits.
+- Account: email hidden until password re-entry (30 s).
+- Sign in with a code: website → newly installed app, one-time 10-minute codes; worker issues a Firebase custom token.
+- Two-step sign-in (opt-in, emailed 6-digit codes): enforced by Firestore rules (`member()` = signed in and, if
+  twoStep/{uid} exists, a token with `ts` claim). Worker emails codes via a Scoreline Gmail app password
+  (secrets SMTP_USER / SMTP_PASS — waiting on the user), 10-minute codes, 5 tries, 1 request/minute.
+  Text-message codes were declined (needs the paid Firebase plan).
+- Apps rebuilt: build-10 (2.0.10) with the new icon and installer art.
