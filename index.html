@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794863456" />
+  <meta name="build" content="1794863720" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -1764,7 +1764,8 @@
       const d = wpStore[id]; if (!d) return "";
       const p = d.series[i];
       const when = i === d.series.length - 1 ? (d.final ? "Final" : "Now") : [perName(d.lg, p.per), p.clock].filter(Boolean).join(" ");
-      const atEnd = i === d.series.length - 1 && d.final; '<small>' + esc(p.text.length > 110 ? p.text.slice(0, 107) + "…" : p.text) + "</small>" : "");
+      const atEnd = i === d.series.length - 1 && d.final;
+      return "<b>" + esc(when) + "</b>" + (p.text && !atEnd ? '<small>' + esc(p.text.length > 110 ? p.text.slice(0, 107) + "…" : p.text) + "</small>" : "");
     }
     function wpScrub(svg, clientX) {
       const id = svg.dataset.wpg, d = wpStore[id]; if (!d) return;
