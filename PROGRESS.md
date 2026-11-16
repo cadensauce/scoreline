@@ -183,3 +183,13 @@ Next session, in order:
    (status line, win probability first, tabs Summary/Plays/Stats/Players), design round 3, themes (light/dark),
    profile customization; then Phases 3–5 per PLAN.md.
 4. F1 win probability needs live gaps (OpenF1 live is paid): try ESPN live order at the Las Vegas GP (Nov 21–22).
+
+### Custom installer and uninstaller (2026-11-16, shipped)
+- `setup-app/`: "Scoreline Setup", a frameless Tauri window (design: "every sport lights up", picked from three
+  animated concepts). Carries the real NSIS installer, runs it silently with progress, opens Scoreline after.
+  Copies itself next to the app and makes Windows' Uninstall button open it (`--uninstall`): asks first
+  (optional "delete my settings on this PC"), the sports switch off while it removes the app, then
+  "Scoreline is removed". Runs from a temp copy and cleans up after itself.
+- The NSIS installer underneath uses a dark one-click template (`src-tauri/installer/installer.nsi`, CLI pinned
+  to 2.12.4). Get the app (Windows) and in-app updates download `Scoreline-Setup.exe`. Verified on the user's PC:
+  install 2.0.16, uninstall, reinstall.
