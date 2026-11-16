@@ -95,3 +95,24 @@ startup; list refresh 10 s while live (game pages keep 5 s).
 Test infra: ESPN blocks browser requests from GitHub's servers, so tests fetch ESPN with Node and hand the data
 to the page; the smoke test now fails if scores don't load. Push worker verified to reach ESPN (startup check).
 Next: fix the 0.55 layout shift (biggest Lighthouse cost), recheck first-open time, target Lighthouse 90+.
+
+### Item 6: performance, passes 2–3 (shipped 2026-11-16)
+| Metric (phone profile / Lighthouse mobile) | Start of Phase 1 | After pass 1 | After pass 3 |
+|---|---|---|---|
+| Layout shift (CLS) | 0.552 | 0.552 | **0** (footer no longer jumps) |
+| Lighthouse performance | 65 | 71 | **77** |
+| Lighthouse first contentful paint | 3.2 s | 2.6 s | ~2 s (varies 1.9–2.6 s run to run) |
+| Lighthouse largest contentful paint | 3.2 s | 2.6 s | 5.2 s* |
+| Reopen → scores visible (fast 4G) | 2,075 ms | 694 ms | **532 ms** |
+| First open → scores (fast 4G) | 2,053 ms | 2,608 ms | 2,106 ms |
+| Slow frames scrolling CFB (of 84) | 6 | 5 | **0** |
+| Blocking time (TBT) | 10 ms | 10 ms | 0 ms |
+
+Pass 2: main area reserves the screen (CLS), Google Fonts no longer block first paint, Firebase starts after scores
+show (or on tapping the account button). Pass 3: fonts use `display=optional` (no late re-paint).
+
+*Why Lighthouse 90+ isn't reachable as things stand: Lighthouse simulates slow 4G (~200 KB/s). The Home screen
+needs ~1.4 MB of ESPN scoreboard JSON before scores can paint, which alone takes ~7 s at that speed. LCP is
+measured when real scores appear, so it lands at 5–6 s however light the app is. Real phones on normal 4G see
+scores in ~2 s on first open and ~0.5 s on every later open (saved scores). Getting Lighthouse 90+ would need a
+small proxy that trims ESPN's data (for example a free Cloudflare Worker), which is new infrastructure: asking first.
