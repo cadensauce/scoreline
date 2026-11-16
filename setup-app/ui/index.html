@@ -30,6 +30,12 @@
   .btn.show { opacity: 1; transform: none; pointer-events: auto; }
   .btn:focus-visible, .x:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
   .err { color: #f0a0a8; }
+  .acts { display: flex; gap: 8px; align-items: center; }
+  .ghost { font: 600 15px var(--f); background: var(--panel); color: var(--fg); border: 0; border-radius: 999px; padding: 11px 18px; cursor: pointer; }
+  .ghost:hover { background: var(--track); }
+  .check { display: flex; align-items: center; gap: 8px; font: 500 13px var(--f); color: var(--mut); cursor: pointer; }
+  .check input { width: 16px; height: 16px; accent-color: #ececee; }
+  .left { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -47,47 +53,77 @@
       <div class="sp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h13l-2.5 4L18 12H5"/></svg><small>F1</small></div>
     </div>
     <div class="line"><i id="bar"></i></div>
-    <div class="foot"><span class="say" id="say">Getting the scoreboards ready</span><button class="btn" type="button" id="open">Open Scoreline</button></div>
+    <div class="foot"><div class="left"><span class="say" id="say">Getting the scoreboards ready</span><label class="check" id="dataopt" hidden><input type="checkbox" id="deldata"> Also delete my settings on this PC</label></div><div class="acts"><button class="ghost" type="button" id="keep" hidden>Keep Scoreline</button><button class="btn" type="button" id="open">Open Scoreline</button></div></div>
   </div>
 <script>
   const T = window.__TAURI__;
   const $ = (id) => document.getElementById(id);
   const tiles = [...document.querySelectorAll(".sp")];
   const SAY = ["Getting the scoreboards ready", "Copying Scoreline", "Setting up alerts", "Making your shortcut", "Almost there"];
-  let shown = 0, target = 0, finished = false;
+  let shown = 0, target = 0, finished = false, mode = "install", removing = false;
   // Smoothly animate toward the real progress the installer reports.
   function frame() {
     shown += (target - shown) * 0.18;
     if (Math.abs(target - shown) < 0.3) shown = target;
     const p = Math.round(shown);
     $("bar").style.width = p + "%";
-    $("pct").textContent = p + "%";
-    tiles.forEach((t, i) => t.classList.toggle("on", p >= (i + 1) * 20 - 4 || finished));
-    if (!finished) $("say").textContent = SAY[Math.min(4, Math.floor(p / 20))];
+    if (mode === "install") {
+      $("pct").textContent = p + "%";
+      tiles.forEach((t, i) => t.classList.toggle("on", p >= (i + 1) * 20 - 4 || finished));
+      if (!finished) $("say").textContent = SAY[Math.min(4, Math.floor(p / 20))];
+    } else if (removing) {
+      $("pct").textContent = p + "%";
+      // Uninstalling: the sports switch off one by one, last to first.
+      tiles.forEach((t, i) => t.classList.toggle("on", !finished && p < (5 - i) * 20 - 4));
+    }
     requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
   T.event.listen("progress", (e) => { target = Math.max(target, Number(e.payload) || 0); });
+  function failed(title, err) {
+    $("title").textContent = title;
+    $("say").textContent = String(err || "Something went wrong."); $("say").classList.add("err");
+    $("open").textContent = "Try again"; $("open").classList.add("show");
+  }
   async function install() {
     $("say").classList.remove("err"); $("open").classList.remove("show"); finished = false; target = 2;
     try {
       await T.core.invoke("install");
       target = 100; finished = true;
       setTimeout(() => { $("title").textContent = "You're all set"; $("say").textContent = "All 5 sports ready"; $("open").textContent = "Open Scoreline"; $("open").classList.add("show"); }, 450);
-    } catch (err) {
-      $("title").textContent = "Setup didn't finish";
-      $("say").textContent = String(err || "Something went wrong."); $("say").classList.add("err");
-      $("open").textContent = "Try again"; $("open").classList.add("show");
-    }
+    } catch (err) { failed("Setup didn't finish", err); }
+  }
+  async function uninstall() {
+    removing = true; finished = false; target = 2; shown = 0;
+    $("say").classList.remove("err"); $("open").classList.remove("show"); $("keep").hidden = true; $("dataopt").hidden = true;
+    $("title").textContent = "Removing Scoreline"; $("say").textContent = "Switching off the scoreboards";
+    try {
+      await T.core.invoke("uninstall", { deleteData: $("deldata").checked });
+      target = 100; finished = true;
+      setTimeout(() => { $("title").textContent = "Scoreline is removed"; $("say").textContent = "Thanks for watching with us."; $("open").textContent = "Close"; $("open").classList.add("show"); }, 450);
+    } catch (err) { failed("Couldn't remove Scoreline", err); }
   }
   $("open").addEventListener("click", async () => {
+    if (mode === "uninstall") { if (finished) return T.window.getCurrentWindow().close(); return uninstall(); }
     if (!finished) return install();
     try { await T.core.invoke("open_app"); } catch {}
     T.window.getCurrentWindow().close();
   });
+  $("keep").addEventListener("click", () => T.window.getCurrentWindow().close());
   $("close").addEventListener("click", () => T.window.getCurrentWindow().close());
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && (finished || $("say").classList.contains("err"))) T.window.getCurrentWindow().close(); });
-  install();
-</script>
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && (finished || !removing && mode === "uninstall" || $("say").classList.contains("err"))) T.window.getCurrentWindow().close(); });
+  (async () => {
+    mode = await T.core.invoke("mode").catch(() => "install");
+    requestAnimationFrame(frame);
+    if (mode === "uninstall") {
+      // Ask first: all five sports are lit; Remove switches them off.
+      tiles.forEach((t) => t.classList.add("on"));
+      $("title").textContent = "Remove Scoreline?";
+      $("pct").textContent = "";
+      $("say").textContent = "Signed in? Your teams and alerts stay saved to your account.";
+      $("dataopt").hidden = false; $("keep").hidden = false;
+      $("open").textContent = "Remove"; $("open").classList.add("show");
+      $("bar").style.width = "0%";
+    } else install();
+  })();</script>
 </body>
 </html>
