@@ -2,12 +2,12 @@
 
 ## Summary
 
-| Sport | Held-out plays | Brier ours | Brier ESPN | Log loss ours | Log loss ESPN | Verdict |
-|---|---|---|---|---|---|---|
-| NFL | 50,013 (284 games) | 0.1621 | 0.1634 | 0.4834 | 0.4865 | **show ESPN's** |
-| NBA | 637,996 (1,313 games) | 0.1463 | 0.1473 | 0.4388 | 0.4415 | **show ESPN's** |
-| College football | 141,351 (807 games) | 0.1246 | 0.1255 | 0.3797 | 0.3816 | **show ESPN's** |
-| F1 | not run | | | | | |
+| Sport | Latest held-out season | Brier ours / ESPN | Log loss ours / ESPN | 3 seasons pooled: Brier ours / ESPN (95% CI of gap) | Verdict |
+|---|---|---|---|---|---|
+| NFL | 50,013 plays, 284 games | 0.1621 / 0.1634 | 0.4834 / 0.4865 |  | **show ESPN's** |
+| NBA | 637,996 plays, 1,313 games | 0.1463 / 0.1473 | 0.4388 / 0.4415 |  | **show ESPN's** |
+| College football | 141,351 plays, 807 games | 0.1246 / 0.1255 | 0.3797 / 0.3816 |  | **show ESPN's** |
+| F1 | not run | | | | |
 
 ## NFL
 
