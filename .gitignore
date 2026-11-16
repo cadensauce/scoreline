@@ -12,3 +12,4 @@ tests/report/
 tests/test-results/
 tests/perf-results.json
 tests/lh-*.json
+tests/screens/
