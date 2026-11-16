@@ -62,6 +62,17 @@ service cloud.firestore {
       allow delete: if id.matches('^[0-9a-f]{64}$');
     }
 
+    // Anonymous alert-setup health reports: a short code and the app version, keyed by the same random
+    // device id as pushSubs. Nothing personal. Only the push worker can read them.
+    match /diag/{id} {
+      allow read: if false;
+      allow create, update: if id.matches('^[0-9a-f]{64}$')
+        && request.resource.data.keys().hasOnly(['code', 'app', 'at'])
+        && request.resource.data.code is string && request.resource.data.code.size() <= 120
+        && request.resource.data.app is string && request.resource.data.app.size() <= 20;
+      allow delete: if false;
+    }
+
     // Chats: only between friends, only members can read or write.
     match /chats/{chatId} {
       allow read: if signedIn() && me() in resource.data.members;

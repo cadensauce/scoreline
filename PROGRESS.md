@@ -47,3 +47,23 @@ this on a throttled phone profile before fixing.
 
 ### Design decisions
 (none yet: waiting on round 1)
+
+## Decisions (2026-11-16, from you)
+- Design: A's open layout (no boxes, hairline rows) combined with B's rounded touches (floating pill bottom bar,
+  pill buttons, soft top glow). Fine-tuned in round 2.
+- Everything else: my recommendations. Remove ↻, fake menu mark, per-row stars (follow from team page/Profile)
+  and the Timeouts tab (into Plays); Friends + Chat move inside Profile. Keep MLB. Keep team logos for now.
+  If our win probability doesn't beat ESPN's for a sport, show ESPN's labelled as ESPN's. Free services only
+  (Open-Meteo, YouTube key and CFBD key are free; template recaps, no paid AI). Currency: Marks. Under-13: no
+  account, all scores features on-device. Fantasy: NFL, NBA, F1 first. Push worker stays on GitHub Actions for now.
+  Reward formula: fixed "Upset bonus" tiers (safer for store ratings).
+
+## Phase 1
+### Item 15: alerts on/off (in progress)
+Root cause: turning alerts OFF never redrew the Alerts screen, so the switch kept showing "on". Also: a failed
+"off" request was never retried; phones were saved under their push address, so an address change left an old
+entry that kept getting alerts; revoked notification permission still showed "on".
+Fix: one `setAlerts()` for both directions; one fixed random device id per phone (`pushSubs/{deviceId}`, old
+entries migrated and deleted); pending turn-off retried on launch; permission re-checked on launch; anonymous
+setup health codes (`diag/{deviceId}`, summarised by the worker into `public/push.status.setup`).
+Tests: Playwright in GitHub Actions (`tests/`), 3 regression tests + a smoke test.

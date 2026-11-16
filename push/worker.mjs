@@ -57,7 +57,10 @@ async function loadSubs() {
   console.log(new Date().toISOString(), "subscribers:", subs.length);
   // Health check anyone can read: just counts, no addresses or teams.
   const apps = subs.filter((s) => s.sub.endpoint.startsWith("https://fcm.native/")).length;
-  await db.collection("public").doc("push").set({ status: { phones: subs.length, androidApp: apps, homeScreen: subs.length - apps, checkedAt: new Date().toISOString() } }, { merge: true }).catch(() => {});
+  // Setup health: how many phones reported each code in the last 2 days (e.g. "ok", "C: …", "off").
+  const since = Date.now() - 2 * 86400000, codes = {};
+  try { (await db.collection("diag").get()).docs.forEach((d) => { const x = d.data(); if (x.at?.toMillis?.() > since) { const k = (x.app || "?") + " | " + x.code; codes[k] = (codes[k] || 0) + 1; } }); } catch {}
+  await db.collection("public").doc("push").update({ status: { phones: subs.length, androidApp: apps, homeScreen: subs.length - apps, setup: codes, checkedAt: new Date().toISOString() } }).catch(() => {});
 }
 
 // Each person picks, per alert and per team: always / playoffs / champ (Super Bowl, Finals...) / off.
