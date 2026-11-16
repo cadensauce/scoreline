@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794797074" />
+  <meta name="build" content="1794798061" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -210,6 +210,20 @@
     .g-label { font: 700 12px/1.2 Inter, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
     .g-label small { font-family: Inter, sans-serif; font-weight: 600; margin-left: 4px; }
     .wp { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+    .wpg { position: relative; margin-top: 4px; touch-action: pan-y; }
+    .wpg svg { display: block; width: 100%; height: 140px; overflow: visible; cursor: crosshair; touch-action: none; }
+    .wpg-mid { stroke: var(--line-hi); stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; }
+    .wpg-per { stroke: var(--line); vector-effect: non-scaling-stroke; }
+    .wpg-pl { fill: var(--faint); font-size: 9px; }
+    .wpg-area { fill: var(--text); opacity: .07; }
+    .wpg-line { fill: none; stroke: var(--text); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+    .wpg-cur { stroke: var(--muted); stroke-width: 1; vector-effect: non-scaling-stroke; }
+    .wpg-dot { fill: var(--text); }
+    .wpg-t, .wpg-b { position: absolute; left: 0; font-size: 11px; font-weight: 700; color: var(--muted); pointer-events: none; }
+    .wpg-t { top: 0; } .wpg-b { bottom: 0; }
+    .wpg-read { min-height: 38px; font-size: 13px; color: var(--muted); }
+    .wpg-read b { color: var(--text); font-weight: 700; }
+    .wpg-read small { display: block; font-size: 12px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .wp b { font-size: 16px; }
     .wp-bar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; gap: 2px; background: var(--panel-3); }
     .wp-bar i { display: block; height: 100%; transition: width .6s var(--ease); }
@@ -1485,6 +1499,85 @@
       if (h && a) return { home: h / (h + a), src: "Based on betting odds" };
       return null;
     }
+    /* ---------- win probability: current numbers + graph over the game ---------- */
+    // Uses each play's win probability from the game summary. Drag or tap the graph to see earlier moments;
+    // it stays available after the game ends. (Source label is honest about whose model it is.)
+    const wpStore = {};
+    function wpSeries(s) {
+      const wp = s.winprobability || [];
+      if (wp.length < 2) return null;
+      const plays = new Map();
+      const add = (p) => p?.id != null && plays.set(String(p.id), p);
+      (s.plays || []).forEach(add);
+      (s.drives?.previous || []).forEach((d) => (d.plays || []).forEach(add));
+      (s.drives?.current?.plays || []).forEach(add);
+      return wp.map((w) => {
+        const p = plays.get(String(w.playId));
+        return { home: Math.min(1, Math.max(0, +w.homeWinPercentage || 0)), per: p?.period?.number || 0, clock: p?.clock?.displayValue || "", text: p?.text || p?.type?.text || "" };
+      });
+    }
+    const perName = (lg, n) => !n ? "" : lg === "nba" ? (n > 4 ? "OT" + (n > 5 ? n - 4 : "") : "Q" + n) : lg === "mlb" ? "Inn " + n : lg === "cfb" || lg === "nfl" ? (n > 4 ? "OT" : "Q" + n) : "P" + n;
+    function wpSectionHtml(s, teams, state, id, lg) {
+      const series = state !== "pre" ? wpSeries(s) : null;
+      const now = series ? { home: series[series.length - 1].home, src: "ESPN win probability" } : winProb(s, state);
+      if (!now || teams.length !== 2) return "";
+      const hp = pct(now.home), ap = 100 - hp, [away, home] = teams;
+      let h = '<div class="g-sec" data-c="stats" data-wpsec="' + esc(id) + '"><div class="g-label">Win probability</div>' +
+        '<div class="wp"><span>' + esc(away.team?.abbreviation) + " <b>" + ap + "%</b></span><span><b>" + hp + "%</b> " + esc(home.team?.abbreviation) + "</span></div>";
+      if (!series) {
+        const col = (t) => "#" + (t.team?.color || "8a93a5");
+        return h + '<div class="wp-bar"><i style="width:' + ap + "%;background:" + esc(col(away)) + '"></i><i style="background:' + esc(col(home)) + '"></i></div><div class="g-note">' + esc(now.src) + "</div></div>";
+      }
+      wpStore[id] = { series, lg, away: away.team?.abbreviation || "Away", home: home.team?.abbreviation || "Home", final: state === "post" };
+      const W = 320, H = 120, n = series.length, X = (i) => (i / (n - 1)) * W, Y = (p) => (1 - p) * H;
+      const line = series.map((p, i) => (i ? "L" : "M") + X(i).toFixed(1) + "," + Y(p.home).toFixed(1)).join("");
+      const area = line + "L" + W + "," + H / 2 + "L0," + H / 2 + "Z";
+      let marks = "";
+      series.forEach((p, i) => { if (i && p.per && p.per !== series[i - 1].per) marks += '<line x1="' + X(i).toFixed(1) + '" x2="' + X(i).toFixed(1) + '" y1="0" y2="' + H + '" class="wpg-per"/><text x="' + (X(i) + 3).toFixed(1) + '" y="' + (H - 4) + '" class="wpg-pl">' + esc(perName(lg, p.per)) + "</text>"; });
+      h += '<div class="wpg-read" data-wpread>' + wpReadText(id, n - 1) + "</div>" +
+        '<div class="wpg"><span class="wpg-t">' + esc(home.team?.abbreviation) + '</span><span class="wpg-b">' + esc(away.team?.abbreviation) + "</span>" +
+        '<svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" data-wpg="' + esc(id) + '" role="img" aria-label="Win probability over the game. Drag to see earlier moments.">' +
+        '<line x1="0" x2="' + W + '" y1="' + H / 2 + '" y2="' + H / 2 + '" class="wpg-mid"/>' + marks +
+        '<path d="' + area + '" class="wpg-area"/><path d="' + line + '" class="wpg-line"/>' +
+        '<line class="wpg-cur" x1="' + W + '" x2="' + W + '" y1="0" y2="' + H + '"/><circle class="wpg-dot" r="3.5" cx="' + W + '" cy="' + Y(series[n - 1].home).toFixed(1) + '"/></svg></div>' +
+        '<div class="g-note">' + esc(now.src) + " · drag the graph to look back</div></div>";
+      return h;
+    }
+    function wpReadText(id, i) {
+      const d = wpStore[id]; if (!d) return "";
+      const p = d.series[i], hp = pct(p.home), lead = hp >= 50 ? d.home + " " + hp + "%" : d.away + " " + (100 - hp) + "%";
+      const when = i === d.series.length - 1 ? (d.final ? "Final" : "Now") : [perName(d.lg, p.per), p.clock].filter(Boolean).join(" ");
+      return "<b>" + esc(when) + "</b> · " + esc(lead) + (p.text ? '<small>' + esc(p.text.length > 110 ? p.text.slice(0, 107) + "…" : p.text) + "</small>" : "");
+    }
+    function wpScrub(svg, clientX) {
+      const id = svg.dataset.wpg, d = wpStore[id]; if (!d) return;
+      const r = svg.getBoundingClientRect(), n = d.series.length;
+      const i = Math.max(0, Math.min(n - 1, Math.round(((clientX - r.left) / r.width) * (n - 1))));
+      const x = (i / (n - 1)) * 320, y = (1 - d.series[i].home) * 120;
+      svg.querySelector(".wpg-cur").setAttribute("x1", x); svg.querySelector(".wpg-cur").setAttribute("x2", x);
+      const dot = svg.querySelector(".wpg-dot"); dot.setAttribute("cx", x); dot.setAttribute("cy", y);
+      const read = svg.closest("[data-wpsec]")?.querySelector("[data-wpread]"); if (read) read.innerHTML = wpReadText(id, i);
+    }
+    document.addEventListener("pointerdown", (e) => { const svg = e.target.closest?.("svg[data-wpg]"); if (!svg) return; svg.setPointerCapture?.(e.pointerId); svg.dataset.drag = "1"; wpScrub(svg, e.clientX); });
+    document.addEventListener("pointermove", (e) => { const svg = e.target.closest?.("svg[data-wpg]"); if (svg && (svg.dataset.drag || e.pointerType === "mouse")) wpScrub(svg, e.clientX); });
+    document.addEventListener("pointerup", (e) => { const svg = e.target.closest?.("svg[data-wpg]"); if (svg) delete svg.dataset.drag; });
+    // Live games: refresh the win probability section every 15 s while the game page is open.
+    function wpLive(v, lg, id) {
+      clearInterval(v.wpTimer);
+      v.wpTimer = setInterval(async () => {
+        const sec = v.el?.querySelector("[data-wpsec]");
+        if (!v.el?.isConnected) return clearInterval(v.wpTimer);
+        if (document.hidden || !sec || sec.querySelector("svg[data-wpg]")?.dataset.drag) return;
+        try {
+          const s = await getJSON(API + LEAGUES[lg].path + "/summary?event=" + id);
+          const comp = s.header?.competitions?.[0] || {}, st = comp.status?.type?.state;
+          const teams = (comp.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
+          const html = wpSectionHtml(s, teams, st, id, lg);
+          if (html) { const t = document.createElement("template"); t.innerHTML = html; sec.replaceWith(t.content.firstElementChild); }
+          if (st !== "in") clearInterval(v.wpTimer);
+        } catch {}
+      }, 15000);
+    }
     /* ---------- every sport: scores by period + team stat bars ---------- */
     function linescoreHtml(comp, lg) {
       const cs = (comp.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
@@ -2332,13 +2425,8 @@
       if (lg === "nba" || lg === "mlb") { v.s = s; v.lg = lg; v.teams = teams; v.chartTeam = "all"; v.id = id; v.updated = Date.now(); h += '<div class="g-sec" data-chart data-c="plays timeouts">' + chartSecHtml(v) + "</div>"; }
       if (lg === "mlb") h += mlbSituation(lg, id, teams);
       h += linescoreHtml(comp, lg);
-      const wp = winProb(s, st.state);
-      if (wp && teams.length === 2) {
-        const hp = pct(wp.home), ap = 100 - hp;
-        const col = (t) => "#" + (t.team?.color || "8a93a5");
-        h += '<div class="g-sec" data-c="stats"><div class="g-label">Win probability</div><div class="wp"><span>' + esc(teams[0].team?.abbreviation) + " <b>" + ap + '%</b></span><span><b>' + hp + "%</b> " + esc(teams[1].team?.abbreviation) + "</span></div>" +
-          '<div class="wp-bar"><i style="width:' + ap + "%;background:" + esc(col(teams[0])) + '"></i><i style="background:' + esc(col(teams[1])) + '"></i></div><div class="g-note">' + esc(wp.src) + "</div></div>";
-      }
+      h += wpSectionHtml(s, teams, st.state, id, lg);
+
 
       const byTeam = {};
       (s.leaders || []).forEach((L) => { byTeam[L.team?.id] = L.leaders || []; });
@@ -2369,6 +2457,7 @@
       if (lg === "nfl" || lg === "cfb") loadField(v, lg, id, teams, st.state);
       if (lg === "nba" || lg === "mlb") renderSportFeed(v, false);
       if ((lg === "nba" || lg === "mlb") && st.state === "in") liveSummary(v);
+      if (st.state === "in") wpLive(v, lg, id);
     }
 
     const ROSTER_GROUPS = { offense: "Offense", defense: "Defense", specialTeam: "Special teams", injuredReserveOrOut: "Injured reserve / out", suspended: "Suspended", practiceSquad: "Practice squad" };
