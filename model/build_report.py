@@ -14,21 +14,23 @@ def read(name):
 
 def main():
     out = [read("intro.md") or "# Scoreline win probability: models and backtest", ""]
-    rows = ["| Sport | Held-out plays | Brier ours | Brier ESPN | Log loss ours | Log loss ESPN | Verdict |",
-            "|---|---|---|---|---|---|---|"]
+    rows = ["| Sport | Latest held-out season | Brier ours / ESPN | Log loss ours / ESPN | 3 seasons pooled: Brier ours / ESPN (95% CI of gap) | Verdict |",
+            "|---|---|---|---|---|---|"]
     for key, name in SPORTS:
         mp = os.path.join(REPORTS, f"metrics-{key}.json")
         if not os.path.exists(mp):
-            rows.append(f"| {name} | not run | | | | | |")
+            rows.append(f"| {name} | not run | | | | |")
             continue
         m = json.load(open(mp, encoding="utf-8"))
-        e = m.get("espn")
+        e, r = m.get("espn"), m.get("rolling")
         if e:
             v = m.get("verdict_final") or e.get("verdict")
-            rows.append(f"| {name} | {e['rows']:,} ({e['games']:,} games) | {e['brier_ours']:.4f} | {e['brier_other']:.4f} | "
-                        f"{e['logloss_ours']:.4f} | {e['logloss_other']:.4f} | **{v}** |")
+            pooled = (f"{r['brier_ours']:.4f} / {r['brier_other']:.4f} ({r['brier_diff_ci95'][0]:+.4f} to {r['brier_diff_ci95'][1]:+.4f})"
+                      if r else "")
+            rows.append(f"| {name} | {e['rows']:,} plays, {e['games']:,} games | {e['brier_ours']:.4f} / {e['brier_other']:.4f} | "
+                        f"{e['logloss_ours']:.4f} / {e['logloss_other']:.4f} | {pooled} | **{v}** |")
         else:
-            rows.append(f"| {name} | {m.get('summary_row', 'see section')} | | | | | **{m.get('verdict_final', m.get('verdict', '-'))}** |")
+            rows.append(f"| {name} | {m.get('summary_row', 'see section')} | | | | **{m.get('verdict_final', m.get('verdict', '-'))}** |")
     out += ["## Summary", "", *rows, ""]
     for key, _ in SPORTS:
         res, notes = read(f"results-{key}.md"), read(f"notes-{key}.md")

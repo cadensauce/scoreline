@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 import nba
-from backtest import espn_section
+from backtest import espn_section, rolling_section
 from common import (DATA, MODELS, OUT, REPORTS, check_export, download, eval_trees, export_trees, fetch_summaries,
                     fit_gbm, js_cases, load_summary, log, parse_clock, run_elo, sigmoid, tune_elo, write_json)
 from strength import strh_array
@@ -43,7 +43,7 @@ def main():
     g = g.dropna(subset=["hs", "as_"]).sort_values(["date", "game_id"])
     glist = [{"gid": r.game_id, "season": int(r.season), "home": r.home, "away": r.away, "hs": float(r.hs),
               "as": float(r.as_), "neutral": False} for r in g.itertuples() if r.hs != r.as_]
-    eparams = tune_elo(glist, {"k": [15, 20, 25], "hfa": [40, 70, 100], "revert": [0.25, 0.4, 0.55]},
+    eparams = tune_elo(glist, {"k": [15, 20, 25], "hfa": [15, 25, 40, 55], "revert": [0.3, 0.4, 0.55]},
                        set(range(FIRST + 2, TEST)), mov="basketball")
     pre, ratings = run_elo(glist, eparams["k"], eparams["hfa"], eparams["revert"], mov="basketball")
     final = dict(zip(g.game_id, (g.hs > g.as_).astype(float)))
@@ -73,42 +73,56 @@ def main():
     df["hs"] = df.groupby("game")["hs"].cummax()
     df["as_"] = df.groupby("game")["as_"].cummax()
     df = df[df.groupby("game")["hs"].transform("max") != df.groupby("game")["as_"].transform("max")]
-    tr, va = df[df.season < TEST - 1], df[df.season == TEST - 1]
-    log(f"train {len(tr):,} rows / {tr.game.nunique()} games; val {len(va):,} / {va.game.nunique()} games")
-    booster, best = fit_gbm(nba.features(tr), tr.y.to_numpy(), nba.features(va), va.y.to_numpy(), nba.FEATURES,
-                            nba.MONO, params={"min_data_in_leaf": 2000})
-    trees = export_trees(booster)
-    check_export(booster, trees, nba.features(va))
-    ev = lambda F: eval_trees(trees, F)  # noqa
+    def train(S):
+        tr, va = df[df.season < S - 1], df[df.season == S - 1]
+        log(f"[{S}] train {len(tr):,} rows / {tr.game.nunique()} games; val {len(va):,} / {va.game.nunique()} games")
+        booster, best = fit_gbm(nba.features(tr), tr.y.to_numpy(), nba.features(va), va.y.to_numpy(), nba.FEATURES,
+                                nba.MONO, params={"min_data_in_leaf": 2000, "num_leaves": 31})
+        trees = export_trees(booster)
+        check_export(booster, trees, nba.features(va))
+        return trees, best, tr, va
 
-    # ---------------- held-out season on ESPN's play stream
-    test_ids = sorted(pbp[pbp.season == TEST].game_id.astype(str).unique())
-    ok = fetch_summaries("basketball/nba", test_ids, "nba")
-    rows, skipped = [], {}
-    for eid in ok:
-        st, meta = nba.espn_states(load_summary("nba", eid))
-        if st is None:
-            skipped[meta] = skipped.get(meta, 0) + 1
-            continue
-        key = int(eid) if int(eid) in pre else eid
-        if key not in pre:
-            skipped["no elo"] = skipped.get("no elo", 0) + 1
-            continue
-        logit0 = pre[key] - (eparams["hfa"] / 400 * np.log(10) if st and st[0]["neutral"] else 0)
-        p0 = float(sigmoid(logit0))
-        for r in st:
-            r.update({"pregameHomeWP": p0, "_game": eid, "_y": meta["home_win"]})
-        rows += st
-    log(f"espn rows {len(rows):,}; skipped {skipped}")
-    ef = nba.states_to_frame(rows)
-    ef["strh"] = strh_array(rows, None)
-    p_ours = nba.predict_home(ev, ef)
+    def espn_eval(S, ev):
+        test_ids = sorted(pbp[pbp.season == S].game_id.astype(str).unique())
+        ok = fetch_summaries("basketball/nba", test_ids, "nba")
+        rows, skipped = [], {}
+        for eid in ok:
+            st, meta = nba.espn_states(load_summary("nba", eid))
+            if st is None:
+                skipped[meta] = skipped.get(meta, 0) + 1
+                continue
+            key = int(eid) if int(eid) in pre else eid
+            if key not in pre:
+                skipped["no elo"] = skipped.get("no elo", 0) + 1
+                continue
+            logit0 = pre[key] - (eparams["hfa"] / 400 * np.log(10) if st and st[0]["neutral"] else 0)
+            p0 = float(sigmoid(logit0))
+            for r in st:
+                r.update({"pregameHomeWP": p0, "_game": eid, "_y": meta["home_win"]})
+            rows += st
+        log(f"[{S}] espn rows {len(rows):,}; skipped {skipped}")
+        ef = nba.states_to_frame(rows)
+        ef["strh"] = strh_array(rows, None)
+        return rows, ef, nba.predict_home(ev, ef)
+
+    folds = []
+    for S in (TEST - 2, TEST - 1):
+        trees_s = train(S)[0]
+        rws, _, po = espn_eval(S, lambda F, t=trees_s: eval_trees(t, F))
+        folds.append((f"{S - 1}-{str(S)[2:]}", np.array([r["_game"] for r in rws]), np.array([r["_y"] for r in rws]), po,
+                      np.array([r["_espn"] for r in rws])))
+    trees, best, tr, va = train(TEST)
+    ev = lambda F: eval_trees(trees, F)  # noqa
+    rows, ef, p_ours = espn_eval(TEST, ev)
     p_espn = np.array([r["_espn"] for r in rows])
     y = np.array([r["_y"] for r in rows])
     gm = np.array([r["_game"] for r in rows])
     pnames = [(1.0, "Q1"), (2.0, "Q2"), (3.0, "Q3"), (4.0, "Q4"), (lambda p: p >= 5, "OT")]
     md_e, met_e = espn_section("nba", f"NBA {TEST - 1}-{str(TEST)[2:]}", gm, y, p_ours, p_espn,
                                ef["period"].to_numpy(), pnames)
+    folds.append((f"{TEST - 1}-{str(TEST)[2:]}", gm, y, p_ours, p_espn))
+    md_r, met_r = rolling_section(folds)
+    met_e["verdict"] = met_r["verdict"]
 
     elo = {"hfa": eparams["hfa"], "revert": eparams["revert"], "base": 1500.0, "ratings": ratings,
            "asOf": str(g.date.max())}
@@ -134,13 +148,14 @@ def main():
           f"including playoffs. Pre-game strength: Scoreline's own Elo from final scores (k={eparams['k']}, home edge "
           f"{eparams['hfa']}, {int(eparams['revert'] * 100)}% regression between seasons; pre-game log loss "
           f"{eparams['pregame_logloss']:.4f}). No betting lines are used.", "",
-          f"**Model.** Gradient-boosted trees ({len(trees)} trees, 15 leaves, monotone in margin, possession and strength). "
+          f"**Model.** Gradient-boosted trees ({len(trees)} trees, 31 leaves, monotone in margin, possession and strength). "
           "Inputs: margin, seconds left, overtime, period, who has the ball (inferred from the last play), pre-game strength, "
           "strength x time left, margin / sqrt(time left).", "",
-          f"### Held-out {TEST - 1}-{str(TEST)[2:]}: ours vs ESPN on ESPN's own plays", "", *md_e]
+          f"### Held-out {TEST - 1}-{str(TEST)[2:]}: ours vs ESPN on ESPN's own plays", "", *md_e, "",
+          "### Rolling backtest: three most recent seasons (each predicted by a model trained only on earlier seasons)", "", *md_r]
     with open(os.path.join(REPORTS, "results-nba.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(md) + "\n")
-    write_json(os.path.join(REPORTS, "metrics-nba.json"), {"espn": met_e, "elo": eparams, "trees": len(trees),
+    write_json(os.path.join(REPORTS, "metrics-nba.json"), {"espn": met_e, "rolling": met_r, "elo": eparams, "trees": len(trees),
                                                             "best_rounds": best}, compact=False)
     log("done", met_e["brier_ours"], met_e["brier_other"])
 

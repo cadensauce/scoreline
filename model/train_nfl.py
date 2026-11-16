@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 import football as fb
-from backtest import espn_section
+from backtest import espn_section, rolling_section
 from common import (DATA, MODELS, OUT, REPORTS, check_export, download, eval_trees, export_trees, fetch_summaries,
                     fit_gbm, js_cases, load_summary, log, run_elo, sigmoid, tune_elo, write_json, compare_block)
 from strength import strh_array
@@ -34,7 +34,7 @@ def main():
               "neutral": r.location == "Neutral"} for r in games.itertuples()]
     done = [g for g in glist if g["hs"] is not None]
     log(f"games: {len(done)} completed ({games.season.min()}-{games.season.max()})")
-    eparams = tune_elo(done, {"k": [15, 20, 25, 30], "hfa": [20, 35, 50, 65], "revert": [0.2, 0.33, 0.5]},
+    eparams = tune_elo(done, {"k": [15, 20, 25, 30], "hfa": [35, 50, 65], "revert": [0.33, 0.5, 0.67]},
                        set(range(2002, TEST)), mov="football")
     pre, ratings = run_elo(done, eparams["k"], eparams["hfa"], eparams["revert"], mov="football")
     gmeta = games.set_index("game_id")
@@ -72,12 +72,49 @@ def main():
     df = df[df.strh.notna()].reset_index(drop=True)
     df["ytg"] = df["ytg"].clip(1, 99)
     df["y"] = np.where(df.poss > 0, df.home_win, 1 - df.home_win)
-    tr, va, te = df[df.season < TEST - 1], df[df.season == TEST - 1], df[df.season == TEST]
-    log(f"train {len(tr):,} rows / {tr.game.nunique()} games; val {len(va):,}; test {len(te):,} / {te.game.nunique()} games")
     X = lambda f: fb.features(f, "nfl", f["poss"].to_numpy())  # noqa
-    booster, best = fit_gbm(X(tr), tr.y.to_numpy(), X(va), va.y.to_numpy(), fb.NFL_FEATURES, fb.NFL_MONO)
-    trees = export_trees(booster)
-    check_export(booster, trees, X(te))
+    team_ids = {}
+
+    def train(S):
+        tr, va = df[df.season < S - 1], df[df.season == S - 1]
+        log(f"[{S}] train {len(tr):,} rows / {tr.game.nunique()} games; val {len(va):,}")
+        booster, best = fit_gbm(X(tr), tr.y.to_numpy(), X(va), va.y.to_numpy(), fb.NFL_FEATURES, fb.NFL_MONO)
+        trees = export_trees(booster)
+        check_export(booster, trees, X(va))
+        return trees, best, tr, va
+
+    def espn_eval(S, ev):
+        tg = games[(games.season == S) & games.home_score.notna() & games.espn.notna()]
+        id_of = {str(int(e)): g for e, g in zip(tg.espn, tg.game_id)}
+        ok = fetch_summaries("football/nfl", list(id_of), "nfl")
+        rows, skipped = [], {}
+        for eid in ok:
+            st, meta = fb.espn_states(load_summary("nfl", eid))
+            if st is None:
+                skipped[meta] = skipped.get(meta, 0) + 1
+                continue
+            gid = id_of[eid]
+            g = gmeta.loc[gid]
+            team_ids[g.home_team] = meta["home_id"]
+            team_ids[g.away_team] = meta["away_id"]
+            p0 = float(sigmoid(pre[gid]))
+            for r in st:
+                r.update({"pregameHomeWP": p0, "_game": eid, "_y": meta["home_win"]})
+            rows += st
+        log(f"[{S}] espn rows {len(rows):,}; skipped games {skipped}")
+        ef = fb.states_to_frame(rows)
+        ef["strh"] = strh_array(rows, None)
+        can = fb.canonical(ef, "nfl")
+        return rows, can, fb.predict_home(ev, can, "nfl")
+
+    folds = []
+    for S in (TEST - 2, TEST - 1):
+        trees_s = train(S)[0]
+        rws, can_s, po = espn_eval(S, lambda F, t=trees_s: eval_trees(t, F))
+        folds.append((str(S), np.array([r["_game"] for r in rws]), np.array([r["_y"] for r in rws]), po,
+                      np.array([r["_espn"] for r in rws])))
+    trees, best, tr, va = train(TEST)
+    te = df[df.season == TEST]
     ev = lambda F: eval_trees(trees, F)  # noqa
 
     # ---------------- test on nflverse rows (vs nflverse wp and vegas wp)
@@ -90,34 +127,16 @@ def main():
                                   te.game.to_numpy()[m_nv], yv, ours_nv[m_nv], te.nv_vegas.to_numpy()[m_nv])
 
     # ---------------- test on ESPN's own play stream
-    tg = games[(games.season == TEST) & games.home_score.notna() & games.espn.notna()]
-    id_of = {str(int(e)): g for e, g in zip(tg.espn, tg.game_id)}
-    ok = fetch_summaries("football/nfl", list(id_of), "nfl")
-    rows, team_ids, skipped = [], {}, {}
-    for eid in ok:
-        st, meta = fb.espn_states(load_summary("nfl", eid))
-        if st is None:
-            skipped[meta] = skipped.get(meta, 0) + 1
-            continue
-        gid = id_of[eid]
-        g = gmeta.loc[gid]
-        team_ids[g.home_team] = meta["home_id"]
-        team_ids[g.away_team] = meta["away_id"]
-        p0 = float(sigmoid(pre[gid]))
-        for r in st:
-            r.update({"pregameHomeWP": p0, "_game": eid, "_y": meta["home_win"]})
-        rows += st
-    log(f"espn rows {len(rows):,}; skipped games {skipped}")
-    ef = fb.states_to_frame(rows)
-    ef["strh"] = strh_array(rows, None)
-    can = fb.canonical(ef, "nfl")
-    p_ours = fb.predict_home(ev, can, "nfl")
+    rows, can, p_ours = espn_eval(TEST, ev)
     p_espn = np.array([r["_espn"] for r in rows])
     y = np.array([r["_y"] for r in rows])
     gm = np.array([r["_game"] for r in rows])
     per = can["period"].to_numpy()
     pnames = [(1.0, "Q1"), (2.0, "Q2"), (3.0, "Q3"), (4.0, "Q4"), (lambda p: p >= 5, "OT")]
     md_e, met_e = espn_section("nfl", f"NFL {TEST}", gm, y, p_ours, p_espn, per, pnames)
+    folds.append((str(TEST), gm, y, p_ours, p_espn))
+    md_r, met_r = rolling_section(folds)
+    met_e["verdict"] = met_r["verdict"]
 
     # ---------------- export
     elo = {"hfa": eparams["hfa"], "revert": eparams["revert"], "base": 1500.0,
@@ -157,11 +176,13 @@ def main():
           "", f"### Held-out {TEST}: ours vs ESPN on ESPN's own plays", "",
           "Both models are scored on exactly the same moments: right after each play that ESPN published a win probability for. "
           "Our input is built from ESPN's play-by-play the same way the app will build it live.", "", *md_e,
+          "", f"### Rolling backtest: {TEST - 2}, {TEST - 1} and {TEST} (each season predicted by a model trained only on earlier seasons)",
+          "", *md_r,
           "", f"### Held-out {TEST}: ours vs nflverse on nflverse plays (before each snap)", "", *md_nv, "", *md_vg]
     with open(os.path.join(REPORTS, "results-nfl.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(md) + "\n")
     write_json(os.path.join(REPORTS, "metrics-nfl.json"),
-               {"espn": met_e, "nflverse_wp": met_nv, "nflverse_vegas_wp": met_vg, "elo": eparams,
+               {"espn": met_e, "rolling": met_r, "nflverse_wp": met_nv, "nflverse_vegas_wp": met_vg, "elo": eparams,
                 "trees": len(trees), "best_rounds": best}, compact=False)
     log("done", met_e["brier_ours"], met_e["brier_other"])
 

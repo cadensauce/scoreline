@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 import football as fb
-from backtest import espn_section
+from backtest import espn_section, rolling_section
 from common import (DATA, MODELS, OUT, REPORTS, check_export, download, eval_trees, export_trees, fetch_summaries,
                     fit_gbm, js_cases, load_summary, log, run_elo, sigmoid, tune_elo, write_json)
 from strength import strh_array
@@ -42,7 +42,7 @@ def main():
               "hs": float(r.home_points), "as": float(r.away_points), "neutral": bool(r.neutral_site)}
              for r in comp.itertuples()]
     log(f"schedule: {len(glist):,} completed games {comp.season.min()}-{comp.season.max()}")
-    eparams = tune_elo(glist, {"k": [20, 30, 40], "hfa": [40, 60, 80], "revert": [0.2, 0.33, 0.5]},
+    eparams = tune_elo(glist, {"k": [30, 40, 55], "hfa": [25, 40, 55], "revert": [0.1, 0.2, 0.3]},
                        set(range(2008, TEST)), mov="football", base_of=base_of)
     pre, ratings = run_elo(glist, eparams["k"], eparams["hfa"], eparams["revert"], mov="football", base_of=base_of)
 
@@ -50,9 +50,9 @@ def main():
     log(f"FBS games {FIRST}-{TEST}: {len(fbs):,}")
     ok = set(fetch_summaries("football/college-football", fbs.game_id.astype(int).astype(str).tolist(), "cfb"))
     season_of = dict(zip(fbs.game_id.astype(int).astype(str), fbs.season.astype(int)))
-    train_rows, test_rows, skipped = [], [], {}
+    all_rows, skipped = [], {}
     for eid in sorted(ok):
-        st, meta = fb.espn_states(load_summary("cfb", eid), require_wp=(season_of[eid] == TEST))
+        st, meta = fb.espn_states(load_summary("cfb", eid), require_wp=False)
         if st is None:
             skipped[meta] = skipped.get(meta, 0) + 1
             continue
@@ -62,35 +62,52 @@ def main():
         for r in st:
             r.update({"pregameHomeWP": p0, "_game": eid, "_y": meta["home_win"], "_season": season_of[eid],
                       "_strh": pre[int(eid)]})
-        (test_rows if season_of[eid] == TEST else train_rows).extend(st)
-    log(f"rows: train {len(train_rows):,}, test {len(test_rows):,}; skipped {skipped}")
+        all_rows.extend(st)
+    log(f"rows: {len(all_rows):,}; skipped {skipped}")
+    train_rows = [r for r in all_rows if r["_season"] < TEST]
 
     tf = fb.canonical(fb.states_to_frame(train_rows), "cfb")
     tf["strh"] = [r["_strh"] for r in train_rows]
     tf["season"] = [r["_season"] for r in train_rows]
     tf["game"] = [r["_game"] for r in train_rows]
-    hw = np.array([r["_y"] for r in train_rows])
+    tf["hw"] = np.array([r["_y"] for r in train_rows])
     # unknown possession rows can't be oriented; drop them from training only
-    tf["hw"] = hw
     tf = tf[tf.poss != 0].reset_index(drop=True)
     tf["y"] = np.where(tf.poss > 0, tf.hw, 1 - tf.hw)
-    tr, va = tf[tf.season < TEST - 1], tf[tf.season == TEST - 1]
-    log(f"train {len(tr):,} rows / {tr.game.nunique()} games; val {len(va):,} / {va.game.nunique()} games")
     X = lambda f: fb.features(f, "cfb", f["poss"].to_numpy())  # noqa
-    booster, best = fit_gbm(X(tr), tr.y.to_numpy(), X(va), va.y.to_numpy(), fb.CFB_FEATURES, fb.CFB_MONO)
-    trees = export_trees(booster)
-    check_export(booster, trees, X(va))
-    ev = lambda F: eval_trees(trees, F)  # noqa
 
-    ef = fb.states_to_frame(test_rows)
-    ef["strh"] = strh_array(test_rows, None)
-    can = fb.canonical(ef, "cfb")
-    p_ours = fb.predict_home(ev, can, "cfb")
+    def train(S):
+        tr, va = tf[tf.season < S - 1], tf[tf.season == S - 1]
+        log(f"[{S}] train {len(tr):,} rows / {tr.game.nunique()} games; val {len(va):,} / {va.game.nunique()} games")
+        booster, best = fit_gbm(X(tr), tr.y.to_numpy(), X(va), va.y.to_numpy(), fb.CFB_FEATURES, fb.CFB_MONO)
+        trees = export_trees(booster)
+        check_export(booster, trees, X(va))
+        return trees, best, tr, va
+
+    def espn_eval(S, ev):
+        rows = [r for r in all_rows if r["_season"] == S and r["_espn"] is not None]
+        ef = fb.states_to_frame(rows)
+        ef["strh"] = strh_array(rows, None)
+        can = fb.canonical(ef, "cfb")
+        return rows, can, fb.predict_home(ev, can, "cfb")
+
+    folds = []
+    for S in (TEST - 2, TEST - 1):
+        trees_s = train(S)[0]
+        rws, _, po = espn_eval(S, lambda F, t=trees_s: eval_trees(t, F))
+        folds.append((str(S), np.array([r["_game"] for r in rws]), np.array([r["_y"] for r in rws]), po,
+                      np.array([r["_espn"] for r in rws])))
+    trees, best, tr, va = train(TEST)
+    ev = lambda F: eval_trees(trees, F)  # noqa
+    test_rows, can, p_ours = espn_eval(TEST, ev)
     p_espn = np.array([r["_espn"] for r in test_rows])
     y = np.array([r["_y"] for r in test_rows])
     gm = np.array([r["_game"] for r in test_rows])
     pnames = [(1.0, "Q1"), (2.0, "Q2"), (3.0, "Q3"), (4.0, "Q4"), (lambda p: p >= 5, "OT")]
     md_e, met_e = espn_section("cfb", f"College football {TEST}", gm, y, p_ours, p_espn, can["period"].to_numpy(), pnames)
+    folds.append((str(TEST), gm, y, p_ours, p_espn))
+    md_r, met_r = rolling_section(folds)
+    met_e["verdict"] = met_r["verdict"]
 
     recent = {t for g in glist if g["season"] >= TEST - 1 for t in (g["home"], g["away"])}
     elo = {"hfa": eparams["hfa"], "revert": eparams["revert"], "base": OTHER,
@@ -129,10 +146,11 @@ def main():
           "", f"**Model.** Gradient-boosted trees ({len(trees)} trees, 15 leaves). Same inputs as NFL minus timeouts "
           "(not reliably in the college feed) plus the period number (overtime rules change by period). "
           "Kickoff and extra-point moments are treated as the receiving team's 1st and 10 at its own 25.", "",
-          f"### Held-out {TEST}: ours vs ESPN on ESPN's own plays", "", *md_e]
+          f"### Held-out {TEST}: ours vs ESPN on ESPN's own plays", "", *md_e, "",
+          f"### Rolling backtest: {TEST - 2}, {TEST - 1} and {TEST} (each season predicted by a model trained only on earlier seasons)", "", *md_r]
     with open(os.path.join(REPORTS, "results-cfb.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(md) + "\n")
-    write_json(os.path.join(REPORTS, "metrics-cfb.json"), {"espn": met_e, "elo": eparams, "trees": len(trees),
+    write_json(os.path.join(REPORTS, "metrics-cfb.json"), {"espn": met_e, "rolling": met_r, "elo": eparams, "trees": len(trees),
                                                             "best_rounds": best}, compact=False)
     log("done", met_e["brier_ours"], met_e["brier_other"])
 
