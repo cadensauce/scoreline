@@ -43,6 +43,17 @@ if (!vapid?.publicKey || !vapid?.privateKey) {
 await db.collection("public").doc("push").set({ vapidPublic: vapid.publicKey });
 webpush.setVapidDetails("https://cadensauce.github.io/scoreline/", vapid.publicKey, vapid.privateKey);
 console.log("Push worker ready for project", sa.project_id);
+// Startup check that ESPN answers from this server (shown in public/push.espnCheck).
+{
+  const check = {};
+  for (const [k, p] of [["nfl", "football/nfl"], ["nba", "basketball/nba"]]) {
+    try { const r = await fetch("https://site.api.espn.com/apis/site/v2/sports/" + p + "/scoreboard"); const j = r.ok ? await r.json() : null; check[k] = r.status + (j ? " · " + (j.events || []).length + " games" : ""); }
+    catch (e) { check[k] = "error: " + (e.cause?.code || e.message); }
+  }
+  check.at = new Date().toISOString();
+  console.log("ESPN check", JSON.stringify(check));
+  await db.collection("public").doc("push").set({ espnCheck: check }, { merge: true }).catch(() => {});
+}
 
 // ---- subscribers -------------------------------------------------------------------------
 let subs = [];
