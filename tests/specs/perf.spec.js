@@ -3,19 +3,18 @@
 // Results go to the console and to perf-results.json; they inform PROGRESS.md, they don't fail the build.
 const { test } = require("@playwright/test");
 const fs = require("fs");
+const { espnViaRunner } = require("./helpers");
 
 const TARGETS = { thisCommit: "http://127.0.0.1:8080/index.html", liveSite: "https://cadensauce.github.io/scoreline/" };
 const results = {};
 
+// Mid-range phone: CPU 4x slower than the runner; ESPN data and logos arrive at "fast 4G" speed
+// (150 ms + ~1.1 MB/s, applied by espnViaRunner since ESPN must be fetched on the runner side).
 async function phone(page) {
   const cdp = await page.context().newCDPSession(page);
-  await cdp.send("Network.enable");
-  await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 150, downloadThroughput: 1.6 * 1024 * 1024 / 8 * 4, uploadThroughput: 750 * 1024 / 8 });
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
-  let bytes = 0, logoBytes = 0, requests = 0;
-  cdp.on("Network.loadingFinished", (e) => { bytes += e.encodedDataLength; requests++; });
-  cdp.on("Network.responseReceived", (e) => { if (/teamlogos/.test(e.response.url)) logoBytes += e.response.encodedDataLength || 0; });
-  return { totals: () => ({ kb: Math.round(bytes / 1024), requests }) };
+  const stats = await espnViaRunner(page, { latencyMs: 150, bytesPerMs: 1100 });
+  return { totals: () => ({ kb: Math.round(stats.bytes / 1024), logoKB: Math.round(stats.logoBytes / 1024), requests: stats.requests }) };
 }
 
 for (const [name, url] of Object.entries(TARGETS)) {
@@ -62,7 +61,7 @@ for (const [name, url] of Object.entries(TARGETS)) {
       new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) cls += e.value; }).observe({ type: "layout-shift", buffered: true });
       setTimeout(() => res({ lcpMs: Math.round(lcp), cls: +cls.toFixed(3), heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null }), 500);
     }));
-    results[name] = { firstScoresMs, reopenScoresMs, downloadKB: load.kb, requests: load.requests, tabSwitchMs: tabs, scroll: frames, ...vitals };
+    results[name] = { firstScoresMs, reopenScoresMs, downloadKB: load.kb, logoKB: load.logoKB, requests: load.requests, tabSwitchMs: tabs, scroll: frames, ...vitals };
     console.log("PERF", name, JSON.stringify(results[name]));
     fs.writeFileSync("perf-results.json", JSON.stringify(results, null, 2));
   });
