@@ -24,12 +24,17 @@ jobs:
       - name: Install Playwright
         run: npm install --no-audit --no-fund && npx playwright install --with-deps chromium
       - name: Run tests
-        run: npx playwright test --grep-invert "speed:"
+        run: mkdir -p screens && npx playwright test --grep-invert "speed:"
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
           path: tests/report
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screens
+          path: tests/screens
 
   speed:
     runs-on: ubuntu-latest
@@ -67,3 +72,5 @@ jobs:
           path: |
             tests/perf-results.json
             tests/lh-*.json
+
+  # (screens are produced by the browser job; see the "screens" artifact)
