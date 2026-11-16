@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794806545" />
+  <meta name="build" content="1794807249" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -118,7 +118,7 @@
     /* ---- Score cards ---- */
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
     @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-    .card { content-visibility: auto; contain-intrinsic-size: auto 96px;   /* off-screen cards skip rendering */
+    .card { content-visibility: auto; contain-intrinsic-size: auto 112px;   /* off-screen cards skip rendering; sized like a real card so nothing jumps */
       background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
       padding: 14px 16px; position: relative; overflow: hidden;
       animation: fadein var(--t) ease both; transition: border-color var(--t-fast), background var(--t-fast);
@@ -704,6 +704,7 @@
       body.scrolled .top-inner { height: 44px; }
       body.scrolled .brand { font-size: 18px; }
       main { padding: 12px 16px calc(104px + env(safe-area-inset-bottom)); }
+      .card { contain-intrinsic-size: auto 76px; }
       footer { padding-left: 12px; padding-right: 12px; }
       footer { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
       .bar { gap: 8px; margin-bottom: 10px; }
