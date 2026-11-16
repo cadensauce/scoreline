@@ -72,3 +72,26 @@ Also fixed on the way: the Android app never registered with the push worker (no
 They are now FCM notification messages that Android shows itself. "Send test notification" now asks the
 server for a real push when background alerts are connected; verified on the user's phone with the app closed.
 Tested: 4 Playwright tests pass in CI (on/off, reload, offline turn-off retry, smoke); manual phone test passed.
+
+### Item 6: performance, pass 1 (shipped 2026-11-16)
+Measured in CI on a simulated mid-range phone (4× slower CPU, fast-4G: 150 ms + ~1.1 MB/s), Home tab,
+same ESPN data for both. "Before" = live site at the time, "after" = this change.
+
+| Metric | Before | After | Change |
+|---|---|---|---|
+| Data downloaded on open | 3,648 KB | 1,534 KB | −58% |
+| Team logos | 2,232 KB | 117 KB | −95% |
+| Reopen app → scores visible | 2,075 ms | 694 ms | −67% (saved scores shown instantly) |
+| Switch to Home tab | 1,713 ms | 522 ms | −70% |
+| Switch to NFL / CFB / NBA | 921 / 1,966 / 1,397 ms | 768 / 2,018 / 1,362 ms | about the same (network-bound) |
+| First-ever open → scores | 2,053 ms | 2,608 ms | single noisy sample; recheck in pass 2 |
+| Memory (JS heap) | 23 MB | 11 MB | −52% |
+| Slow frames scrolling CFB (of 84) | 6 | 5 | smooth either way |
+| Lighthouse performance (mobile) | 65 | 71 | +6 |
+| Layout shift (CLS) | 0.552 | 0.552 | poor: main remaining problem |
+
+Changes: logos via ESPN's resizer at drawn size; only changed game cards are redrawn; last list shown instantly at
+startup; list refresh 10 s while live (game pages keep 5 s).
+Test infra: ESPN blocks browser requests from GitHub's servers, so tests fetch ESPN with Node and hand the data
+to the page; the smoke test now fails if scores don't load. Push worker verified to reach ESPN (startup check).
+Next: fix the 0.55 layout shift (biggest Lighthouse cost), recheck first-open time, target Lighthouse 90+.
