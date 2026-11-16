@@ -25,3 +25,12 @@ async function espnViaRunner(page, net) {
   return stats;
 }
 module.exports = { espnViaRunner };
+
+// Open a sport or tab like a person would: from the bottom bar if it's pinned there, otherwise Home → its chip.
+async function goTab(page, tab) {
+  const inBar = page.locator(`[data-tab="${tab}"]:visible`).first();
+  if (await inBar.count()) return inBar.click();
+  await page.locator('[data-tab="home"]:visible').first().click();
+  await page.locator(`.sport-chips [data-tab="${tab}"]`).first().click();
+}
+module.exports.goTab = goTab;
