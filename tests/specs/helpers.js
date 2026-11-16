@@ -7,6 +7,8 @@ const cache = new Map();   // same URL within a run: fetch once (keeps ESPN load
 
 async function espnViaRunner(page, net) {
   const stats = { bytes: 0, logoBytes: 0, requests: 0 };
+  // Pin the sports the tests visit (the bar holds up to 4; Home shows only pinned sports).
+  await page.addInitScript(() => { try { if (!localStorage.getItem("scoreline:pins")) localStorage.setItem("scoreline:pins", JSON.stringify(["nfl", "cfb", "nba", "f1"])); } catch {} });
   await page.route(/https:\/\/(site\.api\.espn\.com|sports\.core\.api\.espn\.com|site\.web\.api\.espn\.com|a\.espncdn\.com)\//, async (route) => {
     const url = route.request().url();
     try {
@@ -26,11 +28,8 @@ async function espnViaRunner(page, net) {
 }
 module.exports = { espnViaRunner };
 
-// Open a sport or tab like a person would: from the bottom bar if it's pinned there, otherwise Home → its chip.
+// Open a sport or tab from the bottom bar. Tests pin NFL, CFB, NBA and F1 (see espnViaRunner) so they're in the bar.
 async function goTab(page, tab) {
-  const inBar = page.locator(`[data-tab="${tab}"]:visible`).first();
-  if (await inBar.count()) return inBar.click();
-  await page.locator('[data-tab="home"]:visible').first().click();
-  await page.locator(`.sport-chips [data-tab="${tab}"]`).first().click();
+  return page.locator(`[data-tab="${tab}"]:visible`).first().click();
 }
 module.exports.goTab = goTab;
