@@ -7,10 +7,16 @@ const SUBS = /firestore\.googleapis\.com\/.*\/documents\/pushSubs\/([0-9a-f]{64}
 
 async function setup(page, context, { deleteFails = false } = {}) {
   await context.grantPermissions(["notifications"]);
+  // Act like the installed Android app: Tauri's notification + app APIs and the native push bridge.
   await page.addInitScript(() => {
-    window.__PREVIEW_APP = 1;
+    window.__TAURI__ = {
+      notification: { isPermissionGranted: async () => true, requestPermission: async () => "granted", sendNotification() {} },
+      app: { getVersion: async () => "1.0.99" },
+      opener: { openUrl: async () => {} },
+    };
     window.ScorelineNative = { pushToken: () => "test-token-123", pushError: () => "" };
   });
+  await page.route(/api\.github\.com/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: "{}" }));
   const calls = [];
   await page.route(/firestore\.googleapis\.com/, async (route) => {
     const req = route.request(), m = req.url().match(SUBS);
