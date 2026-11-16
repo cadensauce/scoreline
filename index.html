@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build" content="1794796830" />
+  <meta name="build" content="1794797074" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%230b0e13%27/%3E%3Cpath d=%27M8 21h16M8 16h10M8 11h6%27 stroke=%27%23ff5a36%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -221,10 +221,11 @@
     .ldr-main { min-width: 0; flex: 1; }
     .ldr-main > b { display: block; font-size: 14.5px; margin-bottom: 6px; }
     .ldr-main > b small { color: var(--muted); font-weight: 600; font-size: 11.5px; margin-left: 2px; }
-    .stats { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+    .stats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px 12px; }   /* one row, equal columns: never wraps a lone number */
     .st { display: flex; flex-direction: column; line-height: 1.1; }
     .st b { font-family: var(--display); font-size: 21px; font-weight: 800; }
     .st small { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    @media (max-width: 420px) { .st b { font-size: 18px; } .stats { gap: 6px 8px; } }
     button.ldr { width: 100%; text-align: left; color: inherit; border: 0; transition: background var(--t-fast); }
     @media (hover: hover) { button.ldr:hover, .row[data-player]:hover, .row[data-ev]:hover, .pf[data-feed]:hover, .pf[data-player]:hover { background: var(--panel-2); } }
     button.ldr:active, .row[data-player]:active { background: var(--panel-3); }
@@ -757,7 +758,6 @@
         <button class="refresh" id="accountBtn" type="button" aria-label="Account" title="Account"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></button>
         <button class="refresh" id="notifyBtn" type="button" aria-label="Score alerts" title="Score alerts for your ★ teams">🔔</button>
         <span id="updated">Loading…</span>
-        <button class="refresh" id="refresh" type="button" aria-label="Refresh scores" title="Refresh">↻</button>
       </div>
     </div>
   </header>
@@ -2689,11 +2689,7 @@
         ptr.classList.remove("go"); set(0, true);
       });
     })();
-    $("refresh").addEventListener("click", () => {
-      const b = $("refresh");
-      b.classList.remove("spin"); void b.offsetWidth; b.classList.add("spin");
-      render();
-    });
+    // (No refresh button: scores refresh themselves, and on phones you can pull down to refresh.)
     /* auto-update: if a newer index.html is live, reload into it (skips the 10-min HTTP cache) */
     const BUILD = document.querySelector("meta[name=build]")?.content;
     async function checkBuild() {
