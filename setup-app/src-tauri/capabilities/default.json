@@ -1,0 +1,10 @@
+{
+  "identifier": "default",
+  "description": "Scoreline Setup window: progress events, close and drag its own frameless window.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging"
+  ]
+}

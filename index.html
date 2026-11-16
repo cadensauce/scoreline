@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794809586" />
+  <meta name="build" content="1794859380" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2079,8 +2079,8 @@
           '<div class="ga-note">Scoreline isn\'t on the Play Store yet, so Android shows a safety prompt the first time. New versions install from the banner inside the app.</div>';
       } else {
         body = '<div class="ga-hero"><b>Scoreline for Windows</b><span>Free · Windows 10 and 11</span></div>' +
-          '<a class="pill-btn ga-dl" href="' + REL + 'Scoreline-Windows-Setup.exe">Download for Windows</a>' +
-          step(1, "Run <b>Scoreline-Windows-Setup.exe</b> when the download finishes.") +
+          '<a class="pill-btn ga-dl" href="' + REL + 'Scoreline-Setup.exe">Download for Windows</a>' +
+          step(1, "Open <b>Scoreline-Setup.exe</b> when the download finishes. It installs and opens Scoreline.") +
           step(2, "If Windows shows \"Windows protected your PC\", click <b>More info</b> → <b>Run anyway</b>.") +
           step(3, "Scoreline opens and adds itself to the Start menu.") +
           '<div class="ga-note">The warning appears because the app isn\'t signed with a paid Microsoft certificate yet.</div>';
@@ -3149,7 +3149,7 @@
         const latest = Number(String(rel.tag_name || "").replace(/\D+/g, "") || 0);
         if (!latest || latest <= current) return;
         const android = /android/i.test(navigator.userAgent);
-        const file = android ? "Scoreline-Android.apk" : "Scoreline-Windows-Setup.exe";
+        const file = android ? "Scoreline-Android.apk" : "Scoreline-Setup.exe";
         const url = "https://github.com/cadensauce/scoreline/releases/latest/download/" + file;
         const bar = document.createElement("div");
         bar.className = "update-bar";
