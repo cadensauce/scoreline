@@ -54,8 +54,23 @@ Latest season alone, the automatic check says: show ESPN's (ours scores slightly
 | 2023-24 | 1,318 | 613,470 | 0.1473 | 0.1461 | 0.4432 | 0.4413 |
 | 2024-25 | 1,321 | 624,637 | 0.1515 | 0.1513 | 0.4526 | 0.4530 |
 | 2025-26 | 1,317 | 640,036 | 0.1461 | 0.1473 | 0.4381 | 0.4414 |
-| **All 3 pooled** | 3,956 | 1,878,143 | **0.1483** | 0.1482 | **0.4446** | 0.4452 |
+| **All 3 pooled** | 3,956 | 1,878,143 | 0.1483 | **0.1482** | **0.4446** | 0.4452 |
 
 Pooled Brier difference (ours minus ESPN): +0.0000, 95% CI -0.0016 to +0.0016 (bootstrap over games). Ours is better on both metrics in 1 of 3 seasons.
 
 **Automatic verdict: show ESPN's.** ESPN's numbers score better than ours across the held-out seasons; show ESPN's number, labelled as ESPN's.
+
+### Variant: same model, pre-game strength taken from ESPN instead of our Elo
+
+Same trees; the strength input is ESPN's first published win probability for the game (the app can read it live from the summary's first `winprobability` entry or the pre-game predictor). Everything else is ours.
+
+| Held-out season | Games | Plays | Brier ours | Brier ESPN | Log loss ours | Log loss ESPN |
+|---|---|---|---|---|---|---|
+| 2023-24 | 1,318 | 613,470 | 0.1439 | 0.1461 | 0.4350 | 0.4413 |
+| 2024-25 | 1,321 | 624,637 | 0.1487 | 0.1513 | 0.4457 | 0.4530 |
+| 2025-26 | 1,317 | 640,036 | 0.1452 | 0.1473 | 0.4359 | 0.4414 |
+| **All 3 pooled** | 3,956 | 1,878,143 | **0.1459** | 0.1482 | **0.4388** | 0.4452 |
+
+Pooled Brier difference (ours minus ESPN): -0.0023, 95% CI -0.0033 to -0.0012 (bootstrap over games). Ours is better on both metrics in 3 of 3 seasons.
+
+**Automatic verdict: ship ours.** Ours has lower Brier score and log loss than ESPN across the held-out seasons, and the Brier gap is outside the bootstrap noise.

@@ -1,5 +1,31 @@
 # Scoreline win probability: models and backtest
 
+Scoreline's own win-probability models, one per sport, trained on free historical data and backtested on
+seasons the models never saw. "ESPN" below is the number the app shows today (ESPN's live win probability),
+scored on exactly the same moments as ours.
+
+How to read the numbers:
+- **Brier score** = average of (predicted probability - result)^2, where result is 1 if the home team won.
+  Lower is better; always guessing 50% scores 0.25.
+- **Log loss** = average of -log(probability given to what actually happened). Lower is better; it punishes
+  confident misses hard. Probabilities are clipped to 0.1%-99.9% for both models before scoring.
+- **Calibration**: of all moments where a model said 70%, did the home team win about 70% of the time?
+  Each chart shows ours and ESPN's on the same axes; points on the dashed line are perfectly calibrated.
+- **95% CI**: plays within a game are not independent, so the uncertainty comes from resampling whole games
+  (1,000 bootstrap samples). If the interval for "ours minus ESPN" includes 0, the difference could be luck.
+- **Verdict rule** (decided before seeing results): ship ours only if it beats ESPN on both Brier and log loss
+  and the Brier gap's 95% interval is entirely below 0 across the pooled held-out seasons. Otherwise the app
+  shows ESPN's number, labelled as ESPN's.
+
+Everything here is produced by `.github/workflows/winprob.yml` (Python in GitHub Actions; this PC has no
+Python). Retrain: `gh workflow run winprob.yml -R cadensauce/scoreline` (optionally `-f sports=nfl,nba`).
+Models: `models/wp-{sport}.json`, browser runtime: `models/wp.js` (`window.ScorelineWP`), training code: `model/`.
+The workflow also checks that `models/wp.js` reproduces the Python predictions on 3,000 held-out states per sport.
+
+Data credits: nflverse (NFL play-by-play and schedules, CC-BY 4.0); sportsdataverse / hoopR (NBA play-by-play)
+and sportsdataverse `cfb_schedules` (college schedules/results); ESPN public summary feed (college play-by-play
+and every "ESPN" comparison number); OpenF1 and Jolpica-F1 (F1, CC BY-NC-SA 4.0, non-commercial).
+
 ## Summary
 
 | Sport | Latest held-out season | Brier ours / ESPN | Log loss ours / ESPN | 3 seasons pooled: Brier ours / ESPN (95% CI of gap) | Verdict |
@@ -67,9 +93,24 @@ Latest season alone, the automatic check says: show ESPN's (ours scores slightly
 | 2023 | 285 | 52,000 | 0.1576 | 0.1525 | 0.4741 | 0.4582 |
 | 2024 | 285 | 51,721 | 0.1441 | 0.1447 | 0.4318 | 0.4352 |
 | 2025 | 284 | 50,013 | 0.1621 | 0.1634 | 0.4834 | 0.4865 |
-| **All 3 pooled** | 854 | 153,734 | **0.1545** | 0.1534 | **0.4629** | 0.4597 |
+| **All 3 pooled** | 854 | 153,734 | 0.1545 | **0.1534** | 0.4629 | **0.4597** |
 
 Pooled Brier difference (ours minus ESPN): +0.0011, 95% CI -0.0029 to +0.0047 (bootstrap over games). Ours is better on both metrics in 2 of 3 seasons.
+
+**Automatic verdict: show ESPN's.** ESPN's numbers score better than ours across the held-out seasons; show ESPN's number, labelled as ESPN's.
+
+### Variant: same model, pre-game strength taken from ESPN instead of our Elo
+
+Same trees; the strength input is ESPN's first published win probability for the game (the app can read it live from the summary's first `winprobability` entry or the pre-game predictor). Everything else is ours.
+
+| Held-out season | Games | Plays | Brier ours | Brier ESPN | Log loss ours | Log loss ESPN |
+|---|---|---|---|---|---|---|
+| 2023 | 285 | 52,000 | 0.1553 | 0.1525 | 0.4668 | 0.4582 |
+| 2024 | 285 | 51,721 | 0.1452 | 0.1447 | 0.4351 | 0.4352 |
+| 2025 | 284 | 50,013 | 0.1657 | 0.1634 | 0.4924 | 0.4865 |
+| **All 3 pooled** | 854 | 153,734 | 0.1553 | **0.1534** | 0.4644 | **0.4597** |
+
+Pooled Brier difference (ours minus ESPN): +0.0019, 95% CI -0.0000 to +0.0039 (bootstrap over games). Ours is better on both metrics in 0 of 3 seasons.
 
 **Automatic verdict: show ESPN's.** ESPN's numbers score better than ours across the held-out seasons; show ESPN's number, labelled as ESPN's.
 
@@ -84,8 +125,8 @@ Pooled Brier difference (ours minus ESPN): +0.0011, 95% CI -0.0029 to +0.0047 (b
 
 | Model | Brier (lower is better) | Log loss (lower is better) |
 |---|---|---|
-| Scoreline (ours) | **0.1637** | **0.4876** |
-| nflverse vegas_wp (uses the betting spread) | 0.1597 | 0.4791 |
+| Scoreline (ours) | 0.1637 | 0.4876 |
+| nflverse vegas_wp (uses the betting spread) | **0.1597** | **0.4791** |
 
 43,523 plays from 284 games. Brier difference (ours minus nflverse vegas_wp (uses the betting spread)): +0.0040, 95% CI -0.0016 to +0.0104 (bootstrap over games).
 
@@ -145,11 +186,26 @@ Latest season alone, the automatic check says: show ESPN's (ours scores slightly
 | 2023-24 | 1,318 | 613,470 | 0.1473 | 0.1461 | 0.4432 | 0.4413 |
 | 2024-25 | 1,321 | 624,637 | 0.1515 | 0.1513 | 0.4526 | 0.4530 |
 | 2025-26 | 1,317 | 640,036 | 0.1461 | 0.1473 | 0.4381 | 0.4414 |
-| **All 3 pooled** | 3,956 | 1,878,143 | **0.1483** | 0.1482 | **0.4446** | 0.4452 |
+| **All 3 pooled** | 3,956 | 1,878,143 | 0.1483 | **0.1482** | **0.4446** | 0.4452 |
 
 Pooled Brier difference (ours minus ESPN): +0.0000, 95% CI -0.0016 to +0.0016 (bootstrap over games). Ours is better on both metrics in 1 of 3 seasons.
 
 **Automatic verdict: show ESPN's.** ESPN's numbers score better than ours across the held-out seasons; show ESPN's number, labelled as ESPN's.
+
+### Variant: same model, pre-game strength taken from ESPN instead of our Elo
+
+Same trees; the strength input is ESPN's first published win probability for the game (the app can read it live from the summary's first `winprobability` entry or the pre-game predictor). Everything else is ours.
+
+| Held-out season | Games | Plays | Brier ours | Brier ESPN | Log loss ours | Log loss ESPN |
+|---|---|---|---|---|---|---|
+| 2023-24 | 1,318 | 613,470 | 0.1439 | 0.1461 | 0.4350 | 0.4413 |
+| 2024-25 | 1,321 | 624,637 | 0.1487 | 0.1513 | 0.4457 | 0.4530 |
+| 2025-26 | 1,317 | 640,036 | 0.1452 | 0.1473 | 0.4359 | 0.4414 |
+| **All 3 pooled** | 3,956 | 1,878,143 | **0.1459** | 0.1482 | **0.4388** | 0.4452 |
+
+Pooled Brier difference (ours minus ESPN): -0.0023, 95% CI -0.0033 to -0.0012 (bootstrap over games). Ours is better on both metrics in 3 of 3 seasons.
+
+**Automatic verdict: ship ours.** Ours has lower Brier score and log loss than ESPN across the held-out seasons, and the Brier gap is outside the bootstrap noise.
 
 ## College football
 
@@ -207,11 +263,26 @@ Latest season alone, the automatic check says: show ESPN's (ours scores slightly
 | 2023 | 787 | 135,634 | 0.1228 | 0.1201 | 0.3800 | 0.3745 |
 | 2024 | 783 | 137,253 | 0.1335 | 0.1303 | 0.4061 | 0.3989 |
 | 2025 | 807 | 141,351 | 0.1244 | 0.1255 | 0.3789 | 0.3816 |
-| **All 3 pooled** | 2,377 | 414,238 | **0.1269** | 0.1253 | **0.3883** | 0.3850 |
+| **All 3 pooled** | 2,377 | 414,238 | 0.1269 | **0.1253** | 0.3883 | **0.3850** |
 
 Pooled Brier difference (ours minus ESPN): +0.0016, 95% CI -0.0007 to +0.0038 (bootstrap over games). Ours is better on both metrics in 1 of 3 seasons.
 
 **Automatic verdict: show ESPN's.** ESPN's numbers score better than ours across the held-out seasons; show ESPN's number, labelled as ESPN's.
+
+### Variant: same model, pre-game strength taken from ESPN instead of our Elo
+
+Same trees; the strength input is ESPN's first published win probability for the game (the app can read it live from the summary's first `winprobability` entry or the pre-game predictor). Everything else is ours.
+
+| Held-out season | Games | Plays | Brier ours | Brier ESPN | Log loss ours | Log loss ESPN |
+|---|---|---|---|---|---|---|
+| 2023 | 787 | 135,634 | 0.1177 | 0.1201 | 0.3650 | 0.3745 |
+| 2024 | 783 | 137,253 | 0.1314 | 0.1303 | 0.4004 | 0.3989 |
+| 2025 | 807 | 141,351 | 0.1257 | 0.1255 | 0.3815 | 0.3816 |
+| **All 3 pooled** | 2,377 | 414,238 | **0.1249** | 0.1253 | **0.3824** | 0.3850 |
+
+Pooled Brier difference (ours minus ESPN): -0.0004, 95% CI -0.0016 to +0.0010 (bootstrap over games). Ours is better on both metrics in 1 of 3 seasons.
+
+**Automatic verdict: show ESPN's.** Ours scores slightly better but the gap is within bootstrap noise, so it is not measurably better; show ESPN's number, labelled as ESPN's.
 
 ## F1
 

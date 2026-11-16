@@ -56,9 +56,24 @@ Latest season alone, the automatic check says: show ESPN's (ours scores slightly
 | 2023 | 285 | 52,000 | 0.1576 | 0.1525 | 0.4741 | 0.4582 |
 | 2024 | 285 | 51,721 | 0.1441 | 0.1447 | 0.4318 | 0.4352 |
 | 2025 | 284 | 50,013 | 0.1621 | 0.1634 | 0.4834 | 0.4865 |
-| **All 3 pooled** | 854 | 153,734 | **0.1545** | 0.1534 | **0.4629** | 0.4597 |
+| **All 3 pooled** | 854 | 153,734 | 0.1545 | **0.1534** | 0.4629 | **0.4597** |
 
 Pooled Brier difference (ours minus ESPN): +0.0011, 95% CI -0.0029 to +0.0047 (bootstrap over games). Ours is better on both metrics in 2 of 3 seasons.
+
+**Automatic verdict: show ESPN's.** ESPN's numbers score better than ours across the held-out seasons; show ESPN's number, labelled as ESPN's.
+
+### Variant: same model, pre-game strength taken from ESPN instead of our Elo
+
+Same trees; the strength input is ESPN's first published win probability for the game (the app can read it live from the summary's first `winprobability` entry or the pre-game predictor). Everything else is ours.
+
+| Held-out season | Games | Plays | Brier ours | Brier ESPN | Log loss ours | Log loss ESPN |
+|---|---|---|---|---|---|---|
+| 2023 | 285 | 52,000 | 0.1553 | 0.1525 | 0.4668 | 0.4582 |
+| 2024 | 285 | 51,721 | 0.1452 | 0.1447 | 0.4351 | 0.4352 |
+| 2025 | 284 | 50,013 | 0.1657 | 0.1634 | 0.4924 | 0.4865 |
+| **All 3 pooled** | 854 | 153,734 | 0.1553 | **0.1534** | 0.4644 | **0.4597** |
+
+Pooled Brier difference (ours minus ESPN): +0.0019, 95% CI -0.0000 to +0.0039 (bootstrap over games). Ours is better on both metrics in 0 of 3 seasons.
 
 **Automatic verdict: show ESPN's.** ESPN's numbers score better than ours across the held-out seasons; show ESPN's number, labelled as ESPN's.
 
@@ -73,7 +88,7 @@ Pooled Brier difference (ours minus ESPN): +0.0011, 95% CI -0.0029 to +0.0047 (b
 
 | Model | Brier (lower is better) | Log loss (lower is better) |
 |---|---|---|
-| Scoreline (ours) | **0.1637** | **0.4876** |
-| nflverse vegas_wp (uses the betting spread) | 0.1597 | 0.4791 |
+| Scoreline (ours) | 0.1637 | 0.4876 |
+| nflverse vegas_wp (uses the betting spread) | **0.1597** | **0.4791** |
 
 43,523 plays from 284 games. Brier difference (ours minus nflverse vegas_wp (uses the betting spread)): +0.0040, 95% CI -0.0016 to +0.0104 (bootstrap over games).
