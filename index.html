@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794887238" />
+  <meta name="build" content="1794887603" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -530,6 +530,13 @@
     .fh .cam { transform-origin: 0 0; transition: transform .9s cubic-bezier(.45,0,.35,1); }
     .wx-imp { margin-top: 12px; padding: 12px 14px; background: var(--panel-2); border-radius: 14px; } .wx-imp-t { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; } .wx-imp p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.45; }
     .fwrap { position: relative; } .f-replay { position: absolute; right: 10px; top: 20px; border: 0; border-radius: 999px; padding: 6px 12px; font: 600 12px Inter, sans-serif; color: #fff; background: rgba(8,12,18,.6); cursor: pointer; }
+    .depth { display: grid; gap: 2px; } .sheet.wide .depth { grid-template-columns: 1fr 1fr; column-gap: 16px; }
+    .dp-row { display: grid; grid-template-columns: 92px 1fr; gap: 10px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--line); }
+    .dp-pos { font-weight: 700; font-size: 13px; display: flex; flex-direction: column; } .dp-pos small { font-weight: 500; font-size: 10.5px; color: var(--muted); line-height: 1.25; }
+    .dp-st, .dp-b { border: 0; background: none; color: inherit; font: inherit; padding: 0; cursor: pointer; text-align: left; }
+    .dp-st { display: block; font-weight: 650; font-size: 14.5px; } .dp-bk { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 3px; } .dp-b { font-size: 12.5px; color: var(--muted); }
+    .r-player > span:nth-child(2) { display: flex; flex-direction: column; } .r-more { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+    .roster-btns { display: grid; gap: 8px; }
     .recap-head { margin: 0 0 6px; font-size: 16px; font-weight: 650; line-height: 1.4; } .recap-why { margin: 0 0 10px; font-size: 14px; color: var(--muted); line-height: 1.45; }
     .recap-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; } .recap-list li { display: grid; grid-template-columns: 96px 1fr; gap: 10px; font-size: 13.5px; line-height: 1.4; }
     .recap-list b { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding-top: 2px; }
@@ -1804,6 +1811,8 @@
       if (pl) { const [lg, id] = pl.dataset.player.split("|"); return openPlayer(lg, id); }
       const sd = e.target.closest("[data-standings]");
       if (sd) return openStandings(sd.dataset.standings);
+      const rb = e.target.closest("[data-roster]");
+      if (rb) { const [lg, id] = rb.dataset.roster.split("|"); return openTeam(lg, id, "roster"); }
       const team = e.target.closest("[data-team]");
       if (team) { const [lg, id] = team.dataset.team.split("|"); return openTeam(lg, id); }
       const card = e.target.closest("[data-ev]");
@@ -2295,7 +2304,7 @@
             } else stops.push({ ...base, kind: "tv", label: "TV / official timeout" });
           } else if (/end period|end of/i.test(ty) && !/game/i.test(ty)) stops.push({ ...base, kind: "break", label: p.period?.number === 2 ? "Halftime" : "End of Q" + p.period?.number });
           if (/review|challenge/i.test(tx)) stops.push({ ...base, kind: "review", label: /challenge/i.test(tx) ? "Coach's challenge" : "Replay review" });
-          if (/injur/i.test(tx)) stops.push({ ...base, kind: "injury", label: "Injury stoppage" });
+          if (/injur/i.test(tx)) stops.push({ ...base, kind: "injury", label: injuryLabel(tx) });
         });
         const left = (t) => per > 4 ? Math.max(0, 2 - (usedOT[tid(t)] || 0)) : per === 4 ? Math.max(0, Math.min(7 - (used[tid(t)] || 0), 4 - (usedQ4[tid(t)] || 0))) : Math.max(0, 7 - (used[tid(t)] || 0));
         // Team fouls this quarter (5+ puts the other team in the bonus).
@@ -2325,7 +2334,7 @@
         if (/relieved|now pitching|pitching change/i.test(tx)) stops.push({ ...base, kind: "team", label: "Pitching change: " + tx.replace(/\.$/, "") });
         else if (/challenged/i.test(tx)) stops.push({ ...base, kind: "review", label: (tx.match(/^(.*?) challenged/)?.[1]?.split(". ").pop() || "Team") + " challenge · " + (/overturned/i.test(tx) ? "overturned" : "upheld") });
         else if (/delay/i.test(tx)) stops.push({ ...base, kind: "tv", label: "Delay" });
-        else if (/injur/i.test(tx)) stops.push({ ...base, kind: "injury", label: "Injury" });
+        else if (/injur/i.test(tx)) stops.push({ ...base, kind: "injury", label: injuryLabel(tx) });
       });
       const ev = (cache.mlb?.events || []).find((e) => e.id === String(v.id));
       const sit = ev?.competitions?.[0]?.situation || {};
@@ -2510,7 +2519,7 @@
         } else if (/official timeout/i.test(ty)) stops.push({ ...base, kind: "tv", label: "TV / official timeout" });
         else if (/end of half/i.test(ty)) stops.push({ ...base, kind: "break", label: "Halftime" });
         else if (/end period/i.test(ty)) stops.push({ ...base, kind: "break", label: "End of Q" + (p.period?.number || "") });
-        if (/injur/i.test(tx)) { const m = tx.match(/Injury Update: ([A-Z]+)-([A-Z][\w.'-]+)/); stops.push({ ...base, kind: "injury", label: m ? "Injury: " + m[2] + " (" + m[1] + ")" + (/returned/i.test(tx) ? " returned" : "") : "Injury stoppage" }); }
+        if (/injur/i.test(tx)) stops.push({ ...base, kind: "injury", label: injuryLabel(tx) });
         if (/challenged/i.test(tx)) stops.push({ ...base, kind: "review", label: "Challenge" + (/REVERSED/.test(tx) ? " · reversed" : /UPHELD|STANDS/i.test(tx) ? " · upheld" : "") });
         else if (/replay official reviewed|play was reviewed|under review/i.test(tx)) stops.push({ ...base, kind: "review", label: "Replay review" + (/REVERSED/.test(tx) ? " · reversed" : /UPHELD|STANDS/i.test(tx) ? " · upheld" : "") });
       });
@@ -2761,7 +2770,8 @@
       if (!svg) return;
       const NS = "http://www.w3.org/2000/svg", ease = (p) => (p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);
       const clamp01 = (k) => Math.max(0, Math.min(1, k));
-      const mk = (d) => { const pe = document.createElementNS(NS, "path"); pe.setAttribute("d", d); pe.setAttribute("fill", "none"); pe.setAttribute("visibility", "hidden"); svg.appendChild(pe); return pe; };
+      svg.querySelectorAll(".anim-h").forEach((x) => x.remove());   // helper paths from a previous run
+      const mk = (d) => { const pe = document.createElementNS(NS, "path"); pe.setAttribute("d", d); pe.setAttribute("fill", "none"); pe.setAttribute("visibility", "hidden"); pe.setAttribute("class", "anim-h"); svg.appendChild(pe); return pe; };
       const movers = [...svg.querySelectorAll("[data-mv]")].map((el) => ({ el, ph: (A?.[+el.dataset.mv] || []).map((p) => { const pe = mk(p.d); return { ...p, pe, L: pe.getTotalLength() }; }) })).filter((m) => m.ph.length);
       const lines = [...svg.querySelectorAll("[data-dr]")].map((el) => { const [b, u] = el.dataset.dr.split(",").map(Number); return { el, b, u }; });
       let end = 0;
@@ -2810,11 +2820,12 @@
       const ez = (x, team, rot) => '<rect x="' + x + '" y="0" width="' + EZ + '" height="' + H + '" fill="' + esc(col(team)) + '"/><text transform="translate(' + (x + EZ / 2) + " " + CY + ") rotate(" + rot + ')" class="f-ez">' + esc(team.team?.name || team.team?.abbreviation || "") + "</text>";
       s += ez(0, F.away, -90) + ez(W - EZ, F.home, 90);
       for (let y = 0; y <= 100; y += 5) s += '<line x1="' + X(y) + '" x2="' + X(y) + '" y1="0" y2="' + H + '" class="f-yl' + (y % 10 ? "" : " ten") + (y === 0 || y === 100 ? " goal" : "") + '"/>';
-      for (let y = 1; y < 100; y++) if (y % 5) [7, H * 0.4, H * 0.6, H - 7].forEach((hy) => { s += '<line x1="' + X(y) + '" x2="' + X(y) + '" y1="' + (hy - 4) + '" y2="' + (hy + 4) + '" class="f-hash"/>'; });
+      { let hd = ""; for (let y = 1; y < 100; y++) if (y % 5) [7, H * 0.4, H * 0.6, H - 7].forEach((hy) => { hd += "M" + X(y).toFixed(1) + " " + (hy - 4) + "v8"; }); s += '<path d="' + hd + '" class="f-hash"/>'; }   // all hash marks as one shape (lighter to draw)
       for (let y = 10; y < 100; y += 10) { const n = Math.min(y, 100 - y); s += '<text x="' + X(y) + '" y="36" class="f-num">' + n + '</text><text x="' + X(y) + '" y="' + (H - 36) + '" class="f-num" transform="rotate(180 ' + X(y) + " " + (H - 36) + ')">' + n + "</text>"; }
       [4, W - 4].forEach((gx) => { s += '<line x1="' + gx + '" x2="' + gx + '" y1="' + (CY - 20) + '" y2="' + (CY + 20) + '" class="f-post"/>'; });
       s += '<rect width="' + W + '" height="' + H + '" fill="url(#fglow)" pointer-events="none"/>';
       if (!P || !G) return finish(s, [X(50)]);
+      s += '<g class="play">';   // everything below is the play; the loop replays just this group
 
       const t = P.text || "", ty = P.type?.text || "";
       const right = G.team === String(F.away.team?.id), dir = right ? 1 : -1;
@@ -2961,6 +2972,7 @@
           s += mark(dx, dy, carrier.tc, a, role, carrier.begin, !k, { x: dx + head * 80, y: dy + (k ? 60 : -60), begin: carrier.begin, dur: carrier.dur + 0.1 }, null, true);
         });
       }
+      s += "</g>";
       return finish(s, xs.length ? xs : [X(50)]);
     }
     /* ---------- strategy picker (football): 4th down and after a touchdown ----------
@@ -3126,7 +3138,11 @@
         v.loopT = setTimeout(function again() {
           if (!v.el.isConnected || !v.field || v.field.di !== di || v.field.pi !== pi0) return;
           if (document.hidden || !v.el.querySelector("svg.field")) { v.loopT = setTimeout(again, 2000); return; }
-          drawField(v, false);
+          // Replay just the play layer (cheap): a fresh copy restarts its CSS animations, then rerun the movement.
+          const svg = v.el.querySelector("[data-field] svg.field"), g = svg?.querySelector("g.play");
+          if (!g) return drawField(v, false);
+          g.replaceWith(g.cloneNode(true)); runFieldAnim(svg, v.anim, false);
+          v.loopT = setTimeout(again, every);
         }, every);
       }
     }
@@ -3347,6 +3363,7 @@
         }).join("") + "</div>";
       }
 
+      h += '<div class="g-sec" data-c="players"><div class="g-label">Rosters</div><div class="roster-btns">' + teams.map((t) => '<button type="button" class="opt" data-roster="' + lg + "|" + esc(t.team?.id) + '"><span><b>' + esc(t.team?.displayName || t.team?.abbreviation) + "</b><small>Starters, backups and the full roster</small></span><span class=\"chev\">›</span></button>").join("") + "</div></div>";
       const inj = s.injuries || [];
       if (inj.some((x) => x.injuries?.length)) {
         h += '<div class="g-sec" data-c="players"><div class="g-label">Injuries</div><div class="g-note" style="margin:-4px 0 10px">OUT = out · D = doubtful · Q = questionable · IR = injured reserve · DTD = day-to-day</div><div class="inj-cols">' + teams.map((t) => {
@@ -3437,8 +3454,39 @@
         "</svg><div><b>" + esc(label) + "</b><small>Drawn from the play description; no ball-tracking data exists for kicks.</small></div></div>";
     }
 
-    async function openTeam(lg, id) {
-      const v = { kind: "team", lg, id, seg: "schedule", key: "team|" + lg + "|" + id };
+    // "LAC-D.Jackson was injured during the play." -> "Injury: D. Jackson (LAC)", plus the body part / return
+    // status when the play-by-play says it (it usually doesn't; nothing is guessed).
+    function injuryLabel(tx) {
+      const m = tx.match(/([A-Z]{2,4})-([A-Z][a-z]?\.\s?[\w'-]+) (?:was|is) injured/) || tx.match(/Injury Update: ([A-Z]{2,4})-([A-Z][a-z]?\.\s?[\w'-]+)/);
+      if (!m) return "Injury stoppage";
+      const part = (tx.match(/\b(head|concussion|neck|shoulder|arm|elbow|wrist|hand|finger|thumb|chest|ribs?|back|hip|groin|hamstring|quad|thigh|knee|ankle|foot|toe|calf|achilles|illness)\b/i) || [])[1];
+      const back = /returned to the game|has returned/i.test(tx), ret = (tx.match(/return is (questionable|doubtful|probable)|out for the game/i) || [])[0];
+      return "Injury: " + m[2].replace(/\.(?=\S)/, ". ") + " (" + m[1] + ")" + (part ? " · " + part.toLowerCase() : "") + (back ? " · back in the game" : ret ? " · " + ret.replace(/^return is /i, "return ") : "");
+    }
+    // Depth chart: for each position, the starter and then the backups in order (from the team's own depth chart).
+    function depthHtml(v) {
+      if (v.dc === "loading") return '<div class="skel" style="height:140px;margin-top:14px"></div>';
+      const charts = v.dc?.depthchart || [];
+      if (!charts.length) return "";
+      const title = (n) => /special/i.test(n) ? "Special teams" : /(\bD$|defen|3-4|4-3|nickel|dime)/i.test(n) ? "Defense" : v.lg === "nfl" || v.lg === "cfb" ? "Offense" : "Starters and backups";
+      const order = (c) => (/special/i.test(c.name) ? 2 : title(c.name) === "Defense" ? 1 : 0);
+      const badge = (a) => { const s = a.injuries?.[0]?.status; return s ? ' <span class="badge ' + esc(String(s).toLowerCase().replace(/\W/g, "")) + '">' + esc(injAbbr(s)) + "</span>" : ""; };
+      const who = (a, cls) => '<button type="button" class="' + cls + '" data-player="' + v.lg + "|" + esc(a.id) + '">' + esc(cls === "dp-st" ? a.displayName : a.shortName || a.displayName) + badge(a) + "</button>";
+      return '<div class="g-note" style="margin-top:14px">Starters first, then backups in order. Tap a player for details.</div>' +
+        charts.slice().sort((a, b) => order(a) - order(b)).map((c) => {
+          const rows = Object.entries(c.positions || {}).map(([k, pos]) => {
+            const ath = pos.athletes || [];
+            if (!ath.length) return "";
+            const p = pos.position || {};
+            return '<div class="dp-row"><span class="dp-pos">' + tm(v.lg, p.abbreviation || k.toUpperCase()) + "<small>" + esc(p.displayName || "") + "</small></span><span>" + who(ath[0], "dp-st") +
+              (ath.length > 1 ? '<span class="dp-bk">' + ath.slice(1, 4).map((a) => who(a, "dp-b")).join("") + "</span>" : "") + "</span></div>";
+          }).join("");
+          return rows ? '<div class="g-label" style="margin-top:16px">' + esc(title(c.name)) + (c.name && !/depth chart/i.test(c.name) && c.name.toLowerCase() !== title(c.name).toLowerCase() ? " <small class=\"muted\">" + esc(c.name) + "</small>" : "") + '</div><div class="depth">' + rows + "</div>" : "";
+        }).join("");
+    }
+
+    async function openTeam(lg, id, seg) {
+      const v = { kind: "team", lg, id, seg: seg || "schedule", key: "team|" + lg + "|" + id };
       if (!pushView(v)) return;
       const base = API + LEAGUES[lg].path + "/teams/" + id;
       const [sc, ro] = await Promise.all([getJSON(base + "/schedule").catch(() => null), getJSON(base + "/roster").catch(() => null)]);
@@ -3502,12 +3550,27 @@
       } else if (v.seg === "injuries") {
         h += injuriesHtml(v);
       } else {
+        // Depth chart first (who starts, then the backups in order), then the full roster with details.
+        if (v.dc === undefined) {
+          v.dc = "loading";
+          // ESPN's depth chart (the browser-friendly API gives player links; names come from the roster already loaded).
+          const [sport, league] = LEAGUES[v.lg].path.split("/"), yr = v.ro?.season?.year || v.sc?.season?.year || new Date().getFullYear();
+          const byId = {}; (v.ro?.athletes || []).forEach((g) => (g.items || [g]).forEach((a) => { if (a?.id) byId[String(a.id)] = a; }));
+          getJSON("https://sports.core.api.espn.com/v2/sports/" + sport + "/leagues/" + league + "/seasons/" + yr + "/teams/" + v.id + "/depthcharts").then((j) => {
+            v.dc = { depthchart: (j.items || []).map((c) => ({ name: c.name, positions: Object.fromEntries(Object.entries(c.positions || {}).map(([k, p]) => [k, { position: p.position,
+              athletes: (p.athletes || []).slice().sort((a, b) => (a.rank || 9) - (b.rank || 9)).map((a) => byId[(String(a.athlete?.$ref || "").match(/athletes\/(\d+)/) || [])[1]]).filter(Boolean) }])) })) };
+          }).catch(() => { v.dc = null; })
+            .finally(() => { if (v.el.isConnected && v.seg === "roster") drawTeam(v); });
+        }
+        h += depthHtml(v);
         let groups = v.ro?.athletes || [];
         if (groups.length && !groups[0].items) groups = [{ position: "Roster", items: groups }];
-        h += groups.filter((g) => g.items?.length).map((g) => '<div class="g-label" style="margin-top:14px">' + esc(ROSTER_GROUPS[g.position] || g.position) + " <small>" + g.items.length + '</small></div><div class="list">' +
+        h += '<div class="g-label" style="margin-top:22px">Full roster</div>';
+        h += groups.filter((g) => g.items?.length).map((g) => '<div class="ldr-cat" style="margin-top:12px">' + esc(ROSTER_GROUPS[g.position] || g.position) + " · " + g.items.length + '</div><div class="list">' +
           g.items.map((p) => {
             const inj = p.injuries?.[0]?.status;
-            return '<div class="row" data-player="' + v.lg + '|' + esc(p.id) + '"><span class="muted">' + esc(p.jersey ? "#" + p.jersey : "") + "</span><span>" + esc(p.displayName) + ' <small class="muted">' + esc(p.position?.abbreviation || "") + "</small></span><span>" +
+            const more = [p.age ? "Age " + p.age : "", [p.displayHeight, p.displayWeight].filter(Boolean).join(", "), p.experience?.years != null ? (p.experience.years ? p.experience.years + (p.experience.years === 1 ? " year" : " years") + " pro" : "Rookie") : "", p.college?.name].filter(Boolean).join(" · ");
+            return '<div class="row r-player" data-player="' + v.lg + '|' + esc(p.id) + '"><span class="muted">' + esc(p.jersey ? "#" + p.jersey : "") + "</span><span><b>" + esc(p.displayName) + '</b> <small class="muted">' + esc(p.position?.abbreviation || "") + "</small>" + (more ? '<small class="r-more">' + esc(more) + "</small>" : "") + "</span><span>" +
               (inj ? '<span class="badge ' + esc(String(inj).toLowerCase().replace(/\W/g, "")) + '">' + esc(inj) + "</span>" : "") + "</span></div>";
           }).join("") + "</div>").join("") || '<div class="empty">No roster available.</div>';
       }
