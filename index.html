@@ -2107,10 +2107,9 @@
       const tab = await seasonTable(lg), A = tab[String(away.team?.id)], H = tab[String(home.team?.id)];
       const live = [[away, A], [home, H]].filter(([, x]) => x?.seed && x.seed <= (cut[1] || cut[0]) + 3);
       if (!live.length) return "";
-      const where = live.map(([t, x]) => nm(t) + " is " + x.seed + ordinal(x.seed) + (x.conf ? " in the " + x.conf : "")).join(" and ");
+      const where = live.map(([t, x]) => nm(t) + " is " + ordinal(x.seed) + (x.conf ? " in the " + x.conf : "")).join(" and ");
       return "Playoff race: " + where + ". " + (lg === "nba" ? "The top 6 in each conference make the playoffs and 7th-10th go to the Play-In." : "The top " + cut[0] + " make the playoffs.");
     }
-    const ordinal = (n) => (n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th");
 
     async function predictionHtml(lg, s, teams, state) {
       if (!["nfl", "cfb", "nba", "mlb"].includes(lg) || teams.length < 2) return "";
