@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794887603" />
+  <meta name="build" content="1794888115" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -530,6 +530,8 @@
     .fh .cam { transform-origin: 0 0; transition: transform .9s cubic-bezier(.45,0,.35,1); }
     .wx-imp { margin-top: 12px; padding: 12px 14px; background: var(--panel-2); border-radius: 14px; } .wx-imp-t { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; } .wx-imp p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.45; }
     .fwrap { position: relative; } .f-replay { position: absolute; right: 10px; top: 20px; border: 0; border-radius: 999px; padding: 6px 12px; font: 600 12px Inter, sans-serif; color: #fff; background: rgba(8,12,18,.6); cursor: pointer; }
+    .pred-row { display: flex; gap: 12px; margin-bottom: 8px; } .pred-row > div { flex: 1; background: var(--panel-2); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+    .pred-row small { font-size: 11px; color: var(--muted); } .pred-row b { font-size: 16px; font-variant-numeric: tabular-nums; }
     .depth { display: grid; gap: 2px; } .sheet.wide .depth { grid-template-columns: 1fr 1fr; column-gap: 16px; }
     .dp-row { display: grid; grid-template-columns: 92px 1fr; gap: 10px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--line); }
     .dp-pos { font-weight: 700; font-size: 13px; display: flex; flex-direction: column; } .dp-pos small { font-weight: 500; font-size: 10.5px; color: var(--muted); line-height: 1.25; }
@@ -1990,6 +1992,62 @@
     }
     /* ---------- plain-English status line (always on, under the score) ---------- */
     // "Bengals lead by 21 at halftime. Teams in this spot win about 98% of the time." Built only from real data.
+    /* ---------- predictions (team sports): projected score + win chance; predicted vs actual after the game ----------
+       Projected points = average of what a team scores per game and what its opponent allows per game (season so far),
+       plus a small home edge. Win chance = Scoreline's win model before kickoff. Estimates, not guarantees. */
+    const seasonCache = {};
+    function seasonTable(lg) {
+      if (!seasonCache[lg]) {
+        const [sport, league] = LEAGUES[lg].path.split("/");
+        seasonCache[lg] = getJSON("https://site.api.espn.com/apis/v2/sports/" + sport + "/" + league + "/standings" + (lg === "cfb" ? "?group=80" : "")).then((d) => {
+          const out = {};
+          const walk = (n) => { (n?.standings?.entries || []).forEach((e) => {
+            const st = (k) => (e.stats || []).find((x) => x.name === k)?.value;
+            const g = st("gamesPlayed") || (st("wins") || 0) + (st("losses") || 0) + (st("ties") || 0);
+            if (e.team?.id && g && st("pointsFor") != null) out[String(e.team.id)] = { pf: st("pointsFor"), pa: st("pointsAgainst"), g };
+          }); (n?.children || []).forEach(walk); };
+          walk(d);
+          return out;
+        }).catch(() => ({}));
+      }
+      return seasonCache[lg];
+    }
+    const HOME_EDGE = { nfl: 1.5, cfb: 2.5, nba: 1.5, mlb: 0.15 };
+    async function predictionHtml(lg, s, teams, state) {
+      if (!["nfl", "cfb", "nba", "mlb"].includes(lg) || teams.length < 2) return "";
+      const comp = s.header?.competitions?.[0] || {};
+      const [away, home] = teams, tab = await seasonTable(lg);
+      let A = tab[String(away.team?.id)], Hm = tab[String(home.team?.id)];
+      if (!A || !Hm) return "";
+      const post = state === "post";
+      if (post) {   // leave this game out of the averages, so the result can't leak into its own prediction
+        if (Date.now() - Date.parse(comp.date) > 8 * 864e5) return "";
+        const as = Number(away.score), hs = Number(home.score);
+        if (A.g < 2 || Hm.g < 2 || !Number.isFinite(as) || !Number.isFinite(hs)) return "";
+        // Only subtract if the standings already count this game (their games played match the record after it).
+        const recG = (t) => String(t.record?.[0]?.summary || t.record?.[0]?.displayValue || "").split("-").reduce((a, n) => a + (parseInt(n, 10) || 0), 0);
+        const inA = A.g === recG(away), inH = Hm.g === recG(home);
+        if (inA !== inH || (!inA && A.g !== recG(away) - 1)) return "";   // can't tell, so show nothing
+        if (inA) { A = { pf: A.pf - as, pa: A.pa - hs, g: A.g - 1 }; Hm = { pf: Hm.pf - hs, pa: Hm.pa - as, g: Hm.g - 1 }; }
+      }
+      if (A.g < 2 || Hm.g < 2) return "";
+      const edge = comp.neutralSite ? 0 : HOME_EDGE[lg] / 2;
+      const hp = (Hm.pf / Hm.g + A.pa / A.g) / 2 + edge, ap = (A.pf / A.g + Hm.pa / Hm.g) / 2 - edge;
+      const W = window.ScorelineWP?.[lg];
+      let hw = null;
+      if (W) { await window.ScorelineWP.ready(lg).catch(() => {}); hw = W({ homeScore: 0, awayScore: 0, period: 1, clock: lg === "nba" ? "12:00" : lg === "mlb" ? "0:00" : "15:00", possession: null, homeTeamId: home.team?.id, awayTeamId: away.team?.id, neutral: !!comp.neutralSite }); }
+      const r = (x) => Math.max(0, Math.round(x)), ab = (t) => esc(t.team?.abbreviation || "");
+      const fav = hw == null ? null : hw >= 0.5 ? home : away, favP = hw == null ? null : Math.round(Math.max(hw, 1 - hw) * 100);
+      let h = '<div class="g-sec pred" data-c="all"><div class="g-label">' + (post ? "Predicted vs actual" : "Prediction") + '</div><div class="pred-row"><div><small>' + (post ? "We'd have said" : "Projected score") + "</small><b>" + ab(away) + " " + r(ap) + " – " + r(hp) + " " + ab(home) + "</b></div>" +
+        (fav ? "<div><small>Win chance</small><b>" + esc(fav.team?.abbreviation) + " " + favP + "%</b></div>" : "") + "</div>";
+      if (post) {
+        const as = Number(away.score), hs = Number(home.score), right = fav && (Number(fav.score) > Number((fav === home ? away : home).score));
+        const off = Math.round(Math.abs(as - ap) + Math.abs(hs - hp));
+        h += '<div class="pred-row"><div><small>Final</small><b>' + ab(away) + " " + as + " – " + hs + " " + ab(home) + "</b></div><div><small>How close</small><b>" + (fav ? (right ? "✓ Right winner" : "✗ Wrong winner") : "") + " · off by " + off + "</b></div></div>";
+      }
+      return h + '<div class="g-note">Estimates, not guarantees. Projected score: each team\'s scoring and the other team\'s defense so far this season, plus a small home edge. Win chance: Scoreline\'s win model.</div></div>';
+    }
+
     /* ---------- game recap (finished games): written from the game's own data, no guessing ----------
        Result + context (comeback / close / blowout), the turning point (go-ahead score for good), biggest
        moments (largest win-probability swings), standout players, and why the winner won (biggest stat edges). */
@@ -3341,6 +3399,7 @@
       // Order: score → plain-English status → tabs → win probability → plays → the rest.
       h += plainLine(s, teams, st.state, lg);
       h += recapHtml(s, teams, lg);   // finished games only
+      if (st.state !== "in") h += '<div data-pred></div>';   // prediction (before) / predicted vs actual (after), filled in below
       const gcats = [["all", "Summary"], ["plays", "Plays"], ["stats", "Stats"], ["players", "Players"]];
       h += '<div class="gtabs" role="tablist">' + gcats.map(([k, l]) => '<button type="button" role="tab" data-gcat="' + k + '" class="' + (k === "all" ? "active" : "") + '">' + l + "</button>").join("") + "</div>";
       h += wpSectionHtml(s, teams, st.state, id, lg);
@@ -3384,6 +3443,7 @@
       if (lg === "nba" || lg === "mlb") renderSportFeed(v, false);
       if ((lg === "nba" || lg === "mlb") && st.state === "in") liveSummary(v);
       if (st.state === "in") wpLive(v, lg, id);
+      predictionHtml(lg, s, teams, st.state).then((x) => { const el = v.el.querySelector("[data-pred]"); if (!el) return; if (x) el.outerHTML = x; else el.remove(); }).catch(() => v.el.querySelector("[data-pred]")?.remove());
       const [wsp, wlg] = LEAGUES[lg].path.split("/");
       if (vnu?.id) loadWeather(v.el.querySelector("[data-wx]"), vnu, comp.date, st.state === "in" ? "Weather now" : lg === "mlb" ? "Weather at first pitch" : "Weather at kickoff", "https://sports.core.api.espn.com/v2/sports/" + wsp + "/leagues/" + wlg + "/venues/" + vnu.id, lg);
       useOurModel(lg, v, s, teams, st.state, id);
