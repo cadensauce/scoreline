@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794863720" />
+  <meta name="build" content="1794877419" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -265,6 +265,10 @@
     .wp-bar i { display: block; height: 100%; transition: width .6s var(--ease); }
     .wp-bar i:last-child { flex: 1; }
     .g-note { margin-top: 6px; }
+    .wx-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+    .wx { background: var(--panel-2); border-radius: 12px; padding: 10px 6px; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; min-width: 0; }
+    .wx b { font-size: 18px; } .wx span { font-size: 12px; } .wx small { font-size: 10.5px; color: var(--muted); }
+    .g-note a { color: inherit; }
     .ldr-cat { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin: 8px 0 4px; }
     .ldr-list { display: grid; gap: 6px; }
     .ldr { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--panel); border-radius: var(--r-in); }
@@ -1390,7 +1394,8 @@
           const tag = s === "in" ? '<span class="tag" style="color:var(--live)">Live</span>' : s === "post" ? '<span class="tag" style="color:var(--muted)">Done</span>' : c === nx ? '<span class="tag">Next</span>' : "<span></span>";
           return '<div class="session ' + (c === nx ? "next" : "") + '"><b>' + esc(c.type?.abbreviation || "") + '</b><span class="when">' + esc(SESSION_NAMES[c.type?.abbreviation] || "") + " · " + esc(fmtDay(c.date)) + " " + esc(fmtTime(c.date)) + "</span>" + tag + "</div>";
         }).join("") + "</div>";
-        const race = (ev.competitions || []).slice().reverse().find((c) => c.status?.type?.state !== "pre" && (c.competitors || []).length);
+        if (nx && ev.circuit?.address?.city) left += '<div class="g-sec" data-wx style="margin-top:12px"><div class="skel" style="height:90px"></div></div>';
+        const race =(ev.competitions || []).slice().reverse().find((c) => c.status?.type?.state !== "pre" && (c.competitors || []).length);
         if (race) {
           left += '<div class="section-title"><b>' + esc(SESSION_NAMES[race.type?.abbreviation] || "Session") + " results</b></div><table><thead><tr><th>Pos</th><th>Driver</th><th>Team</th></tr></thead><tbody>" +
             race.competitors.slice().sort((a, b) => (a.order || 99) - (b.order || 99)).slice(0, 20).map((d) =>
@@ -1413,6 +1418,7 @@
       renderTabs();
       stamp();
       tickCountdown();
+      if (ev) { const nx = nextSession(ev); if (nx) loadWeather(main.querySelector("[data-wx]"), ev.circuit, nx.date, nx.status?.type?.state === "in" ? "Weather now" : "Weather for " + (SESSION_NAMES[nx.type?.abbreviation] || "the next session")); }
       loadTrack();
       schedule(ev && nextSession(ev)?.status?.type?.state === "in");
     }
@@ -2643,6 +2649,42 @@
         return m ? chip(m[1], m[2] || "") : chip(part, "");
       }).join("");
     }
+    /* ---------- weather at the venue (free Open-Meteo forecast; outdoor games only) ---------- */
+    const US_ST = "AL Alabama|AK Alaska|AZ Arizona|AR Arkansas|CA California|CO Colorado|CT Connecticut|DE Delaware|DC District of Columbia|FL Florida|GA Georgia|HI Hawaii|ID Idaho|IL Illinois|IN Indiana|IA Iowa|KS Kansas|KY Kentucky|LA Louisiana|ME Maine|MD Maryland|MA Massachusetts|MI Michigan|MN Minnesota|MS Mississippi|MO Missouri|MT Montana|NE Nebraska|NV Nevada|NH New Hampshire|NJ New Jersey|NM New Mexico|NY New York|NC North Carolina|ND North Dakota|OH Ohio|OK Oklahoma|OR Oregon|PA Pennsylvania|RI Rhode Island|SC South Carolina|SD South Dakota|TN Tennessee|TX Texas|UT Utah|VT Vermont|VA Virginia|WA Washington|WV West Virginia|WI Wisconsin|WY Wyoming".split("|").reduce((o, x) => (o[x.slice(0, 2)] = x.slice(3), o), {});
+    const WX_WORD = (c) => c === 0 ? "Clear" : c <= 2 ? "Partly cloudy" : c === 3 ? "Cloudy" : c <= 48 ? "Fog" : c <= 57 ? "Drizzle" : c <= 67 ? "Rain" : c <= 77 ? "Snow" : c <= 82 ? "Showers" : c <= 86 ? "Snow showers" : "Storms";
+    const IMPERIAL = /-US$|^en$/.test(navigator.language || "en-US");
+    async function wxFor(place, startMs) {
+      const a = place.address || {};
+      if (!a.city) return null;
+      const us = /^(USA?|United States)$/i.test(a.country || "") || US_ST[a.state] || Object.values(US_ST).includes(a.state);
+      const g = await getJSON("https://geocoding-api.open-meteo.com/v1/search?count=10&language=en&format=json&name=" + encodeURIComponent(a.city) + (us ? "&countryCode=US" : ""));
+      const want = (US_ST[a.state] || a.state || a.country || "").toLowerCase();
+      const r = (g.results || []).find((x) => want && [x.admin1, x.country].some((n) => (n || "").toLowerCase() === want)) || (g.results || [])[0];
+      if (!r) return null;
+      const f = await getJSON("https://api.open-meteo.com/v1/forecast?latitude=" + r.latitude + "&longitude=" + r.longitude + "&hourly=temperature_2m,precipitation_probability,wind_speed_10m,weather_code&forecast_days=16&timeformat=unixtime&timezone=auto" + (IMPERIAL ? "&temperature_unit=fahrenheit&wind_speed_unit=mph" : ""));
+      const H = f.hourly || {}, t = H.time || [], from = Math.floor(Math.max(Date.now(), startMs) / 36e5) * 3600;
+      const i = t.findIndex((x) => x >= from);
+      if (i < 0) return { later: true, city: r.name };
+      return { city: r.name, hours: t.slice(i, i + 5).map((x, k) => ({ at: x * 1000, temp: H.temperature_2m[i + k], pop: H.precipitation_probability[i + k], wind: H.wind_speed_10m[i + k], code: H.weather_code[i + k] })) };
+    }
+    function wxHtml(w, label) {
+      if (!w) return "";
+      const head = '<div class="g-label">' + esc(label) + "</div>";
+      const foot = '<div class="g-note">' + esc(w.city) + ' · forecast by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a></div>';
+      if (w.later) return head + '<div class="g-note">Forecast not out yet. Check back closer to the day.</div>' + foot;
+      const u = IMPERIAL ? ["°", " mph"] : ["°", " km/h"];
+      return head + '<div class="wx-row">' + w.hours.map((h) => '<div class="wx"><small>' + esc(fmtTime(new Date(h.at).toISOString())) + "</small><b>" + Math.round(h.temp) + u[0] + "</b><span>" + esc(WX_WORD(h.code)) + "</span><small>" + (h.pop ?? 0) + "% rain · " + Math.round(h.wind) + u[1] + "</small></div>").join("") + "</div>" + foot;
+    }
+    async function loadWeather(el, place, startIso, label, indoorUrl) {
+      if (!el) return;
+      try {
+        if (indoorUrl) { const vn = await getJSON(indoorUrl).catch(() => null); if (!vn || vn.indoor !== false) { el.remove(); return; } }
+        const w = await wxFor(place, Date.parse(startIso) || Date.now());
+        if (!w || !el.isConnected) { el.remove(); return; }
+        el.innerHTML = wxHtml(w, label);
+      } catch { el.remove(); }
+    }
+
     async function openGame(lg, id) {
       const v = { kind: "game", key: "game|" + id };
       if (!pushView(v)) return;
@@ -2696,6 +2738,8 @@
       }
 
       const info = [s.gameInfo?.venue?.fullName, (comp.broadcasts || []).map((b) => b.media?.shortName).filter(Boolean).join(", ")].filter(Boolean);
+      const outdoorSport = lg === "nfl" || lg === "cfb" || lg === "mlb", vnu = s.gameInfo?.venue;
+      if (outdoorSport && st.state !== "post" && vnu?.id) h += '<div class="g-sec" data-wx data-c="info"><div class="skel" style="height:90px"></div></div>';
       if (info.length) h += '<div class="g-sec g-note" data-c="info">' + info.map(esc).join(" · ") + "</div>";
       h += '<div class="g-sec" data-feedsec data-c="plays"></div>';
       setBody(v, (teams[0]?.team?.abbreviation || "") + " @ " + (teams[1]?.team?.abbreviation || ""), h);
@@ -2703,6 +2747,8 @@
       if (lg === "nba" || lg === "mlb") renderSportFeed(v, false);
       if ((lg === "nba" || lg === "mlb") && st.state === "in") liveSummary(v);
       if (st.state === "in") wpLive(v, lg, id);
+      const [wsp, wlg] = LEAGUES[lg].path.split("/");
+      if (vnu?.id) loadWeather(v.el.querySelector("[data-wx]"), vnu, comp.date, st.state === "in" ? "Weather now" : lg === "mlb" ? "Weather at first pitch" : "Weather at kickoff", "https://sports.core.api.espn.com/v2/sports/" + wsp + "/leagues/" + wlg + "/venues/" + vnu.id);
       useOurModel(lg, v, s, teams, st.state, id);
     }
 
