@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794918108" />
+  <meta name="build" content="1794918839" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -576,6 +576,8 @@
     .depth { display: grid; gap: 2px; } .sheet.wide .depth { grid-template-columns: 1fr 1fr; column-gap: 16px; }
     .dp-row { display: grid; grid-template-columns: 92px 1fr; gap: 10px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--line); }
     .dp-pos { font-weight: 700; font-size: 13px; display: flex; flex-direction: column; } .dp-pos small { font-weight: 500; font-size: 10.5px; color: var(--muted); line-height: 1.25; }
+    .dm-pos { display: none; } html.dummy .dm-pos { display: block; grid-column: 1 / -1; font-style: normal; font-size: 12px; line-height: 1.45; color: var(--muted); margin-top: -2px; }
+    .pos-guide { margin-top: 10px; } .pos-guide summary { cursor: pointer; font-weight: 600; color: var(--text); } .pos-guide p { margin: 6px 0 0; }
     .dp-st, .dp-b { border: 0; background: none; color: inherit; font: inherit; padding: 0; cursor: pointer; text-align: left; }
     .dp-st { display: block; font-weight: 650; font-size: 14.5px; } .dp-bk { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 3px; } .dp-b { font-size: 12.5px; color: var(--muted); }
     .r-player > span:nth-child(2) { display: flex; flex-direction: column; } .r-more { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
@@ -1509,7 +1511,7 @@
       const stBtn = paged ? '<button type="button" class="icon-btn" data-standings="' + key + '" aria-label="' + esc(L.short || L.name) + ' standings"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h11M4 18h7"/></svg></button>' : "";
       const hBtn = key !== "f1" ? '<button type="button" class="icon-btn' + (HEAT ? " on" : "") + '" data-heat aria-label="' + (HEAT ? "Show as list" : "Show as heat map") + '" title="' + (HEAT ? "List" : "Heat map") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2" opacity=".55"/><rect x="3" y="13" width="8" height="8" rx="2" opacity=".3"/><rect x="13" y="13" width="8" height="8" rx="2" opacity=".75"/></svg></button>' : "";
       return '<div class="bar"><h1>' + esc(title) + "</h1>" + hBtn + stBtn + sBtn + "</div>" + (open ? search : "") +
-        '<div class="bar-row">' + liveBtn + toggle + "</div>" + pager + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key]) : "") +
+        '<div class="bar-row">' + liveBtn + toggle + "</div>" + pager + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
         (HEAT ? '<div class="heat-key"><span>One-sided</span><i></i><span>Close game</span></div>' : "") + (HEAT ? dm("<b>Reading the heat map.</b> Each tile is one game. The brighter the tile, the closer the game is to a coin flip (from win probability), so the most exciting games stand out. Upcoming games use the pre-game odds; finished games are dimmed. The ball icon shows who has it.") : "");
     }
 
@@ -3718,7 +3720,7 @@
             if (!ath.length) return "";
             const p = pos.position || {};
             return '<div class="dp-row"><span class="dp-pos">' + tm(v.lg, p.abbreviation || k.toUpperCase()) + "<small>" + esc(p.displayName || "") + "</small></span><span>" + who(ath[0], "dp-st") +
-              (ath.length > 1 ? '<span class="dp-bk">' + ath.slice(1, 4).map((a) => who(a, "dp-b")).join("") + "</span>" : "") + "</span></div>";
+              (ath.length > 1 ? '<span class="dp-bk">' + ath.slice(1, 4).map((a) => who(a, "dp-b")).join("") + "</span>" : "") + "</span>" + (posInfo(v.lg, p.abbreviation || k) ? '<i class="dm-pos">' + esc(posInfo(v.lg, p.abbreviation || k)) + "</i>" : "") + "</div>";
           }).join("");
           return rows ? '<div class="g-label" style="margin-top:16px">' + esc(title(c.name)) + (c.name && !/depth chart/i.test(c.name) && c.name.toLowerCase() !== title(c.name).toLowerCase() ? " <small class=\"muted\">" + esc(c.name) + "</small>" : "") + '</div><div class="depth">' + rows + "</div>" : "";
         }).join("");
@@ -3805,7 +3807,7 @@
         let groups = v.ro?.athletes || [];
         if (groups.length && !groups[0].items) groups = [{ position: "Roster", items: groups }];
         h += '<div class="g-label" style="margin-top:22px">Full roster</div>';
-        h += groups.filter((g) => g.items?.length).map((g) => '<div class="ldr-cat" style="margin-top:12px">' + esc(ROSTER_GROUPS[g.position] || g.position) + " · " + g.items.length + '</div><div class="list">' +
+        h += groups.filter((g) => g.items?.length).map((g) => '<div class="ldr-cat" style="margin-top:12px">' + esc(ROSTER_GROUPS[g.position] || g.position) + " · " + g.items.length + "</div>" + posNote(v.lg, g.items.map((p) => p.position?.abbreviation)) + '<div class="list">' +
           g.items.map((p) => {
             const inj = p.injuries?.[0]?.status;
             const more = [p.age ? "Age " + p.age : "", [p.displayHeight, p.displayWeight].filter(Boolean).join(", "), p.experience?.years != null ? (p.experience.years ? p.experience.years + (p.experience.years === 1 ? " year" : " years") + " pro" : "Rookie") : "", p.college?.name].filter(Boolean).join(" · ");
@@ -3968,6 +3970,101 @@
       mlb: "<b>Baseball in 30 seconds.</b> Teams take turns batting. A batter tries to hit and reach base; 3 outs end a team's turn. Each turn at bat for both teams is an inning; a game has 9. A run scores when a player gets all the way around the bases. 30 teams in the American and National Leagues; 6 from each make the postseason, ending in the World Series.",
       f1: "<b>Formula 1 in 30 seconds.</b> 20 drivers in 10 teams race on circuits around the world. A weekend has practice, qualifying (sets the starting order) and the race. The top 10 score points (25 for a win). Points add up to two titles: the Drivers' and the Constructors' (teams) championships. Tyre choices and pit stops are a big part of strategy.",
     };
+    /* Dummy Mode: what every position does (depth chart, full roster, and "Positions explained" on each sport's primer) */
+    const POS_FB = {
+      QB: "Quarterback: leads the offense. Takes the snap, then throws, hands off or runs.",
+      RB: "Running back: takes handoffs and runs; also catches short passes and blocks.",
+      HB: "Halfback: another name for the running back.",
+      FB: "Fullback: a bigger back who mostly blocks for the running back.",
+      WR: "Wide receiver: lines up wide, runs routes and catches passes.",
+      TE: "Tight end: part blocker, part receiver; lines up next to the offensive line.",
+      T: "Tackle: offensive lineman on the outside, protects the quarterback from edge rushers.",
+      OT: "Offensive tackle: lineman on the outside, protects the quarterback from edge rushers.",
+      G: "Guard: offensive lineman next to the center; blocks for runs and passes.",
+      OG: "Offensive guard: lineman next to the center; blocks for runs and passes.",
+      C: "Center: snaps the ball to the quarterback, then blocks.",
+      OL: "Offensive lineman: the 5 big blockers who protect the quarterback and open running lanes.",
+      DE: "Defensive end: rushes the quarterback from the edge and stops runs to the outside.",
+      DT: "Defensive tackle: big lineman in the middle; clogs running lanes and pushes the pocket.",
+      NT: "Nose tackle: the defensive tackle lined up right over the center.",
+      DL: "Defensive lineman: the big players at the front who try to reach the quarterback or the runner.",
+      EDGE: "Edge rusher: a pass rusher who attacks from the outside.",
+      LB: "Linebacker: plays behind the line; tackles runners, covers short passes, sometimes rushes.",
+      OLB: "Outside linebacker: linebacker on the edge; often rushes the quarterback.",
+      ILB: "Inside linebacker: linebacker in the middle; the main run-stopper.",
+      MLB: "Middle linebacker: the 'quarterback of the defense'; calls the plays and tackles a lot.",
+      WLB: "Weak-side linebacker: on the side with fewer blockers; fast, covers ground.",
+      SLB: "Strong-side linebacker: on the tight end's side; takes on blockers.",
+      CB: "Cornerback: covers the wide receivers to stop passes.",
+      NB: "Nickel back: an extra cornerback who covers the slot receiver.",
+      DB: "Defensive back: cornerbacks and safeties, the pass defenders.",
+      S: "Safety: the last line of defense, deep behind everyone else.",
+      FS: "Free safety: plays deep and reads the quarterback to break up long passes.",
+      SS: "Strong safety: plays closer to the line; helps against runs and tight ends.",
+      PK: "Place kicker: kicks field goals, extra points and kickoffs.",
+      K: "Kicker: kicks field goals, extra points and kickoffs.",
+      P: "Punter: kicks the ball away on 4th down to push the other team back.",
+      LS: "Long snapper: snaps the ball back on punts and field goals.",
+      H: "Holder: catches the snap and holds the ball for the kicker.",
+      KR: "Kick returner: catches kickoffs and runs them back.",
+      PR: "Punt returner: catches punts and runs them back.",
+    };
+    const POSINFO = {
+      nfl: POS_FB, cfb: POS_FB,
+      nba: {
+        PG: "Point guard: brings the ball up and runs the offense; usually the best passer.",
+        SG: "Shooting guard: a scorer, often the best outside shooter.",
+        SF: "Small forward: all-round wing player who scores, defends and rebounds.",
+        PF: "Power forward: bigger forward who plays near the basket and rebounds.",
+        C: "Center: usually the tallest player; protects the rim, rebounds and scores close in.",
+        G: "Guard: plays in the backcourt; handles the ball and shoots from outside.",
+        F: "Forward: plays on the wing or near the basket; scores and rebounds.",
+        "G-F": "Guard-forward: can play either position.",
+        "F-C": "Forward-center: a big player who can play either position.",
+      },
+      mlb: {
+        SP: "Starting pitcher: pitches the first part of the game, usually 5 to 7 innings.",
+        RP: "Relief pitcher: comes in from the bullpen to replace the starter.",
+        CL: "Closer: the relief pitcher saved for the last inning of a close game.",
+        P: "Pitcher: throws the ball to the batter, trying to get them out.",
+        C: "Catcher: crouches behind home plate, catches pitches and calls which pitch to throw.",
+        "1B": "First baseman: fields near 1st base and catches throws to get batters out.",
+        "2B": "Second baseman: fields between 1st and 2nd base and helps turn double plays.",
+        "3B": "Third baseman: fields near 3rd base; needs quick reactions and a strong arm.",
+        SS: "Shortstop: fields between 2nd and 3rd base; often the best fielder on the team.",
+        LF: "Left fielder: catches balls hit to the left side of the outfield.",
+        CF: "Center fielder: covers the middle of the outfield, the most ground of anyone.",
+        RF: "Right fielder: covers the right side of the outfield; needs a strong throwing arm.",
+        OF: "Outfielder: plays in the outfield (left, center or right).",
+        IF: "Infielder: plays one of the bases or shortstop.",
+        DH: "Designated hitter: bats in place of the pitcher and doesn't play in the field.",
+        UT: "Utility player: can fill in at several positions.",
+        TWP: "Two-way player: both pitches and hits.",
+      },
+      f1: {
+        Driver: "Races the car. Each team has 2 drivers; both score points for the team.",
+        "Reserve driver": "Fills in if a race driver is ill or injured.",
+        "Team principal": "Runs the team and makes the big decisions.",
+        "Race engineer": "The voice on the radio: tells the driver about strategy, gaps and the car.",
+        Strategist: "Decides when to pit and which tyres to use.",
+        "Pit crew": "About 20 mechanics who change all 4 tyres in roughly 2 to 3 seconds.",
+      },
+    };
+    function posInfo(lg, a) {
+      const t = POSINFO[lg]; if (!t || !a) return "";
+      a = String(a).toUpperCase();
+      return t[a] || t[a.replace(/^[LR](?=[A-Z])/, "")] || "";
+    }
+    function posGuide(lg) {
+      const t = POSINFO[lg]; if (!t) return "";
+      return '<details class="pos-guide"><summary>' + (lg === "f1" ? "Who does what in a team" : "Positions explained") + "</summary>" +
+        Object.entries(t).map(([k, d]) => { const i = d.indexOf(": "); return "<p><b>" + esc(k) + "</b> " + esc(lg === "f1" || i < 0 ? d : d.slice(0, i) + " · " + d.slice(i + 2)) + "</p>"; }).join("") + "</details>";
+    }
+    function posNote(lg, abbrs) {
+      const seen = new Set(), out = [];
+      abbrs.forEach((a) => { const d = posInfo(lg, a); if (d && !seen.has(d)) { seen.add(d); out.push("<b>" + esc(String(a).toUpperCase()) + "</b> " + esc(d)); } });
+      return out.length ? dm(out.join("<br>")) : "";
+    }
     document.addEventListener("click", (e) => {
       if (!e.target.closest("[data-dummy]")) return;
       DUMMY = !DUMMY; store.set("dummy", DUMMY); document.documentElement.classList.toggle("dummy", DUMMY); buzz(8);
