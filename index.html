@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794883099" />
+  <meta name="build" content="1794883399" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -533,6 +533,7 @@
     .f-route.draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: dash 1.25s cubic-bezier(.45,0,.35,1) forwards; } .field.still .f-route.draw { stroke-dashoffset: 0; }
     .f-route.gone { animation: dash 1.25s cubic-bezier(.45,0,.35,1) forwards, fadeout .45s 1.5s forwards; } .field.still .f-route.gone { opacity: 0; }
     @keyframes fadeout { to { opacity: 0; } }
+    .field.still .f-mark.plr { opacity: 0; }   /* after the play: only its lines stay (Replay shows the players) */
     .fh .f-mark polygon { stroke: #fff; stroke-width: 2; stroke-linejoin: round; }
     .pp-wrap { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.8); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
     .pp-bar { display: flex; gap: 12px; align-items: center; color: #fff; font-size: 14px; } .pp-bar small { color: #aaa; }
@@ -2570,7 +2571,7 @@
     function fieldSvg(F, P, G, still, col, v) {
       const W = 640, H = 300, EZ = 50, S = (W - 2 * EZ) / 100, CY = H / 2;
       const X = (p) => EZ + p * S;
-      const VW = 360, xs = [];   // camera window: 360 of the 640 units, zoomed out only when the play needs more room
+      let tEnd = 0; const VW = 360, xs = [], at = (x) => { tEnd = Math.max(tEnd, x); };   // tEnd: when the play finishes animating   // camera window: 360 of the 640 units, zoomed out only when the play needs more room
       const finish = (str, pts) => {
         const lo = Math.min(...pts) - 55, hi = Math.max(...pts) + 55, k = Math.min(1, VW / Math.max(1, hi - lo));
         const tx = Math.min(0, Math.max(VW - W * k, VW / 2 - ((lo + hi) / 2) * k));
@@ -2578,6 +2579,7 @@
         const from = still || !v?.camT ? T : v.camT;
         if (v) v.camT = T;
         str = str.replace('data-fw="' + W + '"', 'data-fw="' + W + '" data-vx0="' + (-tx / k).toFixed(1) + '" data-vx1="' + ((VW - tx) / k).toFixed(1) + '"');   // visible part, so name tags stay on screen
+        str = str.split("__FADE__").join((tEnd + 1.2).toFixed(2));
         return str.replace('<g class="cam">', '<g class="cam" style="transform:' + from + '" data-to="' + T + '">') + "</g></g></svg>";
       };
       let s = '<svg class="field fh' + (still ? " still" : "") + '" data-fw="' + W + '" viewBox="0 0 ' + VW + " " + H + '" role="img" aria-label="Field"><defs>' +
@@ -2614,20 +2616,22 @@
         const name = small ? "" : [a?.short || fb || "", a?.pos].filter(Boolean).join(" · "), r = small ? 12 : 16, ly = up ? -32 : 36;
         const body = (small ? '<polygon points="0,-15 13,9 -13,9" fill="' + c + '"/>' : '<circle cx="0" cy="0" r="' + r + '" fill="' + c + '"/>') + '<text x="0" y="' + (small ? 2 : 0) + '" class="f-jn' + (small ? " s" : "") + '">' + esc(a?.jersey || "") + "</text>" +
           (name ? '<rect x="-60" y="' + (ly - 15) + '" width="120" height="25" rx="12.5" class="f-pill"/><text x="0" data-cx="0" data-rel="1" data-ax="' + x + '" y="' + (ly + 3) + '" class="f-lbl">' + esc(name) + "</text>" : "");
-        if (route && !still) return '<g class="f-mark" style="animation-delay:' + route.begin + 's"><g><animateMotion begin="' + route.begin + 's" dur="' + route.dur + 's" fill="freeze" ' + (route.kp ? 'calcMode="linear" keyPoints="' + route.kp + '" keyTimes="' + route.kt + '"' : 'calcMode="spline" keyTimes="0;1" keySplines=".45 0 .35 1"') + ' path="' + route.d + '"/>' + body + "</g></g>";
+        // Players fade out once the play is over (__FADE__ is filled in by finish), leaving just the play's lines.
+        if (route && !still) return (at(route.begin + route.dur), '<g class="f-mark plr" style="animation:pop .3s cubic-bezier(.22,1,.36,1) ' + route.begin + 's both,fadeout .6s __FADE__s forwards"><g><animateMotion begin="' + route.begin + 's" dur="' + route.dur + 's" fill="freeze" ' + (route.kp ? 'calcMode="linear" keyPoints="' + route.kp + '" keyTimes="' + route.kt + '"' : 'calcMode="spline" keyTimes="0;1" keySplines=".45 0 .35 1"') + ' path="' + route.d + '"/>' + body + "</g></g>");
         const mv = from && !still;
-        return '<g class="f-mark" style="animation-delay:' + delay + 's"><g transform="translate(' + x + " " + y + ')">' +
+        at(mv ? from.begin + from.dur : delay + 0.3);
+        return '<g class="f-mark plr" style="animation:pop .3s cubic-bezier(.22,1,.36,1) ' + delay + 's both,fadeout .6s __FADE__s forwards"><g transform="translate(' + x + " " + y + ')">' +
           (mv ? '<g transform="translate(' + (from.x - x) + " " + (from.y - y) + ')"><animateTransform attributeName="transform" type="translate" from="' + (from.x - x) + " " + (from.y - y) + '" to="0 0" begin="' + from.begin + 's" dur="' + from.dur + 's" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".45 0 .35 1"/>' + body + "</g>" : body) + "</g></g>";
       };
       const tag = (x, ...r) => (xs.push(x), tag0(x, ...r));
       const tag0 = (x, y, txt, delay) => '<g class="f-mark" style="animation-delay:' + delay + 's"><rect x="' + (x - 60) + '" y="' + (y - 15) + '" width="120" height="25" rx="12.5" class="f-pill f-tagp"/><text x="' + x + '" data-cx="' + x + '" y="' + (y + 3) + '" class="f-lbl">' + esc(txt) + "</text></g>";
       const arc = (x0, y0, x1, y1, h) => "M" + x0 + " " + y0 + " Q" + (x0 + x1) / 2 + " " + (Math.min(y0, y1) - h) + " " + x1 + " " + y1;
-      const fly = (path, begin, dur) => '<path d="' + path + '" class="f-throw" style="animation-delay:' + Math.max(0, begin - 0.1) + 's"/>' +
+      const fly = (path, begin, dur) => (at(begin + dur), "") + '<path d="' + path + '" class="f-throw" style="animation-delay:' + Math.max(0, begin - 0.1) + 's"/>' +
         (still ? "" : '<circle r="6" class="f-ball" style="animation-delay:' + begin + 's"><animateMotion begin="' + begin + 's" dur="' + dur + 's" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".3 0 .5 1" path="' + path + '"/></circle>');
       const land = (x, ...r) => (xs.push(x), land0(x, ...r));
       const land0 = (x, y, delay) => '<g class="f-mark" style="animation-delay:' + delay + 's"><circle cx="' + x + '" cy="' + y + '" r="10" class="f-land"/><circle cx="' + x + '" cy="' + y + '" r="3.5" class="f-landc"/></g>';
       // The trail draws behind the runner at the same pace.
-      const run = (d, delay, dur) => '<path d="' + d + '" class="f-run draw" pathLength="1" style="animation-delay:' + delay + "s;animation-duration:" + dur + 's;animation-timing-function:cubic-bezier(.45,0,.35,1)" marker-end="url(#farw)"/>';
+      const run = (d, delay, dur) => (at(delay + dur), "") + '<path d="' + d + '" class="f-run draw" pathLength="1" style="animation-delay:' + delay + "s;animation-duration:" + dur + 's;animation-timing-function:cubic-bezier(.45,0,.35,1)" marker-end="url(#farw)"/>';
       const isKO = /kickoff/i.test(ty), isPunt = /punt/i.test(ty), isFG = /field goal|extra point/i.test(ty);   // by play type: a touchdown play's text also mentions the extra point
       const qbX = xL - dir * (/shotgun/i.test(t) ? 5 : 2) * S;
       const kd = isKO || isPunt ? Number((t.match(/(?:punts|kicks) (-?\d+) yards?/i) || [])[1]) : NaN;
