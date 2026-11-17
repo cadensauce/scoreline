@@ -9,7 +9,7 @@ import webpush from "web-push";
 import admin from "firebase-admin";
 import nodemailer from "nodemailer";
 import crypto from "node:crypto";
-import { picksTick } from "./picks.mjs";
+import { picksTick, cleanupDeleted } from "./picks.mjs";
 
 const RUN_FOR_MS = (Number(process.env.RUN_MINUTES) || 345) * 60_000;
 const TICK_MS = 20_000;            // games
@@ -357,7 +357,7 @@ async function checkNews() {
 
 // ---- main loop ---------------------------------------------------------------------------
 try { const d = await stateDoc.get(); if (d.exists) newsState = { seen: d.data().seen || [], caps: d.data().caps || {} }; } catch {}
-let picksAt = 0;
+let picksAt = 0, cleanupAt = 0;
 const until = Date.now() + RUN_FOR_MS;
 console.log("Push worker running until", new Date(until).toISOString());
 while (Date.now() < until) {
@@ -367,6 +367,7 @@ while (Date.now() < until) {
     await checkGames();
     await checkF1();
     if (Date.now() - newsAt > NEWS_EVERY_MS) await checkNews();
+    if (Date.now() - cleanupAt > 6 * 3600e3) { cleanupAt = Date.now(); await cleanupDeleted(db, admin).catch((e) => console.log("cleanup error", e.message)); }
     if (Date.now() - picksAt > 60_000) { picksAt = Date.now(); await picksTick(db, admin).catch((e) => console.log("picks error", e.message)); }
   } catch (e) { console.log("tick error", e.message); }
   await new Promise((r) => setTimeout(r, Math.max(1000, TICK_MS - (Date.now() - t0))));
