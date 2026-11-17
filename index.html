@@ -2452,7 +2452,7 @@
       const runs = []; let cur = null, aw = teams.find((t) => t.homeAway === "away") || teams[0], hm = teams.find((t) => t.homeAway === "home") || teams[1];
       const sc = ([a, h]) => (aw.team?.abbreviation || "") + " " + a + ", " + (hm.team?.abbreviation || "") + " " + h;
       (plays || []).filter((p) => p.scoringPlay && p.scoreValue > 0 && p.team?.id).forEach((p) => {
-        const id = String(p.team.id), when = "Q" + (p.period?.number > 4 ? "OT" : p.period?.number || "") + " " + (p.clock?.displayValue || "");
+        const id = String(p.team.id), when = (p.period?.number > 4 ? "OT" : "Q" + (p.period?.number || "")) + " " + (p.clock?.displayValue || "");
         if (cur && cur.id === id) { cur.pts += p.scoreValue; cur.to = when; cur.end = [p.awayScore, p.homeScore]; }
         else { if (cur) runs.push(cur); cur = { id, pts: p.scoreValue, from: when, to: when, end: [p.awayScore, p.homeScore] }; }
       });
