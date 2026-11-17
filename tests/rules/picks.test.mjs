@@ -24,7 +24,7 @@ beforeEach(async () => {
 const as = (uid) => env.authenticatedContext(uid).firestore();
 const pick = (uid, gameId, side = "home", extra = {}) => setDoc(doc(as(uid), "picks/" + uid + "_" + gameId), { uid, gameId, side, updatedAt: serverTimestamp(), ...extra });
 
-test("13+ can pick before kickoff", () => assertSucceeds(pick("teen", "nfl_1")));
+test("agreed can pick before kickoff", () => assertSucceeds(pick("teen", "nfl_1")));
 test("13+ can change and clear a pick before kickoff", async () => {
   await assertSucceeds(pick("teen", "nfl_1", "home"));
   await assertSucceeds(pick("teen", "nfl_1", "away"));
@@ -32,8 +32,8 @@ test("13+ can change and clear a pick before kickoff", async () => {
 });
 test("no pick after kickoff", () => assertFails(pick("teen", "nfl_2")));
 test("no clearing a pick after kickoff", () => assertFails(deleteDoc(doc(as("teen"), "picks/teen_nfl_2"))));
-test("under 13 can't pick", () => assertFails(pick("kid", "nfl_1")));
-test("no age answer, no pick", () => assertFails(pick("newbie", "nfl_1")));
+test("people who said no can still pick (just for fun)", () => assertSucceeds(pick("kid", "nfl_1")));
+test("people who never agreed can still pick (just for fun)", () => assertSucceeds(pick("newbie", "nfl_1")));
 test("signed out can't pick", () => assertFails(setDoc(doc(env.unauthenticatedContext().firestore(), "picks/x_nfl_1"), { uid: "x", gameId: "nfl_1", side: "home", updatedAt: serverTimestamp() })));
 test("no pick for a game that isn't open", () => assertFails(pick("teen", "nfl_999")));
 test("can't pick for someone else", () => assertFails(setDoc(doc(as("teen"), "picks/other_nfl_1"), { uid: "other", gameId: "nfl_1", side: "home", updatedAt: serverTimestamp() })));
