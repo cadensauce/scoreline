@@ -1342,12 +1342,14 @@
     const viewOf = (key) => views0[key] || "week";
     const dayOff = {};                      // key -> days from today (day view)
     const gameDays = {};                    // key -> Set of "YYYYMMDD" that have games
+    const weekOf = {};                      // football: key -> { "YYYYMMDD": { n, st } } the week a game day belongs to
     const DAY = 86400000;
     const dateAt = (off) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + off); return d; };
     const dayUrl = (key, d) => API + LEAGUES[key].path + "/scoreboard?dates=" + ymd(d) + (LEAGUES[key].extra || "");
     function noteGameDays(key, data) {
       const s = (gameDays[key] ||= new Set());
-      (data?.events || []).forEach((e) => s.add(ymd(new Date(e.date))));
+      const wk = data?.week?.number ? { n: data.week.number, st: data.season?.type || 2 } : null, wo = (weekOf[key] ||= {});
+      (data?.events || []).forEach((e) => { const k = ymd(new Date(e.date)); s.add(k); if (wk) wo[k] = wk; });
       const cal = data?.leagues?.[0]?.calendar;
       if (Array.isArray(cal) && typeof cal[0] === "string") cal.forEach((c) => s.add(ymd(new Date(c))));
     }
@@ -1396,6 +1398,13 @@
           dayOff[key] = 0;
           const gd = gameDays[key];
           if (gd?.size && !gd.has(ymd(dateAt(0)))) { const t = ymd(dateAt(0)), all = [...gd].sort(), nx = all.find((s) => s > t) || all[all.length - 1]; dayOff[key] = offOf(nx); }
+        }
+        // Football: ESPN's single-day feed misses weekday games, so load that day's week and keep only that day.
+        const want = ymd(dateAt(dayOff[key])), wk = L.paging === "week" && weekOf[key]?.[want];
+        if (wk) {
+          const d = await getJSON(API + L.path + "/scoreboard?" + (L.extra || "").replace(/^&/, "") + "&week=" + wk.n + "&seasontype=" + wk.st);
+          const events = (d.events || []).filter((e) => ymd(new Date(e.date)) === want);
+          cache[key] = { ...d, events }; return { events };
         }
         const data = await getJSON(dayUrl(key, dateAt(dayOff[key])));
         noteGameDays(key, data); cache[key] = data;
