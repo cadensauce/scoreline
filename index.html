@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794877842" />
+  <meta name="build" content="1794878171" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -447,6 +447,7 @@
     #splash svg { animation: splashIn .45s var(--ease) both; }
     #splash b { font-family: var(--display); font-size: 30px; font-weight: 650; letter-spacing: -.01em; animation: splashIn .45s .06s var(--ease) both; }
     #splash.out { opacity: 0; pointer-events: none; }
+    html.mobile-app, html.mobile-app body { scrollbar-width: none; } html.mobile-app ::-webkit-scrollbar { display: none; }
     @keyframes splashIn { from { opacity: 0; transform: translateY(6px); } }
     .mobile-app .sheet-bar::before { content: ""; position: absolute; left: 50%; top: 6px; width: 36px; height: 4px; margin-left: -18px; border-radius: 99px; background: var(--line-hi); }
     .sheet-bar { position: relative; }
@@ -501,6 +502,13 @@
     /* ---- alert settings (per team) ---- */
     .f1-follow .fo { display: none; } .f1-follow.on .fo { display: inline; } .f1-follow.on .fn { display: none; }
     .f1-follow.on { color: var(--gold); }
+    tr.f1-follow { cursor: pointer; } tr.f1-follow.on { color: inherit; } tr.f1-follow .fo { color: var(--gold); font-size: 11px; }
+    .p-head .pill-btn { margin-left: auto; flex: none; }
+    .prows { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+    .prow { display: flex; align-items: center; gap: 12px; width: 100%; background: var(--panel); border: 0; border-radius: 14px; padding: 10px 12px; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+    .prow img, .prow-ph { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; background: var(--panel-2); flex: none; }
+    .prow div { flex: 1; min-width: 0; } .prow b { display: block; font-size: 14.5px; }
+    .prow small { display: block; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .nhead { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 4px 0 18px; text-align: center; }
     .nhead small { font: 700 11px Inter, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
     .nhead b { font-family: var(--display); font-size: 26px; font-weight: 650; letter-spacing: -.01em; line-height: 1.1; }
@@ -926,7 +934,7 @@
       document.querySelector('meta[name="viewport"]')?.setAttribute("content", "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover");
       const sp = document.createElement("div");
       sp.id = "splash";
-      sp.innerHTML = '<svg viewBox="0 0 32 32" width="64" height="64"><path d="M7 22h18M7 16h12M7 10h7" stroke="#ff5a36" stroke-width="3" stroke-linecap="round"/></svg><b>SCORELINE</b>';
+      sp.innerHTML = '<svg viewBox="0 0 32 32" width="64" height="64"><path d="M7 22h18M7 16h12M7 10h7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><b>Scoreline</b>';
       document.body.appendChild(sp);
     }
     const hideSplash = () => { const sp = $("splash"); if (sp && !sp.classList.contains("out")) { sp.classList.add("out"); setTimeout(() => sp.remove(), 500); } };
@@ -959,6 +967,34 @@
       get(k, d) { try { const v = JSON.parse(localStorage.getItem("scoreline:" + k)); return v ?? d; } catch { return d; } },
       set(k, v) { try { localStorage.setItem("scoreline:" + k, JSON.stringify(v)); } catch {} },
     };
+    /* ---------- followed players and drivers: [{k: "lg|athleteId", n: name, t: teamId, h: headshot}] ---------- */
+    let pfollows = store.get("players", []);
+    const isPF = (k) => pfollows.some((p) => p.k === k);
+    function pfBtn(k, n, t, h) { return '<button type="button" class="pill-btn f1-follow' + (isPF(k) ? " on" : "") + '" data-pfollow="' + esc(k) + '" data-pn="' + esc(n || "") + '" data-pt="' + esc(t || "") + '" data-ph="' + esc(h || "") + '"><span class="fo">★ Following</span><span class="fn">☆ Follow</span></button>'; }
+    function playersHomeHtml(keys, results, f1) {
+      const rows = pfollows.map((p) => {
+        const [lg, id] = p.k.split("|");
+        let line = "";
+        if (lg === "f1") {
+          const ev = f1?.events?.[0];
+          if (!ev) return "";
+          const done = (ev.competitions || []).slice().reverse().find((c) => c.status?.type?.state !== "pre" && (c.competitors || []).some((d) => String(d.athlete?.id) === id));
+          const me = done?.competitors.find((d) => String(d.athlete?.id) === id), nx = nextSession(ev);
+          line = me ? "P" + (me.order ?? "–") + " in " + (SESSION_NAMES[done.type?.abbreviation] || "the last session") : nx ? "Next: " + (SESSION_NAMES[nx.type?.abbreviation] || "session") + " · " + fmtDay(nx.date) + " " + fmtTime(nx.date) : "";
+        } else {
+          const i = keys.indexOf(lg);
+          if (i < 0) return "";
+          const evs = results[i].status === "fulfilled" ? results[i].value.events || [] : [];
+          const ev = evs.find((e) => (e.competitions?.[0]?.competitors || []).some((c) => String(c.team?.id) === String(p.t)));
+          const s = ev?.status?.type;
+          line = !ev ? "No game on this schedule" : s.state === "pre" ? ev.shortName + " · " + fmtDay(ev.date) + " " + fmtTime(ev.date) : ev.shortName + " · " + (s.shortDetail || "");
+          if (s?.state === "in") line = "Live · " + line;
+        }
+        return '<button type="button" class="prow" ' + (lg === "f1" ? 'data-tab="f1"' : 'data-player="' + esc(p.k) + '"') + ">" + (p.h ? '<img src="' + esc(p.h) + '" alt="" loading="lazy">' : '<span class="prow-ph"></span>') +
+          "<div><b>" + esc(p.n) + "</b><small>" + esc(line) + '</small></div><span class="chev">›</span></button>';
+      }).filter(Boolean);
+      return rows.length ? '<div class="section-title"><b>★ Your players</b></div><div class="prows">' + rows.join("") + "</div>" : "";
+    }
 
     // An old team-page bug saved bare ids ("183") next to the real key ("s:20~l:23~t:183"); drop those copies.
     const cleanFavs = window.cleanFavs = (a) => a.filter((k) => !/^\d+$/.test(k) || !a.some((x) => x.endsWith("~t:" + k)));
@@ -1343,6 +1379,7 @@
       if (favEvents.length && state.filter !== "fav") {
         html += '<div class="section-title"><b>★ Your teams</b></div><div class="grid">' + favEvents.map(([e, k], i) => gameCard(e, k, i, true)).join("") + "</div>";
       }
+      if (state.filter === "all") html += playersHomeHtml(keys, results, f1);
       if (f1?.events?.[0] && state.filter === "all") html += f1Mini(f1.events[0]);
       keys.forEach((k, i) => {
         const L = LEAGUES[k];
@@ -1417,8 +1454,9 @@
           const pts = (e.stats || []).find((x) => x.name === "championshipPts" || x.name === "points")?.displayValue || "";
           const who = e.athlete?.displayName || e.team?.displayName || "";
           const flag = e.athlete?.flag?.href ? '<img class="flag" src="' + esc(e.athlete.flag.href) + '" alt="">' : "";
-          return '<tr><td class="pos">' + (i + 1) + "</td><td>" + flag + esc(who) + '</td><td class="pts">' + esc(pts) + "</td></tr>";
-        }).join("") + "</tbody></table>" : '<div class="empty">Standings unavailable.</div>';
+          const dk = e.athlete?.id ? "f1|" + e.athlete.id : "";
+          return "<tr" + (dk ? ' class="f1-follow' + (isPF(dk) ? " on" : "") + '" data-pfollow="' + esc(dk) + '" data-pn="' + esc(who) + '" data-ph="' + esc(e.athlete?.headshot?.href || "") + '"' : "") + '><td class="pos">' + (i + 1) + "</td><td>" + flag + esc(who) + (dk ? ' <span class="fo">★</span>' : "") + '</td><td class="pts">' + esc(pts) + "</td></tr>";
+        }).join("") + "</tbody></table>" + (state.f1Table === "drivers" ? '<div class="g-note">Tap a driver to follow them. They show up on Home.</div>' : "") : '<div class="empty">Standings unavailable.</div>';
       right += "</div>";
       main.innerHTML = barHtml("Formula 1", "f1") + '<div class="panel track-panel" id="trackPanel"><div class="g-label">Track</div><div class="skel" style="height:260px"></div></div>' + '<div class="f1-wrap">' + left + right + "</div>";
       renderTabs();
@@ -1606,6 +1644,16 @@
       if (tab) {
         if (state.tab !== tab.dataset.tab) { const o = navOrder(), dir = o.indexOf(tab.dataset.tab) > o.indexOf(state.tab) ? 1 : -1; state.tab = tab.dataset.tab; buzz(); swapIn(dir); window.scrollTo({ top: 0, behavior: MOBILE_APP ? "auto" : "smooth" }); return render(false); }
         return render();
+      }
+      const pf = e.target.closest("[data-pfollow]");
+      if (pf) {
+        buzz(12);
+        const k = pf.dataset.pfollow, n = pf.dataset.pn;
+        pfollows = isPF(k) ? pfollows.filter((p) => p.k !== k) : [...pfollows, { k, n, t: pf.dataset.pt, h: pf.dataset.ph }].slice(-40);
+        store.set("players", pfollows);
+        document.querySelectorAll('[data-pfollow="' + CSS.escape(k) + '"]').forEach((b) => b.classList.toggle("on", isPF(k)));
+        toast(isPF(k) ? "Following " + n : "Stopped following " + n);
+        return;
       }
       const fav = e.target.closest("[data-fav]");
       if (fav) buzz(12);
@@ -2593,7 +2641,7 @@
       if (!a) return setBody(v, "Player", '<div class="error">Couldn\'t load this player.</div>');
       let h = '<div class="p-head">' + (a.headshot?.href ? '<img src="' + esc(a.headshot.href) + '" alt="">' : "") + "<div><b>" + esc(a.displayName) + "</b><small>" +
         esc([a.team?.abbreviation || a.team?.displayName, a.jersey ? "#" + a.jersey : "", a.position?.abbreviation].filter(Boolean).join(" · ")) + "</small><small>" +
-        esc([a.displayHeight, a.displayWeight, a.age ? "Age " + a.age : "", a.college?.name, a.displayExperience].filter(Boolean).join(" · ")) + "</small></div></div>";
+        esc([a.displayHeight, a.displayWeight, a.age ? "Age " + a.age : "", a.college?.name, a.displayExperience].filter(Boolean).join(" · ")) + "</small></div>" + pfBtn(lg + "|" + id, a.displayName, a.team?.id, a.headshot?.href) + "</div>";
       const inj = (a.injuries || [])[0];
       if (inj) {
         const ab = inj.type?.abbreviation || inj.details?.fantasyStatus?.abbreviation || String(inj.status || "").slice(0, 1);
