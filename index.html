@@ -488,6 +488,9 @@
     .getapp-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--panel) !important; color: var(--accent) !important; border-color: transparent !important; font-weight: 700; padding: 7px 13px; }
     .getapp-btn:hover { background: var(--panel-2) !important; }
     .marks-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: 700 13.5px Inter, sans-serif; font-variant-numeric: tabular-nums; cursor: pointer; }
+    .qotd { margin: 2px 0 20px; padding: 2px 0 2px 14px; border-left: 2px solid var(--line-hi, var(--line)); } .qotd[hidden] { display: none; }
+    .qotd-k { font: 600 11px Inter, sans-serif; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+    .qotd p { margin: 0 0 6px; font-size: 15.5px; line-height: 1.45; font-style: italic; } .qotd small { font-size: 12px; color: var(--muted); } .qotd a { color: var(--muted); }
     .marks-chip[hidden] { display: none; } .marks-chip:hover { background: var(--panel-2); } .mark-ic { flex: none; vertical-align: -3px; }
     .marks-agree { flex-direction: column; align-items: stretch !important; gap: 10px; }
     @media (max-width: 720px) { .getapp-btn { min-height: 34px !important; padding: 6px 10px !important; font-size: 12.5px; } }
@@ -1526,6 +1529,25 @@
         (HEAT ? '<div class="heat-key"><span>One-sided</span><i></i><span>Close game</span></div>' : "") + (HEAT ? dm("<b>Reading the heat map.</b> Each tile is one game. The brighter the tile, the closer the game is to a coin flip (from win probability), so the most exciting games stand out. Upcoming games use the pre-game odds; finished games are dimmed. The ball icon shows who has it.") : "");
     }
 
+    /* ---------- Quote of the day (Home). The push worker saves ZenQuotes' daily quote to public/quote; shown with credit. ---------- */
+    let quoteFetched = false;
+    function quoteBox() {
+      const x = store.get("quote", null);
+      if (!quoteFetched) { quoteFetched = true; loadQuote(); }
+      if (!x?.q) return '<div class="qotd" data-quote hidden></div>';
+      return '<div class="qotd" data-quote><div class="qotd-k">Quote of the day</div><p>“' + esc(x.q) + '”</p><small>— ' + esc(x.a) +
+        ' · <a href="https://zenquotes.io/" target="_blank" rel="noopener" data-ext>ZenQuotes</a></small></div>';
+    }
+    async function loadQuote() {
+      try {
+        const d = await getJSON("https://firestore.googleapis.com/v1/projects/scoreline-41f14/databases/(default)/documents/public/quote");
+        const f = d.fields || {}, x = { q: f.q?.stringValue, a: f.a?.stringValue, date: f.date?.stringValue };
+        if (!x.q || !x.a) return;
+        const old = store.get("quote", null);
+        store.set("quote", x);
+        if (old?.q !== x.q) document.querySelectorAll("[data-quote]").forEach((el) => { el.outerHTML = quoteBox(); });
+      } catch {}
+    }
     async function renderHome() {
       const main = $("main");
       if (!main.querySelector("[data-home]")) main.innerHTML = savedShell("home") || '<div data-home>' + barHtml("Today", null) + skeleton(9) + "</div>";
@@ -1535,7 +1557,7 @@
       if (pins().includes("f1")) try { f1 = await getJSON(API + LEAGUES.f1.path + "/scoreboard"); cache.f1 = f1; } catch {}
       if (state.tab !== "home") return;
       let anyLive = false;
-      let html = '<div data-home>' + barHtml("Today", null);
+      let html = '<div data-home>' + barHtml("Today", null) + (state.filter === "all" ? quoteBox() : "");
       const liveIds = new Set();
       const liveEvs = [];
       keys.forEach((k, i) => { if (results[i].status === "fulfilled") (results[i].value.events || []).filter(isLive).forEach((e) => { liveEvs.push([e, k]); liveIds.add(e.id); }); });
