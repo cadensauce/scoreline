@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794896277" />
+  <meta name="build" content="1794913335" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -554,6 +554,7 @@
     .tour-acts { display: flex; justify-content: space-between; } .tour-acts button { border: 0; border-radius: 999px; padding: 9px 16px; font: 600 13.5px Inter, sans-serif; cursor: pointer; }
     .tour-skip { background: none; color: var(--muted); } .tour-next { background: var(--text); color: var(--bg); }
     .f-disc { margin-top: 6px; font-size: 10.5px; line-height: 1.45; color: var(--faint); text-align: center; }
+    .f-src { margin-top: 8px; font-size: 11px; line-height: 1.45; color: var(--muted); text-align: center; } .f-src b { color: var(--text); font-weight: 600; }
     /* Heat map: legend, spacing, small team-colour accents */
     .heat-key { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); margin: 4px 0 12px; }
     .heat-key i { flex: 0 0 120px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--panel), color-mix(in srgb, var(--text) 26%, var(--panel))); }
@@ -3302,7 +3303,7 @@
       let html = (F.h2 ? '<div class="h2"><span>2nd half</span><b>' + (F.h2.team.team?.logos?.[0]?.href ? '<img src="' + esc(F.h2.team.team.logos[0].href) + '" alt="">' : "") + esc(F.h2.team.team?.displayName || ab(F.h2.team)) + "</b><small>" + (F.h2.actual ? "received the 2nd-half kickoff" : "gets the ball first") + "</small></div>" : "") + scoreBug(F) + sitLine(F) + '<div data-c="plays"><div class="g-label f-title">Plays' + (F.live ? '<span class="live-pill">Live</span><small data-ago>just now</small>' : "") + '</div><div class="f-nav"><button type="button" class="sheet-btn" data-step="-1" aria-label="Previous play" ' + (F.di || pi ? "" : "disabled") + '>‹</button><div><b>Play ' + (pi + 1) + " of " + D.plays.length + "</b><small>" + ab(dteam) + " drive " + (F.di + 1) + " of " + F.drives.length + " · " + esc(last?.type?.text || "") + "</small></div>" +
         '<button type="button" class="sheet-btn" data-step="1" aria-label="Next play" ' + (F.di < F.drives.length - 1 || pi < D.plays.length - 1 ? "" : "disabled") + ">›</button></div>" + '<div class="fwrap">' + svg + '<button type="button" class="f-replay" data-freplay aria-label="Replay this play">↻ Replay</button></div>' +
         dm("<b>Reading the field.</b> The offense moves toward the end zone it's attacking. Blue line: where the play started. Yellow line: where they need to reach for a new set of 4 downs. Dotted arc: the ball in the air; solid line: a player running with it; triangles: defenders. Use the arrows to step through plays.") +
-        '<div class="f-key"><span><i class="k-los"></i>' + tm(F.lg, "Scrimmage") + '</span><span><i class="k-1st"></i>' + tm(F.lg, "1st down") + '</span><span><i class="k-air"></i>' + tm(F.lg, "In the air") + '</span><span><i class="k-run"></i>' + tm(F.lg, "Run") + '</span><span>▲ Defense</span></div><div class="f-disc">Play Viewer visualizations are reconstructed from available game data and may not perfectly represent the actual play. Player positioning, movement, and routes may differ from what occurred on the field.</div>';
+        '<div class="f-key"><span><i class="k-los"></i>' + tm(F.lg, "Scrimmage") + '</span><span><i class="k-1st"></i>' + tm(F.lg, "1st down") + '</span><span><i class="k-air"></i>' + tm(F.lg, "In the air") + '</span><span><i class="k-run"></i>' + tm(F.lg, "Run") + '</span><span>▲ Defense</span></div><div class="f-src"><b>From the play data:</b> line of scrimmage, 1st-down line, where the ball started and ended, yards gained and the players named. <b>Estimated:</b> routes, run paths and where players stood.</div><div class="f-disc">Play Viewer visualizations are reconstructed from available game data and may not perfectly represent the actual play. Player positioning, movement, and routes may differ from what occurred on the field.</div>';
       if (P) {
         const g = G, t = P.text || "", ty = P.type?.text || "";
         const refOf = (type) => (P.participants || []).find((x) => x.type === type)?.athlete?.$ref;
