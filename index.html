@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794886896" />
+  <meta name="build" content="1794887091" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -530,6 +530,9 @@
     .fh .cam { transform-origin: 0 0; transition: transform .9s cubic-bezier(.45,0,.35,1); }
     .wx-imp { margin-top: 12px; padding: 12px 14px; background: var(--panel-2); border-radius: 14px; } .wx-imp-t { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; } .wx-imp p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.45; }
     .fwrap { position: relative; } .f-replay { position: absolute; right: 10px; top: 20px; border: 0; border-radius: 999px; padding: 6px 12px; font: 600 12px Inter, sans-serif; color: #fff; background: rgba(8,12,18,.6); cursor: pointer; }
+    .recap-head { margin: 0 0 6px; font-size: 16px; font-weight: 650; line-height: 1.4; } .recap-why { margin: 0 0 10px; font-size: 14px; color: var(--muted); line-height: 1.45; }
+    .recap-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; } .recap-list li { display: grid; grid-template-columns: 96px 1fr; gap: 10px; font-size: 13.5px; line-height: 1.4; }
+    .recap-list b { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding-top: 2px; }
     .term { border-bottom: 1px dotted currentColor; cursor: help; }
     .gloss-pop { position: fixed; left: 16px; right: 16px; bottom: calc(88px + env(safe-area-inset-bottom)); max-width: 440px; margin: 0 auto; z-index: 10000; background: var(--panel-3); color: var(--text); padding: 14px 16px; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.45); animation: pop .25s var(--ease) both; }
     .gloss-pop b { font-size: 15px; } .gloss-pop p { margin: 6px 0 4px; font-size: 14px; line-height: 1.45; } .gloss-pop small { color: var(--muted); font-size: 11px; }
@@ -1978,6 +1981,59 @@
     }
     /* ---------- plain-English status line (always on, under the score) ---------- */
     // "Bengals lead by 21 at halftime. Teams in this spot win about 98% of the time." Built only from real data.
+    /* ---------- game recap (finished games): written from the game's own data, no guessing ----------
+       Result + context (comeback / close / blowout), the turning point (go-ahead score for good), biggest
+       moments (largest win-probability swings), standout players, and why the winner won (biggest stat edges). */
+    const RECAP_EDGES = {
+      nfl: [["turnovers", "fewer turnovers", -1], ["rushingYards", "more rushing yards", 1], ["netPassingYards", "more passing yards", 1], ["totalYards", "more total yards", 1], ["firstDowns", "more first downs", 1]],
+      nba: [["fieldGoalPct", "better shooting", 1], ["threePointFieldGoalPct", "better 3-point shooting", 1], ["totalRebounds", "more rebounds", 1], ["turnovers", "fewer turnovers", -1], ["assists", "more assists", 1]],
+      mlb: [["H", "more hits", 1], ["HR", "more home runs", 1], ["E", "fewer errors", -1], ["BB", "more walks", 1]],
+    };
+    RECAP_EDGES.cfb = RECAP_EDGES.nfl;
+    function recapHtml(s, teams, lg) {
+      const comp = s.header?.competitions?.[0] || {};
+      if (comp.status?.type?.state !== "post" || teams.length < 2) return "";
+      const sc = (t) => Number(t.score), [away, home] = teams;
+      if (!Number.isFinite(sc(away)) || !Number.isFinite(sc(home)) || sc(away) === sc(home)) return "";
+      const W = sc(home) > sc(away) ? home : away, L = W === home ? away : home, wHome = W === home;
+      const nmT = (t) => t.team?.shortDisplayName || t.team?.displayName || t.team?.abbreviation || "";
+      const margin = sc(W) - sc(L), big = { nfl: 17, cfb: 21, nba: 15, mlb: 5 }[lg] || 15, close = { nfl: 3, cfb: 3, nba: 5, mlb: 1 }[lg] || 3;
+      const series = lg === "mlb" ? null : wpSeries(s);
+      const low = series ? Math.min(...series.map((p) => (wHome ? p.home : 1 - p.home))) : null;
+      let head = nmT(W) + " beat " + nmT(L) + " " + sc(W) + "–" + sc(L) + ".";
+      if (low != null && low < 0.2) head += " A comeback: at their lowest point they had about a " + Math.max(1, Math.round(low * 100)) + "% chance to win.";
+      else if (margin <= close) head += " It came down to the end.";
+      else if (margin >= big) head += " It was never close.";
+      const items = [];
+      // Turning point: the last time the winner took the lead (they never trailed or were tied after it).
+      const sp = (s.scoringPlays || []).filter((p) => p.awayScore != null && p.homeScore != null);
+      let turn = null;
+      for (let i = sp.length - 1; i >= 0; i--) {
+        const lead = wHome ? sp[i].homeScore - sp[i].awayScore : sp[i].awayScore - sp[i].homeScore;
+        if (lead <= 0) break;
+        turn = sp[i];
+      }
+      if (turn) items.push(["Turning point", (turn.text || turn.type?.text || "Score") + " (" + perName(lg, turn.period?.number) + " " + (turn.clock?.displayValue || "") + ") put " + nmT(W) + " ahead for good."]);
+      // Biggest moments: largest swings in win probability.
+      if (series && series.length > 3) {
+        const sw = series.slice(1).map((p, i) => ({ p, d: p.home - series[i].home })).filter((x) => x.p.text).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 3);
+        sw.forEach(({ p, d }) => items.push(["Big moment", p.text.replace(/\s+/g, " ").slice(0, 140) + " (" + perName(lg, p.per) + " " + p.clock + ", " + (d > 0 === wHome ? "+" : "−") + Math.round(Math.abs(d) * 100) + "% for " + nmT(W) + ")"]));
+      }
+      // Standout players: the top name in each team's first two stat categories.
+      const lead = (t, n) => (s.leaders || []).find((x) => x.team?.id === t.team?.id)?.leaders?.slice(0, n).map((c) => c.leaders?.[0] && (c.leaders[0].athlete?.displayName + " (" + nmT(t) + "): " + c.leaders[0].displayValue)).filter(Boolean) || [];
+      [...lead(W, 2), ...lead(L, 1)].forEach((x) => items.push(["Standout", x]));
+      // Why they won: the winner's biggest stat edges.
+      const bt = s.boxscore?.teams || [];
+      const stat = (t) => { const m = {}; (bt.find((x) => x.team?.id === t.team?.id)?.statistics || []).forEach((st) => { m[st.name] = parseFloat(String(st.displayValue).replace(/,/g, "")); }); return m; };
+      const a = stat(W), b = stat(L);
+      const edges = (RECAP_EDGES[lg] || []).filter(([k]) => Number.isFinite(a[k]) && Number.isFinite(b[k]))
+        .map(([k, txt, dir]) => ({ k, txt, a: a[k], b: b[k], gap: dir * (a[k] - b[k]) / Math.max(1, Math.abs(a[k]) + Math.abs(b[k])) })).filter((e) => e.gap > 0.05).sort((x, y) => y.gap - x.gap).slice(0, 2);
+      const fmt = (v, k) => String(Math.round(v * 10) / 10) + (/Pct$/.test(k) ? "%" : "");
+      const why = edges.length ? "Why " + nmT(W) + " won: " + edges.map((e) => e.txt + " (" + fmt(e.a, e.k) + " to " + fmt(e.b, e.k) + ")").join(" and ") + "." : "";
+      return '<div class="g-sec recap" data-c="all"><div class="g-label">Recap</div><p class="recap-head">' + esc(head) + "</p>" + (why ? '<p class="recap-why">' + esc(why) + "</p>" : "") +
+        (items.length ? '<ul class="recap-list">' + items.map(([k, v]) => "<li><b>" + esc(k) + "</b><span>" + esc(v) + "</span></li>").join("") + "</ul>" : "") + "</div>";
+    }
+
     function plainLine(s, teams, state, lg) {
       if (teams.length !== 2) return "";
       const comp = s.header?.competitions?.[0] || {}, st = comp.status?.type || {};
@@ -3266,6 +3322,7 @@
 
       // Order: score → plain-English status → tabs → win probability → plays → the rest.
       h += plainLine(s, teams, st.state, lg);
+      h += recapHtml(s, teams, lg);   // finished games only
       const gcats = [["all", "Summary"], ["plays", "Plays"], ["stats", "Stats"], ["players", "Players"]];
       h += '<div class="gtabs" role="tablist">' + gcats.map(([k, l]) => '<button type="button" role="tab" data-gcat="' + k + '" class="' + (k === "all" ? "active" : "") + '">' + l + "</button>").join("") + "</div>";
       h += wpSectionHtml(s, teams, st.state, id, lg);
