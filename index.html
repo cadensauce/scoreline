@@ -1529,24 +1529,40 @@
         (HEAT ? '<div class="heat-key"><span>One-sided</span><i></i><span>Close game</span></div>' : "") + (HEAT ? dm("<b>Reading the heat map.</b> Each tile is one game. The brighter the tile, the closer the game is to a coin flip (from win probability), so the most exciting games stand out. Upcoming games use the pre-game odds; finished games are dimmed. The ball icon shows who has it.") : "");
     }
 
-    /* ---------- Quote of the day (Home). The push worker saves ZenQuotes' daily quote to public/quote; shown with credit. ---------- */
-    let quoteFetched = false;
+    /* ---------- Quote of the day (Home): real sports quotes, copied word for word from the sourced sections of
+       Wikiquote (not the "disputed" or "misattributed" ones). One per day, the same for everyone; cycles through the list. */
+    const QUOTES = [
+      ["I can accept failure. Everyone fails at something. But I can't accept not trying.", "Michael Jordan"],
+      ["Failure is not fatal but failure to change might be.", "John Wooden"],
+      ["It ain't over till it's over.", "Yogi Berra"],
+      ["I hated every minute of it. But I said to myself, 'Suffer now, and live the rest of your life as a champion'.", "Muhammad Ali"],
+      ["You don't do it right once in a while; you do it right every time.", "Vince Lombardi"],
+      ["The more difficult the victory, the greater the happiness in winning.", "Pelé"],
+      ["A life is not important except in the impact it has on other lives.", "Jackie Robinson"],
+      ["My idea of a real ball player is the fellow who can take the bad breaks with a grin and come up fighting.", "Babe Ruth"],
+      ["I was part of a team, and I dedicated myself to making that team the best.", "Bill Russell"],
+      ["Talent wins games, but teamwork and intelligence wins championships.", "Michael Jordan"],
+      ["A player who makes a team great is more valuable than a great player.", "John Wooden"],
+      ["It's a lack of faith that makes people afraid of meeting challenges, and I believe in myself.", "Muhammad Ali"],
+      ["I am not remotely interested in just being good.", "Vince Lombardi"],
+      ["So be authentic, and let them like you or not for who you actually are.", "Kobe Bryant"],
+      ["It is hard work, perseverance, learning, studying, sacrifice and most of all, love of what you are doing or learning to do.", "Pelé"],
+      ["I am in this fight to stay.", "Jackie Robinson"],
+      ["So I close in saying that I might have been given a bad break, but I've got an awful lot to live for.", "Lou Gehrig"],
+      ["I've failed over and over and over again in my life. And that is why I succeed.", "Michael Jordan"],
+      ["Don't beat yourself. That's the worst kind of defeat you'll ever suffer.", "John Wooden"],
+      ["Little things are big.", "Yogi Berra"],
+      ["We shall play every game to the hilt with every ounce of fiber we have in our bodies.", "Vince Lombardi"],
+      ["Baseball always has been and always will be a game demanding team play.", "Babe Ruth"],
+      ["I played because I enjoyed it — but there's more to it than that. I played because I was dedicated to being the best.", "Bill Russell"],
+      ["It is not the urge to surpass all others at whatever cost, but the urge to serve others at whatever cost.", "Arthur Ashe"],
+      ["Limits, like fears, are often just an illusion.", "Michael Jordan"],
+      ["Make each day your masterpiece.", "John Wooden"],
+    ];
     function quoteBox() {
-      const x = store.get("quote", null);
-      if (!quoteFetched) { quoteFetched = true; loadQuote(); }
-      if (!x?.q) return '<div class="qotd" data-quote hidden></div>';
-      return '<div class="qotd" data-quote><div class="qotd-k">Quote of the day</div><p>“' + esc(x.q) + '”</p><small>— ' + esc(x.a) +
-        ' · <a href="https://zenquotes.io/" target="_blank" rel="noopener" data-ext>ZenQuotes</a></small></div>';
-    }
-    async function loadQuote() {
-      try {
-        const d = await getJSON("https://firestore.googleapis.com/v1/projects/scoreline-41f14/databases/(default)/documents/public/quote");
-        const f = d.fields || {}, x = { q: f.q?.stringValue, a: f.a?.stringValue, date: f.date?.stringValue };
-        if (!x.q || !x.a) return;
-        const old = store.get("quote", null);
-        store.set("quote", x);
-        if (old?.q !== x.q) document.querySelectorAll("[data-quote]").forEach((el) => { el.outerHTML = quoteBox(); });
-      } catch {}
+      const d = new Date(), day = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5);   // changes at local midnight
+      const [q, a] = QUOTES[day % QUOTES.length];
+      return '<div class="qotd"><div class="qotd-k">Quote of the day</div><p>“' + esc(q) + '”</p><small>— ' + esc(a) + "</small></div>";
     }
     async function renderHome() {
       const main = $("main");
