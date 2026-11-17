@@ -2790,7 +2790,7 @@
         html += '<div class="f-detail"><div class="f-dhead"><span>' + esc(P.start.downDistanceText || P.start.shortDownDistanceText || "") + "</span><span>Q" + esc(P.period?.number || "") + " · " + esc(P.clock?.displayValue || "") + "</span></div>" +
           '<div class="pc-say">' + esc(say) + "</div>" +
           (result ? '<div class="pf-tags" style="margin:2px 0 8px"><span class="' + result[0] + '">' + esc(result[1]) + "</span></div>" : "") +
-          (/field goal|extra point/i.test(ty) || /extra point|\bPAT\b/i.test(t) ? kickSvg(t) : "") +
+          (/field goal|extra point/i.test(ty) ? kickSvg(t) : "") +
           (people ? '<div class="pc-people">' + people + "</div>" : "") +
           (chips.length ? '<div class="stats">' + chips.map(([v2, l]) => '<span class="st"><b>' + esc(v2) + "</b><small>" + esc(l) + "</small></span>").join("") + "</div>" : "") +
           '<details class="f-raw"><summary>Full play text</summary><p>' + esc(t) + "</p></details></div>";
