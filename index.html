@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794879739" />
+  <meta name="build" content="1794880397" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2537,11 +2537,16 @@
       const t = P?.text || "";
       const t0 = G ? P.start.yardsToEndzone : 50, t1 = G ? endYtez(P) : 50;
       const air = G?.air ?? null, tc = air != null ? t0 - air : null;
-      const span = G ? Math.max(t0, t1, tc ?? t0) - Math.min(t0, t1, tc ?? t0) : 0;
+      // Punts and kickoffs: the ball flies to the catch spot (kc), then the return runs to the end spot (t1).
+      const isKickoff = G && /kickoff/i.test(P.type?.text || ""), isKick = G && (isKickoff || /punt/i.test(P.type?.text || "")) && !/blocked/i.test(t);
+      const kd = isKick ? Number((t.match(/(?:punts|kicks) (-?\d+) yards?/i) || [])[1]) : NaN;
+      const kc = isKick && !isNaN(kd) ? Math.max(-8, t0 - kd) : null;
+      const kFrom = kc == null ? null : isKickoff ? t0 : Math.min(108, t0 + 14);
+      const span = G ? Math.max(t0, t1, tc ?? t0, kc ?? t0, kFrom ?? t0) - Math.min(t0, t1, tc ?? t0, kc ?? t0) : 0;
       const SC = Math.max(3.4, Math.min(8.5, (H - 110) / Math.max(span + 8, 1))), Y = (yy) => (yy + 10) * SC, FH = 120 * SC;
       const side = /\bleft\b/i.test(t) ? -1 : /\bright\b/i.test(t) ? 1 : 0;
       const laneX = side ? CX + side * (/deep/i.test(t) ? 120 : 95) : CX + 34;
-      const ys = G ? [Y(t0), Y(t1), tc != null ? Y(tc) : Y(t0)] : [Y(50)];
+      const ys = G ? [Y(t0), Y(t1), tc != null ? Y(tc) : Y(t0), kc != null ? Y(kc) : Y(t0), kFrom != null ? Y(kFrom) : Y(t0)] : [Y(50)];
       const camY = Math.max(0, Math.min(FH - H, (Math.min(...ys) + Math.max(...ys)) / 2 - H / 2));
       const fromY = v.camY ?? camY; v.camY = camY;
       let svg = '<svg class="field' + (still ? " still" : "") + '" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Field"><defs><clipPath id="fclip"><rect width="' + W + '" height="' + H + '" rx="14"/></clipPath>' +
@@ -2577,6 +2582,20 @@
           svg += '<circle r="5" class="f-ball"><animateMotion begin="0.45s" dur="0.7s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".3 0 .4 1" path="' + path + '"/></circle>';
           svg += '<circle cx="' + laneX + '" cy="' + cy + '" r="4" class="f-catchpt" style="animation-delay:1.1s"/>';
           svg += mark(CX, qbY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/)) + mark(laneX, Y(t1), oc, ath("receiver"), nm(/ to ([A-Z][a-z]?\.[\w'-]+)/), false, 1.05, true, { x: laneX, y: cy, begin: 1.15, dur: 0.6 });
+        } else if (kc != null) {
+          // ESPN-style kick: dotted arc that the ball flies along, then the return (or fair catch / touchback).
+          const ky = Y(kFrom), cy = Y(kc), ey = Y(t1), midY = (ky + cy) / 2;
+          const path = "M" + CX + " " + ky + " Q" + (CX + 110) + " " + midY + " " + CX + " " + cy;
+          const noRet = /fair catch|touchback|downed|out of bounds|no play/i.test(t) || !ath("returner") || Math.abs(ey - cy) < 2;
+          const rYds = Math.round(t1 - kc);
+          svg += '<path d="' + path + '" class="f-throw" style="animation-delay:.3s"/>';
+          svg += '<circle r="5" class="f-ball"><animateMotion begin="0.35s" dur="1.1s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".3 0 .5 1" path="' + path + '"/></circle>';
+          svg += '<circle cx="' + CX + '" cy="' + cy + '" r="4" class="f-catchpt" style="animation-delay:1.45s"/>';
+          if (!noRet) svg += '<path d="M' + CX + " " + cy + " L" + CX + " " + ey + '" class="f-run draw" pathLength="1" style="animation-delay:1.5s;animation-duration:.8s" marker-end="url(#farw)"/>';
+          const tag = /touchback/i.test(t) ? "Touchback" : /fair catch/i.test(t) ? "Fair catch" : /downed/i.test(t) ? "Downed" : /out of bounds/i.test(t) && noRet ? "Out of bounds" : !noRet ? rYds + "-yd return" : "";
+          if (tag) { const tw = tag.length * 6.4 + 16, ty2 = noRet ? cy : (cy + ey) / 2; svg += '<g class="f-mark" style="animation-delay:' + (noRet ? 1.5 : 2) + 's"><rect x="' + (CX - 74 - tw / 2) + '" y="' + (ty2 - 10) + '" width="' + tw + '" height="18" rx="9" class="f-pill"/><text x="' + (CX - 74) + '" y="' + (ty2 + 3.5) + '" class="f-lbl">' + esc(tag) + "</text></g>"; }
+          svg += mark(CX, ky, oc, ath("punter") || ath("kicker"), nm(/([A-Z][a-z]?\.[\w'-]+) (?:punts|kicks)/));
+          if (!noRet || /fair catch/i.test(t)) svg += mark(CX, noRet ? cy : ey, dc, ath("returner"), (nm(/fair catch by ([A-Z][a-z]?\.[\w'-]+)/) || nm(/\.\s*([A-Z][a-z]?\.[\w'-]+) (?:to|for|MUFFS|pushed|ran)/)), false, 1.5, true, noRet ? null : { x: CX, y: cy, begin: 1.5, dur: 0.8 });
         } else if (/incomplet/i.test(P.type?.text || "")) {
           const ty = Y(t0 - (/deep/i.test(t) ? 22 : 9)), path = "M" + CX + " " + qbY + " Q" + (CX + (laneX - CX) * .35) + " " + (ty - 40) + " " + laneX + " " + ty;
           svg += '<path d="' + path + '" class="f-throw" style="animation-delay:.4s"/><text x="' + laneX + '" y="' + (ty + 5) + '" class="f-x" style="animation-delay:1s">✕</text>';
@@ -2596,7 +2615,7 @@
         athAll("passDefender").forEach((a) => defs.push([a, "Coverage"]));
         athAll("sackedBy").forEach((a) => defs.push([a, "Sack"]));
         athAll("tackler").forEach((a) => defs.push([a, "Tackle"]));
-        defs.slice(0, 2).forEach(([a, role], k) => {
+        (kc != null ? [] : defs.slice(0, 2)).forEach(([a, role], k) => {
           const sack = role === "Sack";
           const dx = (sack ? CX : endX) + push * (58 + k * 46);
           const dy = (sack ? qbY : endY) + (k % 2 ? 26 : -4);
