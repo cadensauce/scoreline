@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794922995" />
+  <meta name="build" content="1794933943" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2446,6 +2446,23 @@
 
     /* ---------- NBA shot chart / MLB spray chart ---------- */
     // NBA shooting by zone, from the play-by-play shots: at the rim / in the paint, mid-range, and 3-pointers.
+    /* NBA: biggest scoring runs (one team scoring in a row while the other scores nothing), from the play-by-play */
+    function runsHtml(plays, teams) {
+      const ab = (id) => teams.find((t) => t.team?.id === String(id))?.team?.abbreviation || "";
+      const runs = []; let cur = null, aw = teams.find((t) => t.homeAway === "away") || teams[0], hm = teams.find((t) => t.homeAway === "home") || teams[1];
+      const sc = ([a, h]) => (aw.team?.abbreviation || "") + " " + a + ", " + (hm.team?.abbreviation || "") + " " + h;
+      (plays || []).filter((p) => p.scoringPlay && p.scoreValue > 0 && p.team?.id).forEach((p) => {
+        const id = String(p.team.id), when = "Q" + (p.period?.number > 4 ? "OT" : p.period?.number || "") + " " + (p.clock?.displayValue || "");
+        if (cur && cur.id === id) { cur.pts += p.scoreValue; cur.to = when; cur.end = [p.awayScore, p.homeScore]; }
+        else { if (cur) runs.push(cur); cur = { id, pts: p.scoreValue, from: when, to: when, end: [p.awayScore, p.homeScore] }; }
+      });
+      if (cur) runs.push(cur);
+      const big = runs.filter((r) => r.pts >= 8).sort((a, b) => b.pts - a.pts).slice(0, 4);
+      if (!big.length) return "";
+      return '<div class="g-label" style="margin-top:18px">Scoring runs</div>' +
+        dm("<b>Momentum.</b> A run is one team scoring again and again while the other scores nothing. Big runs (10-0 or more) often swing a game, and coaches call timeouts to stop them.") +
+        '<div class="list">' + big.map((r) => '<div class="row"><span><b>' + esc(ab(r.id)) + " " + r.pts + "-0</b></span><span class=\"muted\">" + esc(r.from === r.to ? r.from : r.from + " to " + r.to) + " · " + esc(sc(r.end)) + "</span></div>").join("") + "</div>";
+    }
     function shotZonesHtml(shots, teams) {
       const zone = (p) => { const t = p.text || "", ft = +((t.match(/(\d+)-foot/) || [])[1]); return /three point/i.test(t) ? "three" : (ft ? ft <= 8 : /layup|dunk|tip|alley|hook|driving/i.test(t)) ? "paint" : "mid"; };
       const Z = [["paint", "Paint"], ["mid", "Mid-range"], ["three", "3-pointers"]];
@@ -2483,7 +2500,7 @@
         svg += "</svg>";
         const fg = (t) => (made[t.team?.id] || 0) + "/" + (att[t.team?.id] || 0);
         return '<div class="t-head"><div class="g-label" style="margin:0">Shot chart</div>' + tabs + "</div>" + svg +
-          '<div class="f-key"><span><i class="k-dot"></i>Made</span><span>✕ Missed</span><span>' + esc(teams[0].team?.abbreviation) + " " + fg(teams[0]) + " · " + esc(teams[1].team?.abbreviation) + " " + fg(teams[1]) + "</span></div>" + shotZonesHtml(shots, teams);
+          '<div class="f-key"><span><i class="k-dot"></i>Made</span><span>✕ Missed</span><span>' + esc(teams[0].team?.abbreviation) + " " + fg(teams[0]) + " · " + esc(teams[1].team?.abbreviation) + " " + fg(teams[1]) + "</span></div>" + shotZonesHtml(shots, teams) + runsHtml(s.plays, teams);
       }
       const HIT = /single|double|triple|home run/i, OUT = /out|fielder|error|double play|sacrifice/i;
       const balls = (s.plays || []).filter((p) => p.hitCoordinate && !/foul/i.test(p.type?.text || "") && (HIT.test(p.type?.text || "") || OUT.test(p.type?.text || "")));
