@@ -133,6 +133,49 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+
+    // ---- Picks and Marks (Phase 5) ----
+    // Age answer: asked once (month/year on the device), only true/false is stored, and it can't be changed.
+    match /ages/{uid} {
+      allow get: if member() && me() == uid;
+      allow create: if member() && me() == uid
+        && request.resource.data.keys().hasOnly(['is13plus', 'at'])
+        && request.resource.data.is13plus is bool && request.resource.data.at == request.time;
+      allow list, update, delete: if false;
+    }
+    function teen() {
+      return exists(/databases/$(database)/documents/ages/$(me()))
+        && get(/databases/$(database)/documents/ages/$(me())).data.is13plus == true;
+    }
+    function lockOf(gameId) { return get(/databases/$(database)/documents/games/$(gameId)).data.lockAt; }
+    // Games open for picks: written only by the push worker (kickoff time = lock time, Upset bonus, result).
+    match /games/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+    // Your pick for one game. Free, stakes nothing. Locks at kickoff by the server's clock (not the phone's).
+    // Only the push worker marks it won/lost and pays Marks.
+    match /picks/{id} {
+      allow read: if member() && resource.data.uid == me();
+      allow create, update: if member() && teen()
+        && id == me() + '_' + request.resource.data.gameId
+        && request.resource.data.keys().hasOnly(['uid', 'gameId', 'side', 'updatedAt'])
+        && request.resource.data.uid == me()
+        && request.resource.data.gameId is string
+        && request.resource.data.side in ['home', 'away']
+        && request.resource.data.updatedAt == request.time
+        && request.time < lockOf(request.resource.data.gameId);
+      allow delete: if member() && resource.data.uid == me() && request.time < lockOf(resource.data.gameId);
+    }
+    // Marks balance and its history: you can read your own; only the push worker writes them.
+    match /wallets/{uid} {
+      allow read: if member() && me() == uid;
+      allow write: if false;
+    }
+    match /ledger/{uid}/entries/{entry} {
+      allow read: if member() && me() == uid;
+      allow write: if false;
+    }
     // Chats: only between friends, only members can read or write.
     match /chats/{chatId} {
       allow read: if member() && me() in resource.data.members;
