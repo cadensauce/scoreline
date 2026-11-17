@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794886519" />
+  <meta name="build" content="1794886896" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -530,6 +530,9 @@
     .fh .cam { transform-origin: 0 0; transition: transform .9s cubic-bezier(.45,0,.35,1); }
     .wx-imp { margin-top: 12px; padding: 12px 14px; background: var(--panel-2); border-radius: 14px; } .wx-imp-t { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; } .wx-imp p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.45; }
     .fwrap { position: relative; } .f-replay { position: absolute; right: 10px; top: 20px; border: 0; border-radius: 999px; padding: 6px 12px; font: 600 12px Inter, sans-serif; color: #fff; background: rgba(8,12,18,.6); cursor: pointer; }
+    .term { border-bottom: 1px dotted currentColor; cursor: help; }
+    .gloss-pop { position: fixed; left: 16px; right: 16px; bottom: calc(88px + env(safe-area-inset-bottom)); max-width: 440px; margin: 0 auto; z-index: 10000; background: var(--panel-3); color: var(--text); padding: 14px 16px; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.45); animation: pop .25s var(--ease) both; }
+    .gloss-pop b { font-size: 15px; } .gloss-pop p { margin: 6px 0 4px; font-size: 14px; line-height: 1.45; } .gloss-pop small { color: var(--muted); font-size: 11px; }
     .strat { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
     .strat-opts { display: flex; flex-wrap: wrap; gap: 8px; } .strat-opts .pill-btn { padding: 9px 14px; }
     .strat-row { display: grid; grid-template-columns: minmax(0, 1.4fr) 1fr 44px; align-items: center; gap: 10px; padding: 7px 0; font-size: 13.5px; }
@@ -1538,7 +1541,7 @@
         left += '<div class="sessions">' + (ev.competitions || []).map((c) => {
           const s = c.status?.type?.state;
           const tag = s === "in" ? '<span class="tag" style="color:var(--live)">Live</span>' : s === "post" ? '<span class="tag" style="color:var(--muted)">Done</span>' : c === nx ? '<span class="tag">Next</span>' : "<span></span>";
-          return '<div class="session ' + (c === nx ? "next" : "") + '"><b>' + esc(c.type?.abbreviation || "") + '</b><span class="when">' + esc(SESSION_NAMES[c.type?.abbreviation] || "") + " · " + esc(fmtDay(c.date)) + " " + esc(fmtTime(c.date)) + "</span>" + tag + "</div>";
+          return '<div class="session ' + (c === nx ? "next" : "") + '"><b>' + esc(c.type?.abbreviation || "") + '</b><span class="when">' + tm("f1", SESSION_NAMES[c.type?.abbreviation] || "") + " · " + esc(fmtDay(c.date)) + " " + esc(fmtTime(c.date)) + "</span>" + tag + "</div>";
         }).join("") + "</div>";
         if (nx && ev.circuit?.address?.city) left += '<div class="g-sec" data-wx style="margin-top:12px"><div class="skel" style="height:90px"></div></div>';
         const race =(ev.competitions || []).slice().reverse().find((c) => c.status?.type?.state !== "pre" && (c.competitors || []).length);
@@ -1911,7 +1914,7 @@
       const now = series ? { home: series[series.length - 1].home, src: ours ? "Scoreline win probability" : "ESPN win probability" } : winProb(s, state);
       if (!now || teams.length !== 2) return "";
       const hp = pct(now.home), ap = 100 - hp, [away, home] = teams;
-      let h = '<div class="g-sec" data-c="stats" data-wpsec="' + esc(id) + '"><div class="g-label">Win probability</div>' +
+      let h = '<div class="g-sec" data-c="stats" data-wpsec="' + esc(id) + '"><div class="g-label">' + tm(lg, "Win probability") + '</div>' +
         '<div class="wp"><span>' + esc(away.team?.abbreviation) + " <b>" + ap + "%</b></span><span><b>" + hp + "%</b> " + esc(home.team?.abbreviation) + "</span></div>";
       if (!series) {
         const col = (t) => "#" + (t.team?.color || "8a93a5");
@@ -2009,6 +2012,118 @@
         cs.map((c) => "<tr><td><b>" + esc(c.team?.abbreviation) + "</b></td>" + Array.from({ length: cols }, (_, i) => "<td>" + esc(c.linescores?.[i]?.displayValue ?? "") + "</td>").join("") +
           extra.map(([, f]) => '<td class="tot">' + esc(f(c) ?? "") + "</td>").join("") + "</tr>").join("") + "</tbody></table></div></div>";
     }
+    /* ---------- glossary + tap-to-explain (one shared glossary per sport, so explanations match everywhere) ---------- */
+    const GLOSS = {
+      all: {
+        "win probability": "How likely each team is to win from this exact moment, based on the score, time left and similar past games. It's an estimate, not a guarantee.",
+        "final": "The game is over; this is the final score.",
+        "possession": "Which team has the ball right now.",
+        "pts": "Points.",
+        "w-l": "Wins and losses.",
+        "pct": "Winning percentage: the share of games won (1.000 = won them all).",
+        "gb": "Games behind: how far a team trails the leader in the standings.",
+        "strk": "Streak: how many games in a row a team has won (W) or lost (L).",
+        "diff": "Point difference: points scored minus points allowed this season.",
+      },
+      nfl: {
+        "scrimmage": "The line of scrimmage: the spot where each play starts. The blue line on the field.",
+        "line of scrimmage": "The spot where each play starts. The blue line on the field.",
+        "1st down": "The offense gets 4 tries (downs) to move the ball 10 yards. Do it and they get a new set of 4 tries: a first down. The yellow line shows how far they need to go.",
+        "1st downs": "How many times a team moved the ball 10 yards to earn a new set of 4 tries.",
+        "total yards": "All the yards a team gained by running and passing.",
+        "passing": "Yards gained by throwing the ball (catches).",
+        "rushing": "Yards gained by running with the ball.",
+        "turnovers": "Times a team lost the ball to the other team, by an interception (a pass caught by the defense) or a fumble (the ball dropped and recovered by the defense).",
+        "possession": "Time of possession: how long each team had the ball.",
+        "red zone": "Inside the opponent's 20-yard line, close to scoring.",
+        "touchback": "A kick that goes into or through the end zone and isn't returned; the receiving team starts at its own 25 (college) or 30 (NFL kickoffs).",
+        "fair catch": "The returner waves his hand and catches the kick without being tackled, giving up the chance to run it back.",
+        "sack": "The quarterback is tackled behind the line of scrimmage before he can throw.",
+        "punt": "On 4th down, the offense usually kicks the ball away to push the other team back.",
+        "field goal": "A kick through the goalposts, worth 3 points.",
+        "extra point": "After a touchdown (6 points), a short kick through the goalposts for 1 more point.",
+        "go for 2": "After a touchdown, running one more play from the 2-yard line instead of kicking; a score is worth 2 points.",
+        "in the air": "How far the pass travelled before it was caught.",
+        "after catch": "Yards the receiver gained by running after catching the ball.",
+        "run": "The ball carrier's path after the handoff or catch.",
+        "qb": "Quarterback: the player who receives the snap and throws or hands off the ball.",
+        "rb": "Running back: carries the ball on running plays.",
+        "wr": "Wide receiver: runs routes and catches passes.",
+        "te": "Tight end: blocks and catches passes.",
+        "drive": "A team's series of plays with the ball, until they score, punt or lose it.",
+      },
+      nba: {
+        "fg %": "Field goal percentage: the share of shots (not free throws) that went in.",
+        "3pt %": "Three-point percentage: the share of shots from behind the arc (worth 3 points) that went in.",
+        "rebounds": "Grabbing the ball after a missed shot.",
+        "assists": "A pass that leads straight to a basket.",
+        "turnovers": "Losing the ball to the other team (bad pass, stolen, stepping out of bounds…).",
+        "points in paint": "Points scored close to the basket, inside the painted area.",
+        "fast break pts": "Points scored quickly after getting the ball, before the defense is set.",
+        "+/-": "Plus/minus: how many more points the team scored than allowed while this player was on the court.",
+      },
+      mlb: {
+        "hits": "Times a batter hit the ball and safely reached base.",
+        "home runs": "A hit that lets the batter run all the way around the bases, usually over the outfield wall.",
+        "walks": "Four pitches outside the strike zone: the batter goes to first base for free.",
+        "strikeouts": "Three strikes: the batter is out.",
+        "left on base": "Runners still on base when their team's half-inning ended, chances that didn't score.",
+        "errors": "Fielding mistakes that let a batter or runner reach or move up a base.",
+        "inning": "Each team bats once per inning (the visitors in the top, the home team in the bottom). A game has 9.",
+        "era": "Earned run average: runs a pitcher allows per 9 innings (lower is better).",
+        "rbi": "Runs batted in: runners who scored because of the batter's hit or play.",
+      },
+      f1: {
+        "practice 1": "A practice session for teams to set up their cars. It doesn't count for anything.",
+        "practice 2": "A practice session for teams to set up their cars. It doesn't count for anything.",
+        "practice 3": "The last practice session before qualifying.",
+        "qualifying": "Timed laps that decide the starting order for the race; the fastest starts first (pole position).",
+        "sprint": "A short race (about 100 km) on some weekends that gives a few points.",
+        "sprint qualifying": "Timed laps that decide the starting order for the sprint race.",
+        "race": "The main event: about 305 km. Points go to the top 10.",
+        "constructors": "The team championship: points from both of a team's drivers added together.",
+        "drs": "Drag reduction system: a flap on the rear wing that opens on certain straights to help a car close to the one ahead overtake.",
+        "undercut": "Pitting for fresh tyres before a rival, so the faster laps on new tyres put you ahead when they pit.",
+        "pit stop": "A stop in the pit lane, mostly to change tyres; it takes about 2-3 seconds plus the time to drive through the pit lane.",
+      },
+    };
+    GLOSS.cfb = GLOSS.nfl;
+    // Down and distance ("3rd & 8 at BAL 20") is explained from the numbers themselves.
+    function explainDown(txt) {
+      const m = String(txt).match(/^(1st|2nd|3rd|4th) (?:&|and) (Goal|\d+)/i);
+      if (!m) return null;
+      const n = { "1st": 1, "2nd": 2, "3rd": 3, "4th": 4 }[m[1].toLowerCase()], goal = /goal/i.test(m[2]);
+      return m[1] + " down: the offense's " + ["", "first", "second", "third", "fourth and last"][n] + " try. " +
+        (goal ? "They're so close that getting to the end zone is the only way to a new first down: a touchdown." : "They need " + m[2] + " more yard" + (m[2] === "1" ? "" : "s") + " for a new set of 4 tries.") +
+        (n === 4 ? " Miss and the other team gets the ball, so teams usually punt or kick a field goal instead." : "");
+    }
+    function glossFor(lg, label) {
+      const k = String(label).trim().toLowerCase();
+      return (lg === "nfl" || lg === "cfb") && explainDown(label) || GLOSS[lg]?.[k] || GLOSS.all[k] || null;
+    }
+    // Wrap a label so it can be tapped for an explanation (only when the glossary has one).
+    function tm(lg, label) {
+      const s = String(label ?? "");
+      return glossFor(lg, s) ? '<span class="term" role="button" tabindex="0" data-term="' + esc(lg + "|" + s) + '">' + esc(s) + "</span>" : esc(s);
+    }
+    function showTerm(el) {
+      const [lg, ...rest] = el.dataset.term.split("|"), label = rest.join("|"), txt = glossFor(lg, label);
+      if (!txt) return;
+      document.querySelector(".gloss-pop")?.remove();
+      const p = document.createElement("div");
+      p.className = "gloss-pop"; p.setAttribute("role", "dialog");
+      p.innerHTML = "<b>" + esc(label) + "</b><p>" + esc(txt) + '</p><small>Tap anywhere to close</small>';
+      document.body.appendChild(p);
+    }
+    // Capture phase, so tapping a term inside a row or card explains it instead of opening something else.
+    document.addEventListener("click", (e) => {
+      const pop = document.querySelector(".gloss-pop");
+      const t = e.target.closest?.("[data-term]");
+      if (t) { e.preventDefault(); e.stopPropagation(); showTerm(t); return; }
+      if (pop) { pop.remove(); }
+    }, true);
+    document.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("[data-term]")) { e.preventDefault(); showTerm(e.target); } });
+
     const STAT_KEYS = {
       nba: [["fieldGoalPct", "FG %"], ["threePointFieldGoalPct", "3PT %"], ["totalRebounds", "Rebounds"], ["assists", "Assists"], ["turnovers", "Turnovers"], ["pointsInPaint", "Points in paint"], ["fastBreakPoints", "Fast break pts"]],
       nfl: [["totalYards", "Total yards"], ["netPassingYards", "Passing"], ["rushingYards", "Rushing"], ["firstDowns", "1st downs"], ["turnovers", "Turnovers"], ["possessionTime", "Possession"]],
@@ -2034,7 +2149,7 @@
       const ca = "#" + (teams[0].team?.color || "8a93a5"), cb = "#" + (teams[1].team?.color || "8a93a5");
       return '<div class="g-sec" data-c="stats"><div class="g-label">Team stats</div><div class="ts-head"><b>' + esc(teams[0].team?.abbreviation) + "</b><b>" + esc(teams[1].team?.abbreviation) + "</b></div>" + rows.map(([k, l]) => {
         const a = num(A[k]), b = num(B[k]), tot = a + b || 1;
-        return '<div class="ts-row"><span>' + esc(A[k]) + "</span><small>" + l + "</small><span>" + esc(B[k]) + '</span></div><div class="ts-bar"><i style="width:' + (a / tot * 100) + "%;background:" + esc(ca) + '"></i><i style="background:' + esc(cb) + '"></i></div>';
+        return '<div class="ts-row"><span>' + esc(A[k]) + "</span><small>" + tm(lg, l) + "</small><span>" + esc(B[k]) + '</span></div><div class="ts-bar"><i style="width:' + (a / tot * 100) + "%;background:" + esc(ca) + '"></i><i style="background:' + esc(cb) + '"></i></div>';
       }).join("") + "</div>";
     }
 
@@ -2884,7 +2999,7 @@
       const last = D.plays[D.plays.length - 1];
       let html = (F.h2 ? '<div class="h2"><span>2nd half</span><b>' + (F.h2.team.team?.logos?.[0]?.href ? '<img src="' + esc(F.h2.team.team.logos[0].href) + '" alt="">' : "") + esc(F.h2.team.team?.displayName || ab(F.h2.team)) + "</b><small>" + (F.h2.actual ? "received the 2nd-half kickoff" : "gets the ball first") + "</small></div>" : "") + scoreBug(F) + sitLine(F) + '<div data-c="plays"><div class="g-label f-title">Plays' + (F.live ? '<span class="live-pill">Live</span><small data-ago>just now</small>' : "") + '</div><div class="f-nav"><button type="button" class="sheet-btn" data-step="-1" aria-label="Previous play" ' + (F.di || pi ? "" : "disabled") + '>‹</button><div><b>Play ' + (pi + 1) + " of " + D.plays.length + "</b><small>" + ab(dteam) + " drive " + (F.di + 1) + " of " + F.drives.length + " · " + esc(last?.type?.text || "") + "</small></div>" +
         '<button type="button" class="sheet-btn" data-step="1" aria-label="Next play" ' + (F.di < F.drives.length - 1 || pi < D.plays.length - 1 ? "" : "disabled") + ">›</button></div>" + '<div class="fwrap">' + svg + '<button type="button" class="f-replay" data-freplay aria-label="Replay this play">↻ Replay</button></div>' +
-        '<div class="f-key"><span><i class="k-los"></i>Scrimmage</span><span><i class="k-1st"></i>1st down</span><span><i class="k-air"></i>In the air</span><span><i class="k-run"></i>Run</span><span>▲ Defense</span></div>';
+        '<div class="f-key"><span><i class="k-los"></i>' + tm(F.lg, "Scrimmage") + '</span><span><i class="k-1st"></i>' + tm(F.lg, "1st down") + '</span><span><i class="k-air"></i>' + tm(F.lg, "In the air") + '</span><span><i class="k-run"></i>' + tm(F.lg, "Run") + '</span><span>▲ Defense</span></div>';
       if (P) {
         const g = G, t = P.text || "", ty = P.type?.text || "";
         const refOf = (type) => (P.participants || []).find((x) => x.type === type)?.athlete?.$ref;
@@ -2915,13 +3030,13 @@
         const yardsPlay = !/punt|kickoff|field goal|extra point|penalty|timeout|end of|incomplet/i.test(ty);
         if (yardsPlay) chips.push([(g.gain > 0 ? "+" : "") + g.gain, g.gain < 0 ? "Yards lost" : "Yards"]);
         if (yardsPlay && g.isPass && g.air != null && g.yac) chips.push([g.air, "In the air"], [g.yac, "After catch"]);
-        html += '<div class="f-detail"><div class="f-dhead"><span>' + esc(P.start.downDistanceText || P.start.shortDownDistanceText || "") + "</span><span>Q" + esc(P.period?.number || "") + " · " + esc(P.clock?.displayValue || "") + "</span></div>" +
+        html += '<div class="f-detail"><div class="f-dhead"><span>' + tm(F.lg, P.start.downDistanceText || P.start.shortDownDistanceText || "") + "</span><span>Q" + esc(P.period?.number || "") + " · " + esc(P.clock?.displayValue || "") + "</span></div>" +
           '<div class="pc-say">' + esc(say) + "</div>" +
           (result ? '<div class="pf-tags" style="margin:2px 0 8px"><span class="' + result[0] + '">' + esc(result[1]) + "</span></div>" : "") +
           (/field goal|extra point/i.test(ty) ? kickSvg(t) : "") +
           (people ? '<div class="pc-people">' + people + "</div>" : "") +
           stratFor(F, P, G, F.lg, pi > 0 ? D.plays[pi - 1] : F.drives[F.di - 1]?.plays?.slice(-1)[0]) +
-          (chips.length ? '<div class="stats">' + chips.map(([v2, l]) => '<span class="st"><b>' + esc(v2) + "</b><small>" + esc(l) + "</small></span>").join("") + "</div>" : "") +
+          (chips.length ? '<div class="stats">' + chips.map(([v2, l]) => '<span class="st"><b>' + esc(v2) + "</b><small>" + tm(F.lg, l) + "</small></span>").join("") + "</div>" : "") +
           '<details class="f-raw"><summary>Full play text</summary><p>' + esc(t) + "</p></details></div>";
         const need = (P.participants || []).map((x) => x.athlete?.$ref).filter((r) => r && !(r in athCache));
         if (need.length) {
@@ -3217,7 +3332,7 @@
         const rows = g.standings.entries.slice();
         const seeded = rows.every((e) => st(e, "playoffSeed")?.value > 0);
         rows.sort((a, b) => seeded ? st(a, "playoffSeed").value - st(b, "playoffSeed").value : (st(b, "winPercent")?.value || 0) - (st(a, "winPercent")?.value || 0));
-        h += '<div class="g-sec"><div class="g-label">' + esc(g.name || g.abbreviation || "") + '</div><table class="st-tbl"><thead><tr><th></th><th>Team</th><th>W-L</th><th>' + (foot ? "Diff" : "PCT") + "</th>" + (foot ? "" : "<th>GB</th>") + "<th>Strk</th></tr></thead><tbody>" +
+        h += '<div class="g-sec"><div class="g-label">' + esc(g.name || g.abbreviation || "") + '</div><table class="st-tbl"><thead><tr><th></th><th>Team</th><th>' + tm(lg, "W-L") + '</th><th>' + tm(lg, foot ? "Diff" : "PCT") + "</th>" + (foot ? "" : "<th>" + tm(lg, "GB") + "</th>") + "<th>" + tm(lg, "Strk") + "</th></tr></thead><tbody>" +
           rows.map((e, i) => {
             const t = e.team || {}, logo = t.logos?.[0]?.href, rec = st(e, "overall")?.displayValue || [st(e, "wins")?.displayValue, st(e, "losses")?.displayValue].filter(Boolean).join("-");
             const cls = seeded && cut && i + 1 === cut[0] ? "cut" : seeded && cut && i + 1 === cut[1] ? "cut2" : "";
