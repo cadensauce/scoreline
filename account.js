@@ -198,10 +198,12 @@ const TOS_CHECK = '<label class="acct-check"><input type="checkbox" name="tos" r
   '<label class="acct-check"><input type="checkbox" name="teen" data-teen> I am 13 or older <small class="muted">(needed for Marks)</small></label>';
 const agreeTerms = (uid) => fb.setDoc(fb.doc(db, "ages", uid), { is13plus: true, at: fb.serverTimestamp() }).catch(() => {});   // already answered: kept as it was
 const TRUST = '<div class="trust"><div class="trust-h">🔒 What Scoreline stores</div><ul>' +
-  "<li><b>Your username</b>: the only thing other people can see.</li>" +
+  "<li><b>Your username</b>: anyone signed in can see it, so friends can find you. Pick one that doesn't include your real name.</li>" +
+  "<li><b>Your profile card</b> (photo, bio, teams you follow): only your friends see it, and only if you choose to share it.</li>" +
   "<li><b>Your email</b>: private, only used to log in and reset your password. Never shown to anyone or sold.</li>" +
   "<li><b>Your ★ teams and alert settings</b>: so they sync to your other devices.</li>" +
-  "<li><b>Chats</b>: only you and your friend can read them in the app.</li></ul>" +
+  "<li><b>Chats</b>: only you and your friend can read them in the app.</li>" +
+  "<li><b>Picks and Marks</b>: private to you.</li></ul>" +
   '<div class="trust-f">Passwords are encrypted by Google Firebase and nobody, including Scoreline, can see them. No ads, no tracking, and you can delete your account anytime.</div></div>';
 const PRIVACY = '<div class="privacy"><p><b>Scoreline is a free, independent fan app.</b> This page explains exactly what happens to your information.</p>' +
   "<h4>What we collect</h4><ul><li>Email and password, to log you in. Passwords are stored encrypted by Google Firebase; no one can read them.</li><li>A username you choose. It's the only thing visible to other users.</li><li>Your ★ teams and alert settings.</li><li>Friend connections and chat messages you send.</li></ul>" +
