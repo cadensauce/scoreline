@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794887140" />
+  <meta name="build" content="1794887238" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -1998,7 +1998,7 @@
       const W = sc(home) > sc(away) ? home : away, L = W === home ? away : home, wHome = W === home;
       const nmT = (t) => t.team?.name || t.team?.shortDisplayName || t.team?.displayName || t.team?.abbreviation || "";
       // Tidy ESPN play text: drop formation notes and snapper/holder names, shorten the extra-point part.
-      const tidy = (x) => String(x || "").replace(/^([^)]*)s*/, "").replace(/,?s*(Center|Holder)-[^,.)]+/g, "").replace(/.?s*[A-Z].[w'-]+ extra point is GOOD.*$/i, ", extra point good").replace(/s+/g, " ").trim().slice(0, 120);
+      const tidy = (x) => String(x || "").replace(/^\([^)]*\)\s*/, "").replace(/,?\s*(Center|Holder)-[^,.)]+/g, "").replace(/\.?\s*[A-Z]\.[\w'-]+ extra point is GOOD.*$/i, ", extra point good").replace(/\s+/g, " ").trim().slice(0, 120);
       const margin = sc(W) - sc(L), big = { nfl: 17, cfb: 21, nba: 15, mlb: 5 }[lg] || 15, close = { nfl: 3, cfb: 3, nba: 5, mlb: 1 }[lg] || 3;
       const series = lg === "mlb" ? null : wpSeries(s);
       const low = series ? Math.min(...series.map((p) => (wHome ? p.home : 1 - p.home))) : null;
@@ -2022,7 +2022,7 @@
         sw.forEach(({ p, d }) => items.push(["Big moment", tidy(p.text) + " (" + perName(lg, p.per) + " " + p.clock + ", " + (d > 0 === wHome ? "+" : "−") + Math.round(Math.abs(d) * 100) + "% for " + nmT(W) + ")"]));
       }
       // Standout players: the top name in each team's first two stat categories.
-      const lead = (t, n) => (s.leaders || []).find((x) => x.team?.id === t.team?.id)?.leaders?.slice(0, n).map((c) => c.leaders?.[0] && (c.leaders[0].athlete?.displayName + " (" + nmT(t) + "): " + c.leaders[0].displayValue)).filter(Boolean) || [];
+      const lead = (t, n) => (s.leaders || []).find((x) => x.team?.id === t.team?.id)?.leaders?.slice(0, n).map((c) => c.leaders?.[0] && (c.leaders[0].athlete?.displayName + " (" + nmT(t) + "): " + c.leaders[0].displayValue + (/^\d+$/.test(c.leaders[0].displayValue) ? " " + String(c.displayName || "").toLowerCase() : ""))).filter(Boolean) || [];   // "24" -> "24 points"
       [...lead(W, 2), ...lead(L, 1)].forEach((x) => items.push(["Standout", x]));
       // Why they won: the winner's biggest stat edges.
       const bt = s.boxscore?.teams || [];
