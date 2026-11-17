@@ -122,7 +122,6 @@
     .top-right { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; white-space: nowrap; }
     .refresh { border: 0; background: transparent; color: var(--muted); border-radius: 999px; width: 36px; height: 36px; display: grid; place-items: center; transition: transform .5s var(--ease), background var(--t-fast), color var(--t-fast); }
     .refresh:hover { background: var(--panel-2); color: var(--text); }
-    .refresh.spin { transform: rotate(360deg); }
 
     /* ---- Layout ---- */
     main { max-width: 1180px; margin: 0 auto; padding: 22px 20px 60px; min-height: 100vh; }   /* footer starts below the fold, so it never jumps when scores arrive */
@@ -251,7 +250,6 @@
     .wpg-mid { stroke: var(--line-hi); stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; }
     .wpg-per { stroke: var(--line); vector-effect: non-scaling-stroke; }
     .wpg-pl { fill: var(--faint); font-size: 9px; }
-    .wpg-area { fill: var(--text); opacity: .07; }
     .wpg-line { fill: none; stroke: var(--text); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
     .wpg-cur { stroke: var(--muted); stroke-width: 1; vector-effect: non-scaling-stroke; }
     .wpg-dot { fill: var(--text); }
@@ -365,14 +363,13 @@
     .f-throw { fill: none; stroke: rgba(255,255,255,.75); stroke-width: 1.8; stroke-dasharray: 4 5; }
     .f-run { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; }
     .f-ball { fill: #fff; stroke: #fff; stroke-width: 1; }
-    .f-catchpt { fill: #fff; }
     .f-x { fill: #ff6b6b; font: 800 14px Inter, sans-serif; text-anchor: middle; }
     .cam { transition: transform .8s var(--ease); }
     .f-mark { animation: pop .3s var(--ease) both; transform-box: fill-box; transform-origin: center; }
     @keyframes pop { from { opacity: 0; transform: scale(.7); } }
     .f-run.draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: dash .55s var(--ease) forwards; }
     @keyframes dash { to { stroke-dashoffset: 0; } }
-    .f-throw, .f-catchpt, .f-x { animation: fadein .4s ease both; }
+    .f-throw, .f-x { animation: fadein .4s ease both; }
     @keyframes fadein { from { opacity: 0; } }
     .f-ball { opacity: 0; animation: fadein .1s .45s forwards; }
     .field.still * { animation: none !important; } .field.still .f-run.draw { stroke-dashoffset: 0; } .field.still .f-ball { display: none; }
@@ -486,7 +483,6 @@
     .pc-p { display: flex; align-items: center; gap: 8px; padding: 5px 12px 5px 5px; border-radius: 99px; background: var(--panel-2); }
     .pc-p img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: var(--panel-3); }
     .pc-p div { display: flex; flex-direction: column; line-height: 1.15; } .pc-p b { font-size: 13px; } .pc-p small { font-size: 10.5px; color: var(--muted); }
-    .f-score { margin-top: 8px; font-size: 12.5px; color: var(--muted); } .f-score b { color: var(--text); }
 
     /* ---- Get the app ---- */
     .getapp-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--panel) !important; color: var(--accent) !important; border-color: transparent !important; font-weight: 700; padding: 7px 13px; }
@@ -597,7 +593,6 @@
     .depth { display: grid; gap: 2px; } .sheet.wide .depth { grid-template-columns: 1fr 1fr; column-gap: 16px; }
     .dp-row { display: grid; grid-template-columns: 92px 1fr; gap: 10px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--line); }
     .dp-pos { font-weight: 700; font-size: 13px; display: flex; flex-direction: column; } .dp-pos small { font-weight: 500; font-size: 10.5px; color: var(--muted); line-height: 1.25; }
-    .dm-pos { display: none; } html.dummy .dm-pos { display: block; grid-column: 1 / -1; font-style: normal; font-size: 12px; line-height: 1.45; color: var(--muted); margin-top: -2px; }
     .pos-guide { margin-top: 10px; } .pos-guide summary { cursor: pointer; font-weight: 600; color: var(--text); } .pos-guide p { margin: 6px 0 0; }
     .dp-st, .dp-b { border: 0; background: none; color: inherit; font: inherit; padding: 0; cursor: pointer; text-align: left; }
     .dp-st { display: block; font-weight: 650; font-size: 14.5px; } .dp-bk { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 3px; } .dp-b { font-size: 12.5px; color: var(--muted); }
@@ -796,9 +791,7 @@
     .g-btn { width: 100%; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 10px; background: #fff !important; color: #1f1f1f !important; border-color: transparent !important; font-weight: 700; }
     /* ---- Pinned sports, sport chips, You tab ---- */
     #main.swapping .grid, #main.swapping .day-head, #main.swapping .empty { opacity: .55; transition: opacity var(--t-fast); }
-    .pin-row, .sport-chips { display: flex; flex-wrap: wrap; gap: var(--s2); }
-    .sport-chips { margin: 0 0 var(--s5); overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
-    .sport-chips::-webkit-scrollbar { display: none; }
+    .pin-row { display: flex; flex-wrap: wrap; gap: var(--s2); }
     .pin { flex: none; border: 0; border-radius: var(--r-pill); padding: 10px 16px; min-height: 44px; background: var(--panel); color: var(--muted); font: 500 var(--fs-sm) var(--display); transition: background var(--t-fast), color var(--t-fast); }
     .pin.on { background: var(--accent); color: var(--on-accent); }
     .pin:active { transform: scale(.97); }
@@ -899,7 +892,6 @@
       .grid .card:last-child { border-bottom: 0; }
       .card:hover { background: transparent; }
       .card:active { transform: none; background: var(--panel-2); }
-      .card.live { border-color: var(--line); }
       .card.live::before { inset: 0 auto 0 0; width: 3px; height: auto; background: var(--live); }
       .card > .team { grid-column: 1; }
       .grid .card-head { grid-column: 2; grid-row: 1 / span 2; flex-direction: column; align-items: flex-end; justify-content: center; gap: 2px; margin: 0; text-align: right; font-size: 11px; border-left: 1px solid var(--line); padding-left: 8px; height: 100%; }
@@ -982,7 +974,6 @@
       .grid .card-head { border-left: 0; font-size: var(--fs-sm); }
       .card-head .status { font-size: 13px; }
       .team { grid-template-columns: 22px 1fr auto auto; gap: 10px; padding: 3px 0; }
-      .team img, .team .ph { width: 22px; height: 22px; }
       .tname strong { font-size: 16px; }
       .score { font-size: 21px; }
       .section-title { font-size: 12px; margin: 26px 0 2px; }
@@ -1329,22 +1320,8 @@
       alerts: svg('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 21h4"/>'),
       you: svg('<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/>'),
     };
-    // Every sport, one tap from Home (the bar only holds your pinned ones).
-    const sportChips = () => '<div class="sport-chips">' + ALL_SPORTS.map((k) => '<button type="button" class="pin" data-tab="' + k + '">' + esc(tabName(k)) + " ›</button>").join("") + "</div>";
     function skeleton(n = 6) { return '<div class="grid">' + '<div class="skel"></div>'.repeat(n) + "</div>"; }
 
-    function pagerLabel(key) {
-      const L = LEAGUES[key], off = state.offset[key] || 0;
-      if (L.paging === "week") {
-        const wk = cache[key]?.week?.number;
-        return wk ? "Week " + wk : "This week";
-      }
-      if (off === 0) return "Today";
-      if (off === -1) return "Yesterday";
-      if (off === 1) return "Tomorrow";
-      const d = new Date(); d.setDate(d.getDate() + off);
-      return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
-    }
 
     /* ---------- day strip + Day/Week views ---------- */
     const views0 = store.get("view", {});
@@ -1543,7 +1520,6 @@
       // One title row (with a search icon), one row of filters + Week/Day, then the week or day picker.
       const open = paged && (searchOpen[key] || searchQ[key]);
       const sBtn = paged ? '<button type="button" class="icon-btn' + (open ? " on" : "") + '" data-searchtoggle aria-label="Search ' + esc(L.short || L.name) + ' teams"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>' : "";
-      const stBtn = paged ? '<button type="button" class="icon-btn" data-standings="' + key + '" aria-label="' + esc(L.short || L.name) + ' standings"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h11M4 18h7"/></svg></button>' : "";
       const hBtn = key !== "f1" ? '<button type="button" class="icon-btn' + (HEAT ? " on" : "") + '" data-heat aria-label="' + (HEAT ? "Show as list" : "Show as heat map") + '" title="' + (HEAT ? "List" : "Heat map") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2" opacity=".55"/><rect x="3" y="13" width="8" height="8" rx="2" opacity=".3"/><rect x="13" y="13" width="8" height="8" rx="2" opacity=".75"/></svg></button>' : "";
       return '<div class="bar"><h1>' + esc(title) + "</h1>" + hBtn + sBtn + "</div>" + (open ? search : "") +
         '<div class="bar-row">' + liveBtn + (paged ? '<button type="button" class="pill-btn st-pill" data-standings="' + key + '">' + (key === "cfb" ? "Standings · Top 25" : "Standings") + "</button>" : "") + "</div>" + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
@@ -2003,7 +1979,6 @@
     const SRC_NOTE = '<div class="src-note">Data from ESPN public feeds; may be delayed. Scoreline is an independent fan app, not affiliated with or endorsed by ESPN, the NFL, the NCAA, the NBA, MLB, Formula 1, or any team or player. Names and logos belong to their owners.</div>';
 
     const pct = (x) => Math.round(x * 100);
-    function mlProb(ml) { ml = Number(ml); if (!ml) return null; return ml < 0 ? -ml / (100 - ml) : 100 / (ml + 100); }
     function winProb(s, st) {
       const wp = s.winprobability;
       if (st === "in" && wp?.length) return { home: wp[wp.length - 1].homeWinPercentage, src: "Live win probability" };
@@ -3268,14 +3243,6 @@
       const xc = air != null ? x0 + (right ? air : -air) : null;
       return { team, right, x0, x1, xc, yac, air, gain, isPass };
     }
-    function playKind(p) {
-      const t = p.type?.text || "";
-      if (p.scoringPlay) return "score";
-      if (p.isTurnover || /interception|fumble/i.test(t)) return "turnover";
-      if (p.isPenalty || /penalty/i.test(t)) return "penalty";
-      if (/incomplet/i.test(t)) return "inc";
-      return "";
-    }
     const athCache = {};
     // Runs a field picture's movement on one clock: players/ball follow their paths ([data-mv]) and trails
     // ([data-dr]) draw at the same pace with the same easing, so each line follows right behind its player.
@@ -4360,11 +4327,6 @@
       const t = POSINFO[lg]; if (!t) return "";
       return '<details class="pos-guide"><summary>' + (lg === "f1" ? "Who does what in a team" : "Positions explained") + "</summary>" +
         Object.entries(t).map(([k, d]) => { const i = d.indexOf(": "); return "<p><b>" + esc(k) + "</b> " + esc(lg === "f1" || i < 0 ? d : d.slice(0, i) + " · " + d.slice(i + 2)) + "</p>"; }).join("") + "</details>";
-    }
-    function posNote(lg, abbrs) {
-      const seen = new Set(), out = [];
-      abbrs.forEach((a) => { const d = posInfo(lg, a); if (d && !seen.has(d)) { seen.add(d); out.push("<b>" + esc(String(a).toUpperCase()) + "</b> " + esc(d)); } });
-      return out.length ? dm(out.join("<br>")) : "";
     }
     document.addEventListener("click", (e) => {
       if (!e.target.closest("[data-dummy]")) return;
