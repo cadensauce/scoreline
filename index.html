@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794884281" />
+  <meta name="build" content="1794884752" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2590,7 +2590,7 @@
         const tx = Math.min(0, Math.max(VW - W * k, VW / 2 - ((lo + hi) / 2) * k));
         const T = "translate(" + tx.toFixed(1) + "px," + ((H - H * k) / 2).toFixed(1) + "px) scale(" + k.toFixed(3) + ")";
         const from = still || !v?.camT ? T : v.camT;
-        if (v) v.camT = T;
+        if (v) { v.camT = T; v.tEnd = tEnd; }
         str = str.replace('data-fw="' + W + '"', 'data-fw="' + W + '" data-vx0="' + (-tx / k).toFixed(1) + '" data-vx1="' + ((VW - tx) / k).toFixed(1) + '"');   // visible part, so name tags stay on screen
         str = str.split("__FADE__").join((tEnd + 1.2).toFixed(2));
         return str.replace('<g class="cam">', '<g class="cam" style="transform:' + from + '" data-to="' + T + '">') + "</g></g></svg>";
@@ -2908,6 +2908,16 @@
       sec.classList.toggle("calm-sec", !!still);
       const cam = sec.querySelector(".cam");
       if (cam) requestAnimationFrame(() => requestAnimationFrame(() => { cam.style.transform = cam.dataset.to; }));
+      // Loop the play: players run it, fade out (only the lines stay), then it plays again - about every 5 seconds.
+      clearTimeout(v.loopT);
+      if (!still) {
+        const di = F.di, pi0 = F.pi, every = Math.max(5, (v.tEnd || 2) + 2.6) * 1000;
+        v.loopT = setTimeout(function again() {
+          if (!v.el.isConnected || !v.field || v.field.di !== di || v.field.pi !== pi0) return;
+          if (document.hidden || !v.el.querySelector("svg.field")) { v.loopT = setTimeout(again, 2000); return; }
+          drawField(v, false);
+        }, every);
+      }
     }
     document.addEventListener("click", (e) => {
       const sheet = e.target.closest(".sheet");
