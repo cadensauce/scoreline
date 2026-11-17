@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794887517" />
+  <meta name="build" content="1794887562" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -3553,7 +3553,13 @@
         // Depth chart first (who starts, then the backups in order), then the full roster with details.
         if (v.dc === undefined) {
           v.dc = "loading";
-          getJSON(API + LEAGUES[v.lg].path + "/teams/" + v.id + "/depthcharts").then((j) => { v.dc = j; }).catch(() => { v.dc = null; })
+          // ESPN's depth chart (the browser-friendly API gives player links; names come from the roster already loaded).
+          const [sport, league] = LEAGUES[v.lg].path.split("/"), yr = v.ro?.season?.year || v.sc?.season?.year || new Date().getFullYear();
+          const byId = {}; (v.ro?.athletes || []).forEach((g) => (g.items || [g]).forEach((a) => { if (a?.id) byId[String(a.id)] = a; }));
+          getJSON("https://sports.core.api.espn.com/v2/sports/" + sport + "/leagues/" + league + "/seasons/" + yr + "/teams/" + v.id + "/depthcharts").then((j) => {
+            v.dc = { depthchart: (j.items || []).map((c) => ({ name: c.name, positions: Object.fromEntries(Object.entries(c.positions || {}).map(([k, p]) => [k, { position: p.position,
+              athletes: (p.athletes || []).slice().sort((a, b) => (a.rank || 9) - (b.rank || 9)).map((a) => byId[(String(a.athlete?.$ref || "").match(/athletes\/(\d+)/) || [])[1]]).filter(Boolean) }])) })) };
+          }).catch(() => { v.dc = null; })
             .finally(() => { if (v.el.isConnected && v.seg === "roster") drawTeam(v); });
         }
         h += depthHtml(v);
