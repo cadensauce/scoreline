@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794883976" />
+  <meta name="build" content="1794884281" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2344,7 +2344,12 @@
       const lastReal = plays[plays.length - 1];
       v.field = { feedAll: prev?.feedAll, drives, h2, stops, timeouts, period: curPer, clock: lastP?.clock?.displayValue, down: lastReal?.end?.shortDownDistanceText || lastReal?.end?.downDistanceText || "",
         poss: (() => { const sp = (cache[lg]?.events || []).find((e) => e.id === String(id))?.competitions?.[0]?.situation?.possession; if (sp && state === "in") return String(sp); const dt = drives[drives.length - 1]?.team, flip = lastReal && (lastReal.scoringPlay || lastReal.isTurnover || /punt|interception|safety/i.test(lastReal.type?.text || "")); const other = [away, home].map((t) => String(t.team?.id)).find((x) => x !== dt); return flip ? other : dt; })(), di: follow ? drives.length - 1 : prev.di, pi: follow ? null : prev.pi, away, home, lg, id, teams, state, seen, fresh, live: state === "in" && !ended, updated: Date.now() };
-      drawField(v, !!prev && !(fresh.size && follow));
+      // Live refresh (every 5 s): only touch the field when a new play came in and you're on the latest play
+      // (then it animates the new one). Otherwise leave the picture alone, so a play that's animating, or an
+      // older play you stepped back to, isn't cut short or replaced. The play list still updates.
+      if (!prev) drawField(v, false);
+      else if (fresh.size && follow) drawField(v, false);
+      else { const fs = v.el.querySelector("[data-feedsec]"); if (fs) fs.innerHTML = playFeed(v, v.field); }
       if (v.field.live) liveHeader(v, last);
       clearInterval(v.fieldTimer);
       if (v.field.live) v.fieldTimer = setInterval(() => { if (!v.el.isConnected) return clearInterval(v.fieldTimer); if (document.hidden || v.fieldBusy) return; v.fieldBusy = true; setTimeout(() => { v.fieldBusy = false; }, 15000); loadField(v, lg, id, teams, state); }, 5000);
@@ -2834,7 +2839,7 @@
       if (needRefs.length && !still) {
         needRefs.forEach((r) => { athCache[r] = null; });
         Promise.race([Promise.all(needRefs.map((r) => getJSON(r.replace("http://", "https://")).then((a) => { athCache[r] = { jersey: a.jersey, short: a.shortName || a.displayName, pos: a.position?.abbreviation }; }).catch(() => {}))), new Promise((r) => setTimeout(r, 1500))])
-          .then(() => { if (v.el.isConnected && v.field === F) drawField(v, false); });
+          .then(() => { if (v.el.isConnected && v.field && v.field.di === F.di && v.field.pi === F.pi) drawField(v, false); });   // same play still picked (a refresh may have replaced v.field)
         if (sec.querySelector("svg.field")) return;
       }
       const svg = fieldSvg(F, P, G, still, col, v);
