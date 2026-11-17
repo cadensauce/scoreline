@@ -876,6 +876,7 @@
       .getapp-btn { font-size: 0; gap: 0; padding: 10px; }   /* icon only on phones, so it never touches the centred name */
       .marks-chip { position: absolute; left: max(14px, env(safe-area-inset-left)); top: 50%; transform: translateY(-50%); height: 30px; padding: 0 10px 0 8px; font-size: 13px; }   /* left side on phones: the name is centred and the right side is taken */
       .brand svg { width: 22px; height: 22px; }
+      @media (max-width: 360px) { .brand svg { display: none; } }
       .top-right { gap: 6px; }
       .refresh { width: 40px; height: 40px; border-color: transparent; background: transparent; }
       body.scrolled .top-inner { height: 44px; }
@@ -2374,7 +2375,8 @@
       const s = P ? await P.status().catch(() => ({})) : {};
       if (!s.signedIn || s.teen !== true) { c.hidden = true; return; }
       const bal = await P.balance().catch(() => 0);
-      c.innerHTML = MARK_SVG(16) + "<span>" + Number(bal).toLocaleString() + "</span>";
+      const n = Number(bal) || 0, short = n >= 1e6 ? (n / 1e6).toFixed(1).replace(/.0$/, "") + "M" : n >= 1e4 ? (n / 1e3).toFixed(1).replace(/.0$/, "") + "k" : n.toLocaleString();
+      c.innerHTML = MARK_SVG(16) + "<span>" + short + "</span>";
       c.setAttribute("aria-label", bal + " Marks");
       c.hidden = false;
     }
