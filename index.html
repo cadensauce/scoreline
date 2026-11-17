@@ -2205,9 +2205,11 @@
         '<div class="list">' + rows.join("") + "</div></div>";
     }
     // Points scored and allowed in a team's finished games before this one (from its schedule), so it works for any game, old or new.
-    async function priorTotals(lg, teamId, eventId, post) {
-      const d = await getJSON(API + LEAGUES[lg].path + "/teams/" + teamId + "/schedule").catch(() => null);
-      const evs = d?.events || [], idx = evs.findIndex((e) => String(e.id) === String(eventId));
+    async function priorTotals(lg, teamId, eventId, post, yr) {
+      const d = await getJSON(API + LEAGUES[lg].path + "/teams/" + teamId + "/schedule" + (yr ? "?season=" + yr : "")).catch(() => null);
+      const evs = d?.events || [];
+      if (!evs.length) return null;
+      const idx = evs.findIndex((e) => String(e.id) === String(eventId));
       if (idx < 0 && post) return null;   // can't tell which games came before, so show nothing
       const sv = (x) => Number(x?.score?.value ?? x?.score);
       let pf = 0, pa = 0, g = 0;
@@ -2220,11 +2222,21 @@
       });
       return { pf, pa, g };
     }
+    // Fallback when a schedule isn't available: season standings, minus this game's own result once the standings count it.
+    async function standingsTotals(lg, t, post, mine, theirs) {
+      const x = (await seasonTable(lg))[String(t.team?.id)];
+      if (!x) return null;
+      if (!post) return { pf: x.pf, pa: x.pa, g: x.g };
+      const recG = String(t.record?.[0]?.summary || t.record?.[0]?.displayValue || "").split("-").reduce((a, n) => a + (parseInt(n, 10) || 0), 0);
+      if (x.g === recG) return { pf: x.pf - mine, pa: x.pa - theirs, g: x.g - 1 };
+      return x.g === recG - 1 ? { pf: x.pf, pa: x.pa, g: x.g } : null;   // otherwise we can't tell, so show nothing
+    }
     async function predictionHtml(lg, s, teams, state) {
       if (!["nfl", "cfb", "nba", "mlb"].includes(lg) || teams.length < 2) return "";
       const comp = s.header?.competitions?.[0] || {}, post = state === "post", id = s.header?.id || comp.id;
       const [away, home] = teams;
-      const [A, Hm] = await Promise.all([away, home].map((t) => priorTotals(lg, t.team?.id, id, post)));
+      const yr = s.header?.season?.year, as0 = Number(away.score), hs0 = Number(home.score);
+      const [A, Hm] = await Promise.all([[away, as0, hs0], [home, hs0, as0]].map(async ([t, m, o]) => (await priorTotals(lg, t.team?.id, id, post, yr)) || (!post || (Number.isFinite(m) && Number.isFinite(o)) ? standingsTotals(lg, t, post, m, o) : null)));
       if (!A || !Hm || A.g < 2 || Hm.g < 2) return "";
       const edge = comp.neutralSite ? 0 : HOME_EDGE[lg] / 2;
       const hp = (Hm.pf / Hm.g + A.pa / A.g) / 2 + edge, ap = (A.pf / A.g + Hm.pa / Hm.g) / 2 - edge;
