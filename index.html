@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794879130" />
+  <meta name="build" content="1794879410" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -510,7 +510,7 @@
     .card.htile.post { opacity: .55; }
     .ht-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 650; }
     .ht-row b { font-variant-numeric: tabular-nums; } .ht-lg, .ht-st { font-size: 10.5px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
-    .ht-poss { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--text); margin-right: 5px; vertical-align: 2px; }
+    .htile .poss { width: 12px; height: 12px; margin-right: 4px; vertical-align: -1px; }
     .kick { display: flex; align-items: center; gap: 14px; background: var(--panel-2); border-radius: 14px; padding: 10px 14px; margin: 4px 0 10px; }
     .kick svg { width: 120px; flex: none; } .kick b { display: block; font-size: 14px; } .kick small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 3px; }
     .k-ground { stroke: var(--line); stroke-width: 2; } .k-post { fill: none; stroke: var(--text); stroke-width: 4; stroke-linecap: round; }
@@ -1068,9 +1068,28 @@
 
     /* ---------- render: game card ---------- */
     // Small monochrome "has the ball" marks for list rows.
-    const POSS_ICON = (lg) => '<svg class="poss" viewBox="0 0 24 24" aria-label="Has the ball" role="img">' + (lg === "nba"
+    // Who has the ball (football, basketball) or is batting (baseball, from Top/Bottom of the inning). Live games only.
+    function possTeam(comp, st, lg) {
+      if (st?.state !== "in") return null;
+      if (lg === "mlb") {
+        const half = /^top/i.test(st.shortDetail || st.detail || "") ? "away" : /^bot/i.test(st.shortDetail || st.detail || "") ? "home" : null;
+        const t = half && (comp.competitors || []).find((c) => c.homeAway === half);
+        return t ? String(t.team?.id ?? t.id) : null;
+      }
+      return comp.situation?.possession ? String(comp.situation.possession) : null;
+    }
+    // Same for a game page: the scoreboard's live situation, else (football) the team on the current drive.
+    function gamePoss(lg, id, s) {
+      const comp = s.header?.competitions?.[0] || {}, st = comp.status?.type || {};
+      const sbComp = (cache[lg]?.events || []).find((e) => e.id === id)?.competitions?.[0];
+      const p = possTeam({ ...comp, situation: sbComp?.situation || comp.situation || s.situation }, st, lg);
+      if (p) return p;
+      return st.state === "in" && (lg === "nfl" || lg === "cfb") && s.drives?.current?.team?.id ? String(s.drives.current.team.id) : null;
+    }
+    const POSS_ICON = (lg) => '<svg class="poss" viewBox="0 0 24 24" aria-label="' + (lg === "mlb" ? "Batting" : "Has the ball") + '" role="img">' + (lg === "nba"
       ? '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 12h16M12 4v16" stroke="currentColor" stroke-width="1.6"/>'
-      : '<ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-35 12 12)" fill="currentColor"/><path d="M9.5 14.5l5-5" stroke="var(--bg)" stroke-width="1.6"/>') + "</svg>";
+      : lg === "mlb" ? '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 5.5c2 2.5 2 10.5 0 13M16 5.5c-2 2.5-2 10.5 0 13" fill="none" stroke="currentColor" stroke-width="1.5"/>'
+      :'<ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-35 12 12)" fill="currentColor"/><path d="M9.5 14.5l5-5" stroke="var(--bg)" stroke-width="1.6"/>') + "</svg>";
     /* ---------- heat map view: one tile per game, brighter = closer to 50/50 ---------- */
     let HEAT = store.get("heat", false);
     document.documentElement.classList.toggle("heat", !!HEAT);
@@ -1078,11 +1097,11 @@
       const comp = ev.competitions?.[0] || {}, st = ev.status?.type || {}, live = st.state === "in", post = st.state === "post";
       const teams = teamsOf(ev), c = closeness(ev, key);
       const h = post ? 0.08 : live ? 1 - Math.min(0.5, c) * 2 : Math.max(0.1, (1 - Math.min(0.5, c - 1) * 2) * 0.6);
-      const possId = live && comp.situation?.possession ? String(comp.situation.possession) : null;
+      const possId = possTeam(comp, st, key);
       const status = live ? st.shortDetail || "Live" : post ? "Final" : fmtTime(ev.date);
       return '<button type="button" class="card htile' + (live ? " live" : "") + (post ? " post" : "") + '" data-ev="' + esc(ev.id) + '" data-lg="' + key + '" style="--h:' + h.toFixed(2) + '">' +
         (mixed ? '<small class="ht-lg">' + esc(LEAGUES[key]?.short || key.toUpperCase()) + "</small>" : "") +
-        teams.map((t) => '<div class="ht-row"><span>' + (possId && String(t.team?.id) === possId ? '<i class="ht-poss"></i>' : "") + esc(t.team?.abbreviation || t.team?.shortDisplayName || "") + "</span><b>" + (st.state === "pre" ? "" : esc(t.score ?? "")) + "</b></div>").join("") +
+        teams.map((t) => '<div class="ht-row"><span>' + (possId && String(t.team?.id) === possId ? POSS_ICON(key) : "") + esc(t.team?.abbreviation || t.team?.shortDisplayName || "") + "</span><b>" + (st.state === "pre" ? "" : esc(t.score ?? "")) + "</b></div>").join("") +
         '<small class="ht-st">' + (live ? '<i class="ldot"></i>' : "") + esc(status) + "</small></button>";
     }
     function gameCard(ev, key, i, mixed) {   // mixed: a list with several sports, so each row names its league
@@ -1094,7 +1113,7 @@
       const scores = teams.map((t) => Number(t.score));
       let statusHtml;
       // Possession on the list (same source as the game page): only when the live data says who has the ball.
-      const sit = live ? comp.situation : null, possId = sit?.possession ? String(sit.possession) : null;
+      const sit = live ? comp.situation : null, possId = possTeam(comp, st, key);
       const football = key === "nfl" || key === "cfb";
       const downTxt = football && sit ? [sit.shortDownDistanceText || sit.downDistanceText, sit.isRedZone ? "Red zone" : ""].filter(Boolean).join(" · ") : "";
       if (live) statusHtml = '<span class="status live">' + esc(st.shortDetail || "Live") + "</span>" + (downTxt ? '<small class="sit-mini">' + esc(downTxt) + "</small>" : "");
@@ -1892,6 +1911,8 @@
           const html = wpSectionHtml(s, teams, st, id, lg);
           if (html) { const t = document.createElement("template"); t.innerHTML = html; sec.replaceWith(t.content.firstElementChild); }
           const pl = v.el.querySelector("[data-plain]"); if (pl) { const t2 = document.createElement("template"); t2.innerHTML = plainLine(s, teams, st, lg); pl.replaceWith(t2.content.firstElementChild); }
+          const pid = gamePoss(lg, id, s);   // keep the "has the ball" icon in the header current
+          v.el.querySelectorAll(".g-head .g-team").forEach((b) => { b.querySelector(".poss")?.remove(); if (pid && b.dataset.team.split("|")[1] === pid) b.querySelector("b")?.insertAdjacentHTML("beforeend", POSS_ICON(lg)); });
           if (st !== "in") clearInterval(v.wpTimer);
         } catch {}
       }, 15000);
@@ -2790,10 +2811,11 @@
       const st = comp.status?.type || {};
       const teams = (comp.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
       const showScore = st.state !== "pre";
+      const gpid = gamePoss(lg, id, s);
       let h = '<div class="g-head">' + teams.map((t, i) => {
         const logo = t.team?.logos?.[0]?.href || t.team?.logo;
         return '<button type="button" class="g-team" data-team="' + lg + "|" + esc(t.team?.id) + '">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : "") +
-          "<b>" + esc(t.team?.abbreviation || t.team?.displayName) + '</b><small>' + esc(t.record?.[0]?.summary || t.record?.[0]?.displayValue || "") + "</small></button>" +
+          "<b>" + esc(t.team?.abbreviation || t.team?.displayName) + (gpid && gpid === String(t.team?.id) ? POSS_ICON(lg) : "") + '</b><small>' + esc(t.record?.[0]?.summary || t.record?.[0]?.displayValue || "") + "</small></button>" +
           (i === 0 ? '<div class="g-mid">' + (showScore ? '<div class="g-score">' + esc(teams[0]?.score ?? "") + "<i>–</i>" + esc(teams[1]?.score ?? "") + "</div>" : "") +
             '<div class="status ' + (st.state === "in" ? "live" : "") + '">' + esc(st.state === "pre" ? fmtDay(comp.date) + " · " + fmtTime(comp.date) : st.shortDetail || "") + "</div></div>" : "");
       }).join("") + "</div>";
