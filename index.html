@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794884752" />
+  <meta name="build" content="1794884828" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2522,7 +2522,7 @@
       const need = [...new Set(items.flatMap(({ p }) => (p.participants || []).map((x) => x.athlete?.$ref)).filter((r) => r && !(r in athCache)))].slice(0, 40);
       if (need.length) {
         need.forEach((r) => { athCache[r] = null; });
-        Promise.all(need.map((r) => getJSON(r.replace("http://", "https://")).then((a) => { athCache[r] = { jersey: a.jersey, short: a.shortName || a.displayName, pos: a.position?.abbreviation }; }).catch(() => {}))).then(() => { if (v.el.isConnected && v.field === F) drawField(v, true); });
+        Promise.all(need.map((r) => getJSON(r.replace("http://", "https://")).then((a) => { athCache[r] = { jersey: a.jersey, short: a.shortName || a.displayName, pos: a.position?.abbreviation }; }).catch(() => {}))).then(() => { const fs = v.el.isConnected && v.el.querySelector("[data-feedsec]"); if (fs && v.field) fs.innerHTML = playFeed(v, v.field); });   // names arrived: refresh just the list, never the field (that cut plays short)
       }
       return '<div class="g-label" style="margin-top:18px">Play-by-play</div><div class="feed">' + html + "</div>" +
         (all.length > 12 && !F.feedAll ? '<button type="button" class="pill-btn feed-more" data-feedall>Show all ' + all.length + " plays</button>" : "");
@@ -2909,7 +2909,7 @@
       const cam = sec.querySelector(".cam");
       if (cam) requestAnimationFrame(() => requestAnimationFrame(() => { cam.style.transform = cam.dataset.to; }));
       // Loop the play: players run it, fade out (only the lines stay), then it plays again - about every 5 seconds.
-      clearTimeout(v.loopT);
+      if (!still) clearTimeout(v.loopT);
       if (!still) {
         const di = F.di, pi0 = F.pi, every = Math.max(5, (v.tEnd || 2) + 2.6) * 1000;
         v.loopT = setTimeout(function again() {
