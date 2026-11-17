@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794878387" />
+  <meta name="build" content="1794878648" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2511,7 +2511,7 @@
           const ly = labelUp ? y - r - 9 : y + r + 15, lw = Math.max(40, name.length * 6.2 + 14);
           const lx = Math.max(lw / 2 + 4, Math.min(W - lw / 2 - 4, x));
           return '<g class="f-mark" style="animation-delay:' + delay + 's">' + open + '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + c + '"/><text x="' + x + '" y="' + y + '" class="f-jn' + (small ? " s" : "") + '">' + esc(a?.jersey || "") + "</text>" +
-            (small || !name ? "" : '<rect x="' + (lx - lw / 2) + '" y="' + (ly - 11) + '" width="' + lw + '" height="17" rx="8.5" class="f-pill"/><text x="' + lx + '" y="' + (ly - 2.5) + '" class="f-lbl">' + esc(name) + "</text>") + "</g></g>";
+            (small || !name ? "" : '<rect x="' + (lx - lw / 2) + '" y="' + (ly - 11) + '" width="' + lw + '" height="17" rx="8.5" class="f-pill"/><text x="' + lx + '" data-cx="' + x + '" y="' + (ly - 2.5) + '" class="f-lbl">' + esc(name) + "</text>") + "</g></g>";
         };
         const nm = (re) => (t.match(re) || [])[1];
         const qbY = Y(t0) + (/shotgun/i.test(t) ? 5 : 2) * SC;
@@ -2607,6 +2607,8 @@
       }
       html += '</div><div data-c="timeouts">' + stopsHtml(F) + '</div>';
       sec.innerHTML = html;
+      // Fit each name tag to its real text width and centre it over the player (estimates drift with font metrics).
+      sec.querySelectorAll(".f-lbl").forEach((t) => { try { const tw = t.getComputedTextLength(); if (!tw) return; const w = tw + 14, VW = t.ownerSVGElement?.viewBox?.baseVal?.width || 0, cx = +t.dataset.cx; const lx = VW ? Math.max(w / 2 + 4, Math.min(VW - w / 2 - 4, cx)) : cx; t.setAttribute("x", lx); const r = t.previousElementSibling; if (r) { r.setAttribute("x", lx - w / 2); r.setAttribute("width", w); } } catch {} });
       sec.classList.toggle("calm-sec", !!still);
       const cam = sec.querySelector(".cam");
       if (cam) requestAnimationFrame(() => requestAnimationFrame(() => { cam.style.transform = "translateY(" + -cam.dataset.to + "px)"; }));
