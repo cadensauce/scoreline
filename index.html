@@ -573,6 +573,7 @@
     .pp-row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; color: inherit; font: inherit; padding: 8px 0; cursor: pointer; text-align: left; }
     .pp-row small { color: var(--muted); font-size: 11.5px; font-weight: 500; } .pp-row b { font-variant-numeric: tabular-nums; }
     .pred-row { display: flex; gap: 12px; margin-bottom: 8px; } .pred-row > div { flex: 1; background: var(--panel-2); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+    .pred-res { font-size: 13px; font-weight: 600; margin: 2px 0 6px; }
     .pred-row small { font-size: 11px; color: var(--muted); } .pred-row b { font-size: 16px; font-variant-numeric: tabular-nums; }
     .depth { display: grid; gap: 2px; } .sheet.wide .depth { grid-template-columns: 1fr 1fr; column-gap: 16px; }
     .dp-row { display: grid; grid-template-columns: 92px 1fr; gap: 10px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--line); }
@@ -2115,7 +2116,7 @@
     // "Bengals lead by 21 at halftime. Teams in this spot win about 98% of the time." Built only from real data.
     /* ---------- predictions (team sports): projected score + win chance; predicted vs actual after the game ----------
        Projected points = average of what a team scores per game and what its opponent allows per game (season so far),
-       plus a small home edge. Win chance = Scoreline's win model before kickoff. Estimates, not guarantees. */
+       plus a small home edge, from the games each team played before this one. Estimates, not guarantees. */
     const seasonCache = {};
     function seasonTable(lg) {
       if (!seasonCache[lg]) {
@@ -2203,40 +2204,54 @@
         dm("<b>The pitching matchup.</b> The starter usually pitches the first 5 to 7 innings, so they shape the whole game. <b>ERA</b> is runs allowed per 9 innings (under 3.50 is very good). <b>WHIP</b> is walks plus hits per inning (under 1.20 is very good). <b>K</b> is strikeouts.") +
         '<div class="list">' + rows.join("") + "</div></div>";
     }
+    // Points scored and allowed in a team's finished games before this one (from its schedule), so it works for any game, old or new.
+    async function priorTotals(lg, teamId, eventId, post, yr) {
+      const d = await getJSON(API + LEAGUES[lg].path + "/teams/" + teamId + "/schedule" + (yr ? "?season=" + yr : "")).catch(() => null);
+      const evs = d?.events || [];
+      if (!evs.length) return null;
+      const idx = evs.findIndex((e) => String(e.id) === String(eventId));
+      if (idx < 0 && post) return null;   // can't tell which games came before, so show nothing
+      const sv = (x) => Number(x?.score?.value ?? x?.score);
+      let pf = 0, pa = 0, g = 0;
+      (idx < 0 ? evs : evs.slice(0, idx)).forEach((e) => {
+        const c = e.competitions?.[0], cs = c?.competitors || [];
+        if (!c?.status?.type?.completed) return;
+        const me = cs.find((x) => String(x.team?.id || x.id) === String(teamId)), op = cs.find((x) => x !== me);
+        if (!me || !op || !Number.isFinite(sv(me)) || !Number.isFinite(sv(op))) return;
+        pf += sv(me); pa += sv(op); g++;
+      });
+      return { pf, pa, g };
+    }
+    // Fallback when a schedule isn't available: season standings, minus this game's own result once the standings count it.
+    async function standingsTotals(lg, t, post, mine, theirs) {
+      const x = (await seasonTable(lg))[String(t.team?.id)];
+      if (!x) return null;
+      if (!post) return { pf: x.pf, pa: x.pa, g: x.g };
+      const recG = String(t.record?.[0]?.summary || t.record?.[0]?.displayValue || "").split("-").reduce((a, n) => a + (parseInt(n, 10) || 0), 0);
+      if (x.g === recG) return { pf: x.pf - mine, pa: x.pa - theirs, g: x.g - 1 };
+      return x.g === recG - 1 ? { pf: x.pf, pa: x.pa, g: x.g } : null;   // otherwise we can't tell, so show nothing
+    }
     async function predictionHtml(lg, s, teams, state) {
       if (!["nfl", "cfb", "nba", "mlb"].includes(lg) || teams.length < 2) return "";
-      const comp = s.header?.competitions?.[0] || {};
-      const [away, home] = teams, tab = await seasonTable(lg);
-      let A = tab[String(away.team?.id)], Hm = tab[String(home.team?.id)];
-      if (!A || !Hm) return "";
-      const post = state === "post";
-      if (post) {   // leave this game out of the averages, so the result can't leak into its own prediction
-        if (Date.now() - Date.parse(comp.date) > 8 * 864e5) return "";
-        const as = Number(away.score), hs = Number(home.score);
-        if (A.g < 2 || Hm.g < 2 || !Number.isFinite(as) || !Number.isFinite(hs)) return "";
-        // Only subtract if the standings already count this game (their games played match the record after it).
-        const recG = (t) => String(t.record?.[0]?.summary || t.record?.[0]?.displayValue || "").split("-").reduce((a, n) => a + (parseInt(n, 10) || 0), 0);
-        const inA = A.g === recG(away), inH = Hm.g === recG(home);
-        if (inA !== inH || (!inA && A.g !== recG(away) - 1)) return "";   // can't tell, so show nothing
-        if (inA) { A = { pf: A.pf - as, pa: A.pa - hs, g: A.g - 1 }; Hm = { pf: Hm.pf - hs, pa: Hm.pa - as, g: Hm.g - 1 }; }
-      }
-      if (A.g < 2 || Hm.g < 2) return "";
+      const comp = s.header?.competitions?.[0] || {}, post = state === "post", id = s.header?.id || comp.id;
+      const [away, home] = teams;
+      const yr = s.header?.season?.year, as0 = Number(away.score), hs0 = Number(home.score);
+      const [A, Hm] = await Promise.all([[away, as0, hs0], [home, hs0, as0]].map(async ([t, m, o]) => (await priorTotals(lg, t.team?.id, id, post, yr)) || (!post || (Number.isFinite(m) && Number.isFinite(o)) ? standingsTotals(lg, t, post, m, o) : null)));
+      if (!A || !Hm || A.g < 2 || Hm.g < 2) return "";
       const edge = comp.neutralSite ? 0 : HOME_EDGE[lg] / 2;
       const hp = (Hm.pf / Hm.g + A.pa / A.g) / 2 + edge, ap = (A.pf / A.g + Hm.pa / Hm.g) / 2 - edge;
-      const W = window.ScorelineWP?.[lg];
-      let hw = null;
-      if (W) { await window.ScorelineWP.ready(lg).catch(() => {}); hw = W({ homeScore: 0, awayScore: 0, period: 1, clock: lg === "nba" ? "12:00" : lg === "mlb" ? "0:00" : "15:00", possession: null, homeTeamId: home.team?.id, awayTeamId: away.team?.id, neutral: !!comp.neutralSite }); }
       const r = (x) => Math.max(0, Math.round(x)), ab = (t) => esc(t.team?.abbreviation || "");
-      const fav = hw == null ? null : hw >= 0.5 ? home : away, favP = hw == null ? null : Math.round(Math.max(hw, 1 - hw) * 100);
-      let h = '<div class="g-sec pred" data-c="all"><div class="g-label">' + (post ? "Predicted vs actual" : "Prediction") + '</div><div class="pred-row"><div><small>' + (post ? "We'd have said" : "Projected score") + "</small><b>" + ab(away) + " " + r(ap) + " – " + r(hp) + " " + ab(home) + "</b></div>" +
-        (fav ? "<div><small>Win chance</small><b>" + esc(fav.team?.abbreviation) + " " + favP + "%</b></div>" : "") + "</div>";
+      const pa_ = r(ap), ph = r(hp);
+      let h = '<div class="g-sec pred" data-c="all"><div class="g-label">' + (post ? "Predicted vs actual" : "Prediction") + '</div><div class="pred-row"><div><small>' + (post ? "We'd have said" : "Projected score") + "</small><b>" + ab(away) + " " + pa_ + " – " + ph + " " + ab(home) + "</b></div>";
       if (post) {
-        const as = Number(away.score), hs = Number(home.score), right = fav && (Number(fav.score) > Number((fav === home ? away : home).score));
-        const off = Math.round(Math.abs(as - ap) + Math.abs(hs - hp));
-        h += '<div class="pred-row"><div><small>Final</small><b>' + ab(away) + " " + as + " – " + hs + " " + ab(home) + "</b></div><div><small>How close</small><b>" + (fav ? (right ? "✓ Right winner" : "✗ Wrong winner") : "") + " · off by " + off + "</b></div></div>";
-      }
-      if (!post) h += await playerProjections(lg, s, teams).catch(() => "");
-      return h + '<div class="g-note">Estimates, not guarantees. Projected score: each team\'s scoring and the other team\'s defense so far this season, plus a small home edge. Win chance: Scoreline\'s win model.</div></div>';
+        const as = Number(away.score), hs = Number(home.score);
+        if (!Number.isFinite(as) || !Number.isFinite(hs)) return "";
+        const off = Math.abs(as - pa_) + Math.abs(hs - ph);
+        const pick = pa_ === ph ? 0 : pa_ > ph ? 1 : -1, real = as === hs ? 0 : as > hs ? 1 : -1;
+        h += "<div><small>Final</small><b>" + ab(away) + " " + as + " – " + hs + " " + ab(home) + "</b></div></div>" +
+          '<div class="pred-res">' + (pick && real ? (pick === real ? "Right winner" : "Wrong winner") + " · " : "") + "off by " + off + (lg === "mlb" ? " run" : " point") + (off === 1 ? "" : "s") + " in total</div>";
+      } else h += "</div>" + (await playerProjections(lg, s, teams).catch(() => ""));
+      return h + '<div class="g-note">An estimate, not a guarantee: each team\'s scoring and the other team\'s defense in ' + (post ? "the games before this one" : "this season's games so far") + ", plus a small home edge.</div></div>";
     }
 
     /* ---------- game recap (finished games): written from the game's own data, no guessing ----------
@@ -4171,7 +4186,7 @@
     const FB_PLAYS = "Every play, newest first. Tap one to see it on the field. <b>1st &amp; 10</b> means 1st try with 10 yards to go for a new set of downs.";
     const DM_SEC = [
       [/^Track$/, "<b>Live car positions.</b> Each dot is a car in its team's colour, moving around the circuit as it happens. Dots bunched together are cars fighting for position."],
-      [/^Pre|^Predict/, "<b>Our pick.</b> Worked out from each team's season so far (points scored and allowed, record, home field). It's an educated guess, not a promise: upsets happen all the time. After the game, it shows how close the pick was."],
+      [/^Pre|^Predict/, "<b>Our pick.</b> Worked out from each team's season so far (points scored and allowed, plus home field). It's an educated guess, not a promise: upsets happen all the time. After the game, it shows how close the pick was."],
       [/^Recap/, "<b>The short version.</b> How the game went, written from the final score and the key plays."],
       [/^Scoring$/, { nba: "<b>Points by quarter.</b> 4 quarters of 12 minutes. <b>OT</b> is overtime (5 extra minutes when it's tied). <b>T</b> is the total.", all: "<b>Points by quarter.</b> 4 quarters of 15 minutes. <b>OT</b> is overtime, extra time when the game is tied. <b>T</b> is the total." }],
       [/^Line score/, "<b>Runs by inning.</b> Each column is an inning (9 in a game). <b>R</b> = runs, <b>H</b> = hits, <b>E</b> = errors (fielding mistakes). Most runs after 9 innings wins."],
