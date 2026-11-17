@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794887475" />
+  <meta name="build" content="1794887517" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2770,7 +2770,8 @@
       if (!svg) return;
       const NS = "http://www.w3.org/2000/svg", ease = (p) => (p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);
       const clamp01 = (k) => Math.max(0, Math.min(1, k));
-      const mk = (d) => { const pe = document.createElementNS(NS, "path"); pe.setAttribute("d", d); pe.setAttribute("fill", "none"); pe.setAttribute("visibility", "hidden"); svg.appendChild(pe); return pe; };
+      svg.querySelectorAll(".anim-h").forEach((x) => x.remove());   // helper paths from a previous run
+      const mk = (d) => { const pe = document.createElementNS(NS, "path"); pe.setAttribute("d", d); pe.setAttribute("fill", "none"); pe.setAttribute("visibility", "hidden"); pe.setAttribute("class", "anim-h"); svg.appendChild(pe); return pe; };
       const movers = [...svg.querySelectorAll("[data-mv]")].map((el) => ({ el, ph: (A?.[+el.dataset.mv] || []).map((p) => { const pe = mk(p.d); return { ...p, pe, L: pe.getTotalLength() }; }) })).filter((m) => m.ph.length);
       const lines = [...svg.querySelectorAll("[data-dr]")].map((el) => { const [b, u] = el.dataset.dr.split(",").map(Number); return { el, b, u }; });
       let end = 0;
@@ -2819,11 +2820,12 @@
       const ez = (x, team, rot) => '<rect x="' + x + '" y="0" width="' + EZ + '" height="' + H + '" fill="' + esc(col(team)) + '"/><text transform="translate(' + (x + EZ / 2) + " " + CY + ") rotate(" + rot + ')" class="f-ez">' + esc(team.team?.name || team.team?.abbreviation || "") + "</text>";
       s += ez(0, F.away, -90) + ez(W - EZ, F.home, 90);
       for (let y = 0; y <= 100; y += 5) s += '<line x1="' + X(y) + '" x2="' + X(y) + '" y1="0" y2="' + H + '" class="f-yl' + (y % 10 ? "" : " ten") + (y === 0 || y === 100 ? " goal" : "") + '"/>';
-      for (let y = 1; y < 100; y++) if (y % 5) [7, H * 0.4, H * 0.6, H - 7].forEach((hy) => { s += '<line x1="' + X(y) + '" x2="' + X(y) + '" y1="' + (hy - 4) + '" y2="' + (hy + 4) + '" class="f-hash"/>'; });
+      { let hd = ""; for (let y = 1; y < 100; y++) if (y % 5) [7, H * 0.4, H * 0.6, H - 7].forEach((hy) => { hd += "M" + X(y).toFixed(1) + " " + (hy - 4) + "v8"; }); s += '<path d="' + hd + '" class="f-hash"/>'; }   // all hash marks as one shape (lighter to draw)
       for (let y = 10; y < 100; y += 10) { const n = Math.min(y, 100 - y); s += '<text x="' + X(y) + '" y="36" class="f-num">' + n + '</text><text x="' + X(y) + '" y="' + (H - 36) + '" class="f-num" transform="rotate(180 ' + X(y) + " " + (H - 36) + ')">' + n + "</text>"; }
       [4, W - 4].forEach((gx) => { s += '<line x1="' + gx + '" x2="' + gx + '" y1="' + (CY - 20) + '" y2="' + (CY + 20) + '" class="f-post"/>'; });
       s += '<rect width="' + W + '" height="' + H + '" fill="url(#fglow)" pointer-events="none"/>';
       if (!P || !G) return finish(s, [X(50)]);
+      s += '<g class="play">';   // everything below is the play; the loop replays just this group
 
       const t = P.text || "", ty = P.type?.text || "";
       const right = G.team === String(F.away.team?.id), dir = right ? 1 : -1;
@@ -2970,6 +2972,7 @@
           s += mark(dx, dy, carrier.tc, a, role, carrier.begin, !k, { x: dx + head * 80, y: dy + (k ? 60 : -60), begin: carrier.begin, dur: carrier.dur + 0.1 }, null, true);
         });
       }
+      s += "</g>";
       return finish(s, xs.length ? xs : [X(50)]);
     }
     /* ---------- strategy picker (football): 4th down and after a touchdown ----------
@@ -3135,7 +3138,11 @@
         v.loopT = setTimeout(function again() {
           if (!v.el.isConnected || !v.field || v.field.di !== di || v.field.pi !== pi0) return;
           if (document.hidden || !v.el.querySelector("svg.field")) { v.loopT = setTimeout(again, 2000); return; }
-          drawField(v, false);
+          // Replay just the play layer (cheap): a fresh copy restarts its CSS animations, then rerun the movement.
+          const svg = v.el.querySelector("[data-field] svg.field"), g = svg?.querySelector("g.play");
+          if (!g) return drawField(v, false);
+          g.replaceWith(g.cloneNode(true)); runFieldAnim(svg, v.anim, false);
+          v.loopT = setTimeout(again, every);
         }, every);
       }
     }
