@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794877795" />
+  <meta name="build" content="1794877842" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -3068,7 +3068,7 @@
     // Main page: switch sports. Inside a game: switch All / Plays / Timeouts / Stats / Players.
     // The page follows the pointer while dragging, then switches or snaps back.
     (() => {
-      const SKIP = ".dstrip, .ls-wrap, .track, .court, .field, .gtabs, .tabs, .btabs, .seg, input, textarea, .search, .sres, .bars, .ga-modal, .chat-log, .feed-more";
+      const SKIP = ".wpg, [data-wpg], [data-noswipe], .dstrip, .ls-wrap, .track, .court, .field, .gtabs, .tabs, .btabs, .seg, input, textarea, .search, .sres, .bars, .ga-modal, .chat-log, .feed-more";
       const GCATS = ["all", "plays", "stats", "players"];
       let st = null, swallow = false;
       const zone = (t) => {
