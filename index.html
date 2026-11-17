@@ -1586,13 +1586,14 @@
     /* ---------- F1: last qualifying, gaps to pole (OpenF1 free data on finished sessions) ---------- */
     async function f1QualiHtml() {
       const OF = "https://api.openf1.org/v1/", yr = new Date().getFullYear();
-      const qs = ((await getJSON(OF + "sessions?session_name=Qualifying&year=" + yr).catch(() => [])) || []).filter((s) => Date.parse(s.date_end || s.date_start) < Date.now());
+      const get = async (e, q) => { for (let t = 0; t < 3; t++) { try { return await getJSON(OF + e + "?" + q); } catch { await new Promise((r) => setTimeout(r, 700)); } } return []; };
+      const qs = ((await get("sessions", "session_name=Qualifying&year=" + yr)) || []).filter((s) => Date.parse(s.date_end || s.date_start) < Date.now());
       const q = qs[qs.length - 1];
       if (!q) return "";
-      const res = (await getJSON(OF + "session_result?session_key=" + q.session_key).catch(() => [])) || [];
+      const res = (await get("session_result", "session_key=" + q.session_key)) || [];
       if (!res.length) return "";
-      const drivers = (await getJSON(OF + "drivers?session_key=" + q.session_key).catch(() => [])) || [], drv = {};
-      drivers.forEach((d) => { drv[d.driver_number] = d; });
+      let drivers = await get("drivers", "session_key=" + q.session_key); if (!drivers?.length) drivers = await get("drivers", "meeting_key=" + q.meeting_key); const drv = {};
+      (drivers || []).forEach((d) => { drv[d.driver_number] = d; });
       const lapT = (t) => (t >= 60 ? Math.floor(t / 60) + ":" + (t % 60).toFixed(3).padStart(6, "0") : t.toFixed(3));
       const name = (r) => esc(drv[r.driver_number]?.name_acronym || r.driver_number);
       const sorted = res.filter((r) => r.position).sort((a, b) => a.position - b.position);
@@ -1684,7 +1685,7 @@
         }).join("") + "</tbody></table>" + (state.f1Table === "drivers" ? '<div class="g-note">Tap a driver to follow them. They show up on Home.</div>' : "") : '<div class="empty">Standings unavailable.</div>';
       right += "</div>";
       main.innerHTML = barHtml("Formula 1", "f1") + '<div class="panel track-panel" id="trackPanel"><div class="g-label">Track</div><div class="skel" style="height:260px"></div></div>' + '<div class="f1-wrap">' + left + right + "</div>" + '<div data-f1strat></div>';
-      f1QualiHtml().catch(() => "").then((q) => f1StrategyHtml().catch(() => "").then((x) => { const el = main.querySelector("[data-f1strat]"); if (el) { if (q + x) el.outerHTML = q + x; else el.remove(); } }));
+      f1QualiHtml().catch(() => "").then((q) => new Promise((r) => setTimeout(r, 800)).then(f1StrategyHtml).catch(() => "").then((x) => { const el = main.querySelector("[data-f1strat]"); if (el) { if (q + x) el.outerHTML = q + x; else el.remove(); } }));
       renderTabs();
       stamp();
       tickCountdown();
