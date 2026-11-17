@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794881950" />
+  <meta name="build" content="1794882005" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -531,6 +531,8 @@
     .fwrap { position: relative; } .f-replay { position: absolute; right: 10px; top: 20px; border: 0; border-radius: 999px; padding: 6px 12px; font: 600 12px Inter, sans-serif; color: #fff; background: rgba(8,12,18,.6); cursor: pointer; }
     .f-route { fill: none; stroke: rgba(255,255,255,.6); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
     .f-route.draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: dash 1.25s cubic-bezier(.45,0,.35,1) forwards; } .field.still .f-route.draw { stroke-dashoffset: 0; }
+    .f-route.gone { animation: dash 1.25s cubic-bezier(.45,0,.35,1) forwards, fadeout .45s 1.5s forwards; } .field.still .f-route.gone { opacity: 0; }
+    @keyframes fadeout { to { opacity: 0; } }
     .fh .f-mark polygon { stroke: #fff; stroke-width: 2; stroke-linejoin: round; }
     .pp-wrap { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.8); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
     .pp-bar { display: flex; gap: 12px; align-items: center; color: #fff; font-size: 14px; } .pp-bar small { color: #aaa; }
@@ -2609,7 +2611,7 @@
       const mark = (x, y, c, a, fb, delay, up, from, route, small) => {
         xs.push(x);
         const name = small ? "" : [a?.short || fb || "", a?.pos].filter(Boolean).join(" · "), r = small ? 12 : 16, ly = up ? -32 : 36;
-        const body = (small ? '<polygon points="0,-15 13,9 -13,9" fill="' + c + '"/>' : '<circle cx="0" cy="0" r="' + r + '" fill="' + c + '"/>') + ''<text x="0" y="' + (small ? 2 : 0) + '" class="f-jn' + (small ? " s" : "") + '">' + esc(a?.jersey || "") + "</text>" +
+        const body = (small ? '<polygon points="0,-15 13,9 -13,9" fill="' + c + '"/>' : '<circle cx="0" cy="0" r="' + r + '" fill="' + c + '"/>') + '<text x="0" y="' + (small ? 2 : 0) + '" class="f-jn' + (small ? " s" : "") + '">' + esc(a?.jersey || "") + "</text>" +
           (name ? '<rect x="-60" y="' + (ly - 15) + '" width="120" height="25" rx="12.5" class="f-pill"/><text x="0" data-cx="0" data-rel="1" y="' + (ly + 3) + '" class="f-lbl">' + esc(name) + "</text>" : "");
         if (route && !still) return '<g class="f-mark" style="animation-delay:' + route.begin + 's"><g><animateMotion begin="' + route.begin + 's" dur="' + route.dur + 's" fill="freeze" ' + (route.kp ? 'calcMode="linear" keyPoints="' + route.kp + '" keyTimes="' + route.kt + '"' : 'calcMode="spline" keyTimes="0;1" keySplines=".45 0 .35 1"') + ' path="' + route.d + '"/>' + body + "</g></g>";
         const mv = from && !still;
@@ -2682,7 +2684,7 @@
         // then (if caught) he keeps running after the catch.
         const rd = Math.min(1.6, 0.45 + Math.abs(xE - cxp) / 200), ey2 = Math.max(40, Math.min(H - 40, ly + (side ? -side * dir * 24 : 30))), yp = weave(cxp, ly, xE, ey2);
         const rt = rRoute(cxp, ly);
-        s += '<path d="' + rt.d + '" class="f-route draw" pathLength="1" style="animation-delay:.1s;animation-duration:1.25s"/>';
+        s += '<path d="' + rt.d + '" class="f-route draw gone" pathLength="1" style="animation-delay:.1s;animation-duration:1.25s"/>';
         s += fly(arc(qbX, CY, cxp, ly, 60), 0.75, 0.6) + land(cxp, ly, 1.35);
         if (yac) s += run(yp, 1.35, rd);
         s += mark(qbX, CY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/), 0.05, false, { x: xL - dir * S, y: CY, begin: 0.1, dur: 0.6 });
@@ -2694,8 +2696,9 @@
         const tx = xL + dir * (/deep/i.test(t) ? 22 : 9) * S, ly = side ? lane(72) : CY - 28, pick = /interception/i.test(ty);
         const rt = rRoute(tx, ly);
         s += '<path d="' + rt.d + '" class="f-route draw" pathLength="1" style="animation-delay:.1s;animation-duration:1.25s"/>';
-        s += fly(arc(qbX, CY, tx, ly, 60), 0.75, 0.6);
-        s += pick ? land(tx, ly, 1.35) : '<text x="' + tx + '" y="' + (ly + 8) + '" class="f-x" style="animation-delay:1.35s">✕</text>';
+        s += fly(arc(qbX, CY, pick ? tx : tx + dir * 16, pick ? ly : ly + (ly < CY ? -16 : 16), 60), 0.75, 0.6);
+        const bx = pick ? tx : tx + dir * 16, by = pick ? ly : ly + (ly < CY ? -16 : 16);   // where the ball ended up, next to the receiver
+        s += pick ? land(tx, ly, 1.35) : '<text x="' + bx + '" y="' + (by + 8) + '" class="f-x" style="animation-delay:1.35s">✕</text>';
         s += tag(clampX(tx), ly < CY ? ly - 40 : ly + 44, pick ? "Intercepted" : "Incomplete", 1.45);
         s += mark(qbX, CY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/), 0.05, false, { x: xL - dir * S, y: CY, begin: 0.1, dur: 0.6 });
         const tgt = ath("target") || ath("receiver"), tn = nm(/ (?:to|for) ([A-Z][a-z]?\.[\w'-]+)/);
