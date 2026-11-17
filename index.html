@@ -2407,7 +2407,7 @@
       const games = await Promise.all(recent.map((p) => P.game(p.gameId)));
       const won = picks.filter((p) => p.result === "won").length, done = picks.filter((p) => p.result === "won" || p.result === "lost").length;
       if (!el.isConnected) return;
-      el.innerHTML = '<div class="section-title"><b>Picks</b></div><div class="panel"><div class="set-row"><span><b>' + (s.teen ? bal + " Marks" : "Just for fun") + '</b><small class="muted"> · ' + (done ? won + " of " + done + " right" : "no results yet") + "</small></span></div>" +
+      el.innerHTML = '<div class="section-title"><b>Picks</b></div><div class="panel"><div class="set-row"><span><b>' + (s.teen ? MARK_SVG(16) + " " + bal + " Marks" : "Just for fun") + '</b><small class="muted"> · ' + (done ? won + " of " + done + " right" : "no results yet") + "</small></span></div>" +
         (recent.length ? recent.map((p, i) => {
           const g = games[i]; if (!g) return "";
           const res = p.result === "won" ? '<span class="good">' + (p.reward ? "+" + p.reward : "Right") + "</span>" : p.result === "lost" ? '<span class="bad">Missed</span>' : p.result === "tie" ? "<span>Tie</span>" : '<span class="muted">' + (g.state === "pre" ? "Upcoming" : "Locked") + "</span>";
