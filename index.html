@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794878888" />
+  <meta name="build" content="1794879130" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -504,6 +504,13 @@
     .f1-follow.on { color: var(--gold); }
     tr.f1-follow { cursor: pointer; } tr.f1-follow.on { color: inherit; } tr.f1-follow .fo { color: var(--gold); font-size: 11px; }
     .p-head .pill-btn { margin-left: auto; flex: none; }
+    html.heat .grid { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)) !important; gap: 8px; }
+    .card.htile { display: flex; flex-direction: column; gap: 3px; padding: 10px 11px; min-height: 0; text-align: left; font: inherit; color: var(--text); border: 0; cursor: pointer; contain-intrinsic-size: auto 92px;
+      background: color-mix(in srgb, var(--text) calc(var(--h) * 26%), var(--panel)); transition: background .6s var(--ease); }
+    .card.htile.post { opacity: .55; }
+    .ht-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 650; }
+    .ht-row b { font-variant-numeric: tabular-nums; } .ht-lg, .ht-st { font-size: 10.5px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+    .ht-poss { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--text); margin-right: 5px; vertical-align: 2px; }
     .kick { display: flex; align-items: center; gap: 14px; background: var(--panel-2); border-radius: 14px; padding: 10px 14px; margin: 4px 0 10px; }
     .kick svg { width: 120px; flex: none; } .kick b { display: block; font-size: 14px; } .kick small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 3px; }
     .k-ground { stroke: var(--line); stroke-width: 2; } .k-post { fill: none; stroke: var(--text); stroke-width: 4; stroke-linecap: round; }
@@ -1064,7 +1071,22 @@
     const POSS_ICON = (lg) => '<svg class="poss" viewBox="0 0 24 24" aria-label="Has the ball" role="img">' + (lg === "nba"
       ? '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 12h16M12 4v16" stroke="currentColor" stroke-width="1.6"/>'
       : '<ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-35 12 12)" fill="currentColor"/><path d="M9.5 14.5l5-5" stroke="var(--bg)" stroke-width="1.6"/>') + "</svg>";
+    /* ---------- heat map view: one tile per game, brighter = closer to 50/50 ---------- */
+    let HEAT = store.get("heat", false);
+    document.documentElement.classList.toggle("heat", !!HEAT);
+    function heatTile(ev, key, mixed) {
+      const comp = ev.competitions?.[0] || {}, st = ev.status?.type || {}, live = st.state === "in", post = st.state === "post";
+      const teams = teamsOf(ev), c = closeness(ev, key);
+      const h = post ? 0.08 : live ? 1 - Math.min(0.5, c) * 2 : Math.max(0.1, (1 - Math.min(0.5, c - 1) * 2) * 0.6);
+      const possId = live && comp.situation?.possession ? String(comp.situation.possession) : null;
+      const status = live ? st.shortDetail || "Live" : post ? "Final" : fmtTime(ev.date);
+      return '<button type="button" class="card htile' + (live ? " live" : "") + (post ? " post" : "") + '" data-ev="' + esc(ev.id) + '" data-lg="' + key + '" style="--h:' + h.toFixed(2) + '">' +
+        (mixed ? '<small class="ht-lg">' + esc(LEAGUES[key]?.short || key.toUpperCase()) + "</small>" : "") +
+        teams.map((t) => '<div class="ht-row"><span>' + (possId && String(t.team?.id) === possId ? '<i class="ht-poss"></i>' : "") + esc(t.team?.abbreviation || t.team?.shortDisplayName || "") + "</span><b>" + (st.state === "pre" ? "" : esc(t.score ?? "")) + "</b></div>").join("") +
+        '<small class="ht-st">' + (live ? '<i class="ldot"></i>' : "") + esc(status) + "</small></button>";
+    }
     function gameCard(ev, key, i, mixed) {   // mixed: a list with several sports, so each row names its league
+      if (HEAT) return heatTile(ev, key, mixed);
       const comp = ev.competitions?.[0] || {};
       const st = ev.status?.type || {};
       const live = st.state === "in", post = st.state === "post";
@@ -1354,7 +1376,8 @@
       const open = paged && (searchOpen[key] || searchQ[key]);
       const sBtn = paged ? '<button type="button" class="icon-btn' + (open ? " on" : "") + '" data-searchtoggle aria-label="Search ' + esc(L.short || L.name) + ' teams"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>' : "";
       const stBtn = paged ? '<button type="button" class="icon-btn" data-standings="' + key + '" aria-label="' + esc(L.short || L.name) + ' standings"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h11M4 18h7"/></svg></button>' : "";
-      return '<div class="bar"><h1>' + esc(title) + "</h1>" + stBtn + sBtn + "</div>" + (open ? search : "") +
+      const hBtn = key !== "f1" ? '<button type="button" class="icon-btn' + (HEAT ? " on" : "") + '" data-heat aria-label="' + (HEAT ? "Show as list" : "Show as heat map") + '" title="' + (HEAT ? "List" : "Heat map") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2" opacity=".55"/><rect x="3" y="13" width="8" height="8" rx="2" opacity=".3"/><rect x="13" y="13" width="8" height="8" rx="2" opacity=".75"/></svg></button>' : "";
+      return '<div class="bar"><h1>' + esc(title) + "</h1>" + hBtn + stBtn + sBtn + "</div>" + (open ? search : "") +
         '<div class="bar-row">' + liveBtn + toggle + "</div>" + pager + (day ? stripHtml(key) : "");
     }
 
@@ -1606,7 +1629,7 @@
       const sameGames = oldCards.length && oldCards.length === newCards.length && oldCards.every((c, i) => c.dataset.ev === newCards[i].dataset.ev);
       const frame = (root) => { const c = root.cloneNode(true); c.querySelectorAll("[data-ev]").forEach((x) => x.replaceWith(document.createComment("g"))); return c.innerHTML; };
       if (sameGames && frame(main) === frame(tpl.content)) {
-        oldCards.forEach((c, i) => { if (c.outerHTML !== newCards[i].outerHTML) c.replaceWith(newCards[i]); });
+        oldCards.forEach((c, i) => { const n = newCards[i]; if (c.outerHTML === n.outerHTML) return; if (c.classList.contains("htile") && n.classList.contains("htile")) { c.className = n.className; c.style.cssText = n.style.cssText; c.innerHTML = n.innerHTML; } else c.replaceWith(n); });   // heat tiles update in place so their shade fades
       } else {
         // Keep the existing row of days if it lists the same days: only the highlighted day changes, so the row
         // doesn't jump back to the start and re-centre (that was the twitch when switching days).
@@ -1679,6 +1702,11 @@
       if (vw) { views0[state.tab] = vw.dataset.view; store.set("view", views0); state.offset[state.tab] = 0; buzz(); swapIn(1); return render(); }
       const page = e.target.closest("[data-page]");
       if (page) { state.offset[state.tab] = (state.offset[state.tab] || 0) + Number(page.dataset.page); return softSwap(); }
+      if (e.target.closest("[data-heat]")) {
+        HEAT = !HEAT; store.set("heat", HEAT); document.documentElement.classList.toggle("heat", HEAT); buzz(8);
+        const W = window.ScorelineWP;
+        return Promise.resolve(HEAT && W ? Promise.all(["nfl", "cfb", "nba"].map((x) => W.ready(x).catch(() => {}))) : 0).then(() => render(true));
+      }
       const flt = e.target.closest("[data-filter]");
       if (flt) { state.filter = flt.dataset.filter; store.set("filter", state.filter); if (state.filter === "close" && window.ScorelineWP) Promise.all(["nfl", "cfb", "nba"].map((x) => window.ScorelineWP.ready(x).catch(() => {}))).then(() => render(false)); $("main").querySelectorAll("[data-filter]").forEach((b) => b.classList.toggle("active", b === flt)); return softSwap(); }
       const f1t = e.target.closest("[data-f1t]");
