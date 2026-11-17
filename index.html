@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794896024" />
+  <meta name="build" content="1794896066" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -1584,14 +1584,18 @@
       const race = races[races.length - 1];
       if (!race) return "";
       const k = race.session_key;
-      const [res, stints, pits, drivers, pos] = await Promise.all(["session_result", "stints", "pit", "drivers", "position"].map((e) => getJSON(OF + e + "?session_key=" + k).catch(() => [])));
+      // One request at a time: OpenF1 limits bursts, and a refused request would look like missing data.
+      const get = async (e, q) => { for (let t = 0; t < 3; t++) { try { return await getJSON(OF + e + "?" + q); } catch { await new Promise((r) => setTimeout(r, 700)); } } return []; };
+      const res = await get("session_result", "session_key=" + k), stints = await get("stints", "session_key=" + k), pits = await get("pit", "session_key=" + k);
+      let drivers = await get("drivers", "session_key=" + k); if (!drivers?.length) drivers = await get("drivers", "meeting_key=" + race.meeting_key);
+      const pos = await get("position", "session_key=" + k);
       if (!res?.length) return "";
       const drv = {}; (drivers || []).forEach((d) => { drv[d.driver_number] = d; });
       const start = {}; (pos || []).forEach((p) => { if (!(p.driver_number in start)) start[p.driver_number] = p.position; });
       const laps = Math.max(...res.map((r) => r.number_of_laps || 0)) || 1;
       const rows = res.filter((r) => r.position).sort((a, b) => a.position - b.position).slice(0, 10).map((r) => {
         const d = drv[r.driver_number] || {}, st = (stints || []).filter((s) => s.driver_number === r.driver_number).sort((a, b) => a.stint_number - b.stint_number);
-        const stops = (pits || []).filter((p) => p.driver_number === r.driver_number).length, moved = start[r.driver_number] ? start[r.driver_number] - r.position : null;
+        const stops = (pits || []).filter((p) => p.driver_number === r.driver_number).length || Math.max(0, st.length - 1), moved = start[r.driver_number] ? start[r.driver_number] - r.position : null;
         const bar = st.map((s) => { const t = TYRE[s.compound] || ["#888", "?"], w = ((s.lap_end || laps) - s.lap_start + 1) / laps * 100; return '<i style="width:' + w.toFixed(1) + "%;background:" + t[0] + '" title="' + esc(s.compound || "") + " laps " + s.lap_start + "-" + (s.lap_end || laps) + '">' + (w > 9 ? t[1] : "") + "</i>"; }).join("");
         return '<div class="fs-row"><span class="pos">' + r.position + '</span><span class="fs-drv"><i style="background:#' + esc(d.team_colour || "888") + '"></i>' + esc(d.name_acronym || r.driver_number) + '</span><span class="fs-bar">' + bar + '</span><span class="fs-st">' + stops + (stops === 1 ? " stop" : " stops") + "</span>" +
           '<span class="fs-mv ' + (moved > 0 ? "up" : moved < 0 ? "down" : "") + '">' + (moved == null ? "" : moved > 0 ? "▲" + moved : moved < 0 ? "▼" + -moved : "–") + "</span></div>";
