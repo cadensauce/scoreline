@@ -36,6 +36,7 @@ async function boot() {
 /* ---------- auth ---------- */
 async function onUser(u) {
   unsubs.forEach((f) => f()); unsubs = [];
+  window.scorelineDevCheck?.(u?.email || "");   // developer tools (phone preview) for the owner's account only
   user = u; profile = null;
   friendState = { incoming: [], outgoing: [], friends: [] };
   pending2 = false; twoStepOn = false; otpUnsub?.(); otpUnsub = null;
