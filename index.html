@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794935580" />
+  <meta name="build" content="1794935924" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -242,8 +242,8 @@
     .g-score { font-family: var(--display); font-size: 40px; font-weight: 650; line-height: 1; }
     .g-score i { font-style: normal; color: var(--muted); margin: 0 8px; }
     .g-mid .status { font-size: 12px; justify-content: center; }
-    .g-sec { border-top: 1px solid var(--line); padding: 16px 0; }
-    .g-label { font: 700 12px/1.2 Inter, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+    .g-sec { border-top: 1px solid var(--line); padding: 22px 0; }
+    .g-label { font: 600 11.5px/1.2 Inter, sans-serif; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
     .g-label small { font-family: Inter, sans-serif; font-weight: 600; margin-left: 4px; }
     .wp { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
     .wpg { position: relative; margin-top: 4px; touch-action: pan-y; }
@@ -2199,7 +2199,7 @@
         return '<div class="row r-player" data-player="mlb|' + esc(p.athlete.id) + '"><span class="muted">' + esc(c.team?.abbreviation || "") + "</span><span><b>" + esc(p.athlete.displayName || p.athlete.fullName || "") + "</b><small class=\"muted\"> " + esc(bits || "Season stats not available") + "</small></span></div>";
       }).filter(Boolean);
       if (!rows.length) return "";
-      return '<div class="g-sec"><div class="g-label">Starting pitchers</div>' +
+      return '<div class="g-sec" data-c="all"><div class="g-label">Starting pitchers</div>' +
         dm("<b>The pitching matchup.</b> The starter usually pitches the first 5 to 7 innings, so they shape the whole game. <b>ERA</b> is runs allowed per 9 innings (under 3.50 is very good). <b>WHIP</b> is walks plus hits per inning (under 1.20 is very good). <b>K</b> is strikeouts.") +
         '<div class="list">' + rows.join("") + "</div></div>";
     }
@@ -2484,7 +2484,7 @@
       const rows = keys.filter(([k]) => A[k] != null && B[k] != null);
       if (!rows.length) return "";
       const ca = "#" + (teams[0].team?.color || "8a93a5"), cb = "#" + (teams[1].team?.color || "8a93a5");
-      return '<div class="g-sec" data-c="stats"><div class="g-label">Team stats</div><div class="ts-head"><b>' + esc(teams[0].team?.abbreviation) + "</b><b>" + esc(teams[1].team?.abbreviation) + "</b></div>" + rows.map(([k, l]) => {
+      return '<div class="g-sec sum-hide" data-c="stats"><div class="g-label">Team stats</div><div class="ts-head"><b>' + esc(teams[0].team?.abbreviation) + "</b><b>" + esc(teams[1].team?.abbreviation) + "</b></div>" + rows.map(([k, l]) => {
         const a = num(A[k]), b = num(B[k]), tot = a + b || 1;
         return '<div class="ts-row"><span>' + esc(A[k]) + "</span><small>" + tm(lg, l) + "</small><span>" + esc(B[k]) + '</span></div><div class="ts-bar"><i style="width:' + (a / tot * 100) + "%;background:" + esc(ca) + '"></i><i style="background:' + esc(cb) + '"></i></div>';
       }).join("") + "</div>";
@@ -2995,13 +2995,13 @@
         const secRef = isRec || /incomplet|interception/i.test(ty) ? ref("passer") : null;
         const tkRef = ref("tackler");
         const tags = [];
-        if (/1st down|first down/i.test(t)) tags.push(["good", "✅ 1st down"]);
-        if (p.scoringPlay) tags.push(["score", "🏈 " + (p.scoreValue ? "+" + p.scoreValue + " " : "") + "Score"]);
-        if (isRec && p.yardsAfterCatch != null && p.yardsAfterCatch > 0) tags.push(["", "🏃 " + p.yardsAfterCatch + " yds after catch"]);
-        if (p.isTurnover) tags.push(["bad", "⚠️ Turnover"]);
-        if (/penalty|PENALTY/.test(ty + t) && !/declined/i.test(t)) tags.push(["warn", "🚩 Penalty"]);
-        if (/challenged|replay official|reviewed/i.test(t)) tags.push(["", "📺 Reviewed" + (/REVERSED/.test(t) ? ", reversed" : ", upheld")]);
-        if (/injur/i.test(t)) tags.push(["bad", "✚ Injury"]);
+        if (/1st down|first down/i.test(t)) tags.push(["good", "1st down"]);
+        if (p.scoringPlay) tags.push(["score", (p.scoreValue ? "+" + p.scoreValue + " " : "") + "Score"]);
+        if (isRec && p.yardsAfterCatch != null && p.yardsAfterCatch > 0) tags.push(["", p.yardsAfterCatch + " yds after catch"]);
+        if (p.isTurnover) tags.push(["bad", "Turnover"]);
+        if (/penalty|PENALTY/.test(ty + t) && !/declined/i.test(t)) tags.push(["warn", "Penalty"]);
+        if (/challenged|replay official|reviewed/i.test(t)) tags.push(["", "Reviewed" + (/REVERSED/.test(t) ? ", reversed" : ", upheld")]);
+        if (/injur/i.test(t)) tags.push(["bad", "Injury"]);
         const head = headshot(F.lg, athId(mainRef));
         const tm = refId(p.start?.team, "teams") === String(F.away.team?.id) ? F.away : F.home;
         const sel = F.di === di && (F.pi ?? F.drives[F.di].plays.length - 1) === pi;
@@ -3405,7 +3405,7 @@
         else if (/penalty/i.test(ty)) say = "Penalty: " + ((t.match(/PENALTY on [^,]+, ([^,]+)/i) || [])[1] || "flag on the play");
         else say = ty || "Play";
         if (/touchdown/i.test(t) && !/nullified|no good/i.test(t)) say += ". Touchdown!";
-        const result = /touchdown/i.test(t) && !/nullified/i.test(t) ? ["score", "🏈 Touchdown"] : P.isTurnover || /interception|fumble/i.test(ty) ? ["bad", "⚠️ Turnover"] : /1st down|first down/i.test(t) ? ["good", "✅ First down"] : /punt/i.test(ty) ? ["", "Punt"] : /field goal/i.test(ty) ? [/no good/i.test(t) ? "bad" : "score", "Field goal " + (/no good/i.test(t) ? "missed" : "good")] : null;
+        const result = /touchdown/i.test(t) && !/nullified/i.test(t) ? ["score", "Touchdown"] : P.isTurnover || /interception|fumble/i.test(ty) ? ["bad", "Turnover"] : /1st down|first down/i.test(t) ? ["good", "✅ First down"] : /punt/i.test(ty) ? ["", "Punt"] : /field goal/i.test(ty) ? [/no good/i.test(t) ? "bad" : "score", "Field goal " + (/no good/i.test(t) ? "missed" : "good")] : null;
         // People involved, with photos.
         const people = [["passer", "Quarterback"], ["receiver", "Target"], ["rusher", "Ball carrier"], ["kicker", "Kicker"], ["punter", "Punter"], ["returner", "Returner"], ["tackler", "Tackle"], ["sackedBy", "Sack"], ["passDefender", "Coverage"], ["interceptor", "Interception"]]
           .map(([type, role]) => { const r = refOf(type); if (!r) return ""; const a = athCache[r]; const id = athId(r); return '<div class="pc-p">' + (id ? '<img src="' + esc(headshot(F.lg, id)) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + "<div><b>" + esc((a?.jersey ? "#" + a.jersey + " " : "") + (a?.short || "")) + "</b><small>" + esc(role + (a?.pos ? " · " + a.pos : "")) + "</small></div></div>"; }).join("");
@@ -3656,12 +3656,12 @@
       h += plainLine(s, teams, st.state, lg);
       const recap = recapHtml(s, teams, lg);   // finished games only: gets its own Recap tab
       if (st.state !== "post") h += '<div data-why></div>';   // why this game matters (filled in below)
-      if (st.state !== "in") h += '<div data-pred></div>';   // prediction (before) / predicted vs actual (after), filled in below
-      if (lg === "mlb") h += pitchersHtml(s);
       const gcats = [["all", "Summary"], ...(recap ? [["recap", "Recap"]] : []), ["plays", "Plays"], ["stats", "Stats"], ["players", "Players"]];
       h += '<div class="gtabs" role="tablist">' + gcats.map(([k, l]) => '<button type="button" role="tab" data-gcat="' + k + '" class="' + (k === "all" ? "active" : "") + '">' + l + "</button>").join("") + "</div>";
       h += recap;
       h += wpSectionHtml(s, teams, st.state, id, lg);
+      if (st.state !== "in") h += '<div data-pred></div>';   // prediction (before) / predicted vs actual (after), filled in below
+      if (lg === "mlb") h += pitchersHtml(s);
       if ((lg === "nfl" || lg === "cfb") && window.ScorelineWP) window.ScorelineWP.ready(lg).catch(() => {});   // for the strategy picker
       if (lg === "nfl" || lg === "cfb") h += '<div class="g-sec" data-field data-c="plays timeouts"><div class="g-label">Plays</div><div class="skel" style="height:150px"></div></div>';
       if (lg === "nba" || lg === "mlb") { v.s = s; v.lg = lg; v.teams = teams; v.chartTeam = "all"; v.id = id; v.updated = Date.now(); h += '<div class="g-sec" data-chart data-c="plays timeouts">' + chartSecHtml(v) + "</div>"; }
@@ -3681,10 +3681,10 @@
         }).join("") + "</div>";
       }
 
-      h += '<div class="g-sec" data-c="players"><div class="g-label">Rosters</div><div class="roster-btns">' + teams.map((t) => '<button type="button" class="opt" data-roster="' + lg + "|" + esc(t.team?.id) + '"><span><b>' + esc(t.team?.displayName || t.team?.abbreviation) + "</b><small>Starters, backups and the full roster</small></span><span class=\"chev\">›</span></button>").join("") + "</div></div>";
+      h += '<div class="g-sec sum-hide" data-c="players"><div class="g-label">Rosters</div><div class="roster-btns">' + teams.map((t) => '<button type="button" class="opt" data-roster="' + lg + "|" + esc(t.team?.id) + '"><span><b>' + esc(t.team?.displayName || t.team?.abbreviation) + "</b><small>Starters, backups and the full roster</small></span><span class=\"chev\">›</span></button>").join("") + "</div></div>";
       const inj = s.injuries || [];
       if (inj.some((x) => x.injuries?.length)) {
-        h += '<div class="g-sec" data-c="players"><div class="g-label">Injuries</div><div class="g-note" style="margin:-4px 0 10px">OUT = out · D = doubtful · Q = questionable · IR = injured reserve · DTD = day-to-day</div><div class="inj-cols">' + teams.map((t) => {
+        h += '<div class="g-sec sum-hide" data-c="players"><div class="g-label">Injuries</div><div class="g-note" style="margin:-4px 0 10px">OUT = out · D = doubtful · Q = questionable · IR = injured reserve · DTD = day-to-day</div><div class="inj-cols">' + teams.map((t) => {
           const list = (inj.find((x) => x.team?.id === t.team?.id)?.injuries || []);
           return "<div><div class=\"inj-team\">" + esc(t.team?.abbreviation) + "</div>" + (list.length ? list.slice(0, 6).map((p) =>
             '<div class="inj"><span class="badge ' + esc(String(p.status || "").toLowerCase().replace(/\W/g, "")) + '">' + esc(injAbbr(p.status)) + "</span>" + esc(p.athlete?.shortName || p.athlete?.displayName) + " <small>" + esc(p.athlete?.position?.abbreviation || "") + "</small></div>").join("") +
