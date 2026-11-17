@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794935129" />
+  <meta name="build" content="1794935580" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -671,6 +671,7 @@
     .pf-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
     .pf-tags span { font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: var(--r-tag); background: var(--panel-3); color: #c9cfda; }
     .pf-tags .good { background: rgba(76, 212, 134, .13); color: #7ee2a8; }
+    .pf-drive { display: flex; align-items: center; gap: 8px; margin: 14px 2px 6px; font-size: 12px; color: var(--muted); } .pf-drive:first-child { margin-top: 4px; } .pf-drive b { color: var(--text); } .pf-drive span { margin-left: auto; font-weight: 700; color: var(--text); } .pf-drive span.good { color: #7ee2a8; } .pf-drive span.bad { color: #ff8a80; }
     .pf-tags .score { background: rgba(255, 200, 61, .15); color: var(--gold); }
     .pf-tags .bad { background: rgba(255, 59, 78, .14); color: #ff8a96; }
     .pf-tags .warn { background: rgba(255, 200, 61, .1); color: #f2d27a; }
@@ -2971,6 +2972,20 @@
       });
       const nm = (ref, fallback) => athCache[ref]?.short || fallback || "";
       const items = all.slice().reverse().slice(0, F.feedAll ? 400 : 12);
+      // Group the list by drive: a header above each drive (team, plays, yards, how it ended).
+      const drvHead = (di) => {
+        const d = F.drives[di], ps = d.plays || [], tm = String(d.team) === String(F.away.team?.id) ? F.away : F.home;
+        const real = ps.filter((p) => !/timeout|end of|kickoff|two-minute/i.test(p.type?.text || ""));
+        const yds = real.reduce((a, p) => a + (/penalty/i.test(p.type?.text || "") ? 0 : Number(p.statYardage) || 0), 0);
+        const sc = ps.find((p) => p.scoringPlay), last = ps[ps.length - 1] || {}, ty = (sc || last).type?.text || "", tx = last.text || "";
+        const res = sc ? (/field goal/i.test(ty) ? "Field goal" : /safety/i.test(ty) ? "Safety" : "Touchdown") :
+          ps.some((p) => p.isTurnover || /interception|fumble recovery \(opp/i.test(p.type?.text || "")) ? "Turnover" : /punt/i.test(ty) ? "Punt" :
+          /field goal/i.test(ty) ? "Missed field goal" : /downs/i.test(tx) ? "Turnover on downs" : /end of (half|game|regulation)/i.test(ty + " " + tx) ? "End of half" : "";
+        return '<div class="pf-drive"><b>' + ab(tm) + "</b> drive · " + real.length + (real.length === 1 ? " play" : " plays") + ", " + yds + " yds" +
+          (res ? '<span class="' + (sc ? "good" : /Turnover|Missed/.test(res) ? "bad" : "") + '">' + res + "</span>" : "") + "</div>";
+      };
+      let lastDi = -1;
+      const hd = (di) => (di === lastDi ? "" : ((lastDi = di), drvHead(di)));
       const html = items.map(({ p, di, pi }) => {
         const ty = p.type?.text || "", t = p.text || "", sn = snap[p.id] || {};
         const ref = (k) => (p.participants || []).find((x) => x.type === k)?.athlete?.$ref;
@@ -2990,7 +3005,7 @@
         const head = headshot(F.lg, athId(mainRef));
         const tm = refId(p.start?.team, "teams") === String(F.away.team?.id) ? F.away : F.home;
         const sel = F.di === di && (F.pi ?? F.drives[F.di].plays.length - 1) === pi;
-        return '<button type="button" class="pf' + (sel ? " sel" : "") + (F.fresh?.has(p.id) ? " fresh" : "") + (p.scoringPlay ? " scoring" : "") + '" data-feed="' + di + "|" + pi + '">' +
+        return hd(di) + '<button type="button" class="pf' + (sel ? " sel" : "") + (F.fresh?.has(p.id) ? " fresh" : "") + (p.scoringPlay ? " scoring" : "") + '" data-feed="' + di + "|" + pi + '">' +
           '<div class="pf-pic">' + (head ? '<img src="' + esc(head) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + (tm.team?.logos?.[0]?.href || tm.team?.logo ? '<img class="pf-tm" src="' + esc(tm.team.logos?.[0]?.href || tm.team.logo) + '" alt="">' : "") + "</div>" +
           '<div class="pf-body"><div class="pf-top">' + (p.awayScore != null ? "<b>" + ab(F.away) + " " + esc(p.awayScore) + "–" + esc(p.homeScore) + " " + ab(F.home) + "</b> · " : "") + "Q" + esc(p.period?.number || "") + " " + esc(p.clock?.displayValue || "") + (p.start?.shortDownDistanceText ? " · " + esc(p.start.shortDownDistanceText) : "") + (p.wallclock && ago(p.wallclock) ? " · " + ago(p.wallclock) : "") + "</div>" +
           '<div class="pf-h">' + esc(playHeadline(p)) + "</div>" +
