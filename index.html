@@ -2019,7 +2019,7 @@
       // Biggest moments: largest swings in win probability.
       if (series && series.length > 3) {
         const sw = series.slice(1).map((p, i) => ({ p, d: p.home - series[i].home })).filter((x) => x.p.text).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 3);
-        sw.forEach(({ p, d }) => items.push(["Big moment", p.text.replace(/\s+/g, " ").slice(0, 140) + " (" + perName(lg, p.per) + " " + p.clock + ", " + (d > 0 === wHome ? "+" : "−") + Math.round(Math.abs(d) * 100) + "% for " + nmT(W) + ")"]));
+        sw.forEach(({ p, d }) => items.push(["Big moment", tidy(p.text) + " (" + perName(lg, p.per) + " " + p.clock + ", " + (d > 0 === wHome ? "+" : "−") + Math.round(Math.abs(d) * 100) + "% for " + nmT(W) + ")"]));
       }
       // Standout players: the top name in each team's first two stat categories.
       const lead = (t, n) => (s.leaders || []).find((x) => x.team?.id === t.team?.id)?.leaders?.slice(0, n).map((c) => c.leaders?.[0] && (c.leaders[0].athlete?.displayName + " (" + nmT(t) + "): " + c.leaders[0].displayValue)).filter(Boolean) || [];
