@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794888073" />
+  <meta name="build" content="1794888115" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2024,7 +2024,11 @@
         if (Date.now() - Date.parse(comp.date) > 8 * 864e5) return "";
         const as = Number(away.score), hs = Number(home.score);
         if (A.g < 2 || Hm.g < 2 || !Number.isFinite(as) || !Number.isFinite(hs)) return "";
-        A = { pf: A.pf - as, pa: A.pa - hs, g: A.g - 1 }; Hm = { pf: Hm.pf - hs, pa: Hm.pa - as, g: Hm.g - 1 };
+        // Only subtract if the standings already count this game (their games played match the record after it).
+        const recG = (t) => String(t.record?.[0]?.summary || t.record?.[0]?.displayValue || "").split("-").reduce((a, n) => a + (parseInt(n, 10) || 0), 0);
+        const inA = A.g === recG(away), inH = Hm.g === recG(home);
+        if (inA !== inH || (!inA && A.g !== recG(away) - 1)) return "";   // can't tell, so show nothing
+        if (inA) { A = { pf: A.pf - as, pa: A.pa - hs, g: A.g - 1 }; Hm = { pf: Hm.pf - hs, pa: Hm.pa - as, g: Hm.g - 1 }; }
       }
       if (A.g < 2 || Hm.g < 2) return "";
       const edge = comp.neutralSite ? 0 : HOME_EDGE[lg] / 2;
