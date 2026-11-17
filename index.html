@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794887562" />
+  <meta name="build" content="1794887603" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -3481,7 +3481,7 @@
             return '<div class="dp-row"><span class="dp-pos">' + tm(v.lg, p.abbreviation || k.toUpperCase()) + "<small>" + esc(p.displayName || "") + "</small></span><span>" + who(ath[0], "dp-st") +
               (ath.length > 1 ? '<span class="dp-bk">' + ath.slice(1, 4).map((a) => who(a, "dp-b")).join("") + "</span>" : "") + "</span></div>";
           }).join("");
-          return rows ? '<div class="g-label" style="margin-top:16px">' + esc(title(c.name)) + (c.name && !/depth chart/i.test(c.name) ? " <small class=\"muted\">" + esc(c.name) + "</small>" : "") + '</div><div class="depth">' + rows + "</div>" : "";
+          return rows ? '<div class="g-label" style="margin-top:16px">' + esc(title(c.name)) + (c.name && !/depth chart/i.test(c.name) && c.name.toLowerCase() !== title(c.name).toLowerCase() ? " <small class=\"muted\">" + esc(c.name) + "</small>" : "") + '</div><div class="depth">' + rows + "</div>" : "";
         }).join("");
     }
 
