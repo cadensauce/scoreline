@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794879410" />
+  <meta name="build" content="1794879739" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -510,6 +510,8 @@
     .card.htile.post { opacity: .55; }
     .ht-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 650; }
     .ht-row b { font-variant-numeric: tabular-nums; } .ht-lg, .ht-st { font-size: 10.5px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+    .g-team > .poss { display: block; width: 18px; height: 18px; margin: 2px auto 0; }
+    .g-team > .poss-ph { display: block; height: 20px; } .g-team > .poss + .poss-ph { display: none; }
     .htile .poss { width: 12px; height: 12px; margin-right: 4px; vertical-align: -1px; }
     .kick { display: flex; align-items: center; gap: 14px; background: var(--panel-2); border-radius: 14px; padding: 10px 14px; margin: 4px 0 10px; }
     .kick svg { width: 120px; flex: none; } .kick b { display: block; font-size: 14px; } .kick small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 3px; }
@@ -1912,7 +1914,7 @@
           if (html) { const t = document.createElement("template"); t.innerHTML = html; sec.replaceWith(t.content.firstElementChild); }
           const pl = v.el.querySelector("[data-plain]"); if (pl) { const t2 = document.createElement("template"); t2.innerHTML = plainLine(s, teams, st, lg); pl.replaceWith(t2.content.firstElementChild); }
           const pid = gamePoss(lg, id, s);   // keep the "has the ball" icon in the header current
-          v.el.querySelectorAll(".g-head .g-team").forEach((b) => { b.querySelector(".poss")?.remove(); if (pid && b.dataset.team.split("|")[1] === pid) b.querySelector("b")?.insertAdjacentHTML("beforeend", POSS_ICON(lg)); });
+          v.el.querySelectorAll(".g-head .g-team").forEach((b) => { b.querySelector(".poss")?.remove(); if (pid && b.dataset.team.split("|")[1] === pid) b.querySelector("b")?.insertAdjacentHTML("afterend", POSS_ICON(lg)); });
           if (st !== "in") clearInterval(v.wpTimer);
         } catch {}
       }, 15000);
@@ -2815,7 +2817,7 @@
       let h = '<div class="g-head">' + teams.map((t, i) => {
         const logo = t.team?.logos?.[0]?.href || t.team?.logo;
         return '<button type="button" class="g-team" data-team="' + lg + "|" + esc(t.team?.id) + '">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : "") +
-          "<b>" + esc(t.team?.abbreviation || t.team?.displayName) + (gpid && gpid === String(t.team?.id) ? POSS_ICON(lg) : "") + '</b><small>' + esc(t.record?.[0]?.summary || t.record?.[0]?.displayValue || "") + "</small></button>" +
+          "<b>" + esc(t.team?.abbreviation || t.team?.displayName) + "</b>" + (gpid && gpid === String(t.team?.id) ? POSS_ICON(lg) : "") + (st.state === "in" ? '<i class="poss-ph"></i>' : "") + '<small>' + esc(t.record?.[0]?.summary || t.record?.[0]?.displayValue || "") + "</small></button>" +
           (i === 0 ? '<div class="g-mid">' + (showScore ? '<div class="g-score">' + esc(teams[0]?.score ?? "") + "<i>–</i>" + esc(teams[1]?.score ?? "") + "</div>" : "") +
             '<div class="status ' + (st.state === "in" ? "live" : "") + '">' + esc(st.state === "pre" ? fmtDay(comp.date) + " · " + fmtTime(comp.date) : st.shortDetail || "") + "</div></div>" : "");
       }).join("") + "</div>";
