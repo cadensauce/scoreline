@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794878648" />
+  <meta name="build" content="1794878888" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -504,6 +504,11 @@
     .f1-follow.on { color: var(--gold); }
     tr.f1-follow { cursor: pointer; } tr.f1-follow.on { color: inherit; } tr.f1-follow .fo { color: var(--gold); font-size: 11px; }
     .p-head .pill-btn { margin-left: auto; flex: none; }
+    .kick { display: flex; align-items: center; gap: 14px; background: var(--panel-2); border-radius: 14px; padding: 10px 14px; margin: 4px 0 10px; }
+    .kick svg { width: 120px; flex: none; } .kick b { display: block; font-size: 14px; } .kick small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+    .k-ground { stroke: var(--line); stroke-width: 2; } .k-post { fill: none; stroke: var(--text); stroke-width: 4; stroke-linecap: round; }
+    .k-path { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 4 4; } .k-ball { fill: var(--muted); } .k-ball.ok { fill: var(--accent); }
+    .k-x { stroke: var(--text); stroke-width: 3; stroke-linecap: round; }
     .prows { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
     .prow { display: flex; align-items: center; gap: 12px; width: 100%; background: var(--panel); border: 0; border-radius: 14px; padding: 10px 12px; color: inherit; text-align: left; font: inherit; cursor: pointer; }
     .prow img, .prow-ph { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; background: var(--panel-2); flex: none; }
@@ -2585,6 +2590,7 @@
         html += '<div class="f-detail"><div class="f-dhead"><span>' + esc(P.start.downDistanceText || P.start.shortDownDistanceText || "") + "</span><span>Q" + esc(P.period?.number || "") + " · " + esc(P.clock?.displayValue || "") + "</span></div>" +
           '<div class="pc-say">' + esc(say) + "</div>" +
           (result ? '<div class="pf-tags" style="margin:2px 0 8px"><span class="' + result[0] + '">' + esc(result[1]) + "</span></div>" : "") +
+          (/field goal|extra point/i.test(ty) || /extra point|\bPAT\b/i.test(t) ? kickSvg(t) : "") +
           (people ? '<div class="pc-people">' + people + "</div>" : "") +
           '<div class="stats">' + chips.map(([v2, l]) => '<span class="st"><b>' + esc(v2) + "</b><small>" + esc(l) + "</small></span>").join("") + "</div>" +
           (from || to ? '<div class="f-score">Ball: <b>' + esc(from || "?") + "</b>" + (to && to !== from ? " → <b>" + esc(to) + "</b>" : "") + "</div>" : "") +
@@ -2844,6 +2850,21 @@
     }
 
     const ROSTER_GROUPS ={ offense: "Offense", defense: "Defense", specialTeam: "Special teams", injuredReserveOrOut: "Injured reserve / out", suspended: "Suspended", practiceSquad: "Practice squad" };
+    /* ---------- kick graphic: goalposts seen from behind the kicker, drawn from the play text ---------- */
+    function kickSvg(t) {
+      const s = String(t || "");
+      const where = /blocked/i.test(s) ? "blocked" : /left upright/i.test(s) ? "lpost" : /right upright/i.test(s) ? "rpost" : /crossbar/i.test(s) ? "bar" :
+        /wide left/i.test(s) ? "left" : /wide right/i.test(s) ? "right" : /\bshort\b/i.test(s) ? "short" : /no good|missed/i.test(s) ? "" : /good/i.test(s) ? "good" : "";
+      if (!where) return '<div class="g-note">Kick missed. The play description doesn\'t say where it went.</div>';
+      const end = { good: [100, 30], left: [38, 26], right: [162, 26], short: [100, 82], lpost: [60, 34], rpost: [140, 34], bar: [100, 70], blocked: [100, 104] }[where];
+      const label = { good: "Through the uprights", left: "Wide left", right: "Wide right", short: "Short", lpost: "Hit the left upright", rpost: "Hit the right upright", bar: "Hit the crossbar", blocked: "Blocked" }[where];
+      return '<div class="kick"><svg viewBox="0 0 200 124" role="img" aria-label="' + label + '">' +
+        '<line x1="0" y1="118" x2="200" y2="118" class="k-ground"/><path d="M100 118V70M60 70H140M60 70V8M140 70V8" class="k-post"/>' +
+        (where === "blocked" ? "" : '<path d="M100 120Q' + ((100 + end[0]) / 2) + " " + (end[1] - 30) + " " + end[0] + " " + end[1] + '" class="k-path"/>') +
+        '<ellipse cx="' + end[0] + '" cy="' + end[1] + '" rx="6" ry="4" class="k-ball' + (where === "good" ? " ok" : "") + '"/>' + (where === "blocked" ? '<path d="M92 96l16 16M108 96l-16 16" class="k-x"/>' : "") +
+        "</svg><div><b>" + label + "</b><small>Drawn from the play description; no ball-tracking data exists for kicks.</small></div></div>";
+    }
+
     async function openTeam(lg, id) {
       const v = { kind: "team", lg, id, seg: "schedule", key: "team|" + lg + "|" + id };
       if (!pushView(v)) return;
