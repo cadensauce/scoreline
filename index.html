@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794895487" />
+  <meta name="build" content="1794895746" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -529,7 +529,12 @@
     .fh .f-jn { font-size: 16px; } .fh .f-jn.s { font-size: 12px; } .fh .f-lbl { font-size: 14.5px; } .fh .f-x { font-size: 26px; } .fh .f-mark circle { stroke-width: 2.5; }
     .fh .cam { transform-origin: 0 0; transition: transform .9s cubic-bezier(.45,0,.35,1); }
     .wx-imp { margin-top: 12px; padding: 12px 14px; background: var(--panel-2); border-radius: 14px; } .wx-imp-t { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; } .wx-imp p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.45; }
+    .why { margin: 0 0 14px; font-size: 13.5px; line-height: 1.5; color: var(--muted); } .why b { color: var(--text); }
     .fwrap { position: relative; } .f-replay { position: absolute; right: 10px; top: 20px; border: 0; border-radius: 999px; padding: 6px 12px; font: 600 12px Inter, sans-serif; color: #fff; background: rgba(8,12,18,.6); cursor: pointer; }
+    .wp2 { align-items: flex-end; margin-bottom: 10px; } .wp2 span { display: flex; align-items: center; gap: 8px; } .wp2 span:last-child { flex-direction: row-reverse; }
+    .wp2 img { width: 26px; height: 26px; object-fit: contain; } .wp2 small { font-size: 12px; font-weight: 700; color: var(--muted); }
+    .wp2 b { font-size: 22px; font-weight: 750; font-variant-numeric: tabular-nums; opacity: .75; } .wp2 .lead b { font-size: 30px; opacity: 1; }
+    .wpg svg { height: 150px !important; } .wpg-fill { opacity: .28; } .wpg-score { stroke: var(--text); stroke-width: 2; vector-effect: non-scaling-stroke; }
     /* Dummy Mode notes + first-time tour */
     .dm-note { display: none; } html.dummy .dm-note { display: block; margin: 10px 0 12px; padding: 11px 13px; background: var(--panel-2); border-radius: 12px; font-size: 13px; line-height: 1.55; color: var(--muted); }
     html.dummy .dm-note b { color: var(--text); }
@@ -1951,6 +1956,14 @@
         if (html) { const t = document.createElement("template"); t.innerHTML = html; sec.replaceWith(t.content.firstElementChild); }
       }).catch(() => {});
     }
+    // A team's colour, readable on the current background (very dark/light brand colours fall back to their alternate).
+    function wpCol(t) {
+      const lum = (h) => { const m = String(h || "").match(/^#?([0-9a-f]{6})$/i); if (!m) return null; const n = parseInt(m[1], 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
+      const light = document.documentElement.dataset.theme === "light" || (document.documentElement.dataset.theme === "system" && matchMedia("(prefers-color-scheme: light)").matches);
+      const ok = (h) => { const l = lum(h); return l != null && (light ? l < 0.75 : l > 0.22); };
+      const c = [t.team?.color, t.team?.alternateColor].find(ok);
+      return c ? "#" + c.replace("#", "") : light ? "#555" : "#bbb";
+    }
     function wpSectionHtml(s, teams, state, id, lg) {
       const ours = state !== "pre" && lg === "nba" ? ourNbaSeries(s, teams) : null;
       const series = ours || (state !== "pre" ? wpSeries(s) : null);
@@ -1958,7 +1971,7 @@
       if (!now || teams.length !== 2) return "";
       const hp = pct(now.home), ap = 100 - hp, [away, home] = teams;
       let h = '<div class="g-sec" data-c="stats" data-wpsec="' + esc(id) + '"><div class="g-label">' + tm(lg, "Win probability") + '</div>' + dm("<b>How to read this.</b> Each team's chance of winning from this moment, updated after every play. The line moves toward the team that's more likely to win; big jumps are the game's turning points. Drag along the graph to see earlier moments.") +
-        '<div class="wp"><span>' + esc(away.team?.abbreviation) + " <b>" + ap + "%</b></span><span><b>" + hp + "%</b> " + esc(home.team?.abbreviation) + "</span></div>";
+        '<div class="wp wp2">' + [[away, ap], [home, hp]].map(([t, p], k) => '<span class="' + (p >= 50 ? "lead" : "") + '">' + (t.team?.logo || t.team?.logos?.[0]?.href ? '<img src="' + esc(t.team?.logo || t.team.logos[0].href) + '" alt="">' : "") + '<small>' + esc(t.team?.abbreviation) + '</small><b style="color:' + esc(wpCol(t)) + '">' + p + "%</b></span>").join("") + "</div>";
       if (!series) {
         const col = (t) => "#" + (t.team?.color || "8a93a5");
         return h + '<div class="wp-bar"><i style="width:' + ap + "%;background:" + esc(col(away)) + '"></i><i style="background:' + esc(col(home)) + '"></i></div><div class="g-note">' + esc(now.src) + "</div></div>";
@@ -1973,7 +1986,9 @@
         '<div class="wpg"><span class="wpg-t">' + esc(home.team?.abbreviation) + '</span><span class="wpg-b">' + esc(away.team?.abbreviation) + "</span>" +
         '<svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" data-wpg="' + esc(id) + '" role="img" aria-label="Win probability over the game. Drag to see earlier moments.">' +
         '<line x1="0" x2="' + W + '" y1="' + H / 2 + '" y2="' + H / 2 + '" class="wpg-mid"/>' + marks +
-        '<path d="' + area + '" class="wpg-area"/><path d="' + line + '" class="wpg-line"/>' +
+        '<clipPath id="wpt' + esc(id) + '"><rect width="' + W + '" height="' + H / 2 + '"/></clipPath><clipPath id="wpb' + esc(id) + '"><rect y="' + H / 2 + '" width="' + W + '" height="' + H / 2 + '"/></clipPath>' +
+        '<path d="' + area + '" fill="' + esc(wpCol(home)) + '" class="wpg-fill" clip-path="url(#wpt' + esc(id) + ')"/><path d="' + area + '" fill="' + esc(wpCol(away)) + '" class="wpg-fill" clip-path="url(#wpb' + esc(id) + ')"/><path d="' + line + '" class="wpg-line"/>' +
+        series.map((p, i) => /touchdown|field goal is good|safety|home run|homers/i.test(p.text || "") && !/nullified|no good/i.test(p.text) ? '<line class="wpg-score" x1="' + X(i).toFixed(1) + '" x2="' + X(i).toFixed(1) + '" y1="' + (Y(p.home) - 6).toFixed(1) + '" y2="' + (Y(p.home) + 6).toFixed(1) + '"/>' : "").join("") +
         '<line class="wpg-cur" x1="' + W + '" x2="' + W + '" y1="0" y2="' + H + '"/><circle class="wpg-dot" r="3.5" cx="' + W + '" cy="' + Y(series[n - 1].home).toFixed(1) + '"/></svg></div>' +
         '<div class="g-note">' + esc(now.src) + " · drag the graph to look back</div></div>";
       return h;
@@ -2033,7 +2048,7 @@
           const walk = (n) => { (n?.standings?.entries || []).forEach((e) => {
             const st = (k) => (e.stats || []).find((x) => x.name === k)?.value;
             const g = st("gamesPlayed") || (st("wins") || 0) + (st("losses") || 0) + (st("ties") || 0);
-            if (e.team?.id && g && st("pointsFor") != null) out[String(e.team.id)] = { pf: st("pointsFor"), pa: st("pointsAgainst"), g };
+            if (e.team?.id && g && st("pointsFor") != null) out[String(e.team.id)] = { pf: st("pointsFor"), pa: st("pointsAgainst"), g, seed: st("playoffSeed"), conf: n.abbreviation || n.name };
           }); (n?.children || []).forEach(walk); };
           walk(d);
           return out;
@@ -2075,6 +2090,27 @@
       return '<div class="pp"><div class="pp-t">Player projections</div>' + rows.map((r) => '<button type="button" class="pp-row" data-player="' + lg + "|" + esc(r.id) + '"><span>' + esc(r.name) + " <small>" + esc(r.team) + "</small></span><b>" +
         (lg === "nba" ? r.per.toFixed(1) : Math.round(r.per)) + " <small>" + esc(r.what) + "</small></b></button>").join("") + '<div class="g-note">Each player\'s average per game this season.</div></div>';
     }
+
+    // "Why this game matters": one short line, only when something real is at stake (from standings / rankings).
+    async function whyMatters(lg, s, teams) {
+      const comp = s.header?.competitions?.[0] || {}, [away, home] = teams, nm = (t) => t.team?.shortDisplayName || t.team?.abbreviation || "";
+      if (s.header?.season?.type === 3) return "A playoff game: " + (lg === "nba" || lg === "mlb" ? "every game in a series counts." : "the loser's season is over.");
+      if (lg === "cfb") {
+        const rk = (t) => { const r = t.curatedRank?.current || t.rank; return r && r <= 25 ? r : null; };
+        const ra = rk(away), rh = rk(home);
+        if (ra && rh) return "Top-25 matchup (#" + ra + " " + nm(away) + " vs #" + rh + " " + nm(home) + "). Results like this shape the College Football Playoff rankings.";
+        if (ra || rh) { const t = ra ? away : home; return "#" + (ra || rh) + " " + nm(t) + " is ranked in the AP Top 25; a loss can cost them in the College Football Playoff race."; }
+        return "";
+      }
+      const cut = PLAYOFF_CUT[lg];
+      if (!cut) return "";
+      const tab = await seasonTable(lg), A = tab[String(away.team?.id)], H = tab[String(home.team?.id)];
+      const live = [[away, A], [home, H]].filter(([, x]) => x?.seed && x.seed <= (cut[1] || cut[0]) + 3);
+      if (!live.length) return "";
+      const where = live.map(([t, x]) => nm(t) + " is " + x.seed + ordinal(x.seed) + (x.conf ? " in the " + x.conf : "")).join(" and ");
+      return "Playoff race: " + where + ". " + (lg === "nba" ? "The top 6 in each conference make the playoffs and 7th-10th go to the Play-In." : "The top " + cut[0] + " make the playoffs.");
+    }
+    const ordinal = (n) => (n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th");
 
     async function predictionHtml(lg, s, teams, state) {
       if (!["nfl", "cfb", "nba", "mlb"].includes(lg) || teams.length < 2) return "";
@@ -3480,6 +3516,7 @@
       // Order: score → plain-English status → tabs → win probability → plays → the rest.
       h += plainLine(s, teams, st.state, lg);
       h += recapHtml(s, teams, lg);   // finished games only
+      if (st.state !== "post") h += '<div data-why></div>';   // why this game matters (filled in below)
       if (st.state !== "in") h += '<div data-pred></div>';   // prediction (before) / predicted vs actual (after), filled in below
       const gcats = [["all", "Summary"], ["plays", "Plays"], ["stats", "Stats"], ["players", "Players"]];
       h += '<div class="gtabs" role="tablist">' + gcats.map(([k, l]) => '<button type="button" role="tab" data-gcat="' + k + '" class="' + (k === "all" ? "active" : "") + '">' + l + "</button>").join("") + "</div>";
@@ -3524,6 +3561,7 @@
       if (lg === "nba" || lg === "mlb") renderSportFeed(v, false);
       if ((lg === "nba" || lg === "mlb") && st.state === "in") liveSummary(v);
       if (st.state === "in") wpLive(v, lg, id);
+      whyMatters(lg, s, teams).then((x) => { const el = v.el.querySelector("[data-why]"); if (!el) return; if (x) el.outerHTML = '<p class="why"><b>Why it matters.</b> ' + esc(x) + "</p>"; else el.remove(); }).catch(() => v.el.querySelector("[data-why]")?.remove());
       predictionHtml(lg, s, teams, st.state).then((x) => { const el = v.el.querySelector("[data-pred]"); if (!el) return; if (x) el.outerHTML = x; else el.remove(); }).catch(() => v.el.querySelector("[data-pred]")?.remove());
       const [wsp, wlg] = LEAGUES[lg].path.split("/");
       if (vnu?.id) loadWeather(v.el.querySelector("[data-wx]"), vnu, comp.date, st.state === "in" ? "Weather now" : lg === "mlb" ? "Weather at first pitch" : "Weather at kickoff", "https://sports.core.api.espn.com/v2/sports/" + wsp + "/leagues/" + wlg + "/venues/" + vnu.id, lg);
