@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794880780" />
+  <meta name="build" content="1794881675" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -526,7 +526,17 @@
     .fh .f-los { stroke: #4c8dff; stroke-width: 3; } .fh .f-1st { stroke: #ffd400; stroke-width: 3; }
     .fh .f-throw { stroke: #fff; stroke-width: 2.6; stroke-dasharray: 1.5 7; stroke-linecap: round; } .fh .f-run { stroke: #fff; stroke-width: 4.5; }
     .fh .f-ball { fill: #c9773a; stroke: #fff; stroke-width: 1.5; } .f-land { fill: rgba(255,255,255,.18); stroke: #fff !important; stroke-width: 2.5 !important; } .f-landc { fill: #fff; }
-    .fh .f-jn { font-size: 16px; } .fh .f-lbl { font-size: 14.5px; } .fh .f-x { font-size: 26px; } .fh .f-mark > g > circle { stroke-width: 2.5; }
+    .fh .f-jn { font-size: 16px; } .fh .f-jn.s { font-size: 12px; } .fh .f-lbl { font-size: 14.5px; } .fh .f-x { font-size: 26px; } .fh .f-mark circle { stroke-width: 2.5; }
+    .fh .cam { transform-origin: 0 0; transition: transform .9s cubic-bezier(.45,0,.35,1); }
+    .fwrap { position: relative; } .f-replay { position: absolute; right: 10px; top: 20px; border: 0; border-radius: 999px; padding: 6px 12px; font: 600 12px Inter, sans-serif; color: #fff; background: rgba(8,12,18,.6); cursor: pointer; }
+    .pp-wrap { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.8); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+    .pp-bar { display: flex; gap: 12px; align-items: center; color: #fff; font-size: 14px; } .pp-bar small { color: #aaa; }
+    .pp-bar button { border: 0; border-radius: 999px; padding: 7px 14px; background: #fff; color: #000; font: 600 13px Inter, sans-serif; cursor: pointer; }
+    .pp-frame { width: 390px; height: min(844px, calc(100vh - 80px)); border: 10px solid #000; border-radius: 44px; background: #000; }
+    .f-key { flex-wrap: nowrap; gap: 12px; font-size: 10.5px; white-space: nowrap; } .f-key i { width: 12px; }
+    .f-raw { margin-top: 10px; font-size: 12px; color: var(--muted); } .f-raw summary { cursor: pointer; list-style: none; } .f-raw summary::before { content: "▸ "; } .f-raw[open] summary::before { content: "▾ "; }
+    .sheet:not([data-cat]) .sum-hide, .sheet:not([data-cat]) [data-feedsec] { display: none !important; }
+    .f-detail .stats { margin-top: 10px; }
     .f-key .k-run { border-top: 3px solid #fff !important; }
     .prows { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
     .prow { display: flex; align-items: center; gap: 12px; width: 100%; background: var(--panel); border: 0; border-radius: 14px; padding: 10px 12px; color: inherit; text-align: left; font: inherit; cursor: pointer; }
@@ -950,6 +960,24 @@
     // Phone app mode: the Android app, or Scoreline added to an iPhone/Android home screen.
     const STANDALONE = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
     const IS_PHONE = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+    // Developer phone preview: inside its frame (?phone=1), the site acts exactly like the phone app.
+    if (window.top !== window && /[?&]phone=1/.test(location.search)) window.__PREVIEW_APP = 1;
+    // Developer tools show only on the owner's account (checked by a hash of the sign-in email; the email isn't in the code).
+    let IS_DEV = false;
+    const DEV_HASH = "a94bd718b0a246f66ac609990652cfdd31307a2bd4d865aae9b7c83022af28df";
+    window.scorelineDevCheck = async (email) => {
+      let ok = false;
+      try { if (email) { const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(email.trim().toLowerCase())); ok = [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("") === DEV_HASH; } } catch {}
+      if (ok !== IS_DEV) { IS_DEV = ok; if (state.tab === "you") renderAlerts(); }
+    };
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("[data-phonepreview]") && IS_DEV) {
+        const o = document.createElement("div"); o.className = "pp-wrap";
+        o.innerHTML = '<div class="pp-bar"><b>Phone preview</b><small>Developer only · works like the phone app</small><button type="button" data-ppclose>Close</button></div><iframe class="pp-frame" title="Phone preview" src="' + location.pathname + '?phone=1"></iframe>';
+        document.body.appendChild(o);
+      }
+      if (e.target.closest("[data-ppclose]")) e.target.closest(".pp-wrap")?.remove();
+    });
     const MOBILE_APP = !!window.__PREVIEW_APP || (IS_PHONE && (!!window.__TAURI__ || STANDALONE));
     const navOrder = () => { const p = pins(); return ["home", ...p, ...(ALL_SPORTS.includes(state.tab) && !p.includes(state.tab) ? [state.tab] : []), "you"]; };
     /* ---------- native-app feel (phone app only) ---------- */
@@ -2534,13 +2562,22 @@
     const athCache = {};
     /* ---------- field picture (broadcast style): whole field, away end zone left, home right ----------
        Ball in the air = dotted arc with the ball flying along it; where it lands = ring marker; runs = solid line. */
-    function fieldSvg(F, P, G, still, col) {
+    function fieldSvg(F, P, G, still, col, v) {
       const W = 640, H = 300, EZ = 50, S = (W - 2 * EZ) / 100, CY = H / 2;
       const X = (p) => EZ + p * S;
-      let s = '<svg class="field fh' + (still ? " still" : "") + '" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Field"><defs>' +
-        '<clipPath id="fclip"><rect width="' + W + '" height="' + H + '" rx="16"/></clipPath>' +
+      const VW = 360, xs = [];   // camera window: 360 of the 640 units, zoomed out only when the play needs more room
+      const finish = (str, pts) => {
+        const lo = Math.min(...pts) - 55, hi = Math.max(...pts) + 55, k = Math.min(1, VW / Math.max(1, hi - lo));
+        const tx = Math.min(0, Math.max(VW - W * k, VW / 2 - ((lo + hi) / 2) * k));
+        const T = "translate(" + tx.toFixed(1) + "px," + ((H - H * k) / 2).toFixed(1) + "px) scale(" + k.toFixed(3) + ")";
+        const from = still || !v?.camT ? T : v.camT;
+        if (v) v.camT = T;
+        return str.replace('<g class="cam">', '<g class="cam" style="transform:' + from + '" data-to="' + T + '">') + "</g></g></svg>";
+      };
+      let s = '<svg class="field fh' + (still ? " still" : "") + '" data-fw="' + W + '" viewBox="0 0 ' + VW + " " + H + '" role="img" aria-label="Field"><defs>' +
+        '<clipPath id="fclip"><rect width="' + VW + '" height="' + H + '" rx="16"/></clipPath>' +
         '<marker id="farw" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="3.6" markerHeight="3.6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#fff"/></marker>' +
-        '<radialGradient id="fglow" cx=".5" cy=".45" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".06"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></radialGradient></defs><g clip-path="url(#fclip)">';
+        '<radialGradient id="fglow" cx=".5" cy=".45" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".06"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></radialGradient></defs><g clip-path="url(#fclip)"><rect width="' + VW + '" height="' + H + '" fill="#23523a"/><g class="cam">';
       for (let y = 0; y < 100; y += 5) s += '<rect x="' + X(y) + '" y="0" width="' + (5 * S + 0.5) + '" height="' + H + '" class="' + (y / 5 % 2 ? "f-s2" : "f-s1") + '"/>';
       const ez = (x, team, rot) => '<rect x="' + x + '" y="0" width="' + EZ + '" height="' + H + '" fill="' + esc(col(team)) + '"/><text transform="translate(' + (x + EZ / 2) + " " + CY + ") rotate(" + rot + ')" class="f-ez">' + esc(team.team?.name || team.team?.abbreviation || "") + "</text>";
       s += ez(0, F.away, -90) + ez(W - EZ, F.home, 90);
@@ -2549,7 +2586,7 @@
       for (let y = 10; y < 100; y += 10) { const n = Math.min(y, 100 - y); s += '<text x="' + X(y) + '" y="36" class="f-num">' + n + '</text><text x="' + X(y) + '" y="' + (H - 36) + '" class="f-num" transform="rotate(180 ' + X(y) + " " + (H - 36) + ')">' + n + "</text>"; }
       [4, W - 4].forEach((gx) => { s += '<line x1="' + gx + '" x2="' + gx + '" y1="' + (CY - 20) + '" y2="' + (CY + 20) + '" class="f-post"/>'; });
       s += '<rect width="' + W + '" height="' + H + '" fill="url(#fglow)" pointer-events="none"/>';
-      if (!P || !G) return s + "</g></svg>";
+      if (!P || !G) return finish(s, [X(50)]);
 
       const t = P.text || "", ty = P.type?.text || "";
       const right = G.team === String(F.away.team?.id), dir = right ? 1 : -1;
@@ -2564,22 +2601,32 @@
       const lane = (k) => CY + side * k * dir;
       const ath = (type) => { const r = (P.participants || []).find((x) => x.type === type)?.athlete?.$ref; return r ? athCache[r] : null; };
       const nm = (re) => (t.match(re) || [])[1];
-      const mark = (x, y, c, a, fb, delay, up, from) => {
-        const name = [a?.short || fb || "", a?.pos].filter(Boolean).join(" · "), mv = from && !still;
-        const ly = up ? y - 32 : y + 36;
-        return '<g class="f-mark" style="animation-delay:' + delay + 's"><g' + (mv ? ' transform="translate(' + (from.x - x) + " " + (from.y - y) + ')"><animateTransform attributeName="transform" type="translate" from="' + (from.x - x) + " " + (from.y - y) + '" to="0 0" begin="' + from.begin + 's" dur="' + from.dur + 's" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".35 0 .25 1"/>' : ">") +
-          '<circle cx="' + x + '" cy="' + y + '" r="16" fill="' + c + '"/><text x="' + x + '" y="' + y + '" class="f-jn">' + esc(a?.jersey || "") + "</text>" +
-          (name ? '<rect x="' + (x - 60) + '" y="' + (ly - 15) + '" width="120" height="25" rx="12.5" class="f-pill"/><text x="' + x + '" data-cx="' + x + '" y="' + (ly + 3) + '" class="f-lbl">' + esc(name) + "</text>" : "") + "</g></g>";
+      // A player: drawn around (0,0) and placed at x,y. With a route, the player runs along it live (animateMotion);
+      // with "from", slides in from there. Small = defender (number only).
+      const mark = (x, y, c, a, fb, delay, up, from, route, small) => {
+        xs.push(x);
+        const name = small ? "" : [a?.short || fb || "", a?.pos].filter(Boolean).join(" · "), r = small ? 12 : 16, ly = up ? -32 : 36;
+        const body = '<circle cx="0" cy="0" r="' + r + '" fill="' + c + '"/><text x="0" y="0" class="f-jn' + (small ? " s" : "") + '">' + esc(a?.jersey || "") + "</text>" +
+          (name ? '<rect x="-60" y="' + (ly - 15) + '" width="120" height="25" rx="12.5" class="f-pill"/><text x="0" data-cx="0" data-rel="1" y="' + (ly + 3) + '" class="f-lbl">' + esc(name) + "</text>" : "");
+        if (route && !still) return '<g class="f-mark" style="animation-delay:' + route.begin + 's"><g><animateMotion begin="' + route.begin + 's" dur="' + route.dur + 's" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".45 0 .35 1" path="' + route.d + '"/>' + body + "</g></g>";
+        const mv = from && !still;
+        return '<g class="f-mark" style="animation-delay:' + delay + 's"><g transform="translate(' + x + " " + y + ')">' +
+          (mv ? '<g transform="translate(' + (from.x - x) + " " + (from.y - y) + ')"><animateTransform attributeName="transform" type="translate" from="' + (from.x - x) + " " + (from.y - y) + '" to="0 0" begin="' + from.begin + 's" dur="' + from.dur + 's" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".45 0 .35 1"/>' + body + "</g>" : body) + "</g></g>";
       };
-      const tag = (x, y, txt, delay) => '<g class="f-mark" style="animation-delay:' + delay + 's"><rect x="' + (x - 60) + '" y="' + (y - 15) + '" width="120" height="25" rx="12.5" class="f-pill f-tagp"/><text x="' + x + '" data-cx="' + x + '" y="' + (y + 3) + '" class="f-lbl">' + esc(txt) + "</text></g>";
+      const tag = (x, ...r) => (xs.push(x), tag0(x, ...r));
+      const tag0 = (x, y, txt, delay) => '<g class="f-mark" style="animation-delay:' + delay + 's"><rect x="' + (x - 60) + '" y="' + (y - 15) + '" width="120" height="25" rx="12.5" class="f-pill f-tagp"/><text x="' + x + '" data-cx="' + x + '" y="' + (y + 3) + '" class="f-lbl">' + esc(txt) + "</text></g>";
       const arc = (x0, y0, x1, y1, h) => "M" + x0 + " " + y0 + " Q" + (x0 + x1) / 2 + " " + (Math.min(y0, y1) - h) + " " + x1 + " " + y1;
       const fly = (path, begin, dur) => '<path d="' + path + '" class="f-throw" style="animation-delay:' + Math.max(0, begin - 0.1) + 's"/>' +
         (still ? "" : '<circle r="6" class="f-ball" style="animation-delay:' + begin + 's"><animateMotion begin="' + begin + 's" dur="' + dur + 's" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".3 0 .5 1" path="' + path + '"/></circle>');
-      const land = (x, y, delay) => '<g class="f-mark" style="animation-delay:' + delay + 's"><circle cx="' + x + '" cy="' + y + '" r="10" class="f-land"/><circle cx="' + x + '" cy="' + y + '" r="3.5" class="f-landc"/></g>';
-      const run = (d, delay, dur) => '<path d="' + d + '" class="f-run draw" pathLength="1" style="animation-delay:' + delay + "s;animation-duration:" + dur + 's" marker-end="url(#farw)"/>';
+      const land = (x, ...r) => (xs.push(x), land0(x, ...r));
+      const land0 = (x, y, delay) => '<g class="f-mark" style="animation-delay:' + delay + 's"><circle cx="' + x + '" cy="' + y + '" r="10" class="f-land"/><circle cx="' + x + '" cy="' + y + '" r="3.5" class="f-landc"/></g>';
+      // The trail draws behind the runner at the same pace.
+      const run = (d, delay, dur) => '<path d="' + d + '" class="f-run draw" pathLength="1" style="animation-delay:' + delay + "s;animation-duration:" + dur + 's;animation-timing-function:cubic-bezier(.45,0,.35,1)" marker-end="url(#farw)"/>';
       const isKO = /kickoff/i.test(ty), isPunt = /punt/i.test(ty), isFG = /field goal|extra point/i.test(ty) || /extra point/i.test(t);
       const qbX = xL - dir * (/shotgun/i.test(t) ? 5 : 2) * S;
       const kd = isKO || isPunt ? Number((t.match(/(?:punts|kicks) (-?\d+) yards?/i) || [])[1]) : NaN;
+      const route = (d, begin, dur) => ({ d, begin, dur });
+      let carrier = null;   // where the ball carrier ends up, so the tacklers can close in on him
 
       if (isFG) {
         const hx = xL - dir * 7 * S, gx = dir === 1 ? W - 4 : 4;
@@ -2597,36 +2644,58 @@
         const noRet = /fair catch|touchback|downed|out of bounds/i.test(t) || Math.abs(xE - cx2) < 3;
         const rYds = Math.round(t1 - kc);
         s += fly(arc(kx, CY, cx2, CY, Math.min(125, Math.abs(cx2 - kx) * 0.5)), 0.3, 1.2) + land(cx2, CY, 1.5);
-        if (!noRet) s += run("M" + cx2 + " " + CY + " L" + xE + " " + CY, 1.6, 0.8);
+        if (!noRet) s += run("M" + cx2 + " " + CY + " L" + xE + " " + CY, 1.6, 1.0);
         const label = /touchback/i.test(t) ? "Touchback" : /fair catch/i.test(t) ? "Fair catch" : /downed/i.test(t) ? "Downed" : /out of bounds/i.test(t) && noRet ? "Out of bounds" : rYds + "-yd return";
-        s += tag(clampX(noRet ? cx2 : (cx2 + xE) / 2), CY - 50, label, noRet ? 1.5 : 2.2);
+        s += tag(clampX(noRet ? cx2 : (cx2 + xE) / 2), CY - 50, label, noRet ? 1.5 : 2.4);
         s += mark(kx, CY, oc, ath("punter") || ath("kicker"), nm(/([A-Z][a-z]?\.[\w'-]+) (?:punts|kicks)/), 0.1, false);
         const rn = nm(/fair catch by ([A-Z][a-z]?\.[\w'-]+)/) || nm(/\.\s*([A-Z][a-z]?\.[\w'-]+) (?:to|for|MUFFS|pushed|ran)/);
-        if (ath("returner") || rn) s += mark(noRet ? cx2 : xE, CY, dc, ath("returner"), rn, 1.5, false, noRet ? null : { x: cx2, y: CY, begin: 1.6, dur: 0.8 });
+        if (ath("returner") || rn) s += mark(noRet ? cx2 : xE, CY, dc, ath("returner"), rn, 1.5, false, null, noRet ? null : route("M" + cx2 + " " + CY + " L" + xE + " " + CY, 1.6, 1.0));
+        if (!noRet) carrier = { sx: cx2, ex: xE, ey: CY, begin: 1.6, dur: 1.0, tc: oc };
       } else if (G.isPass) {
-        const tc = G.air != null ? t0 - G.air : t1, cxp = X(pos(tc)), ly = side ? lane(72) : CY - 28;
+        const tc = G.air != null ? t0 - G.air : t1, cxp = X(pos(tc)), ly = side ? lane(72) : CY - 28, yac = Math.abs(xE - cxp) > 3;
+        const rd = Math.min(1.4, 0.35 + Math.abs(xE - cxp) / 220);
         s += fly(arc(qbX, CY, cxp, ly, 60), 0.35, 0.7) + land(cxp, ly, 1.05);
-        if (Math.abs(xE - cxp) > 3) s += run("M" + cxp + " " + ly + " L" + xE + " " + ly, 1.1, 0.6);
+        if (yac) s += run("M" + cxp + " " + ly + " L" + xE + " " + ly, 1.05, rd);
         s += mark(qbX, CY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/), 0.1, false);
-        s += mark(xE, ly, oc, ath("receiver"), nm(/ to ([A-Z][a-z]?\.[\w'-]+)/), 1.05, ly < CY, { x: cxp, y: ly, begin: 1.1, dur: 0.6 });
+        s += mark(xE, ly, oc, ath("receiver"), nm(/ to ([A-Z][a-z]?\.[\w'-]+)/), 1.05, ly < CY, null, yac ? route("M" + cxp + " " + ly + " L" + xE + " " + ly, 1.05, rd) : null);
+        carrier = { sx: cxp, ex: xE, ey: ly, begin: 1.05, dur: yac ? rd : 0.3, tc: dc };
       } else if (/incomplet|interception/i.test(ty)) {
         const tx = xL + dir * (/deep/i.test(t) ? 22 : 9) * S, ly = side ? lane(72) : CY - 28, pick = /interception/i.test(ty);
         s += fly(arc(qbX, CY, tx, ly, 60), 0.35, 0.7);
         s += pick ? land(tx, ly, 1.05) : '<text x="' + tx + '" y="' + (ly + 8) + '" class="f-x" style="animation-delay:1.05s">✕</text>';
         s += tag(clampX(tx), ly < CY ? ly - 34 : ly + 38, pick ? "Intercepted" : "Incomplete", 1.1);
         s += mark(qbX, CY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/), 0.1, false);
-        if (pick && ath("interceptor")) { if (Math.abs(xE - tx) > 3) s += run("M" + tx + " " + ly + " L" + xE + " " + ly, 1.2, 0.6); s += mark(xE, ly, dc, ath("interceptor"), "", 1.2, ly >= CY, { x: tx, y: ly, begin: 1.2, dur: 0.6 }); }
+        const pd = ath("passDefender");
+        if (!pick && pd) s += mark(tx + dir * 14, ly + 18, dc, pd, "", 0.9, false, { x: tx + dir * 60, y: ly + 50, begin: 0.6, dur: 0.6 }, null, true);
+        if (pick && ath("interceptor")) {
+          const rd = Math.min(1.4, 0.35 + Math.abs(xE - tx) / 220);
+          if (Math.abs(xE - tx) > 3) s += run("M" + tx + " " + ly + " L" + xE + " " + ly, 1.1, rd);
+          s += mark(xE, ly, dc, ath("interceptor"), "", 1.05, ly >= CY, null, Math.abs(xE - tx) > 3 ? route("M" + tx + " " + ly + " L" + xE + " " + ly, 1.1, rd) : null);
+          carrier = { sx: tx, ex: xE, ey: ly, begin: 1.1, dur: rd, tc: oc };
+        }
       } else if (/sack/i.test(ty)) {
-        s += run("M" + qbX + " " + CY + " L" + xE + " " + CY, 0.4, 0.5);
-        s += mark(xE, CY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) sacked/), 0.1, false, { x: qbX, y: CY, begin: 0.4, dur: 0.5 }) + tag(clampX(xE), CY - 50, "Sack", 0.9);
+        s += run("M" + qbX + " " + CY + " L" + xE + " " + CY, 0.5, 0.6);
+        s += mark(xE, CY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) sacked/), 0.1, false, null, route("M" + qbX + " " + CY + " L" + xE + " " + CY, 0.5, 0.6)) + tag(clampX(xE), CY - 52, "Sack", 1.1);
+        carrier = { sx: qbX, ex: xE, ey: CY, begin: 0.5, dur: 0.6, tc: dc };
       } else if (/rush|run|scramble|kneel|fumble/i.test(ty) || G.gain) {
-        const sx = xL - dir * 4 * S, ly = side ? CY + side * 44 * dir : CY;
-        s += run("M" + sx + " " + CY + " C" + xL + " " + CY + " " + xL + " " + ly + " " + xE + " " + ly, 0.35, 0.8);
-        s += mark(xE, ly, oc, ath("rusher") || ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) /), 0.3, ly <= CY, { x: sx, y: CY, begin: 0.35, dur: 0.8 });
+        const sx = xL - dir * 4 * S, ly = side ? CY + side * 44 * dir : CY, rd = Math.min(1.6, 0.5 + Math.abs(xE - sx) / 220);
+        const d = "M" + sx + " " + CY + " C" + xL + " " + CY + " " + xL + " " + ly + " " + xE + " " + ly;
+        s += run(d, 0.35, rd);
+        s += mark(xE, ly, oc, ath("rusher") || ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) /), 0.35, ly <= CY, null, route(d, 0.35, rd));
+        carrier = { sx, ex: xE, ey: ly, begin: 0.35, dur: rd, tc: dc };
       } else {
         s += tag(clampX(xL), CY - 50, ty || "Play", 0.2);
       }
-      return s + "</g></svg>";
+      // Tacklers close in on the ball carrier as he is brought down (only players the data credits).
+      if (carrier) {
+        const head = Math.sign(carrier.ex - carrier.sx) || dir;
+        const who = (P.participants || []).filter((x) => /tackler|sackedBy/.test(x.type)).map((x) => athCache[x.athlete?.$ref]).filter(Boolean).slice(0, 2);
+        who.forEach((a, k) => {
+          const dx = carrier.ex + head * 24, dy = carrier.ey + (k ? 24 : -24);
+          s += mark(dx, dy, carrier.tc, a, "", carrier.begin, false, { x: dx + head * 80, y: dy + (k ? 60 : -60), begin: carrier.begin, dur: carrier.dur + 0.1 }, null, true);
+        });
+      }
+      return finish(s, xs.length ? xs : [X(50)]);
     }
     function drawField(v, still) {
       const F = v.field, sec = v.el.querySelector("[data-field]");
@@ -2636,12 +2705,20 @@
       const ab = (t) => esc(t?.team?.abbreviation || "");
       const pi = F.pi ?? D.plays.length - 1, P = D.plays[pi];
       const G = P ? playGeom(P, F) : null;
-      const svg = fieldSvg(F, P, G, still, col);
+      // Load the players' names and numbers first so the animation plays once, complete (no redraw halfway through).
+      const needRefs = (P?.participants || []).map((x) => x.athlete?.$ref).filter((r) => r && !(r in athCache));
+      if (needRefs.length && !still) {
+        needRefs.forEach((r) => { athCache[r] = null; });
+        Promise.race([Promise.all(needRefs.map((r) => getJSON(r.replace("http://", "https://")).then((a) => { athCache[r] = { jersey: a.jersey, short: a.shortName || a.displayName, pos: a.position?.abbreviation }; }).catch(() => {}))), new Promise((r) => setTimeout(r, 1500))])
+          .then(() => { if (v.el.isConnected && v.field === F) drawField(v, false); });
+        if (sec.querySelector("svg.field")) return;
+      }
+      const svg = fieldSvg(F, P, G, still, col, v);
       const dteam = D.team === String(F.away.team?.id) ? F.away : F.home;
       const last = D.plays[D.plays.length - 1];
       let html = (F.h2 ? '<div class="h2"><span>2nd half</span><b>' + (F.h2.team.team?.logos?.[0]?.href ? '<img src="' + esc(F.h2.team.team.logos[0].href) + '" alt="">' : "") + esc(F.h2.team.team?.displayName || ab(F.h2.team)) + "</b><small>" + (F.h2.actual ? "received the 2nd-half kickoff" : "gets the ball first") + "</small></div>" : "") + scoreBug(F) + sitLine(F) + '<div data-c="plays"><div class="g-label f-title">Plays' + (F.live ? '<span class="live-pill">Live</span><small data-ago>just now</small>' : "") + '</div><div class="f-nav"><button type="button" class="sheet-btn" data-drive="-1" ' + (F.di ? "" : "disabled") + '>‹</button><div><b>' + ab(dteam) + " drive " + (F.di + 1) + " of " + F.drives.length + "</b><small>" + D.plays.length + " plays · " + esc(last?.type?.text || "") + "</small></div>" +
-        '<button type="button" class="sheet-btn" data-drive="1" ' + (F.di < F.drives.length - 1 ? "" : "disabled") + ">›</button></div>" + svg +
-        '<div class="f-key"><span><i class="k-los"></i>Line of scrimmage</span><span><i class="k-1st"></i>First down</span><span><i class="k-air"></i>Ball in the air</span><span><i class="k-run"></i>Run</span></div>';
+        '<button type="button" class="sheet-btn" data-drive="1" ' + (F.di < F.drives.length - 1 ? "" : "disabled") + ">›</button></div>" + '<div class="fwrap">' + svg + '<button type="button" class="f-replay" data-freplay aria-label="Replay this play">↻ Replay</button></div>' +
+        '<div class="f-key"><span><i class="k-los"></i>Scrimmage</span><span><i class="k-1st"></i>1st down</span><span><i class="k-air"></i>In the air</span><span><i class="k-run"></i>Run</span></div>';
       if (P) {
         const g = G, t = P.text || "", ty = P.type?.text || "";
         const refOf = (type) => (P.participants || []).find((x) => x.type === type)?.athlete?.$ref;
@@ -2667,19 +2744,18 @@
         // People involved, with photos.
         const people = [["passer", "Quarterback"], ["receiver", "Target"], ["rusher", "Ball carrier"], ["kicker", "Kicker"], ["punter", "Punter"], ["returner", "Returner"], ["tackler", "Tackle"], ["sackedBy", "Sack"], ["passDefender", "Coverage"], ["interceptor", "Interception"]]
           .map(([type, role]) => { const r = refOf(type); if (!r) return ""; const a = athCache[r]; const id = athId(r); return '<div class="pc-p">' + (id ? '<img src="' + esc(headshot(F.lg, id)) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + "<div><b>" + esc((a?.jersey ? "#" + a.jersey + " " : "") + (a?.short || "")) + "</b><small>" + esc(role + (a?.pos ? " · " + a.pos : "")) + "</small></div></div>"; }).join("");
+        // Keep it simple: one big number (yards), plus air/after-catch only for completed passes.
         const chips = [];
-        if (g.isPass && g.air != null) chips.push([g.air, "Air yds"], [g.yac, "After catch"]);
-        chips.push([(g.gain > 0 ? "+" : "") + g.gain, g.gain < 0 ? "Yds lost" : "Yds gained"]);
-        const from = P.start?.possessionText || (P.start?.downDistanceText || "").replace(/^.* at /, ""), to = P.end?.possessionText || "";
+        const yardsPlay = !/punt|kickoff|field goal|extra point|penalty|timeout|end of|incomplet/i.test(ty);
+        if (yardsPlay) chips.push([(g.gain > 0 ? "+" : "") + g.gain, g.gain < 0 ? "Yards lost" : "Yards"]);
+        if (yardsPlay && g.isPass && g.air != null && g.yac) chips.push([g.air, "In the air"], [g.yac, "After catch"]);
         html += '<div class="f-detail"><div class="f-dhead"><span>' + esc(P.start.downDistanceText || P.start.shortDownDistanceText || "") + "</span><span>Q" + esc(P.period?.number || "") + " · " + esc(P.clock?.displayValue || "") + "</span></div>" +
           '<div class="pc-say">' + esc(say) + "</div>" +
           (result ? '<div class="pf-tags" style="margin:2px 0 8px"><span class="' + result[0] + '">' + esc(result[1]) + "</span></div>" : "") +
           (/field goal|extra point/i.test(ty) || /extra point|\bPAT\b/i.test(t) ? kickSvg(t) : "") +
           (people ? '<div class="pc-people">' + people + "</div>" : "") +
-          '<div class="stats">' + chips.map(([v2, l]) => '<span class="st"><b>' + esc(v2) + "</b><small>" + esc(l) + "</small></span>").join("") + "</div>" +
-          (from || to ? '<div class="f-score">Ball: <b>' + esc(from || "?") + "</b>" + (to && to !== from ? " → <b>" + esc(to) + "</b>" : "") + "</div>" : "") +
-          (P.awayScore != null ? '<div class="f-score">Score after play: <b>' + ab(F.away) + " " + esc(P.awayScore) + " – " + esc(P.homeScore) + " " + ab(F.home) + "</b></div>" : "") +
-          "<p>" + esc(t) + "</p></div>";
+          (chips.length ? '<div class="stats">' + chips.map(([v2, l]) => '<span class="st"><b>' + esc(v2) + "</b><small>" + esc(l) + "</small></span>").join("") + "</div>" : "") +
+          '<details class="f-raw"><summary>Full play text</summary><p>' + esc(t) + "</p></details></div>";
         const need = (P.participants || []).map((x) => x.athlete?.$ref).filter((r) => r && !(r in athCache));
         if (need.length) {
           need.forEach((r) => { athCache[r] = null; });
@@ -2695,13 +2771,13 @@
             '<small class="f-sc">' + dv.plays.length + " plays · " + yds + " yds" + (lp.awayScore != null ? " · " + ab(F.away) + " " + esc(lp.awayScore) + " – " + esc(lp.homeScore) + " " + ab(F.home) : "") + "</small></span><b>" + (k + 1) + "</b></button>";
         }).reverse().join("") + "</div>";
       }
-      html += '</div><div data-c="timeouts">' + stopsHtml(F) + '</div>';
+      html += '</div><div data-c="plays" class="sum-hide">' + stopsHtml(F) + '</div>';
       sec.innerHTML = html;
       // Fit each name tag to its real text width and centre it over the player (estimates drift with font metrics).
-      sec.querySelectorAll(".f-lbl").forEach((t) => { try { const tw = t.getComputedTextLength(); if (!tw) return; const w = tw + 14, VW = t.ownerSVGElement?.viewBox?.baseVal?.width || 0, cx = +t.dataset.cx; const lx = VW ? Math.max(w / 2 + 4, Math.min(VW - w / 2 - 4, cx)) : cx; t.setAttribute("x", lx); const r = t.previousElementSibling; if (r) { r.setAttribute("x", lx - w / 2); r.setAttribute("width", w); } } catch {} });
+      sec.querySelectorAll(".f-lbl").forEach((t) => { try { const tw = t.getComputedTextLength(); if (!tw) return; const w = tw + 14, VW = +t.ownerSVGElement?.dataset.fw || t.ownerSVGElement?.viewBox?.baseVal?.width || 0, cx = +t.dataset.cx; const lx = VW && !t.dataset.rel ? Math.max(w / 2 + 4, Math.min(VW - w / 2 - 4, cx)) : cx; t.setAttribute("x", lx); const r = t.previousElementSibling; if (r) { r.setAttribute("x", lx - w / 2); r.setAttribute("width", w); } } catch {} });
       sec.classList.toggle("calm-sec", !!still);
       const cam = sec.querySelector(".cam");
-      if (cam) requestAnimationFrame(() => requestAnimationFrame(() => { cam.style.transform = "translateY(" + -cam.dataset.to + "px)"; }));
+      if (cam) requestAnimationFrame(() => requestAnimationFrame(() => { cam.style.transform = cam.dataset.to; }));
     }
     document.addEventListener("click", (e) => {
       const sheet = e.target.closest(".sheet");
@@ -2709,6 +2785,7 @@
       const v = views.find((x) => x.el === sheet);
       if (e.target.closest("[data-wide]")) { sheet.classList.toggle("wide"); buzz(); if (v?.field) drawField(v, true); return; }
       if (!v?.field) return;
+      if (e.target.closest("[data-freplay]")) { buzz(8); v.camT = null; return drawField(v, false); }
       const fd = e.target.closest("[data-feed]");
       if (fd) { const [a, b] = fd.dataset.feed.split("|").map(Number); v.field.di = a; v.field.pi = b; drawField(v); v.el.querySelector(".field")?.scrollIntoView({ block: "center", behavior: "smooth" }); return; }
       if (e.target.closest("[data-feedall]")) { v.field.feedAll = true; return drawField(v, true); }
@@ -3155,6 +3232,7 @@
           '<div class="opt nteam" role="button" tabindex="0" data-teamalerts="' + esc(k) + '"><span><b>' + esc(teamNames[k] || findName(k) || "Team") + "</b><small>" + esc(teamAlertSummary(k)) + '</small></span><span class="acct-acts"><button class="fav on" type="button" data-fav="' + esc(k) + '" aria-label="Unfollow">★</button><span class="chev">›</span></span></div>').join("") : '<div class="g-note">Follow a team from its team page to get alerts about it.</div>') + "</div>" +
         '<div class="panel nteams" style="margin-top:10px"><div class="opt nteam" role="button" tabindex="0" data-teamalerts=""><span><b>Defaults for new teams</b><small>What a team starts with when you follow it</small></span><span class="chev">›</span></div></div>';
       h += '<div class="section-title"><b>About</b></div><div class="panel about"><div class="opt"><span><b>Version ' + esc(versionText()) + '</b><small id="appVer">Updated ' + esc(builtOn()) + '</small></span></div>' + document.querySelector("footer").innerHTML + "</div>";
+      if (IS_DEV && window.top === window) h += '<div class="section-title"><b>Developer</b></div><div class="panel"><button type="button" class="opt" data-phonepreview><span><b>Phone preview</b><small>See the site as the phone app, right here. Only shown on your account.</small></span><span class="chev">›</span></button></div>';
       if (TAURI?.app?.getVersion) TAURI.app.getVersion().then((v) => { const el = document.getElementById("appVer"); if (el) el.textContent = "Updated " + builtOn() + " · app " + v; }).catch(() => {});
       $("main").innerHTML = h;
       stamp();
