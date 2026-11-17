@@ -212,3 +212,19 @@ Next session, in order:
 - Item 19, Closest Games filter: live by closeness to 50/50 (ESPN's live number, our NBA model, else score gap),
   upcoming by most even matchup from our own team ratings (no betting lines), finished last. Test checks order.
 - Profile cards rule still to publish (needs the user's Google sign-in in the browser pane).
+
+## Phase 3 continued (2026-11-16, shipped)
+- Weather for outdoor games (NFL/CFB/MLB + F1 track; Open-Meteo, credited; domes skipped) — #26
+- Standings + playoff picture (cut lines) for NFL/CFB/NBA/MLB — #27
+- Follow players and F1 drivers; "Your players" on Home; app splash uses the new mark — #28
+- Quiet hours for alerts (phone time zone; worker honours it) — #29
+- Kick graphic (goalposts from behind the kicker, animated: through / wide / doink / short / blocked) — #31, #36
+- Heat map view (List / Heat map switch, shade = closeness to 50/50) — #32
+- Possession icons for every sport (game header, lists, tiles) — #33, #34
+- Field redesign: broadcast-style side-on field, camera follows the play, passes in three beats
+  (route → throw → catch + run after, or miss next to the receiver), curvy runs, kicks/returns,
+  triangle defenders shown once, penalties as a flag, players fade after the play, Replay,
+  arrows step plays across drives, cleaner play card — #35–#42
+- Developer-only phone preview (You → Developer; owner's account only, checked by email hash) — #37
+- Still to do in Phase 3: strategy picker. Pending from you: Google sign-in to publish the profile-card rule;
+  Gmail app password + SMTP secrets for two-step codes.
