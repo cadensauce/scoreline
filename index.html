@@ -491,6 +491,9 @@
     /* ---- Get the app ---- */
     .getapp-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--panel) !important; color: var(--accent) !important; border-color: transparent !important; font-weight: 700; padding: 7px 13px; }
     .getapp-btn:hover { background: var(--panel-2) !important; }
+    .marks-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: 700 13.5px Inter, sans-serif; font-variant-numeric: tabular-nums; cursor: pointer; }
+    .marks-chip[hidden] { display: none; } .marks-chip:hover { background: var(--panel-2); } .mark-ic { flex: none; vertical-align: -3px; }
+    .marks-agree { flex-direction: column; align-items: stretch !important; gap: 10px; }
     @media (max-width: 720px) { .getapp-btn { min-height: 34px !important; padding: 6px 10px !important; font-size: 12.5px; } }
     .ga-modal { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; pointer-events: none; }
     .ga-back { position: absolute; inset: 0; background: rgba(0,0,0,.55); opacity: 0; transition: opacity var(--t); }
@@ -1023,6 +1026,7 @@
       </div>
       <nav class="tabs" id="tabs" aria-label="Sports"></nav>
       <div class="top-right">
+        <button class="marks-chip" id="marksChip" type="button" hidden></button>
         <button class="pill-btn getapp-btn" id="getAppBtn" type="button" aria-label="Get the app" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Get the app</span></button>
         <button class="refresh" id="accountBtn" type="button" aria-label="Account" title="Account"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></button>
         <button class="refresh" id="notifyBtn" type="button" aria-label="Score alerts" title="Score alerts for your ★ teams">🔔</button>
@@ -2328,7 +2332,7 @@
       const [g, p] = await Promise.all([P.game(gid), P.pick(gid)]);
       if (!g) return put('<div class="pick-msg">Picks open closer to the game.</div>');
       const locked = (g.lockAt?.toMillis?.() || 0) <= Date.now();
-      const btn = (t, sd) => { const r = g.rewards?.[sd] ?? 10; return '<button type="button" class="pick-btn' + (p?.side === sd ? " on" : "") + '" data-pick-side="' + sd + '"' + (locked ? " disabled" : "") + "><b>" + ab(t) + "</b>" + (marks ? "<small>+" + r + " Marks" + (r >= 25 ? " · Upset bonus" : "") + "</small>" : "") + "</button>"; };
+      const btn = (t, sd) => { const r = g.rewards?.[sd] ?? 10; return '<button type="button" class="pick-btn' + (p?.side === sd ? " on" : "") + '" data-pick-side="' + sd + '"' + (locked ? " disabled" : "") + "><b>" + ab(t) + "</b>" + (marks ? "<small>" + MARK_SVG(13) + " +" + r + " Marks" + (r >= 25 ? " · Upset bonus" : "") + "</small>" : "") + "</button>"; };
       put('<div class="pick-row" data-gid="' + esc(gid) + '">' + btn(away, "away") + btn(home, "home") + '</div><div class="g-note">' +
         (locked ? "Picks are locked." : p ? "Tap your pick again to clear it. Picks lock at kickoff." : "Free to play. Picks lock at kickoff.") +
         (marks ? " Marks are NOT real money: free points, only earned from predictions and fantasy." : s.teen === false ? " Just for fun: Marks are for ages 13 and up." :
@@ -2347,7 +2351,7 @@
       if (go && P) {   // agreeing to the Terms confirms you are 13 or older (saved once on the account)
         go.disabled = true;
         try { await P.setAge(true); } catch { toast("Couldn't save that. Try again."); go.disabled = false; return; }
-        toast("Thanks! Right picks now earn Marks.");
+        store.set("tosNo", false); toast("Thanks! Right picks now earn Marks."); syncMarks();
         refillAll();
         return;
       }
@@ -2360,6 +2364,37 @@
         refillPick(b.closest("[data-pick]"));
       }
     });
+    /* ---------- Marks in the top bar (only for people who agreed to the Terms, 13+) ----------
+       The Marks icon: a six-sided badge with a check mark (a "mark" for a right pick). Deliberately not a coin. */
+    const MARK_SVG = (s = 16) => '<svg class="mark-ic" viewBox="0 0 24 24" width="' + s + '" height="' + s + '" aria-hidden="true"><path d="M12 2.2l8.5 4.9v9.8L12 21.8l-8.5-4.9V7.1z" fill="currentColor"/><path d="M8 12.3l2.8 2.8 5.3-5.6" fill="none" stroke="var(--bg)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    async function syncMarks() {
+      const c = $("marksChip"), P = window.scorelinePicks;
+      if (!c) return;
+      const s = P ? await P.status().catch(() => ({})) : {};
+      if (!s.signedIn || s.teen !== true) { c.hidden = true; return; }
+      const bal = await P.balance().catch(() => 0);
+      c.innerHTML = MARK_SVG(16) + "<span>" + Number(bal).toLocaleString() + "</span>";
+      c.setAttribute("aria-label", bal + " Marks");
+      c.hidden = false;
+    }
+    window.addEventListener("scoreline-user", syncMarks);
+    document.addEventListener("click", (e) => { if (e.target.closest("#marksChip")) document.querySelector("nav [data-tab=\"you\"], [data-tab=\"you\"]")?.click(); });
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) syncMarks(); });
+    // You → Settings: Marks status, and a way to agree to the Terms later (after "No thanks").
+    async function fillMarksRow() {
+      const el = document.querySelector("[data-marks-row]"), P = window.scorelinePicks;
+      if (!el) return;
+      const s = P ? await P.status().catch(() => ({})) : {};
+      if (!el.isConnected) return;
+      if (!s.signedIn) { el.remove(); return; }
+      el.innerHTML = s.teen === true
+        ? '<div class="opt"><span><b>Marks</b><small>On. You agreed to the Terms of Service.</small></span><button type="button" class="pill-btn" data-terms>TOS</button></div>'
+        : s.teen === false
+          ? '<div class="opt"><span><b>Marks</b><small>Marks are for ages 13 and up. You can still make picks just for fun.</small></span><button type="button" class="pill-btn" data-terms>TOS</button></div>'
+          : '<div class="opt marks-agree"><span><b>Earn Marks</b><small>Picks are just for fun right now. To earn Marks, you need to be 13 or older and agree to the Terms of Service.</small></span>' +
+            '<div class="age-row"><button type="button" class="pill-btn tos-go" data-tos-agree>I agree</button><button type="button" class="pill-btn" data-terms>TOS</button></div>' +
+            '<div class="g-note">By clicking "I agree" you agree to the TOS and understand the consequences.</div></div>';
+    }
     // You tab: Marks and recent picks.
     async function fillPicksYou() {
       const el = document.querySelector("[data-picks-you]"), P = window.scorelinePicks;
@@ -4183,7 +4218,7 @@
           '<button type="button" class="pin ' + (pins().includes(k) ? "on" : "") + '" data-pin="' + k + '">' + esc(tabName(k)) + "</button>").join("") + "</div>" +
         '<div class="g-note">Pick up to ' + MAX_PINS + ". Home shows only these sports.</div>" +
         '<div class="section-title"><b>Settings</b></div><div class="panel"><div class="set-row"><b>Theme</b><div class="seg theme-seg">' + [["system", "System"], ["dark", "Dark"], ["light", "Light"]].map(([k, l]) => '<button type="button" data-theme-pick="' + k + '" class="' + ((document.documentElement.dataset.theme || "dark") === k ? "active" : "") + '">' + l + "</button>").join("") + "</div></div>" +
-        '<button type="button" class="opt ' + (DUMMY ? "on" : "") + '" data-dummy><span><b>Dummy Mode</b><small>Explains terms, stats and rules as you go, for every sport. Tap anything with an ⓘ.</small></span><i class="switch"></i></button><button type="button" class="opt" data-tour><span><b>Replay the tour</b><small>The quick walkthrough new visitors see</small></span><span class="chev">›</span></button></div>';
+        '<button type="button" class="opt ' + (DUMMY ? "on" : "") + '" data-dummy><span><b>Dummy Mode</b><small>Explains terms, stats and rules as you go, for every sport. Tap anything with an ⓘ.</small></span><i class="switch"></i></button><button type="button" class="opt" data-tour><span><b>Replay the tour</b><small>The quick walkthrough new visitors see</small></span><span class="chev">›</span></button><div data-marks-row></div></div>';
       if (MOBILE_APP) h += '<div class="section-title"><b>Alerts</b></div>' +
         '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Only about the teams you follow</small></span><i class="switch"></i></button><button type="button" class="pill-btn test-btn" id="testNotify">Send test notification</button>' + (alertsOn ? '<div class="g-note" id="pushState">' + esc(pushStatus) + "</div>" : "") + "</div>" +
         (() => { const p = alertPrefs(), cur = p.quietFrom != null && p.quietFrom !== "" ? p.quietFrom + "-" + p.quietTo : "off"; return '<div class="section-title"><b>Quiet hours</b></div><div class="panel"><div class="seg chips">' + QUIET.map(([k, l]) => '<button type="button" data-quiet="' + k + '" class="' + (k === cur ? "active" : "") + '">' + l + "</button>").join("") + '</div><div class="g-note">No alerts during these hours. Uses your phone\'s time.</div></div>'; })() +
@@ -4194,7 +4229,7 @@
       if (IS_DEV && window.top === window) h += '<div class="section-title"><b>Developer</b></div><div class="panel"><button type="button" class="opt" data-phonepreview><span><b>Phone preview</b><small>See the site as the phone app, right here. Only shown on your account.</small></span><span class="chev">›</span></button></div>';
       if (TAURI?.app?.getVersion) TAURI.app.getVersion().then((v) => { const el = document.getElementById("appVer"); if (el) el.textContent = "Updated " + builtOn() + " · app " + v; }).catch(() => {});
       $("main").innerHTML = h;
-      fillPicksYou().catch(() => {});
+      fillPicksYou().catch(() => {}); fillMarksRow().catch(() => {}); syncMarks();
       stamp();
     }
     // Version shown in You → About. One source: <meta name="version"> (major.minor) + <meta name="build"> (when this page was published).
