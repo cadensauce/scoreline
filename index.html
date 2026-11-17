@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794933943" />
+  <meta name="build" content="1794934252" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -535,6 +535,7 @@
     .f1-strat { margin-top: 16px; } .fs-key { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: var(--muted); margin-bottom: 8px; } .fs-key i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
     .fs-row { display: grid; grid-template-columns: 26px 54px 1fr 58px 34px; gap: 8px; align-items: center; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--line); }
     .fs-row .pos { font-size: 14px; } .fs-drv { font-weight: 700; } .fs-drv i { display: inline-block; width: 4px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+    .fq-bar { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; } .fq-bar i { display: block; height: 100%; background: var(--muted); border-radius: 3px; } .fq-gap { font-size: 12px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; } .fq-row { grid-template-columns: 26px 54px 1fr 72px 56px; }
     .fs-bar { display: flex; height: 16px; border-radius: 5px; overflow: hidden; gap: 2px; } .fs-bar i { display: grid; place-items: center; font: 700 9.5px Inter, sans-serif; color: #111; font-style: normal; }
     .fs-st { font-size: 11.5px; color: var(--muted); } .fs-mv { font-size: 11.5px; font-weight: 700; text-align: right; color: var(--muted); } .fs-mv.up { color: #3fb950; } .fs-mv.down { color: #e8423f; }
     .fs-fast { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 12.5px; } .fs-fast small { width: 100%; color: var(--muted); font-size: 11px; } .fs-pit b { font-variant-numeric: tabular-nums; }
@@ -1582,6 +1583,33 @@
     /* ---------- F1: last race strategy (OpenF1's free data on finished sessions) ----------
        Tyre stints per driver (coloured by compound), pit stops, places gained from the start, and the fastest stops. */
     const TYRE = { SOFT: ["#e8423f", "S"], MEDIUM: ["#f2c300", "M"], HARD: ["#e9e9ea", "H"], INTERMEDIATE: ["#3fb950", "I"], WET: ["#3b82f6", "W"] };
+    /* ---------- F1: last qualifying, gaps to pole (OpenF1 free data on finished sessions) ---------- */
+    async function f1QualiHtml() {
+      const OF = "https://api.openf1.org/v1/", yr = new Date().getFullYear();
+      const qs = ((await getJSON(OF + "sessions?session_name=Qualifying&year=" + yr).catch(() => [])) || []).filter((s) => Date.parse(s.date_end || s.date_start) < Date.now());
+      const q = qs[qs.length - 1];
+      if (!q) return "";
+      const res = (await getJSON(OF + "session_result?session_key=" + q.session_key).catch(() => [])) || [];
+      if (!res.length) return "";
+      const drivers = (await getJSON(OF + "drivers?session_key=" + q.session_key).catch(() => [])) || [], drv = {};
+      drivers.forEach((d) => { drv[d.driver_number] = d; });
+      const lapT = (t) => (t >= 60 ? Math.floor(t / 60) + ":" + (t % 60).toFixed(3).padStart(6, "0") : t.toFixed(3));
+      const name = (r) => esc(drv[r.driver_number]?.name_acronym || r.driver_number);
+      const sorted = res.filter((r) => r.position).sort((a, b) => a.position - b.position);
+      const top = sorted.slice(0, 10), pole = top[0]?.duration?.[2];
+      const maxGap = Math.max(...top.map((r) => r.gap_to_leader?.[2] || 0), 0.5);
+      const rows = top.map((r) => {
+        const t = r.duration?.[2], g = r.gap_to_leader?.[2];
+        return '<div class="fs-row fq-row"><span class="pos">' + r.position + '</span><span class="fs-drv"><i style="background:#' + esc(drv[r.driver_number]?.team_colour || "888") + '"></i>' + name(r) + "</span>" +
+          '<span class="fq-bar"><i style="width:' + (g ? Math.max(3, (g / maxGap) * 100) : 0).toFixed(1) + '%"></i></span><span class="fs-st">' + (t ? lapT(t) : "No time") + '</span><span class="fq-gap">' + (r.position === 1 ? "Pole" : g != null ? "+" + g.toFixed(3) : "") + "</span></div>";
+      }).join("");
+      const out = (from, to) => sorted.filter((r) => r.position >= from && r.position <= to).map(name).join(", ");
+      const q2 = out(11, 16), q1 = out(17, 30);
+      return '<div class="panel f1-strat"><div class="g-label">Qualifying · ' + esc(q.location || q.circuit_short_name || "Last race") + "</div>" +
+        dm("<b>How qualifying works.</b> Each driver sets their fastest single lap. It's done in 3 rounds: the slowest 6 drop out after Q1, 6 more after Q2, and the top 10 fight for pole position (1st on the starting grid) in Q3. The gap is how much slower than pole they were, in seconds; on most tracks a tenth (0.1s) is a big difference.") +
+        rows + (q2 ? '<div class="g-note">Out in Q2: ' + q2 + "</div>" : "") + (q1 ? '<div class="g-note">Out in Q1: ' + q1 + "</div>" : "") +
+        (pole ? "" : '<div class="g-note">Lap times aren\'t available for this session.</div>') + '<div class="g-note">Data: OpenF1 (free data from finished sessions).</div></div>';
+    }
     async function f1StrategyHtml() {
       const OF = "https://api.openf1.org/v1/";
       const now = Date.now(), yr = new Date().getFullYear();
@@ -1656,7 +1684,7 @@
         }).join("") + "</tbody></table>" + (state.f1Table === "drivers" ? '<div class="g-note">Tap a driver to follow them. They show up on Home.</div>' : "") : '<div class="empty">Standings unavailable.</div>';
       right += "</div>";
       main.innerHTML = barHtml("Formula 1", "f1") + '<div class="panel track-panel" id="trackPanel"><div class="g-label">Track</div><div class="skel" style="height:260px"></div></div>' + '<div class="f1-wrap">' + left + right + "</div>" + '<div data-f1strat></div>';
-      f1StrategyHtml().then((x) => { const el = main.querySelector("[data-f1strat]"); if (el) { if (x) el.outerHTML = x; else el.remove(); } }).catch(() => {});
+      f1QualiHtml().catch(() => "").then((q) => f1StrategyHtml().catch(() => "").then((x) => { const el = main.querySelector("[data-f1strat]"); if (el) { if (q + x) el.outerHTML = q + x; else el.remove(); } }));
       renderTabs();
       stamp();
       tickCountdown();
@@ -3649,6 +3677,20 @@
 
     /* ---------- standings + playoff picture (team sports) ---------- */
     const PLAYOFF_CUT = { nfl: [7, 0, "Top 7 in each conference make the playoffs if the season ended today."], nba: [6, 10, "Top 6 make the playoffs; 7–10 go to the play-in, if the season ended today."], mlb: [6, 0, "Top 6 in each league make the playoffs if the season ended today."] };
+    /* College football: AP Top 25 with this week's moves (ESPN rankings) */
+    async function apTop25() {
+      const j = await getJSON("https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings").catch(() => null);
+      const r = (j?.rankings || []).find((x) => /AP/i.test(x.name || "")) || j?.rankings?.[0];
+      if (!r?.ranks?.length) return "";
+      return '<div class="g-sec"><div class="g-label">' + esc(r.name || "Top 25") + "</div>" +
+        dm("<b>The rankings.</b> Every week, sports writers vote on the 25 best teams. ▲/▼ shows how many places a team moved since last week; <b>New</b> means it just entered the Top 25. Rankings matter: they shape who gets into the College Football Playoff.") +
+        '<table class="st-tbl"><thead><tr><th></th><th>Team</th><th>W-L</th><th>Move</th></tr></thead><tbody>' +
+        r.ranks.map((k) => {
+          const t = k.team || {}, logo = t.logos?.[0]?.href, mv = k.previous > 0 ? k.previous - k.current : null;
+          return '<tr data-team="cfb|' + esc(t.id) + '"><td class="pos">' + k.current + "</td><td>" + (logo ? '<img src="' + esc(logo) + '" alt="" loading="lazy">' : "") + esc(t.location || t.nickname || t.name || "") +
+            '</td><td class="n">' + esc(k.recordSummary || "–") + '</td><td class="n fs-mv ' + (mv > 0 ? "up" : mv < 0 ? "down" : "") + '">' + (mv == null ? "New" : mv > 0 ? "▲" + mv : mv < 0 ? "▼" + -mv : "–") + "</td></tr>";
+        }).join("") + "</tbody></table></div>";
+    }
     async function openStandings(lg) {
       const v = { kind: "standings", key: "standings|" + lg };
       if (!pushView(v)) return; v.el.dataset.lg = lg;
@@ -3661,7 +3703,7 @@
       walk(d);
       const st = (e, n) => (e.stats || []).find((x) => x.name === n || x.type === n);
       const foot = lg === "nfl" || lg === "cfb", cut = PLAYOFF_CUT[lg];
-      let h = "";
+      let h = lg === "cfb" ? await apTop25() : ""; if (!v.el.isConnected) return;
       groups.forEach((g) => {
         const rows = g.standings.entries.slice();
         const seeded = rows.every((e) => st(e, "playoffSeed")?.value > 0);
