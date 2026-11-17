@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794882887" />
+  <meta name="build" content="1794883099" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2577,6 +2577,7 @@
         const T = "translate(" + tx.toFixed(1) + "px," + ((H - H * k) / 2).toFixed(1) + "px) scale(" + k.toFixed(3) + ")";
         const from = still || !v?.camT ? T : v.camT;
         if (v) v.camT = T;
+        str = str.replace('data-fw="' + W + '"', 'data-fw="' + W + '" data-vx0="' + (-tx / k).toFixed(1) + '" data-vx1="' + ((VW - tx) / k).toFixed(1) + '"');   // visible part, so name tags stay on screen
         return str.replace('<g class="cam">', '<g class="cam" style="transform:' + from + '" data-to="' + T + '">') + "</g></g></svg>";
       };
       let s = '<svg class="field fh' + (still ? " still" : "") + '" data-fw="' + W + '" viewBox="0 0 ' + VW + " " + H + '" role="img" aria-label="Field"><defs>' +
@@ -2610,9 +2611,9 @@
       // with "from", slides in from there. Small = defender (number only).
       const mark = (x, y, c, a, fb, delay, up, from, route, small) => {
         xs.push(x);
-        const name = small ? (a?.short ? a.short + (fb ? " · " + fb : "") : "") : [a?.short || fb || "", a?.pos].filter(Boolean).join(" · "), r = small ? 12 : 16, ly = up ? -32 : 36;
+        const name = small ? "" : [a?.short || fb || "", a?.pos].filter(Boolean).join(" · "), r = small ? 12 : 16, ly = up ? -32 : 36;
         const body = (small ? '<polygon points="0,-15 13,9 -13,9" fill="' + c + '"/>' : '<circle cx="0" cy="0" r="' + r + '" fill="' + c + '"/>') + '<text x="0" y="' + (small ? 2 : 0) + '" class="f-jn' + (small ? " s" : "") + '">' + esc(a?.jersey || "") + "</text>" +
-          (name ? '<rect x="-60" y="' + (ly - 15) + '" width="120" height="25" rx="12.5" class="f-pill"/><text x="0" data-cx="0" data-rel="1" y="' + (ly + 3) + '" class="f-lbl">' + esc(name) + "</text>" : "");
+          (name ? '<rect x="-60" y="' + (ly - 15) + '" width="120" height="25" rx="12.5" class="f-pill"/><text x="0" data-cx="0" data-rel="1" data-ax="' + x + '" y="' + (ly + 3) + '" class="f-lbl">' + esc(name) + "</text>" : "");
         if (route && !still) return '<g class="f-mark" style="animation-delay:' + route.begin + 's"><g><animateMotion begin="' + route.begin + 's" dur="' + route.dur + 's" fill="freeze" ' + (route.kp ? 'calcMode="linear" keyPoints="' + route.kp + '" keyTimes="' + route.kt + '"' : 'calcMode="spline" keyTimes="0;1" keySplines=".45 0 .35 1"') + ' path="' + route.d + '"/>' + body + "</g></g>";
         const mv = from && !still;
         return '<g class="f-mark" style="animation-delay:' + delay + 's"><g transform="translate(' + x + " " + y + ')">' +
@@ -2662,7 +2663,7 @@
         const xp = /extra point/i.test(ty + " " + t);
         const label = blocked ? "Blocked" : !miss ? (xp ? "Extra point good" : "Field goal good") : /wide left/i.test(t) ? "Wide left" : /wide right/i.test(t) ? "Wide right" : /upright/i.test(t) ? "Hit the upright" : /crossbar/i.test(t) ? "Hit the crossbar" : /\bshort\b/i.test(t) ? "Short" : "No good";
         s += fly(arc(hx, CY, ex, ey, blocked ? 20 : 80), 0.35, blocked ? 0.35 : 1.0) + land(ex, ey, blocked ? 0.75 : 1.35);
-        s += tag(clampX(ex - dir * 90), CY + 62, label, blocked ? 0.8 : 1.4);
+        // result is shown in the card below
         s += mark(hx, CY, oc, ath("kicker"), nm(/([A-Z][a-z]?\.[\w'-]+) \d+/), 0.1, false);
       } else if ((isKO || isPunt) && !isNaN(kd) && !/blocked/i.test(t)) {
         const kFrom = isKO ? t0 : Math.min(110, t0 + 14), kc = Math.max(-9, t0 - kd);
@@ -2673,8 +2674,8 @@
         const rp = weave(cx2, CY, xE, CY + 30);
         if (!noRet) s += run(rp, 1.6, 1.1);
         const label = /touchback/i.test(t) ? "Touchback" : /fair catch/i.test(t) ? "Fair catch" : /downed/i.test(t) ? "Downed" : /out of bounds/i.test(t) && noRet ? "Out of bounds" : rYds + "-yd return";
-        s += tag(clampX(noRet ? cx2 : (cx2 + xE) / 2), CY - 50, label, noRet ? 1.5 : 2.4);
-        s += mark(kx, CY, oc, ath("punter") || ath("kicker"), nm(/([A-Z][a-z]?\.[\w'-]+) (?:punts|kicks)/), 0.1, false);
+        // result is shown in the card below
+        s += mark(kx, CY, oc, { jersey: (ath("punter") || ath("kicker"))?.jersey }, "", 0.1, false);
         const rn = nm(/fair catch by ([A-Z][a-z]?\.[\w'-]+)/) || nm(/\.\s*([A-Z][a-z]?\.[\w'-]+) (?:to|for|MUFFS|pushed|ran)/);
         if (ath("returner") || rn) s += mark(noRet ? cx2 : xE, noRet ? CY : CY + 30, dc, ath("returner"), rn, 1.5, false, null, noRet ? null : route(rp, 1.6, 1.1));
         if (!noRet) carrier = { sx: cx2, ex: xE, ey: CY + 30, begin: 1.6, dur: 1.1, tc: oc };
@@ -2687,7 +2688,7 @@
         s += '<path d="' + rt.d + '" class="f-route draw gone" pathLength="1" style="animation-delay:.1s;animation-duration:1.25s"/>';
         s += fly(arc(qbX, CY, cxp, ly, 60), 0.75, 0.6) + land(cxp, ly, 1.35);
         if (yac) s += run(yp, 1.35, rd);
-        s += mark(qbX, CY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/), 0.05, false, { x: xL - dir * S, y: CY, begin: 0.1, dur: 0.6 });
+        s += mark(qbX, CY, oc, { jersey: ath("passer")?.jersey }, "", 0.05, false, { x: xL - dir * S, y: CY, begin: 0.1, dur: 0.6 });
         const fr = rt.len / (rt.len + (yac ? Math.abs(xE - cxp) * 1.15 : 0)), tot = 1.25 + (yac ? rd : 0);
         s += mark(yac ? xE : cxp, yac ? ey2 : ly, oc, ath("receiver"), nm(/ to ([A-Z][a-z]?\.[\w'-]+)/), 0.1, (yac ? ey2 : ly) < CY, null,
           { d: rt.d + (yac ? " " + yp.replace(/^M[-\d. ]+/, "") : ""), begin: 0.1, dur: tot, kp: yac ? "0;" + fr.toFixed(3) + ";1" : "0;1", kt: yac ? "0;" + (1.25 / tot).toFixed(3) + ";1" : "0;1" });
@@ -2699,8 +2700,8 @@
         s += fly(arc(qbX, CY, pick ? tx : tx + dir * 16, pick ? ly : ly + (ly < CY ? -16 : 16), 60), 0.75, 0.6);
         const bx = pick ? tx : tx + dir * 16, by = pick ? ly : ly + (ly < CY ? -16 : 16);   // where the ball ended up, next to the receiver
         s += pick ? land(tx, ly, 1.35) : '<text x="' + bx + '" y="' + (by + 8) + '" class="f-x" style="animation-delay:1.35s">✕</text>';
-        s += tag(clampX(tx), ly < CY ? ly - 40 : ly + 44, pick ? "Intercepted" : "Incomplete", 1.45);
-        s += mark(qbX, CY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/), 0.05, false, { x: xL - dir * S, y: CY, begin: 0.1, dur: 0.6 });
+        // result is shown in the card below
+        s += mark(qbX, CY, oc, { jersey: ath("passer")?.jersey }, "", 0.05, false, { x: xL - dir * S, y: CY, begin: 0.1, dur: 0.6 });
         const tgt = ath("target") || ath("receiver"), tn = nm(/ (?:to|for) ([A-Z][a-z]?\.[\w'-]+)/);
         if (tgt || tn) s += mark(tx, ly, oc, tgt, tn, 0.1, ly < CY, null, { d: rt.d, begin: 0.1, dur: 1.25 });
         const pd = ath("passDefender");
@@ -2713,7 +2714,7 @@
         }
       } else if (/sack/i.test(ty)) {
         s += run("M" + qbX + " " + CY + " L" + xE + " " + CY, 0.5, 0.6);
-        s += mark(xE, CY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) sacked/), 0.1, false, null, route("M" + qbX + " " + CY + " L" + xE + " " + CY, 0.5, 0.6)) + tag(clampX(xE), CY - 100, "Sack", 1.1);
+        s += mark(xE, CY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) sacked/), 0.1, false, null, route("M" + qbX + " " + CY + " L" + xE + " " + CY, 0.5, 0.6));
         carrier = { sx: qbX, ex: xE, ey: CY, begin: 0.5, dur: 0.6, tc: dc };
       } else if (!/penalty|timeout|end of/i.test(ty) && (/rush|run|scramble|kneel|fumble/i.test(ty) || G.gain)) {
         const sx = xL - dir * 4 * S, ly = side ? CY + side * 44 * dir : CY, rd = Math.min(1.6, 0.5 + Math.abs(xE - sx) / 220);
@@ -2812,7 +2813,7 @@
       html += '</div><div data-c="plays" class="sum-hide">' + stopsHtml(F) + '</div>';
       sec.innerHTML = html;
       // Fit each name tag to its real text width and centre it over the player (estimates drift with font metrics).
-      sec.querySelectorAll(".f-lbl").forEach((t) => { try { const tw = t.getComputedTextLength(); if (!tw) return; const w = tw + 14, VW = +t.ownerSVGElement?.dataset.fw || t.ownerSVGElement?.viewBox?.baseVal?.width || 0, cx = +t.dataset.cx; const lx = VW && !t.dataset.rel ? Math.max(w / 2 + 4, Math.min(VW - w / 2 - 4, cx)) : cx; t.setAttribute("x", lx); const r = t.previousElementSibling; if (r) { r.setAttribute("x", lx - w / 2); r.setAttribute("width", w); } } catch {} });
+      sec.querySelectorAll(".f-lbl").forEach((t) => { try { const tw = t.getComputedTextLength(); if (!tw) return; const w = tw + 14, VW = +t.ownerSVGElement?.dataset.fw || t.ownerSVGElement?.viewBox?.baseVal?.width || 0, cx = +t.dataset.cx; const sv = t.ownerSVGElement, v0 = sv?.dataset.vx0 != null ? +sv.dataset.vx0 : 0, v1 = sv?.dataset.vx1 != null ? +sv.dataset.vx1 : VW, keep = (p) => Math.max(v0 + w / 2 + 4, Math.min(v1 - w / 2 - 4, p)); const lx = t.dataset.rel ? (t.dataset.ax ? keep(+t.dataset.ax) - +t.dataset.ax : cx) : VW ? keep(cx) : cx; t.setAttribute("x", lx); const r = t.previousElementSibling; if (r) { r.setAttribute("x", lx - w / 2); r.setAttribute("width", w); } } catch {} });
       sec.classList.toggle("calm-sec", !!still);
       const cam = sec.querySelector(".cam");
       if (cam) requestAnimationFrame(() => requestAnimationFrame(() => { cam.style.transform = cam.dataset.to; }));
