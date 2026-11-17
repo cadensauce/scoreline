@@ -228,3 +228,20 @@ Next session, in order:
 - Developer-only phone preview (You → Developer; owner's account only, checked by email hash) — #37
 - Still to do in Phase 3: strategy picker. Pending from you: Google sign-in to publish the profile-card rule;
   Gmail app password + SMTP secrets for two-step codes.
+
+## 2026-11-17: polish, Phase 4 wrap-up, Phase 5 start (PRs #57–#84)
+- Phase 4: Dummy Mode everywhere + every position explained (tap-to-explain), NBA scoring runs, F1 qualifying gaps,
+  CFB AP Top 25, MLB starting pitchers, labeled Standings button, Recap tab, play-by-play grouped by drive,
+  highlights (game video clips, open on the video site), predicted vs actual on far more games (team schedules).
+- Cleaner, minimal pass: game page, Home, You, standings. Football Day view fixed (ESPN's single-day feed misses weekday games).
+- Quote card on Home: 26 real sports quotes copied from Wikiquote's sourced sections; random, New button.
+- Phase 5, Picks and Marks (live):
+  - Pick the winner before kickoff (NFL, CFB, NBA, MLB). Marks: favourite 10, toss-up 15, underdog 25 "Upset bonus".
+  - Terms of Service (9 sections). "I agree" (13+) turns on Marks; "No thanks" still picks just for fun; agree later in
+    You → Settings. Sign-up: agree to Terms required, "13 or older" optional. Marks are NOT real money, never bought, no prizes.
+  - Top bar shows Marks (13+ only) with the Marks icon (`marks-icon.svg`). Home: Make your picks.
+  - Worker `push/picks.mjs`: opens games for the next 7 days, freezes the Upset bonus at kickoff, pays only agreed users
+    (ledger entry `pick_<id>`, never twice), sweep for missed games, removes data of deleted accounts every 6 h.
+  - Rules: ages, games, picks, wallets, ledger (published by you). Emulator rules tests (21) + worker syntax check in CI.
+- Next for Phase 5: titles and banners to unlock with Marks (in-app only), fantasy (free to join, Marks optional),
+  nightly balance-vs-ledger check.

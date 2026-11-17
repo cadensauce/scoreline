@@ -91,6 +91,8 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - name: Push worker files parse (syntax check)
+        run: for f in ../../push/*.mjs; do node --check "$f"; done
       - name: Install emulator and test tools
         run: npm install --no-save --no-audit --no-fund firebase-tools@13.29.1 @firebase/rules-unit-testing@3.0.4 firebase@10.12.2
       - name: Rules tests

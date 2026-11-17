@@ -136,3 +136,26 @@ async function sweep(db, admin) {
     } catch {}
   }
 }
+
+// Deleted accounts: the site can't remove picks, Marks, the ledger or the Terms answer (the rules don't let it),
+// so the worker removes them for any account that no longer exists. Runs at the start of each shift, then every 6 hours.
+// Safety: if the account list can't be read (or comes back empty), nothing is deleted.
+export async function cleanupDeleted(db, admin) {
+  const alive = new Set();
+  try {
+    let page;
+    do { const r = await admin.auth().listUsers(1000, page); r.users.forEach((u) => alive.add(u.uid)); page = r.pageToken; } while (page);
+  } catch (e) { console.log("cleanup: couldn't list accounts", e.message); return; }
+  if (!alive.size) return;
+  let n = 0;
+  const gone = (uid) => uid && !alive.has(uid);
+  for (const col of ["ages", "wallets"]) {
+    const snap = await db.collection(col).select().get().catch(() => null);
+    for (const d of snap?.docs || []) if (gone(d.id)) { await d.ref.delete().catch(() => {}); n++; }
+  }
+  const picks = await db.collection("picks").select("uid").get().catch(() => null);
+  for (const d of picks?.docs || []) if (gone(d.get("uid"))) { await d.ref.delete().catch(() => {}); n++; }
+  const ledgers = await db.collection("ledger").listDocuments().catch(() => []);
+  for (const ref of ledgers) if (gone(ref.id)) { await db.recursiveDelete(ref).catch(() => {}); n++; }
+  if (n) console.log("cleanup: removed", n, "items from deleted accounts");
+}

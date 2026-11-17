@@ -496,6 +496,10 @@
     .qotd-new:hover { color: var(--text); border-color: var(--line-hi, var(--line)); } .qotd-new svg { transition: transform .4s var(--ease, ease); } .qotd-new:active svg { transform: rotate(-180deg); }
     .qotd p { position: relative; margin: 0 0 12px; font: 600 17px/1.42 var(--display); letter-spacing: -.005em; color: var(--text); text-wrap: pretty; }
     .qotd-a { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); } .qotd-a::before { content: ""; width: 18px; height: 1.5px; background: currentColor; opacity: .6; }
+    .hp-row { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; margin-bottom: 8px; scrollbar-width: none; } .hp-row::-webkit-scrollbar { display: none; }
+    .hp-card { flex: none; width: 200px; scroll-snap-align: start; padding: 10px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); }
+    .hp-top { display: flex; gap: 6px; width: 100%; border: 0; background: none; padding: 0 2px 8px; color: var(--muted); font: 600 11.5px Inter, sans-serif; text-align: left; cursor: pointer; } .hp-top span { color: var(--text); }
+    .hp-card .pick-row { align-items: center; gap: 6px; } .hp-card .pick-btn { padding: 8px 4px; border-radius: 12px; } .hp-card .pick-btn b { font-size: 14px; } .hp-at { color: var(--muted); font-size: 12px; }
     .qotd p.qin { animation: qin .35s ease both; } @keyframes qin { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
     .marks-chip[hidden] { display: none; } .marks-chip:hover { background: var(--panel-2); } .mark-ic { flex: none; vertical-align: -3px; }
     .marks-agree { flex-direction: column; align-items: stretch !important; gap: 10px; }
@@ -1580,6 +1584,34 @@
       document.querySelectorAll("[data-qotd]").forEach((el) => { el.outerHTML = quoteBox(); });
       document.querySelectorAll("[data-qotd] p").forEach((p) => p.classList.add("qin"));
     });
+    /* ---------- Home: "Make your picks" (signed in, Picks set up). Upcoming games from your sports, pick right here. ---------- */
+    async function fillHomePicks() {
+      const el = document.querySelector("[data-home-picks]"), P = window.scorelinePicks;
+      if (!el || !P) return;
+      const s = await P.status().catch(() => ({ signedIn: false }));
+      if (!s.signedIn || (s.teen == null && !store.get("tosNo", false))) { el.innerHTML = ""; return; }   // not set up yet: games show the Terms step
+      const [games, mine] = await Promise.all([P.upcoming(40), P.mine()]);
+      const picked = {}; mine.forEach((p) => { picked[p.gameId] = p.side; });
+      hpAt = Date.now();
+      const list = games.filter((g) => pins().includes(g.lg) && g.state === "pre").slice(0, 10);
+      if (!el.isConnected) return;
+      if (!list.length) { el.innerHTML = hpHtml = ""; return; }
+      const marks = s.teen === true, done = list.filter((g) => picked[g.id]).length;
+      const when = (g) => { const d = g.lockAt?.toDate?.(); return d ? fmtDay(d.toISOString()) + " · " + fmtTime(d.toISOString()) : ""; };
+      const btn = (g, sd) => { const t = g[sd] || {}, r = g.rewards?.[sd] ?? 10;
+        return '<button type="button" class="pick-btn' + (picked[g.id] === sd ? " on" : "") + '" data-pick-side="' + sd + '"><b>' + esc(t.abbr || "") + "</b>" +
+          (marks ? "<small>" + MARK_SVG(12) + " +" + r + "</small>" : "") + "</button>"; };
+      el.innerHTML = hpHtml = '<div class="section-title"><b>Make your picks</b><span class="muted">' + done + " of " + list.length + " picked</span></div>" +
+        '<div class="hp-row">' + list.map((g) => '<div class="hp-card"><button type="button" class="hp-top" data-game="' + esc(g.lg) + "|" + esc(g.eventId) + '"><span>' + esc(LEAGUES[g.lg]?.short || g.lg.toUpperCase()) + "</span>" + esc(when(g)) + "</button>" +
+          '<div class="pick-row" data-gid="' + esc(g.id) + '">' + btn(g, "away") + '<span class="hp-at">@</span>' + btn(g, "home") + "</div></div>").join("") + "</div>";
+    }
+    let hpHtml = "", hpAt = 0;   // last "Make your picks" block, so Home's live refreshes don't flicker or re-read every time
+    document.addEventListener("click", (e) => {
+      const g = e.target.closest("[data-game]");
+      if (g) { const [lg, id] = g.dataset.game.split("|"); return openGame(lg, id); }
+      if (e.target.closest("[data-home-picks] [data-pick-side]")) setTimeout(() => fillHomePicks().catch(() => {}), 900);   // update "N of M picked"
+    });
+    window.addEventListener("scoreline-user", () => { hpAt = 0; if (state.tab === "home") fillHomePicks().catch(() => {}); });
     async function renderHome() {
       const main = $("main");
       if (!main.querySelector("[data-home]")) main.innerHTML = savedShell("home") || '<div data-home>' + barHtml("Today", null) + skeleton(9) + "</div>";
@@ -1589,7 +1621,7 @@
       if (pins().includes("f1")) try { f1 = await getJSON(API + LEAGUES.f1.path + "/scoreboard"); cache.f1 = f1; } catch {}
       if (state.tab !== "home") return;
       let anyLive = false;
-      let html = '<div data-home>' + barHtml("Today", null) + quoteBox();
+      let html = '<div data-home>' + barHtml("Today", null) + quoteBox() + '<div data-home-picks>' + hpHtml + "</div>";
       const liveIds = new Set();
       const liveEvs = [];
       keys.forEach((k, i) => { if (results[i].status === "fulfilled") (results[i].value.events || []).filter(isLive).forEach((e) => { liveEvs.push([e, k]); liveIds.add(e.id); }); });
@@ -1626,6 +1658,7 @@
       });
       html += "</div>";
       paint(main, html, "home");
+      if (Date.now() - hpAt > 60_000) fillHomePicks().catch(() => {});
       renderTabs();
       stamp();
       schedule(anyLive);
