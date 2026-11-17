@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794934252" />
+  <meta name="build" content="1794934522" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2186,6 +2186,21 @@
       return "Playoff race: " + where + ". " + (lg === "nba" ? "The top 6 in each conference make the playoffs and 7th-10th go to the Play-In." : "The top " + cut[0] + " make the playoffs.");
     }
 
+    /* MLB: starting pitchers (ESPN's probables, with season W-L, ERA, WHIP, strikeouts) */
+    function pitchersHtml(s) {
+      const cs = (s.header?.competitions?.[0]?.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
+      const rows = cs.map((c) => {
+        const p = (c.probables || []).find((x) => /starting/i.test(x.name || "")) || c.probables?.[0];
+        if (!p?.athlete) return "";
+        const cat = {}; (p.statistics?.splits?.categories || []).forEach((k) => { cat[k.abbreviation] = k.displayValue; });
+        const bits = [cat.W != null && cat.L != null ? cat.W + "-" + cat.L : "", cat.ERA ? cat.ERA + " ERA" : "", cat.WHIP ? cat.WHIP + " WHIP" : "", cat.K ? cat.K + " K" : ""].filter(Boolean).join(" · ");
+        return '<div class="row r-player" data-player="mlb|' + esc(p.athlete.id) + '"><span class="muted">' + esc(c.team?.abbreviation || "") + "</span><span><b>" + esc(p.athlete.displayName || p.athlete.fullName || "") + "</b><small class=\"muted\"> " + esc(bits || "Season stats not available") + "</small></span></div>";
+      }).filter(Boolean);
+      if (!rows.length) return "";
+      return '<div class="g-sec"><div class="g-label">Starting pitchers</div>' +
+        dm("<b>The pitching matchup.</b> The starter usually pitches the first 5 to 7 innings, so they shape the whole game. <b>ERA</b> is runs allowed per 9 innings (under 3.50 is very good). <b>WHIP</b> is walks plus hits per inning (under 1.20 is very good). <b>K</b> is strikeouts.") +
+        '<div class="list">' + rows.join("") + "</div></div>";
+    }
     async function predictionHtml(lg, s, teams, state) {
       if (!["nfl", "cfb", "nba", "mlb"].includes(lg) || teams.length < 2) return "";
       const comp = s.header?.competitions?.[0] || {};
@@ -3626,6 +3641,7 @@
       h += recapHtml(s, teams, lg);   // finished games only
       if (st.state !== "post") h += '<div data-why></div>';   // why this game matters (filled in below)
       if (st.state !== "in") h += '<div data-pred></div>';   // prediction (before) / predicted vs actual (after), filled in below
+      if (lg === "mlb") h += pitchersHtml(s);
       const gcats = [["all", "Summary"], ["plays", "Plays"], ["stats", "Stats"], ["players", "Players"]];
       h += '<div class="gtabs" role="tablist">' + gcats.map(([k, l]) => '<button type="button" role="tab" data-gcat="' + k + '" class="' + (k === "all" ? "active" : "") + '">' + l + "</button>").join("") + "</div>";
       h += wpSectionHtml(s, teams, st.state, id, lg);
