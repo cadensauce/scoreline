@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794896066" />
+  <meta name="build" content="1794896277" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -530,6 +530,7 @@
     .fh .cam { transform-origin: 0 0; transition: transform .9s cubic-bezier(.45,0,.35,1); }
     .wx-imp { margin-top: 12px; padding: 12px 14px; background: var(--panel-2); border-radius: 14px; } .wx-imp-t { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; } .wx-imp p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.45; }
     .why { margin: 0 0 14px; font-size: 13.5px; line-height: 1.5; color: var(--muted); } .why b { color: var(--text); }
+    table.zones { margin-top: 12px; font-size: 13px; } table.zones th { font-size: 11px; color: var(--muted); font-weight: 600; text-align: right; } table.zones td { text-align: right; padding: 7px 4px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; } table.zones td:first-child, table.zones th:first-child { text-align: left; } table.zones small { color: var(--muted); }
     .fwrap { position: relative; } .f-replay { position: absolute; right: 10px; top: 20px; border: 0; border-radius: 999px; padding: 6px 12px; font: 600 12px Inter, sans-serif; color: #fff; background: rgba(8,12,18,.6); cursor: pointer; }
     .f1-strat { margin-top: 16px; } .fs-key { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: var(--muted); margin-bottom: 8px; } .fs-key i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
     .fs-row { display: grid; grid-template-columns: 26px 54px 1fr 58px 34px; gap: 8px; align-items: center; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--line); }
@@ -2368,6 +2369,11 @@
       "largest lead": "The biggest lead the team had at any point.",
       "lead changes": "How many times the lead switched teams; lots of lead changes means a back-and-forth game.",
     });
+    Object.assign(GLOSS.nba, {
+      "paint": "The painted area under the basket. Shots here (layups, dunks) go in most often.",
+      "mid-range": "Two-point shots from outside the paint but inside the 3-point line. The hardest shots to make pay off.",
+      "3-pointers": "Shots from behind the arc, worth 3 points.",
+    });
     GLOSS.cfb = GLOSS.nfl;
     // Down and distance ("3rd & 8 at BAL 20") is explained from the numbers themselves.
     function explainDown(txt) {
@@ -2435,6 +2441,18 @@
     }
 
     /* ---------- NBA shot chart / MLB spray chart ---------- */
+    // NBA shooting by zone, from the play-by-play shots: at the rim / in the paint, mid-range, and 3-pointers.
+    function shotZonesHtml(shots, teams) {
+      const zone = (p) => { const t = p.text || "", ft = +((t.match(/(\d+)-foot/) || [])[1]); return /three point/i.test(t) ? "three" : (ft ? ft <= 8 : /layup|dunk|tip|alley|hook|driving/i.test(t)) ? "paint" : "mid"; };
+      const Z = [["paint", "Paint"], ["mid", "Mid-range"], ["three", "3-pointers"]];
+      const tally = {};
+      shots.forEach((p) => { const k = (p.team?.id || "") + "|" + zone(p); tally[k] = tally[k] || [0, 0]; tally[k][1]++; if (p.scoringPlay) tally[k][0]++; });
+      const cell = (t, z) => { const [m, a] = tally[t.team?.id + "|" + z] || [0, 0]; return "<td>" + (a ? m + "/" + a + " <small>" + Math.round(m / a * 100) + "%</small>" : "–") + "</td>"; };
+      return '<table class="zones"><thead><tr><th></th>' + Z.map(([, l]) => "<th>" + tm("nba", l) + "</th>").join("") + "</tr></thead><tbody>" +
+        teams.map((t) => "<tr><td><b>" + esc(t.team?.abbreviation) + "</b></td>" + Z.map(([z]) => cell(t, z)).join("") + "</tr>").join("") + "</tbody></table>" +
+        dm("<b>Shooting by zone.</b> Shots close to the basket (the paint) go in most often. Mid-range shots are harder and still worth 2, which is why teams now shoot so many 3-pointers: a 36% three is worth about as much as a 54% two.");
+    }
+
     function chartHtml(v) {
       const s = v.s, teams = v.teams, f = v.chartTeam;
       const tc = (t) => "#" + (t.team?.color || "8a93a5");
@@ -2461,7 +2479,7 @@
         svg += "</svg>";
         const fg = (t) => (made[t.team?.id] || 0) + "/" + (att[t.team?.id] || 0);
         return '<div class="t-head"><div class="g-label" style="margin:0">Shot chart</div>' + tabs + "</div>" + svg +
-          '<div class="f-key"><span><i class="k-dot"></i>Made</span><span>✕ Missed</span><span>' + esc(teams[0].team?.abbreviation) + " " + fg(teams[0]) + " · " + esc(teams[1].team?.abbreviation) + " " + fg(teams[1]) + "</span></div>";
+          '<div class="f-key"><span><i class="k-dot"></i>Made</span><span>✕ Missed</span><span>' + esc(teams[0].team?.abbreviation) + " " + fg(teams[0]) + " · " + esc(teams[1].team?.abbreviation) + " " + fg(teams[1]) + "</span></div>" + shotZonesHtml(shots, teams);
       }
       const HIT = /single|double|triple|home run/i, OUT = /out|fielder|error|double play|sacrifice/i;
       const balls = (s.plays || []).filter((p) => p.hitCoordinate && !/foul/i.test(p.type?.text || "") && (HIT.test(p.type?.text || "") || OUT.test(p.type?.text || "")));
