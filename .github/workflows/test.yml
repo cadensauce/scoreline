@@ -74,3 +74,24 @@ jobs:
             tests/lh-*.json
 
   # (screens are produced by the browser job; see the "screens" artifact)
+
+  # Firestore security rules (picks, Marks, age answer) on the Firestore emulator.
+  rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: tests/rules
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install emulator and test tools
+        run: npm install --no-save --no-audit --no-fund firebase-tools@13.29.1 @firebase/rules-unit-testing@3.0.4 firebase@10.12.2
+      - name: Rules tests
+        run: npx firebase emulators:exec --only firestore --project demo-scoreline "node --test"

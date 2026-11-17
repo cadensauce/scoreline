@@ -58,6 +58,7 @@ async function onUser(u) {
   }
   syncButton();
   refreshAccountSheet();
+  window.dispatchEvent(new Event("scoreline-user"));   // picks and Marks refresh on sign-in/out
 }
 function syncButton() {
   const b = document.getElementById("accountBtn");
@@ -551,6 +552,31 @@ document.addEventListener("click", async (e) => {
   const ch = t.closest("[data-chat]");
   if (ch) return openChat(ch.dataset.chat);
 }, true);
+
+/* ---------- Picks and Marks (Phase 5) ----------
+   Free picks on upcoming games; Marks are earned only (never bought, cashed out or traded).
+   The rules lock picks at kickoff with the server's clock and allow them only for ages 13+. */
+const pickReady = () => !!(db && user && !pending2);
+window.scorelinePicks = {
+  async status() {
+    await startFirebase();
+    if (!pickReady()) return { signedIn: false };
+    const a = await fb.getDoc(fb.doc(db, "ages", user.uid)).catch(() => null);
+    return { signedIn: true, teen: a?.exists() ? a.data().is13plus === true : null };
+  },
+  // Only true/false is saved, never the birth date. It can't be changed later.
+  setAge: (is13plus) => fb.setDoc(fb.doc(db, "ages", user.uid), { is13plus: !!is13plus, at: fb.serverTimestamp() }),
+  async game(gameId) { await startFirebase(); const d = await fb.getDoc(fb.doc(db, "games", gameId)).catch(() => null); return d?.exists() ? d.data() : null; },
+  async pick(gameId) { if (!pickReady()) return null; const d = await fb.getDoc(fb.doc(db, "picks", user.uid + "_" + gameId)).catch(() => null); return d?.exists() ? d.data() : null; },
+  setPick: (gameId, side) => fb.setDoc(fb.doc(db, "picks", user.uid + "_" + gameId), { uid: user.uid, gameId, side, updatedAt: fb.serverTimestamp() }),
+  clearPick: (gameId) => fb.deleteDoc(fb.doc(db, "picks", user.uid + "_" + gameId)),
+  async mine() {
+    if (!pickReady()) return [];
+    const r = await fb.getDocs(fb.query(fb.collection(db, "picks"), fb.where("uid", "==", user.uid))).catch(() => null);
+    return (r?.docs || []).map((d) => d.data());
+  },
+  async balance() { if (!pickReady()) return 0; const d = await fb.getDoc(fb.doc(db, "wallets", user.uid)).catch(() => null); return d?.data()?.balance || 0; },
+};
 
 // Start Firebase (~270 KB) once the scores are on screen, or right away when the account button is tapped.
 let booting = null;
