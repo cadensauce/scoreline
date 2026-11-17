@@ -165,8 +165,17 @@ async function loadSubs() {
 const DEFAULTS = { start: "always", score: "always", halftime: "playoffs", second: "off", close: "playoffs", final: "always", trades: "always", injuries: "always", bignews: "always" };
 const asMode = (v) => (v === true ? "always" : v === false ? "off" : v);
 const isChampionship = (ev) => /super bowl|nba finals|world series|national championship|cfp national|championship game/i.test([ev?.name, ev?.competitions?.[0]?.notes?.[0]?.headline].join(" "));
+// Quiet hours: no alerts between quietFrom and quietTo (whole hours, 0-23) in the phone's own time zone.
+function quietNow(prefs) {
+  const a = parseInt(prefs.quietFrom, 10), b = parseInt(prefs.quietTo, 10);
+  if (isNaN(a) || isNaN(b) || a === b) return false;
+  let h;
+  try { h = parseInt(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: prefs.tz || "America/New_York" }).format(new Date()), 10) % 24; } catch { return false; }
+  return a < b ? h >= a && h < b : h >= a || h < b;
+}
 function wants(prefs, team, kind, ev) {
-  const m = asMode(prefs[kind + "@" + team] ?? prefs[kind] ?? DEFAULTS[kind] ?? "off");
+  if (quietNow(prefs)) return false;
+  const m =asMode(prefs[kind + "@" + team] ?? prefs[kind] ?? DEFAULTS[kind] ?? "off");
   if (!ev) return m !== "off";                                  // team news: on or off
   return m === "always" || (m === "playoffs" && ev.season?.type === 3) || (m === "champ" && isChampionship(ev));
 }
