@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794895746" />
+  <meta name="build" content="1794896066" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -531,6 +531,12 @@
     .wx-imp { margin-top: 12px; padding: 12px 14px; background: var(--panel-2); border-radius: 14px; } .wx-imp-t { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; } .wx-imp p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.45; }
     .why { margin: 0 0 14px; font-size: 13.5px; line-height: 1.5; color: var(--muted); } .why b { color: var(--text); }
     .fwrap { position: relative; } .f-replay { position: absolute; right: 10px; top: 20px; border: 0; border-radius: 999px; padding: 6px 12px; font: 600 12px Inter, sans-serif; color: #fff; background: rgba(8,12,18,.6); cursor: pointer; }
+    .f1-strat { margin-top: 16px; } .fs-key { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: var(--muted); margin-bottom: 8px; } .fs-key i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+    .fs-row { display: grid; grid-template-columns: 26px 54px 1fr 58px 34px; gap: 8px; align-items: center; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--line); }
+    .fs-row .pos { font-size: 14px; } .fs-drv { font-weight: 700; } .fs-drv i { display: inline-block; width: 4px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+    .fs-bar { display: flex; height: 16px; border-radius: 5px; overflow: hidden; gap: 2px; } .fs-bar i { display: grid; place-items: center; font: 700 9.5px Inter, sans-serif; color: #111; font-style: normal; }
+    .fs-st { font-size: 11.5px; color: var(--muted); } .fs-mv { font-size: 11.5px; font-weight: 700; text-align: right; color: var(--muted); } .fs-mv.up { color: #3fb950; } .fs-mv.down { color: #e8423f; }
+    .fs-fast { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 12.5px; } .fs-fast small { width: 100%; color: var(--muted); font-size: 11px; } .fs-pit b { font-variant-numeric: tabular-nums; }
     .wp2 { align-items: flex-end; margin-bottom: 10px; } .wp2 span { display: flex; align-items: center; gap: 8px; } .wp2 span:last-child { flex-direction: row-reverse; }
     .wp2 img { width: 26px; height: 26px; object-fit: contain; } .wp2 small { font-size: 12px; font-weight: 700; color: var(--muted); }
     .wp2 b { font-size: 22px; font-weight: 750; font-variant-numeric: tabular-nums; opacity: .75; } .wp2 .lead b { font-size: 30px; opacity: 1; }
@@ -1568,6 +1574,40 @@
         '<div class="card" style="max-width:520px"><div class="card-head"><span class="status' + (nx?.status?.type?.state === "in" ? " live" : "") + '">' + esc(nx?.status?.type?.state === "in" ? "Live now" : "Next up") + "</span><span>" + esc(ev.circuit?.fullName || "") + '</span></div><div class="gp-name" style="font-size:24px">' + esc(ev.name) + '</div><div class="gp-sub" style="margin:0">' + esc(label) + "</div></div>";
     }
     let countdownTimer = 0;
+    /* ---------- F1: last race strategy (OpenF1's free data on finished sessions) ----------
+       Tyre stints per driver (coloured by compound), pit stops, places gained from the start, and the fastest stops. */
+    const TYRE = { SOFT: ["#e8423f", "S"], MEDIUM: ["#f2c300", "M"], HARD: ["#e9e9ea", "H"], INTERMEDIATE: ["#3fb950", "I"], WET: ["#3b82f6", "W"] };
+    async function f1StrategyHtml() {
+      const OF = "https://api.openf1.org/v1/";
+      const now = Date.now(), yr = new Date().getFullYear();
+      const races = ((await getJSON(OF + "sessions?session_name=Race&year=" + yr).catch(() => [])) || []).filter((s) => Date.parse(s.date_end || s.date_start) < now - 3 * 36e5);
+      const race = races[races.length - 1];
+      if (!race) return "";
+      const k = race.session_key;
+      // One request at a time: OpenF1 limits bursts, and a refused request would look like missing data.
+      const get = async (e, q) => { for (let t = 0; t < 3; t++) { try { return await getJSON(OF + e + "?" + q); } catch { await new Promise((r) => setTimeout(r, 700)); } } return []; };
+      const res = await get("session_result", "session_key=" + k), stints = await get("stints", "session_key=" + k), pits = await get("pit", "session_key=" + k);
+      let drivers = await get("drivers", "session_key=" + k); if (!drivers?.length) drivers = await get("drivers", "meeting_key=" + race.meeting_key);
+      const pos = await get("position", "session_key=" + k);
+      if (!res?.length) return "";
+      const drv = {}; (drivers || []).forEach((d) => { drv[d.driver_number] = d; });
+      const start = {}; (pos || []).forEach((p) => { if (!(p.driver_number in start)) start[p.driver_number] = p.position; });
+      const laps = Math.max(...res.map((r) => r.number_of_laps || 0)) || 1;
+      const rows = res.filter((r) => r.position).sort((a, b) => a.position - b.position).slice(0, 10).map((r) => {
+        const d = drv[r.driver_number] || {}, st = (stints || []).filter((s) => s.driver_number === r.driver_number).sort((a, b) => a.stint_number - b.stint_number);
+        const stops = (pits || []).filter((p) => p.driver_number === r.driver_number).length || Math.max(0, st.length - 1), moved = start[r.driver_number] ? start[r.driver_number] - r.position : null;
+        const bar = st.map((s) => { const t = TYRE[s.compound] || ["#888", "?"], w = ((s.lap_end || laps) - s.lap_start + 1) / laps * 100; return '<i style="width:' + w.toFixed(1) + "%;background:" + t[0] + '" title="' + esc(s.compound || "") + " laps " + s.lap_start + "-" + (s.lap_end || laps) + '">' + (w > 9 ? t[1] : "") + "</i>"; }).join("");
+        return '<div class="fs-row"><span class="pos">' + r.position + '</span><span class="fs-drv"><i style="background:#' + esc(d.team_colour || "888") + '"></i>' + esc(d.name_acronym || r.driver_number) + '</span><span class="fs-bar">' + bar + '</span><span class="fs-st">' + stops + (stops === 1 ? " stop" : " stops") + "</span>" +
+          '<span class="fs-mv ' + (moved > 0 ? "up" : moved < 0 ? "down" : "") + '">' + (moved == null ? "" : moved > 0 ? "▲" + moved : moved < 0 ? "▼" + -moved : "–") + "</span></div>";
+      }).join("");
+      const fast = (pits || []).filter((p) => p.stop_duration > 0).sort((a, b) => a.stop_duration - b.stop_duration).slice(0, 3)
+        .map((p) => '<span class="fs-pit"><b>' + p.stop_duration.toFixed(1) + "s</b> " + esc(drv[p.driver_number]?.name_acronym || p.driver_number) + " · lap " + p.lap_number + "</span>").join("");
+      return '<div class="panel f1-strat"><div class="g-label">Race strategy · ' + esc(race.location || race.circuit_short_name || "Last race") + "</div>" +
+        dm("<b>Tyres and pit stops.</b> Each bar is a driver's race, split into stints on different tyres: <b>S</b>oft (fastest, wears quickly), <b>M</b>edium, <b>H</b>ard (slowest, lasts longest), plus <b>I</b>ntermediate and <b>W</b>et for rain. Drivers must stop at least once on a dry day. ▲/▼ shows places gained or lost from the start.") +
+        '<div class="fs-key">' + Object.entries(TYRE).map(([n, [c, l]]) => '<span><i style="background:' + c + '"></i>' + n.charAt(0) + n.slice(1).toLowerCase() + "</span>").join("") + "</div>" + rows +
+        (fast ? '<div class="fs-fast"><small>Fastest pit stops (time stopped)</small>' + fast + "</div>" : "") + '<div class="g-note">Data: OpenF1 (free data from finished sessions).</div></div>';
+    }
+
     async function renderF1() {
       const main = $("main");
       main.innerHTML = barHtml("Formula 1", "f1") + skeleton(3);
@@ -1610,7 +1650,8 @@
           return "<tr" + (dk ? ' class="f1-follow' + (isPF(dk) ? " on" : "") + '" data-pfollow="' + esc(dk) + '" data-pn="' + esc(who) + '" data-ph="' + esc(e.athlete?.headshot?.href || "") + '"' : "") + '><td class="pos">' + (i + 1) + "</td><td>" + flag + esc(who) + (dk ? ' <span class="fo">★</span>' : "") + '</td><td class="pts">' + esc(pts) + "</td></tr>";
         }).join("") + "</tbody></table>" + (state.f1Table === "drivers" ? '<div class="g-note">Tap a driver to follow them. They show up on Home.</div>' : "") : '<div class="empty">Standings unavailable.</div>';
       right += "</div>";
-      main.innerHTML = barHtml("Formula 1", "f1") + '<div class="panel track-panel" id="trackPanel"><div class="g-label">Track</div><div class="skel" style="height:260px"></div></div>' + '<div class="f1-wrap">' + left + right + "</div>";
+      main.innerHTML = barHtml("Formula 1", "f1") + '<div class="panel track-panel" id="trackPanel"><div class="g-label">Track</div><div class="skel" style="height:260px"></div></div>' + '<div class="f1-wrap">' + left + right + "</div>" + '<div data-f1strat></div>';
+      f1StrategyHtml().then((x) => { const el = main.querySelector("[data-f1strat]"); if (el) { if (x) el.outerHTML = x; else el.remove(); } }).catch(() => {});
       renderTabs();
       stamp();
       tickCountdown();
