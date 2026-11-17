@@ -66,7 +66,7 @@ function syncButton() {
 }
 const cleanName = (s) => String(s || "").trim().toLowerCase();
 
-async function signUp(email, password, username) {
+async function signUp(email, password, username, teen) {
   username = cleanName(username);
   if (!/^[a-z0-9_]{3,20}$/.test(username)) throw new Error("Usernames are 3–20 letters, numbers or _.");
   const cred = await fb.createUserWithEmailAndPassword(auth, email, password);
@@ -78,6 +78,7 @@ async function signUp(email, password, username) {
     throw new Error("That username was just taken. Try another.");
   }
   profile = { username }; names[cred.user.uid] = username;
+  if (teen) agreeTerms(cred.user.uid);
 }
 
 /* ---------- sync ★ teams and alert settings ---------- */
@@ -192,6 +193,10 @@ async function openChat(uid) {
 }
 
 /* ---------- trust + privacy ---------- */
+// Anyone can make an account (agreeing to the Terms). Ticking "13 or older" also turns on the 13+ features (Marks). Saved once.
+const TOS_CHECK = '<label class="acct-check"><input type="checkbox" name="tos" required> I agree to the <button type="button" class="link-btn" data-terms>Terms of Service</button></label>' +
+  '<label class="acct-check"><input type="checkbox" name="teen" data-teen> I am 13 or older <small class="muted">(needed for Marks)</small></label>';
+const agreeTerms = (uid) => fb.setDoc(fb.doc(db, "ages", uid), { is13plus: true, at: fb.serverTimestamp() }).catch(() => {});   // already answered: kept as it was
 const TRUST = '<div class="trust"><div class="trust-h">🔒 What Scoreline stores</div><ul>' +
   "<li><b>Your username</b>: the only thing other people can see.</li>" +
   "<li><b>Your email</b>: private, only used to log in and reset your password. Never shown to anyone or sold.</li>" +
@@ -240,16 +245,18 @@ function refreshAccountSheet() {
     h = '<div class="seg"><button type="button" data-amode="login" class="' + (mode === "login" ? "active" : "") + '">Log in</button><button type="button" data-amode="signup" class="' + (mode === "signup" ? "active" : "") + '">Create account</button></div>' +
       '<form class="acct-form" data-acct>' + (mode === "signup" ? '<label>Username<input name="username" maxlength="20" autocomplete="username" placeholder="e.g. niners_fan"></label>' : "") +
       '<label>Email<input name="email" type="email" autocomplete="email" required></label><label>Password<input name="password" type="password" minlength="6" autocomplete="' + (mode === "signup" ? "new-password" : "current-password") + '" required></label>' +
+      (mode === "signup" ? TOS_CHECK + '<p class="g-note">By clicking Create account you agree to the TOS and understand the consequences.</p>' : "") +
       '<div class="acct-err" data-err></div><button class="pill-btn dl acct-go" type="submit">' + (mode === "signup" ? "Create account" : "Log in") + "</button>" +
       (mode === "login" ? '<button type="button" class="acct-link" data-forgot>Forgot password?</button>' : "") + "</form>" +
       (mode === "login" ? '<button type="button" class="acct-link" data-usecode>Have a sign-in code from the website?</button>' : "") +
       (window.__TAURI__ ? "" : '<div class="or"><span>or</span></div><button type="button" class="pill-btn g-btn" data-google><svg viewBox="0 0 24 24" width="18" height="18"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.6 5.6 0 0 1-2.4 3.7v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.9-3c-1.1.7-2.4 1.2-4 1.2-3.1 0-5.7-2.1-6.6-4.9h-4v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.4 14.4a7.2 7.2 0 0 1 0-4.7V6.6h-4a12 12 0 0 0 0 10.9z"/><path fill="#EA4335" d="M12 4.8c1.7 0 3.3.6 4.5 1.8l3.4-3.4A12 12 0 0 0 1.4 6.6l4 3.1C6.3 6.9 8.9 4.8 12 4.8z"/></svg>Continue with Google</button>') +
+      (window.__TAURI__ ? "" : '<p class="g-note">Continuing with Google means you agree to the <button type="button" class="link-btn" data-terms>Terms of Service</button>.</p>') +
       TRUST + '<button type="button" class="acct-link" data-privacy>Read the full privacy page</button>';
   } else if (pending2) {
     h = otpForm("Check your email", "Two-step sign-in is on. We sent a 6-digit code to " + esc(maskEmail(user.email)) + ". It works for 10 minutes.") +
       '<div class="acct-foot"><button type="button" class="acct-link" data-otpresend>Send a new code</button><button type="button" class="acct-link" data-logout>Log out</button></div>';  } else if (!profile) {
     h = '<div class="g-label">Pick a username</div><p class="g-note">This is the only thing other people will see. 3–20 letters, numbers or _.</p>' +
-      '<form class="acct-add" data-uname><input maxlength="20" placeholder="e.g. niners_fan" autocomplete="off"><button class="pill-btn" type="submit">Save</button></form><div class="acct-err" data-err></div>' +
+      '<form class="acct-add acct-unf" data-uname><input maxlength="20" placeholder="e.g. niners_fan" autocomplete="off"><button class="pill-btn" type="submit">Save</button>' + TOS_CHECK + '</form><div class="acct-err" data-err></div>' +
       '<div class="acct-foot"><button type="button" class="acct-link" data-logout>Log out</button></div>';
   } else {
     const F = friendState;
@@ -481,7 +488,7 @@ document.addEventListener("submit", async (e) => {
     const d = Object.fromEntries(new FormData(f));
     const btn = f.querySelector(".acct-go"); btn.disabled = true; errBox(f, "");
     try {
-      if (mode === "signup") { await signUp(d.email.trim(), d.password, d.username); await startSync().catch(() => {}); refreshAccountSheet(); }
+      if (mode === "signup") { await signUp(d.email.trim(), d.password, d.username, !!d.teen); await startSync().catch(() => {}); refreshAccountSheet(); }
       else await fb.signInWithEmailAndPassword(auth, d.email.trim(), d.password);
       buzz(12); toast(mode === "signup" ? "Account created" : "Logged in");
     } catch (err) { errBox(f, niceErr(err)); }
@@ -496,6 +503,7 @@ document.addEventListener("submit", async (e) => {
       await fb.setDoc(fb.doc(db, "usernames", name), { uid: user.uid });
       await fb.setDoc(fb.doc(db, "profiles", user.uid), { username: name, createdAt: fb.serverTimestamp() });
       profile = { username: name }; names[user.uid] = name;
+      if (f.querySelector("[data-teen]")?.checked) agreeTerms(user.uid);
       buzz(12); refreshAccountSheet();
     } catch (err) { errBox(f, niceErr(err)); }
   }
