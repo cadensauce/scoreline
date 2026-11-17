@@ -96,10 +96,16 @@ export async function settle(db, admin, docId, winner, rewards) {
   if (g?.exists && g.data().settled) { settled.add(docId); return; }
   const picks = await db.collection("picks").where("gameId", "==", docId).get();
   const open = picks.docs.filter((p) => !p.data().result);
+  // Marks only for people who agreed to the Terms (13+). Everyone else's picks are just for fun.
+  const agreed = {};
+  await Promise.all([...new Set(open.map((p) => p.data().uid))].map(async (uid) => {
+    const a = await db.collection("ages").doc(uid).get().catch(() => null);
+    agreed[uid] = a?.exists && a.data().is13plus === true;
+  }));
   for (let i = 0; i < open.length; i += 150) {
     const batch = db.batch();
     for (const p of open.slice(i, i + 150)) {
-      const d = p.data(), won = d.side === winner, amount = won ? Number(rewards[d.side]) || 0 : 0;
+      const d = p.data(), won = d.side === winner, amount = won && agreed[d.uid] ? Number(rewards[d.side]) || 0 : 0;
       batch.update(p.ref, { result: won ? "won" : winner === "tie" ? "tie" : "lost", reward: amount });
       if (won && amount > 0) {
         batch.create(db.doc("ledger/" + d.uid + "/entries/pick_" + p.id), { amount, reason: "pick", refId: docId, createdAt: FV.serverTimestamp() });
