@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794885452" />
+  <meta name="build" content="1794886519" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -528,6 +528,7 @@
     .fh .f-ball { fill: #c9773a; stroke: #fff; stroke-width: 1.5; } .f-land { fill: rgba(255,255,255,.18); stroke: #fff !important; stroke-width: 2.5 !important; } .f-landc { fill: #fff; }
     .fh .f-jn { font-size: 16px; } .fh .f-jn.s { font-size: 12px; } .fh .f-lbl { font-size: 14.5px; } .fh .f-x { font-size: 26px; } .fh .f-mark circle { stroke-width: 2.5; }
     .fh .cam { transform-origin: 0 0; transition: transform .9s cubic-bezier(.45,0,.35,1); }
+    .wx-imp { margin-top: 12px; padding: 12px 14px; background: var(--panel-2); border-radius: 14px; } .wx-imp-t { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; } .wx-imp p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.45; }
     .fwrap { position: relative; } .f-replay { position: absolute; right: 10px; top: 20px; border: 0; border-radius: 999px; padding: 6px 12px; font: 600 12px Inter, sans-serif; color: #fff; background: rgba(8,12,18,.6); cursor: pointer; }
     .strat { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
     .strat-opts { display: flex; flex-wrap: wrap; gap: 8px; } .strat-opts .pill-btn { padding: 9px 14px; }
@@ -1564,7 +1565,7 @@
       renderTabs();
       stamp();
       tickCountdown();
-      if (ev) { const nx = nextSession(ev); if (nx) loadWeather(main.querySelector("[data-wx]"), ev.circuit, nx.date, nx.status?.type?.state === "in" ? "Weather now" : "Weather for " + (SESSION_NAMES[nx.type?.abbreviation] || "the next session")); }
+      if (ev) { const nx = nextSession(ev); if (nx) loadWeather(main.querySelector("[data-wx]"), ev.circuit, nx.date, nx.status?.type?.state === "in" ? "Weather now" : "Weather for " + (SESSION_NAMES[nx.type?.abbreviation] || "the next session"), null, "f1"); }
       loadTrack();
       schedule(ev && nextSession(ev)?.status?.type?.state === "in");
     }
@@ -3077,21 +3078,54 @@
       if (i < 0) return { later: true, city: r.name };
       return { city: r.name, hours: t.slice(i, i + 5).map((x, k) => ({ at: x * 1000, temp: H.temperature_2m[i + k], pop: H.precipitation_probability[i + k], wind: H.wind_speed_10m[i + k], code: H.weather_code[i + k] })) };
     }
-    function wxHtml(w, label) {
+    // What the forecast means for the game: which players / parts of the game the conditions affect most.
+    // General, well-known effects by sport; based on the hours shown (worst wind, any rain/snow, temperature at the start).
+    function wxImpact(w, lg) {
+      const hs = w.hours || [];
+      if (!hs.length) return [];
+      const F = (c) => (IMPERIAL ? c : c * 9 / 5 + 32), MPH = (k) => (IMPERIAL ? k : k / 1.609);
+      const temp = F(hs[0].temp), wind = Math.max(...hs.map((h) => MPH(h.wind) || 0));
+      const codes = hs.map((h) => h.code), snow = codes.some((c) => (c >= 71 && c <= 77) || c === 85 || c === 86);
+      const wet = !snow && codes.some((c) => (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95), storm = codes.some((c) => c >= 95);
+      const out = [];
+      if (lg === "nfl" || lg === "cfb") {
+        if (wind >= 15) out.push(["Windy", "Hits kickers and punters hardest (distance and accuracy), then deep passes. Expect more runs and short throws."]);
+        if (snow) out.push(["Snow", "Footing and grip: QBs, receivers and anyone carrying the ball. Slower routes, more fumbles, more running plays."]);
+        if (wet) out.push(["Rain", "Wet ball: QBs' grip, receivers' catches and ball security (fumbles). Kickers' footing too."]);
+        if (temp <= 32) out.push(["Freezing", "Hard to grip and catch, and kicks don't travel as far. Kickers and QBs feel it most."]);
+        if (temp >= 85) out.push(["Hot", "Players tire late in the game, especially linemen. Teams rotate more."]);
+      } else if (lg === "mlb") {
+        if (wind >= 12) out.push(["Windy", "Changes how far fly balls carry, so home runs and outfielders are most affected. Pitchers' breaking balls move differently."]);
+        if (wet || snow) out.push(["Rain", "Slick ball for pitchers (control), a slower infield, and a chance of a delay."]);
+        if (storm) out.push(["Storms", "Lightning means delays or a stoppage."]);
+        if (temp <= 50) out.push(["Cold", "The ball doesn't carry as far (fewer home runs), and pitchers find it harder to grip."]);
+        if (temp >= 85) out.push(["Hot", "The ball carries farther: good for hitters and home runs."]);
+      } else if (lg === "f1") {
+        if (wet || snow) out.push(["Rain", "Wet tyres, slower laps and more mistakes and safety cars. Driver skill and team strategy matter most."]);
+        if (wind >= 20) out.push(["Windy", "Gusts unsettle the cars under braking and in fast corners."]);
+        if (temp <= 50) out.push(["Cold", "Tyres struggle to warm up, so starts and restarts are harder."]);
+        if (temp >= 85) out.push(["Hot", "More tyre wear, so pit-stop strategy matters more."]);
+      }
+      if (!out.length) out.push(["Good conditions", "The weather shouldn't have much effect on this one."]);
+      return out;
+    }
+    function wxHtml(w, label, lg) {
       if (!w) return "";
       const head = '<div class="g-label">' + esc(label) + "</div>";
       const foot = '<div class="g-note">' + esc(w.city) + ' · forecast by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a></div>';
       if (w.later) return head + '<div class="g-note">Forecast not out yet. Check back closer to the day.</div>' + foot;
       const u = IMPERIAL ? ["°", " mph"] : ["°", " km/h"];
-      return head + '<div class="wx-row">' + w.hours.map((h) => '<div class="wx"><small>' + esc(fmtTime(new Date(h.at).toISOString())) + "</small><b>" + Math.round(h.temp) + u[0] + "</b><span>" + esc(WX_WORD(h.code)) + "</span><small>" + (h.pop ?? 0) + "% rain · " + Math.round(h.wind) + u[1] + "</small></div>").join("") + "</div>" + foot;
+      const imp = wxImpact(w, lg);
+      return head + '<div class="wx-row">' + w.hours.map((h) => '<div class="wx"><small>' + esc(fmtTime(new Date(h.at).toISOString())) + "</small><b>" + Math.round(h.temp) + u[0] + "</b><span>" + esc(WX_WORD(h.code)) + "</span><small>" + (h.pop ?? 0) + "% rain · " + Math.round(h.wind) + u[1] + "</small></div>").join("") + "</div>" +
+        (imp.length ? '<div class="wx-imp"><div class="wx-imp-t">What the weather affects</div>' + imp.map(([k, d]) => "<p><b>" + esc(k) + ".</b> " + esc(d) + "</p>").join("") + "</div>" : "") + foot;
     }
-    async function loadWeather(el, place, startIso, label, indoorUrl) {
+    async function loadWeather(el, place, startIso, label, indoorUrl, lg) {
       if (!el) return;
       try {
         if (indoorUrl) { const vn = await getJSON(indoorUrl).catch(() => null); if (!vn || vn.indoor !== false) { el.remove(); return; } }
         const w = await wxFor(place, Date.parse(startIso) || Date.now());
         if (!w || !el.isConnected) { el.remove(); return; }
-        el.innerHTML = wxHtml(w, label);
+        el.innerHTML = wxHtml(w, label, lg);
       } catch { el.remove(); }
     }
 
@@ -3160,7 +3194,7 @@
       if ((lg === "nba" || lg === "mlb") && st.state === "in") liveSummary(v);
       if (st.state === "in") wpLive(v, lg, id);
       const [wsp, wlg] = LEAGUES[lg].path.split("/");
-      if (vnu?.id) loadWeather(v.el.querySelector("[data-wx]"), vnu, comp.date, st.state === "in" ? "Weather now" : lg === "mlb" ? "Weather at first pitch" : "Weather at kickoff", "https://sports.core.api.espn.com/v2/sports/" + wsp + "/leagues/" + wlg + "/venues/" + vnu.id);
+      if (vnu?.id) loadWeather(v.el.querySelector("[data-wx]"), vnu, comp.date, st.state === "in" ? "Weather now" : lg === "mlb" ? "Weather at first pitch" : "Weather at kickoff", "https://sports.core.api.espn.com/v2/sports/" + wsp + "/leagues/" + wlg + "/venues/" + vnu.id, lg);
       useOurModel(lg, v, s, teams, st.state, id);
     }
 
