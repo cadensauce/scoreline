@@ -2202,7 +2202,7 @@
       const vids = (s.videos || []).filter((v) => v.links?.web?.href && v.headline).slice(0, 8);
       if (!vids.length) return "";
       const dur = (d) => (d ? Math.floor(d / 60) + ":" + String(d % 60).padStart(2, "0") : "");
-      return '<div class="g-sec" data-c="' + cat + '"><div class="g-label">Highlights</div><div class="hl-row">' + vids.map((v) =>
+      return '<div class="g-sec' + (cat === "recap" ? " sum-hide" : "") + '" data-c="' + cat + '"><div class="g-label">Highlights</div><div class="hl-row">' + vids.map((v) =>
         '<a class="hl" href="' + esc(v.links.web.href) + '" target="_blank" rel="noopener" data-ext><span class="hl-th">' + (v.thumbnail ? '<img src="' + esc(v.thumbnail) + '" alt="" loading="lazy">' : "") +
         '<i class="hl-play"></i>' + (v.duration ? '<span class="hl-d">' + dur(v.duration) + "</span>" : "") + "</span><b>" + esc(v.headline) + "</b></a>").join("") +
         '</div><div class="g-note">Clips open on the video site.</div></div>';
