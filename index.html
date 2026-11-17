@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794882137" />
+  <meta name="build" content="1794882720" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2610,7 +2610,7 @@
       // with "from", slides in from there. Small = defender (number only).
       const mark = (x, y, c, a, fb, delay, up, from, route, small) => {
         xs.push(x);
-        const name = small ? "" : [a?.short || fb || "", a?.pos].filter(Boolean).join(" · "), r = small ? 12 : 16, ly = up ? -32 : 36;
+        const name = small ? (a?.short ? a.short + (fb ? " · " + fb : "") : "") : [a?.short || fb || "", a?.pos].filter(Boolean).join(" · "), r = small ? 12 : 16, ly = up ? -32 : 36;
         const body = (small ? '<polygon points="0,-15 13,9 -13,9" fill="' + c + '"/>' : '<circle cx="0" cy="0" r="' + r + '" fill="' + c + '"/>') + '<text x="0" y="' + (small ? 2 : 0) + '" class="f-jn' + (small ? " s" : "") + '">' + esc(a?.jersey || "") + "</text>" +
           (name ? '<rect x="-60" y="' + (ly - 15) + '" width="120" height="25" rx="12.5" class="f-pill"/><text x="0" data-cx="0" data-rel="1" y="' + (ly + 3) + '" class="f-lbl">' + esc(name) + "</text>" : "");
         if (route && !still) return '<g class="f-mark" style="animation-delay:' + route.begin + 's"><g><animateMotion begin="' + route.begin + 's" dur="' + route.dur + 's" fill="freeze" ' + (route.kp ? 'calcMode="linear" keyPoints="' + route.kp + '" keyTimes="' + route.kt + '"' : 'calcMode="spline" keyTimes="0;1" keySplines=".45 0 .35 1"') + ' path="' + route.d + '"/>' + body + "</g></g>";
@@ -2704,7 +2704,7 @@
         const tgt = ath("target") || ath("receiver"), tn = nm(/ (?:to|for) ([A-Z][a-z]?\.[\w'-]+)/);
         if (tgt || tn) s += mark(tx, ly, oc, tgt, tn, 0.1, ly < CY, null, { d: rt.d, begin: 0.1, dur: 1.25 });
         const pd = ath("passDefender");
-        if (!pick && pd) s += mark(tx + dir * 16, ly + 22, dc, pd, "", 0.4, false, { x: tx + dir * 70, y: ly + 60, begin: 0.4, dur: 1.0 }, null, true);
+        if (!pick && pd) s += mark(tx + dir * 16, ly + 22, dc, pd, "Coverage", 0.4, ly >= CY ? false : false, { x: tx + dir * 70, y: ly + 60, begin: 0.4, dur: 1.0 }, null, true);
         if (pick && ath("interceptor")) {
           const rd = Math.min(1.6, 0.45 + Math.abs(xE - tx) / 200), ip = weave(tx, ly, xE, ly + 24);
           if (Math.abs(xE - tx) > 3) s += run(ip, 1.4, rd);
@@ -2713,24 +2713,24 @@
         }
       } else if (/sack/i.test(ty)) {
         s += run("M" + qbX + " " + CY + " L" + xE + " " + CY, 0.5, 0.6);
-        s += mark(xE, CY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) sacked/), 0.1, false, null, route("M" + qbX + " " + CY + " L" + xE + " " + CY, 0.5, 0.6)) + tag(clampX(xE), CY - 52, "Sack", 1.1);
+        s += mark(xE, CY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) sacked/), 0.1, false, null, route("M" + qbX + " " + CY + " L" + xE + " " + CY, 0.5, 0.6)) + tag(clampX(xE), CY - 100, "Sack", 1.1);
         carrier = { sx: qbX, ex: xE, ey: CY, begin: 0.5, dur: 0.6, tc: dc };
-      } else if (/rush|run|scramble|kneel|fumble/i.test(ty) || G.gain) {
+      } else if (!/penalty|timeout|end of/i.test(ty) && (/rush|run|scramble|kneel|fumble/i.test(ty) || G.gain)) {
         const sx = xL - dir * 4 * S, ly = side ? CY + side * 44 * dir : CY, rd = Math.min(1.6, 0.5 + Math.abs(xE - sx) / 220);
         const d = weave(sx, CY, xE, ly);
         s += run(d, 0.35, rd);
         s += mark(xE, ly, oc, ath("rusher") || ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) /), 0.35, ly <= CY, null, route(d, 0.35, rd));
         carrier = { sx, ex: xE, ey: ly, begin: 0.35, dur: rd, tc: dc };
       } else {
-        s += tag(clampX(xL), CY - 50, ty || "Play", 0.2);
+        s += tag(clampX(xL), CY - 50, /penalty/i.test(ty) ? "🚩 " + ((t.match(/PENALTY on [^,]+, ([^,(]+)/i) || [])[1] || "Penalty").trim() : ty || "Play", 0.2);
       }
       // Tacklers close in on the ball carrier as he is brought down (only players the data credits).
       if (carrier) {
         const head = Math.sign(carrier.ex - carrier.sx) || dir;
-        const who = (P.participants || []).filter((x) => /tackler|sackedBy/.test(x.type)).map((x) => athCache[x.athlete?.$ref]).filter(Boolean).slice(0, 2);
-        who.forEach((a, k) => {
-          const dx = carrier.ex + head * 24, dy = carrier.ey + (k ? 24 : -24);
-          s += mark(dx, dy, carrier.tc, a, "", carrier.begin, false, { x: dx + head * 80, y: dy + (k ? 60 : -60), begin: carrier.begin, dur: carrier.dur + 0.1 }, null, true);
+        const seen = new Set(), who = (P.participants || []).filter((x) => /tackler|sackedBy/.test(x.type)).map((x) => [athCache[x.athlete?.$ref], x.type === "sackedBy" ? "Sack" : "Tackle"]).filter(([a]) => a && !seen.has(a.short) && seen.add(a.short)).slice(0, 2);   // each defender once (a sacker is often listed as the tackler too)
+        who.forEach(([a, role], k) => {
+          const dx = carrier.ex + head * 34, dy = carrier.ey + (k ? 34 : -34);
+          s += mark(dx, dy, carrier.tc, a, role, carrier.begin, !k, { x: dx + head * 80, y: dy + (k ? 60 : -60), begin: carrier.begin, dur: carrier.dur + 0.1 }, null, true);
         });
       }
       return finish(s, xs.length ? xs : [X(50)]);
