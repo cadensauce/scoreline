@@ -3738,6 +3738,7 @@
       const st = (e, n) => (e.stats || []).find((x) => x.name === n || x.type === n);
       const foot = lg === "nfl" || lg === "cfb", cut = PLAYOFF_CUT[lg];
       let h = lg === "cfb" ? await apTop25() : ""; if (!v.el.isConnected) return;
+      let cutNote = "";
       groups.forEach((g) => {
         const rows = g.standings.entries.slice();
         const seeded = rows.every((e) => st(e, "playoffSeed")?.value > 0);
@@ -3749,8 +3750,9 @@
             return '<tr class="' + cls + '" data-team="' + lg + "|" + esc(t.id) + '"><td class="pos">' + (i + 1) + "</td><td>" + (logo ? '<img src="' + esc(logo) + '" alt="" loading="lazy">' : "") + esc(t.abbreviation || t.shortDisplayName || t.displayName || "") +
               (state.favs.has(favKey({ team: t })) ? ' <span class="fmark">★</span>' : "") + '</td><td class="n">' + esc(rec || "–") + '</td><td class="n">' + esc((foot ? (st(e, "pointDifferential") || st(e, "differential")) : st(e, "winPercent"))?.displayValue || "–") + "</td>" +
               (foot ? "" : '<td class="n">' + esc(st(e, "gamesBehind")?.displayValue || "–") + "</td>") + '<td class="n">' + esc(st(e, "streak")?.displayValue || "–") + "</td></tr>";
-          }).join("") + "</tbody></table>" + (seeded && cut ? '<div class="g-note">' + esc(cut[2]) + "</div>" : "") + "</div>";
+          }).join("") + "</tbody></table></div>"; if (seeded && cut) cutNote = '<div class="g-note">' + esc(cut[2]) + "</div>";
       });
+      h += cutNote;
       setBody(v, (LEAGUES[lg].short || LEAGUES[lg].name) + " standings", h || '<div class="empty">Standings not available right now.</div>');
     }
 
