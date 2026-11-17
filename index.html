@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794887091" />
+  <meta name="build" content="1794887140" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -1996,7 +1996,9 @@
       const sc = (t) => Number(t.score), [away, home] = teams;
       if (!Number.isFinite(sc(away)) || !Number.isFinite(sc(home)) || sc(away) === sc(home)) return "";
       const W = sc(home) > sc(away) ? home : away, L = W === home ? away : home, wHome = W === home;
-      const nmT = (t) => t.team?.shortDisplayName || t.team?.displayName || t.team?.abbreviation || "";
+      const nmT = (t) => t.team?.name || t.team?.shortDisplayName || t.team?.displayName || t.team?.abbreviation || "";
+      // Tidy ESPN play text: drop formation notes and snapper/holder names, shorten the extra-point part.
+      const tidy = (x) => String(x || "").replace(/^([^)]*)s*/, "").replace(/,?s*(Center|Holder)-[^,.)]+/g, "").replace(/.?s*[A-Z].[w'-]+ extra point is GOOD.*$/i, ", extra point good").replace(/s+/g, " ").trim().slice(0, 120);
       const margin = sc(W) - sc(L), big = { nfl: 17, cfb: 21, nba: 15, mlb: 5 }[lg] || 15, close = { nfl: 3, cfb: 3, nba: 5, mlb: 1 }[lg] || 3;
       const series = lg === "mlb" ? null : wpSeries(s);
       const low = series ? Math.min(...series.map((p) => (wHome ? p.home : 1 - p.home))) : null;
@@ -2013,7 +2015,7 @@
         if (lead <= 0) break;
         turn = sp[i];
       }
-      if (turn) items.push(["Turning point", (turn.text || turn.type?.text || "Score") + " (" + perName(lg, turn.period?.number) + " " + (turn.clock?.displayValue || "") + ") put " + nmT(W) + " ahead for good."]);
+      if (turn) items.push(["Turning point", tidy(turn.text || turn.type?.text || "Score") + " (" + perName(lg, turn.period?.number) + " " + (turn.clock?.displayValue || "") + ") put " + nmT(W) + " ahead for good."]);
       // Biggest moments: largest swings in win probability.
       if (series && series.length > 3) {
         const sw = series.slice(1).map((p, i) => ({ p, d: p.home - series[i].home })).filter((x) => x.p.text).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 3);
