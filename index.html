@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794913335" />
+  <meta name="build" content="1794918108" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -543,7 +543,8 @@
     .wp2 b { font-size: 22px; font-weight: 750; font-variant-numeric: tabular-nums; opacity: .75; } .wp2 .lead b { font-size: 30px; opacity: 1; }
     .wpg svg { height: 150px !important; } .wpg-fill { opacity: .28; } .wpg-score { stroke: var(--text); stroke-width: 2; vector-effect: non-scaling-stroke; }
     /* Dummy Mode notes + first-time tour */
-    .dm-note { display: none; } html.dummy .dm-note { display: block; margin: 10px 0 12px; padding: 11px 13px; background: var(--panel-2); border-radius: 12px; font-size: 13px; line-height: 1.55; color: var(--muted); }
+    .dm-note { display: none; } html.dummy .dm-note { display: block; position: relative; margin: 10px 0 14px; padding: 12px 14px 12px 40px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
+    html.dummy .dm-note::before { content: "?"; position: absolute; left: 13px; top: 12px; width: 18px; height: 18px; border-radius: 50%; background: var(--text); color: var(--bg); font: 700 11px/18px system-ui, sans-serif; text-align: center; }
     html.dummy .dm-note b { color: var(--text); }
     .tour { position: fixed; inset: 0; z-index: 10050; animation: fadein .25s ease both; } .tour.out { opacity: 0; transition: opacity .25s; }
     .tour-dim { position: absolute; inset: 0; background: rgba(0,0,0,.62); }
@@ -3411,7 +3412,7 @@
     }
     async function openPlayer(lg, id) {
       const v = { kind: "player", key: "player|" + lg + "|" + id };
-      if (!pushView(v)) return;
+      if (!pushView(v)) return; v.el.dataset.lg = lg;
       const base = "https://site.web.api.espn.com/apis/common/v3/sports/" + LEAGUES[lg].path + "/athletes/" + id;
       const [info, ov] = await Promise.all([getJSON(base).catch(() => null), getJSON(base + "/overview").catch(() => null)]);
       if (!v.el.isConnected) return;
@@ -3554,7 +3555,7 @@
 
     async function openGame(lg, id) {
       const v = { kind: "game", key: "game|" + id };
-      if (!pushView(v)) return;
+      if (!pushView(v)) return; v.el.dataset.lg = lg;
       let s;
       try { s = await getJSON(API + LEAGUES[lg].path + "/summary?event=" + id); }
       catch { return setBody(v, "Game", '<div class="error">Couldn\'t load this game.</div>'); }
@@ -3631,7 +3632,7 @@
     const PLAYOFF_CUT = { nfl: [7, 0, "Top 7 in each conference make the playoffs if the season ended today."], nba: [6, 10, "Top 6 make the playoffs; 7–10 go to the play-in, if the season ended today."], mlb: [6, 0, "Top 6 in each league make the playoffs if the season ended today."] };
     async function openStandings(lg) {
       const v = { kind: "standings", key: "standings|" + lg };
-      if (!pushView(v)) return;
+      if (!pushView(v)) return; v.el.dataset.lg = lg;
       const [sport, league] = LEAGUES[lg].path.split("/");
       let d;
       try { d = await getJSON("https://site.api.espn.com/apis/v2/sports/" + sport + "/" + league + "/standings" + (lg === "cfb" ? "?group=80" : "")); }
@@ -3725,7 +3726,7 @@
 
     async function openTeam(lg, id, seg) {
       const v = { kind: "team", lg, id, seg: seg || "schedule", key: "team|" + lg + "|" + id };
-      if (!pushView(v)) return;
+      if (!pushView(v)) return; v.el.dataset.lg = lg;
       const base = API + LEAGUES[lg].path + "/teams/" + id;
       const [sc, ro] = await Promise.all([getJSON(base + "/schedule").catch(() => null), getJSON(base + "/roster").catch(() => null)]);
       v.sc = sc; v.ro = ro;
@@ -3970,9 +3971,57 @@
     document.addEventListener("click", (e) => {
       if (!e.target.closest("[data-dummy]")) return;
       DUMMY = !DUMMY; store.set("dummy", DUMMY); document.documentElement.classList.toggle("dummy", DUMMY); buzz(8);
-      toast(DUMMY ? "Dummy Mode on: tap ⓘ terms for explanations" : "Dummy Mode off");
+      toast(DUMMY ? "Dummy Mode on: tap ⓘ terms for explanations" : "Dummy Mode off"); if (DUMMY) dmFill();
       if (state.tab === "you") renderAlerts();
     });
+    /* Dummy Mode, everywhere: a short "how to read this" note under each section title, added automatically.
+       [test on the title text (or a function of the title element), note text or {sport: text, all: text}] */
+    const FB_PLAYS = "Every play, newest first. Tap one to see it on the field. <b>1st &amp; 10</b> means 1st try with 10 yards to go for a new set of downs.";
+    const DM_SEC = [
+      [/^Track$/, "<b>Live car positions.</b> Each dot is a car in its team's colour, moving around the circuit as it happens. Dots bunched together are cars fighting for position."],
+      [/^Pre|^Predict/, "<b>Our pick.</b> Worked out from each team's season so far (points scored and allowed, record, home field). It's an educated guess, not a promise: upsets happen all the time. After the game, it shows how close the pick was."],
+      [/^Recap/, "<b>The short version.</b> How the game went, written from the final score and the key plays."],
+      [/^Scoring$/, { nba: "<b>Points by quarter.</b> 4 quarters of 12 minutes. <b>OT</b> is overtime (5 extra minutes when it's tied). <b>T</b> is the total.", all: "<b>Points by quarter.</b> 4 quarters of 15 minutes. <b>OT</b> is overtime, extra time when the game is tied. <b>T</b> is the total." }],
+      [/^Line score/, "<b>Runs by inning.</b> Each column is an inning (9 in a game). <b>R</b> = runs, <b>H</b> = hits, <b>E</b> = errors (fielding mistakes). Most runs after 9 innings wins."],
+      [/^Team stats/, {
+        nba: "<b>Both teams side by side.</b> The longer bar is the better number. Watch <b>FG%</b> (share of shots made), <b>rebounds</b> (grabbing missed shots, which means more chances) and <b>turnovers</b> (losing the ball, giving the other team a chance).",
+        mlb: "<b>Both teams side by side.</b> The longer bar is the better number. <b>Hits</b> put runners on base, <b>errors</b> are fielding mistakes, and <b>left on base</b> counts runners stranded when the inning ended.",
+        all: "<b>Both teams side by side.</b> The longer bar is the better number. Watch <b>total yards</b> (how far they moved the ball), <b>turnovers</b> (giving the ball away, often game-changing) and <b>3rd down</b> (keeping drives alive)." }],
+      [/^Shot chart/, "<b>Every shot, where it was taken.</b> Dots went in, ✕ missed. Shots outside the curved line are 3-pointers; everything inside is worth 2."],
+      [/^Spray chart/, "<b>Where the ball was hit.</b> Home plate is at the bottom. Dots are hits, circles are outs, stars are home runs."],
+      [/^At the plate/, "<b>The batter vs the pitcher.</b> The count is balls then strikes: 4 balls is a walk (free trip to 1st base), 3 strikes is a strikeout. 3 outs ends the team's turn at bat."],
+      [/^Plays$/, { nfl: FB_PLAYS, cfb: FB_PLAYS, all: "<b>Every play, newest first.</b> Scoring plays stand out so you can spot the big moments quickly." }],
+      [/^Timeouts/, { nba: "<b>Breaks in play.</b> Each team gets 7 timeouts per game to stop the clock or regroup. Play also stops for injuries and replay reviews.", mlb: "<b>Breaks in play.</b> Pauses for pitching changes, mound visits, injuries and replay reviews.", all: "<b>Breaks in play.</b> Each team gets 3 timeouts per half to stop the clock or regroup. Play also stops for injuries, reviews and the 2-minute warning." }],
+      [/^Play-by-play/, "<b>The full list.</b> Every play of the game in order, grouped by drive or period. Scoring plays are marked so you can jump to the big moments."],
+      [/^What would you do/, "<b>Be the coach.</b> Pick a choice and see how often it usually works from this exact spot, based on past games. There's no wrong answer: real coaches argue about these all the time."],
+      [/recent games$/, "<b>Lately.</b> How this number went in the team's last few games. A taller bar means a higher number."],
+      [/^Latest news/, "<b>Headlines.</b> Recent stories about this team. Tap one to read it on the news site."],
+      [/Weather|Forecast|Conditions/i, { mlb: "<b>Why weather matters.</b> Wind blowing out helps home runs; wind blowing in turns them into catches. Rain can delay or stop a game.", f1: "<b>Why weather matters.</b> Rain changes everything: teams switch to Intermediate or Wet tyres, and a well-timed pit stop can win the race. Heat wears tyres faster.", all: "<b>Why weather matters.</b> Wind makes kicks and long passes harder. Rain and snow make the ball slippery, so teams run more and fumbles are likelier." }],
+      [/^Season leaders|^Top players/, "<b>Who's standing out.</b> The best numbers in each category (for this game, or for the season before it starts). Tap a player to see more."],
+      [/^Rosters?$|Depth chart/, "<b>Who's on the team.</b> Players are grouped by position. The depth chart shows who starts (first) and who comes in as backup."],
+      [/^Injuries/, "<b>Who's hurt.</b> <b>Out</b>: won't play. <b>Doubtful</b>: probably won't. <b>Questionable</b>: might. <b>Day-to-day</b>: minor, could be back soon."],
+      [(l) => l.nextElementSibling?.classList.contains("st-tbl"), {
+        nfl: "<b>Reading standings.</b> <b>W-L</b> is wins and losses. <b>Diff</b> is points scored minus points allowed: a big plus means a team that usually wins comfortably. Teams above the line are in playoff spots right now.",
+        cfb: "<b>Reading standings.</b> <b>W-L</b> is wins and losses. <b>Diff</b> is points scored minus points allowed. Conference champions get a big boost toward the College Football Playoff.",
+        all: "<b>Reading standings.</b> <b>W-L</b> is wins and losses. <b>PCT</b> is the share of games won (.600 = 6 of every 10). <b>GB</b> (games back) is how far behind 1st place. Teams above the line are in playoff spots right now." }],
+      [(l) => l.nextElementSibling?.classList.contains("donuts"), "<b>This season at a glance.</b> A fuller ring means a higher percentage."],
+      [/^Game$|^Race weekend$/, "<b>Alerts.</b> Choose which moments send a notification to your phone. Turn each one on or off; quiet hours keep them silent overnight."],
+    ];
+    function dmLg(el) { return el.closest("[data-lg]")?.dataset.lg || (LEAGUES[state.tab] ? state.tab : ""); }
+    let dmQ = 0;
+    function dmFill() {
+      dmQ = 0;
+      if (!DUMMY) return;
+      document.querySelectorAll(".g-label:not([data-dmx])").forEach((l) => {
+        l.dataset.dmx = 1;
+        if (l.nextElementSibling?.classList.contains("dm-note")) return;
+        const t = l.textContent.trim(), hit = DM_SEC.find(([k]) => (typeof k === "function" ? k(l) : k.test(t)));
+        let txt = hit?.[1];
+        if (txt && typeof txt === "object") txt = txt[dmLg(l)] || txt.all;
+        if (txt) l.insertAdjacentHTML("afterend", dm(txt));
+      });
+    }
+    new MutationObserver(() => { if (DUMMY && !dmQ) dmQ = requestAnimationFrame(dmFill); }).observe(document.body, { childList: true, subtree: true });
 
     /* ---------- first-time tour (shows once for new visitors; replay from You -> About) ---------- */
     const TOUR = [
