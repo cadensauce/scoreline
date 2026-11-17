@@ -585,6 +585,12 @@ window.scorelinePicks = {
     const r = await fb.getDocs(fb.query(fb.collection(db, "picks"), fb.where("uid", "==", user.uid))).catch(() => null);
     return (r?.docs || []).map((d) => d.data());
   },
+  // Games still open for picks, soonest first (lockAt is in the future). Single-field range, so no extra index needed.
+  async upcoming(n = 40) {
+    await startFirebase();
+    const r = await fb.getDocs(fb.query(fb.collection(db, "games"), fb.where("lockAt", ">", fb.Timestamp.now()), fb.orderBy("lockAt"), fb.limit(n))).catch(() => null);
+    return (r?.docs || []).map((d) => ({ id: d.id, ...d.data() }));
+  },
   async balance() { if (!pickReady()) return 0; const d = await fb.getDoc(fb.doc(db, "wallets", user.uid)).catch(() => null); return d?.data()?.balance || 0; },
 };
 
