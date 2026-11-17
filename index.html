@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794883399" />
+  <meta name="build" content="1794883877" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -529,6 +529,14 @@
     .fh .f-jn { font-size: 16px; } .fh .f-jn.s { font-size: 12px; } .fh .f-lbl { font-size: 14.5px; } .fh .f-x { font-size: 26px; } .fh .f-mark circle { stroke-width: 2.5; }
     .fh .cam { transform-origin: 0 0; transition: transform .9s cubic-bezier(.45,0,.35,1); }
     .fwrap { position: relative; } .f-replay { position: absolute; right: 10px; top: 20px; border: 0; border-radius: 999px; padding: 6px 12px; font: 600 12px Inter, sans-serif; color: #fff; background: rgba(8,12,18,.6); cursor: pointer; }
+    .strat { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .strat-opts { display: flex; flex-wrap: wrap; gap: 8px; } .strat-opts .pill-btn { padding: 9px 14px; }
+    .strat-row { display: grid; grid-template-columns: minmax(0, 1.4fr) 1fr 44px; align-items: center; gap: 10px; padding: 7px 0; font-size: 13.5px; }
+    .strat-row i { height: 8px; border-radius: 4px; background: var(--panel-3); position: relative; overflow: hidden; }
+    .strat-row i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w); background: var(--muted); border-radius: 4px; transition: width .6s var(--ease); }
+    .strat-row.best i::after { background: var(--text); } .strat-row.best span { font-weight: 700; } .strat-row b { text-align: right; font-variant-numeric: tabular-nums; }
+    .strat-row.mine span { text-decoration: underline; text-underline-offset: 3px; }
+    .strat-sum { margin: 8px 0 4px; font-size: 13.5px; font-weight: 600; }
     .f-route { fill: none; stroke: rgba(255,255,255,.6); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
     .f-route.draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: dash 1.25s cubic-bezier(.45,0,.35,1) forwards; } .field.still .f-route.draw { stroke-dashoffset: 0; }
     .f-route.gone { animation: dash 1.25s cubic-bezier(.45,0,.35,1) forwards, fadeout .45s 1.5s forwards; } .field.still .f-route.gone { opacity: 0; }
@@ -2740,6 +2748,78 @@
       }
       return finish(s, xs.length ? xs : [X(50)]);
     }
+    /* ---------- strategy picker (football): 4th down and after a touchdown ----------
+       "What would you do?" - pick first, then see each option's win chance from Scoreline's win model
+       (with league-average success rates) and what the team actually did. Just for fun, no currency. */
+    const stratPicks = {}, stratCtx = {};
+    const CONV = [0, 0.7, 0.58, 0.52, 0.47, 0.43, 0.4, 0.37, 0.34, 0.32, 0.3];   // 4th-down conversion rate by yards to go
+    const convRate = (d) => (d <= 10 ? CONV[Math.max(1, d)] : Math.max(0.12, 0.3 - (d - 10) * 0.015));
+    const FGT = [[25, 0.98], [30, 0.96], [35, 0.93], [40, 0.88], [45, 0.82], [50, 0.72], [55, 0.6], [60, 0.45], [63, 0.35]];
+    const fgRate = (d, lg) => {
+      if (d > 63) return 0;
+      let p = FGT[0][1];
+      for (let i = 1; i < FGT.length; i++) if (d <= FGT[i][0]) { const [a, pa] = FGT[i - 1], [b, pb] = FGT[i]; p = d <= a ? pa : pa + (pb - pa) * (d - a) / (b - a); break; }
+      return lg === "cfb" && d > 30 ? p * 0.92 : p;
+    };
+    function stratHtml(key) {
+      const c = stratCtx[key];
+      if (!c) return "";
+      const pick = stratPicks[key];
+      let h = '<div class="strat" data-strat="' + esc(key) + '"><div class="g-label">What would you do?</div><div class="g-note" style="margin:-6px 0 10px">' + esc(c.q) + "</div>";
+      if (!pick) return h + '<div class="strat-opts">' + c.opts.map((o) => '<button type="button" class="pill-btn" data-spick="' + o.k + '">' + esc(o.l) + "</button>").join("") + "</div></div>";
+      const best = c.opts.reduce((a, b) => (b.p > a.p ? b : a));
+      h += c.opts.map((o) => '<div class="strat-row' + (o === best ? " best" : "") + (o.k === pick ? " mine" : "") + '"><span>' + esc(o.l) + (o.k === pick ? " · your call" : "") + '</span><i style="--w:' + Math.round(o.p * 100) + '%"></i><b>' + Math.round(o.p * 100) + "%</b></div>").join("");
+      h += '<div class="strat-sum">' + (pick === best.k ? "✓ Same call as the model: " : "The model would " + esc(best.verb) + ". ") + "They " + esc(c.did) + ".</div>";
+      return h + '<div class="g-note">Win chances from Scoreline\'s win model with league-average success rates. Just for fun.</div></div>';
+    }
+    // Builds the decision for a play (or returns "" when it isn't a decision we can model).
+    function stratFor(F, P, G, lg, prev) {
+      const wp = window.ScorelineWP?.[lg];
+      if (!wp || !G || !(lg === "nfl" || lg === "cfb")) return "";
+      const ty = P.type?.text || "", t = P.text || "";
+      const td = /touchdown/i.test(ty + " " + t) && !/nullified|no good/i.test(t) && P.scoringPlay;
+      const fourth = Number(P.start?.down) === 4 && !/penalty|timeout|kneel|end of/i.test(ty);
+      if (!td && !fourth) return "";
+      const offHome = G.team === String(F.home.team?.id), ours = offHome ? "home" : "away", theirs = offHome ? "away" : "home";
+      let hs = Number(prev?.homeScore ?? 0), as = Number(prev?.awayScore ?? 0);
+      const base = { homeTeamId: F.home.team?.id, awayTeamId: F.away.team?.id, period: P.period?.number, clock: P.clock?.displayValue, neutral: false };
+      const T = (add, o) => { const p = wp({ ...base, homeScore: hs + (offHome ? add : 0), awayScore: as + (offHome ? 0 : add), ...o }); return p == null ? null : offHome ? p : 1 - p; };
+      const kickoff = { possession: ours, down: 0, distance: 0, yardsToEndzone: 65 };
+      const theirBall = (y) => ({ possession: theirs, down: 1, distance: 10, yardsToEndzone: Math.max(1, Math.min(99, y)) });
+      const key = (P.id || P.sequenceNumber || t).toString();
+      let c;
+      if (td) {
+        const scorer = /two-point|2 pt|2-pt/i.test(t);
+        const xp = lg === "nfl" ? 0.94 : 0.96, two = 0.48, a0 = 6;
+        const pX = xp * T(a0 + 1, kickoff) + (1 - xp) * T(a0, kickoff), p2 = two * T(a0 + 2, kickoff) + (1 - two) * T(a0, kickoff);
+        if (![pX, p2].every(Number.isFinite)) return "";
+        c = { q: "Touchdown. Kick the extra point or go for 2?", did: scorer ? "went for 2" : "kicked the extra point",
+          opts: [{ k: "xp", l: "Kick the extra point", verb: "kick the extra point", p: pX }, { k: "two", l: "Go for 2", verb: "go for 2", p: p2 }] };
+      } else {
+        const ytg = Number(P.start.yardsToEndzone), dist = Number(P.start.distance) || 1;
+        if (!Number.isFinite(ytg)) return "";
+        const pc = convRate(dist), made = dist >= ytg ? T(7, kickoff) : T(0, { possession: ours, down: 1, distance: Math.min(10, Math.max(1, ytg - dist)), yardsToEndzone: Math.max(1, ytg - dist) });
+        const go = pc * made + (1 - pc) * T(0, theirBall(100 - ytg));
+        const opts = [{ k: "go", l: "Go for it", verb: "go for it", p: go }];
+        const kd = ytg + 17, pf = fgRate(kd, lg);
+        if (pf > 0) opts.push({ k: "fg", l: "Kick a " + kd + "-yd field goal", verb: "kick the field goal", p: pf * T(3, kickoff) + (1 - pf) * T(0, theirBall(Math.min(80, 100 - (ytg + 7)))) });
+        if (ytg >= 35) { const land = ytg - 40; opts.push({ k: "punt", l: "Punt", verb: "punt", p: T(0, theirBall(land <= 0 ? 80 : 100 - land)) }); }
+        if (!opts.every((o) => Number.isFinite(o.p)) || opts.length < 2) return "";
+        c = { q: "4th & " + dist + (P.start.possessionText ? " at the " + P.start.possessionText : "") + ". What's the call?", opts,
+          did: /punt/i.test(ty) ? "punted" : /field goal/i.test(ty) ? "kicked the field goal" : "went for it" };
+      }
+      stratCtx[key] = c;
+      return stratHtml(key);
+    }
+    document.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-spick]");
+      if (!b) return;
+      const box = b.closest("[data-strat]"), key = box?.dataset.strat;
+      if (!key) return;
+      stratPicks[key] = b.dataset.spick; buzz(8);
+      const tpl = document.createElement("template"); tpl.innerHTML = stratHtml(key); box.replaceWith(tpl.content.firstElementChild);
+    });
+
     function drawField(v, still) {
       const F = v.field, sec = v.el.querySelector("[data-field]");
       if (!F || !sec) return;
@@ -2797,6 +2877,7 @@
           (result ? '<div class="pf-tags" style="margin:2px 0 8px"><span class="' + result[0] + '">' + esc(result[1]) + "</span></div>" : "") +
           (/field goal|extra point/i.test(ty) ? kickSvg(t) : "") +
           (people ? '<div class="pc-people">' + people + "</div>" : "") +
+          stratFor(F, P, G, F.lg, pi > 0 ? D.plays[pi - 1] : F.drives[F.di - 1]?.plays?.slice(-1)[0]) +
           (chips.length ? '<div class="stats">' + chips.map(([v2, l]) => '<span class="st"><b>' + esc(v2) + "</b><small>" + esc(l) + "</small></span>").join("") + "</div>" : "") +
           '<details class="f-raw"><summary>Full play text</summary><p>' + esc(t) + "</p></details></div>";
         const need = (P.participants || []).map((x) => x.athlete?.$ref).filter((r) => r && !(r in athCache));
@@ -2986,6 +3067,7 @@
       const gcats = [["all", "Summary"], ["plays", "Plays"], ["stats", "Stats"], ["players", "Players"]];
       h += '<div class="gtabs" role="tablist">' + gcats.map(([k, l]) => '<button type="button" role="tab" data-gcat="' + k + '" class="' + (k === "all" ? "active" : "") + '">' + l + "</button>").join("") + "</div>";
       h += wpSectionHtml(s, teams, st.state, id, lg);
+      if ((lg === "nfl" || lg === "cfb") && window.ScorelineWP) window.ScorelineWP.ready(lg).catch(() => {});   // for the strategy picker
       if (lg === "nfl" || lg === "cfb") h += '<div class="g-sec" data-field data-c="plays timeouts"><div class="g-label">Plays</div><div class="skel" style="height:150px"></div></div>';
       if (lg === "nba" || lg === "mlb") { v.s = s; v.lg = lg; v.teams = teams; v.chartTeam = "all"; v.id = id; v.updated = Date.now(); h += '<div class="g-sec" data-chart data-c="plays timeouts">' + chartSecHtml(v) + "</div>"; }
       if (lg === "mlb") h += mlbSituation(lg, id, teams);
