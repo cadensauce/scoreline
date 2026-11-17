@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794934761" />
+  <meta name="build" content="1794935129" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -644,7 +644,7 @@
     .gtabs button { flex: none; border: 0; background: none; color: var(--muted); font-weight: 600; font-size: 13.5px; padding: 7px 14px; border-radius: 99px; transition: background var(--t-fast), color var(--t-fast); }
     .gtabs button:hover:not(.active) { color: var(--text); }
     .gtabs button.active { background: var(--panel-3); color: var(--text); }
-    .sheet[data-cat="plays"] [data-c]:not([data-c~="plays"]), .sheet[data-cat="timeouts"] [data-c]:not([data-c~="timeouts"]), .sheet[data-cat="stats"] [data-c]:not([data-c~="stats"]), .sheet[data-cat="players"] [data-c]:not([data-c~="players"]) { display: none !important; }
+    .sheet[data-cat="plays"] [data-c]:not([data-c~="plays"]), .sheet[data-cat="timeouts"] [data-c]:not([data-c~="timeouts"]), .sheet[data-cat="stats"] [data-c]:not([data-c~="stats"]), .sheet[data-cat="players"] [data-c]:not([data-c~="players"]), .sheet[data-cat="recap"] [data-c]:not([data-c~="recap"]) { display: none !important; }
     .sheet[data-cat="plays"] .scorebug { display: none; }
     .sit-line { display: none; align-items: center; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border-radius: var(--r-in); background: var(--panel); font-size: 14px; font-weight: 700; }
     .sheet[data-cat="plays"] .sit-line { display: flex; }
@@ -2289,7 +2289,7 @@
         .map(([k, txt, dir]) => ({ k, txt, a: a[k], b: b[k], gap: dir * (a[k] - b[k]) / Math.max(1, Math.abs(a[k]) + Math.abs(b[k])) })).filter((e) => e.gap > 0.05).sort((x, y) => y.gap - x.gap).slice(0, 2);
       const fmt = (v, k) => String(Math.round(v * 10) / 10) + (/Pct$/.test(k) ? "%" : "");
       const why = edges.length ? "Why " + nmT(W) + " won: " + edges.map((e) => e.txt + " (" + fmt(e.a, e.k) + " to " + fmt(e.b, e.k) + ")").join(" and ") + "." : "";
-      return '<div class="g-sec recap" data-c="all"><div class="g-label">Recap</div><p class="recap-head">' + esc(head) + "</p>" + (why ? '<p class="recap-why">' + esc(why) + "</p>" : "") +
+      return '<div class="g-sec recap sum-hide" data-c="recap"><div class="g-label">Recap</div><p class="recap-head">' + esc(head) + "</p>" + (why ? '<p class="recap-why">' + esc(why) + "</p>" : "") +
         (items.length ? '<ul class="recap-list">' + items.map(([k, v]) => "<li><b>" + esc(k) + "</b><span>" + esc(v) + "</span></li>").join("") + "</ul>" : "") + "</div>";
     }
 
@@ -3639,12 +3639,13 @@
 
       // Order: score → plain-English status → tabs → win probability → plays → the rest.
       h += plainLine(s, teams, st.state, lg);
-      h += recapHtml(s, teams, lg);   // finished games only
+      const recap = recapHtml(s, teams, lg);   // finished games only: gets its own Recap tab
       if (st.state !== "post") h += '<div data-why></div>';   // why this game matters (filled in below)
       if (st.state !== "in") h += '<div data-pred></div>';   // prediction (before) / predicted vs actual (after), filled in below
       if (lg === "mlb") h += pitchersHtml(s);
-      const gcats = [["all", "Summary"], ["plays", "Plays"], ["stats", "Stats"], ["players", "Players"]];
+      const gcats = [["all", "Summary"], ...(recap ? [["recap", "Recap"]] : []), ["plays", "Plays"], ["stats", "Stats"], ["players", "Players"]];
       h += '<div class="gtabs" role="tablist">' + gcats.map(([k, l]) => '<button type="button" role="tab" data-gcat="' + k + '" class="' + (k === "all" ? "active" : "") + '">' + l + "</button>").join("") + "</div>";
+      h += recap;
       h += wpSectionHtml(s, teams, st.state, id, lg);
       if ((lg === "nfl" || lg === "cfb") && window.ScorelineWP) window.ScorelineWP.ready(lg).catch(() => {});   // for the strategy picker
       if (lg === "nfl" || lg === "cfb") h += '<div class="g-sec" data-field data-c="plays timeouts"><div class="g-label">Plays</div><div class="skel" style="height:150px"></div></div>';
