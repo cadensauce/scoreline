@@ -2249,7 +2249,7 @@
         const off = Math.abs(as - pa_) + Math.abs(hs - ph);
         const pick = pa_ === ph ? 0 : pa_ > ph ? 1 : -1, real = as === hs ? 0 : as > hs ? 1 : -1;
         h += "<div><small>Final</small><b>" + ab(away) + " " + as + " – " + hs + " " + ab(home) + "</b></div></div>" +
-          '<div class="pred-res">' + (pick && real ? (pick === real ? "Right winner" : "Wrong winner") + " · " : "") + "off by " + off + " point" + (off === 1 ? "" : "s") + " in total</div>";
+          '<div class="pred-res">' + (pick && real ? (pick === real ? "Right winner" : "Wrong winner") + " · " : "") + "off by " + off + (lg === "mlb" ? " run" : " point") + (off === 1 ? "" : "s") + " in total</div>";
       } else h += "</div>" + (await playerProjections(lg, s, teams).catch(() => ""));
       return h + '<div class="g-note">An estimate, not a guarantee: each team\'s scoring and the other team\'s defense in ' + (post ? "the games before this one" : "this season's games so far") + ", plus a small home edge.</div></div>";
     }
