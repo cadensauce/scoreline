@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794880397" />
+  <meta name="build" content="1794880780" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -514,10 +514,20 @@
     .g-team > .poss-ph { display: block; height: 20px; } .g-team > .poss + .poss-ph { display: none; }
     .htile .poss { width: 12px; height: 12px; margin-right: 4px; vertical-align: -1px; }
     .kick { display: flex; align-items: center; gap: 14px; background: var(--panel-2); border-radius: 14px; padding: 10px 14px; margin: 4px 0 10px; }
-    .kick svg { width: 120px; flex: none; } .kick b { display: block; font-size: 14px; } .kick small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 3px; }
-    .k-ground { stroke: var(--line); stroke-width: 2; } .k-post { fill: none; stroke: var(--text); stroke-width: 4; stroke-linecap: round; }
-    .k-path { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 4 4; } .k-ball { fill: var(--muted); } .k-ball.ok { fill: var(--accent); }
-    .k-x { stroke: var(--text); stroke-width: 3; stroke-linecap: round; }
+    .kick svg { width: 150px; flex: none; } .kick b { display: block; font-size: 14px; } .kick small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+    .k-ground { stroke: var(--line); stroke-width: 2; } .k-post { fill: none; stroke: #ffd84d; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+    .k-path { fill: none; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: dash 1s var(--ease) forwards; }
+    .k-path.ok { stroke: #4cd486; } .k-path.bad { stroke: #ff5a5a; } .k-path.bounce { stroke: #ff9f43; } .k-path.k2 { animation-delay: .75s; animation-duration: .5s; }
+    .k-ball { fill: #c9773a; stroke: #fff; stroke-width: 1.2; }
+    .k-x { fill: none; stroke: #ff5a5a; stroke-width: 3.5; stroke-linecap: round; animation: fadein .3s both; } .k-ok { fill: none; stroke: #4cd486; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; animation: fadein .3s both; }
+    .fh .f-s1 { fill: #2e6b46; } .fh .f-s2 { fill: #2a6441; } .fh .f-yl { stroke: rgba(255,255,255,.28); } .fh .f-yl.ten { stroke: rgba(255,255,255,.55); stroke-width: 1.5; } .fh .f-yl.goal { stroke: #fff; stroke-width: 2.5; }
+    .fh .f-hash { stroke: rgba(255,255,255,.4); } .fh .f-num { font-size: 24px; fill: rgba(255,255,255,.55); }
+    .fh .f-ez { font-size: 30px; letter-spacing: 6px; } .f-post { stroke: #ffd84d; stroke-width: 5; stroke-linecap: round; }
+    .fh .f-los { stroke: #4c8dff; stroke-width: 3; } .fh .f-1st { stroke: #ffd400; stroke-width: 3; }
+    .fh .f-throw { stroke: #fff; stroke-width: 2.6; stroke-dasharray: 1.5 7; stroke-linecap: round; } .fh .f-run { stroke: #fff; stroke-width: 4.5; }
+    .fh .f-ball { fill: #c9773a; stroke: #fff; stroke-width: 1.5; } .f-land { fill: rgba(255,255,255,.18); stroke: #fff !important; stroke-width: 2.5 !important; } .f-landc { fill: #fff; }
+    .fh .f-jn { font-size: 16px; } .fh .f-lbl { font-size: 14.5px; } .fh .f-x { font-size: 26px; } .fh .f-mark > g > circle { stroke-width: 2.5; }
+    .f-key .k-run { border-top: 3px solid #fff !important; }
     .prows { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
     .prow { display: flex; align-items: center; gap: 12px; width: 100%; background: var(--panel); border: 0; border-radius: 14px; padding: 10px 12px; color: inherit; text-align: left; font: inherit; cursor: pointer; }
     .prow img, .prow-ph { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; background: var(--panel-2); flex: none; }
@@ -2522,112 +2532,116 @@
       return "";
     }
     const athCache = {};
+    /* ---------- field picture (broadcast style): whole field, away end zone left, home right ----------
+       Ball in the air = dotted arc with the ball flying along it; where it lands = ring marker; runs = solid line. */
+    function fieldSvg(F, P, G, still, col) {
+      const W = 640, H = 300, EZ = 50, S = (W - 2 * EZ) / 100, CY = H / 2;
+      const X = (p) => EZ + p * S;
+      let s = '<svg class="field fh' + (still ? " still" : "") + '" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Field"><defs>' +
+        '<clipPath id="fclip"><rect width="' + W + '" height="' + H + '" rx="16"/></clipPath>' +
+        '<marker id="farw" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="3.6" markerHeight="3.6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#fff"/></marker>' +
+        '<radialGradient id="fglow" cx=".5" cy=".45" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".06"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></radialGradient></defs><g clip-path="url(#fclip)">';
+      for (let y = 0; y < 100; y += 5) s += '<rect x="' + X(y) + '" y="0" width="' + (5 * S + 0.5) + '" height="' + H + '" class="' + (y / 5 % 2 ? "f-s2" : "f-s1") + '"/>';
+      const ez = (x, team, rot) => '<rect x="' + x + '" y="0" width="' + EZ + '" height="' + H + '" fill="' + esc(col(team)) + '"/><text transform="translate(' + (x + EZ / 2) + " " + CY + ") rotate(" + rot + ')" class="f-ez">' + esc(team.team?.name || team.team?.abbreviation || "") + "</text>";
+      s += ez(0, F.away, -90) + ez(W - EZ, F.home, 90);
+      for (let y = 0; y <= 100; y += 5) s += '<line x1="' + X(y) + '" x2="' + X(y) + '" y1="0" y2="' + H + '" class="f-yl' + (y % 10 ? "" : " ten") + (y === 0 || y === 100 ? " goal" : "") + '"/>';
+      for (let y = 1; y < 100; y++) if (y % 5) [7, H * 0.4, H * 0.6, H - 7].forEach((hy) => { s += '<line x1="' + X(y) + '" x2="' + X(y) + '" y1="' + (hy - 4) + '" y2="' + (hy + 4) + '" class="f-hash"/>'; });
+      for (let y = 10; y < 100; y += 10) { const n = Math.min(y, 100 - y); s += '<text x="' + X(y) + '" y="36" class="f-num">' + n + '</text><text x="' + X(y) + '" y="' + (H - 36) + '" class="f-num" transform="rotate(180 ' + X(y) + " " + (H - 36) + ')">' + n + "</text>"; }
+      [4, W - 4].forEach((gx) => { s += '<line x1="' + gx + '" x2="' + gx + '" y1="' + (CY - 20) + '" y2="' + (CY + 20) + '" class="f-post"/>'; });
+      s += '<rect width="' + W + '" height="' + H + '" fill="url(#fglow)" pointer-events="none"/>';
+      if (!P || !G) return s + "</g></svg>";
+
+      const t = P.text || "", ty = P.type?.text || "";
+      const right = G.team === String(F.away.team?.id), dir = right ? 1 : -1;
+      const offT = right ? F.away : F.home, defT = right ? F.home : F.away, oc = esc(col(offT)), dc = esc(col(defT));
+      const pos = (ytez) => (right ? 100 - ytez : ytez);
+      const t0 = P.start.yardsToEndzone, t1 = endYtez(P), xL = X(pos(t0)), xE = X(pos(t1));
+      const dist = Number(P.start.distance) || 0;
+      const clampX = (x) => Math.max(70, Math.min(W - 70, x));
+      s += '<line x1="' + xL + '" x2="' + xL + '" y1="0" y2="' + H + '" class="f-los"/>';
+      if (dist && dist < t0 && !/kickoff|extra point|field goal|punt/i.test(ty)) s += '<line x1="' + X(pos(t0 - dist)) + '" x2="' + X(pos(t0 - dist)) + '" y1="0" y2="' + H + '" class="f-1st"/>';
+      const side = /\bleft\b/i.test(t) ? -1 : /\bright\b/i.test(t) ? 1 : 0;
+      const lane = (k) => CY + side * k * dir;
+      const ath = (type) => { const r = (P.participants || []).find((x) => x.type === type)?.athlete?.$ref; return r ? athCache[r] : null; };
+      const nm = (re) => (t.match(re) || [])[1];
+      const mark = (x, y, c, a, fb, delay, up, from) => {
+        const name = [a?.short || fb || "", a?.pos].filter(Boolean).join(" · "), mv = from && !still;
+        const ly = up ? y - 32 : y + 36;
+        return '<g class="f-mark" style="animation-delay:' + delay + 's"><g' + (mv ? ' transform="translate(' + (from.x - x) + " " + (from.y - y) + ')"><animateTransform attributeName="transform" type="translate" from="' + (from.x - x) + " " + (from.y - y) + '" to="0 0" begin="' + from.begin + 's" dur="' + from.dur + 's" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".35 0 .25 1"/>' : ">") +
+          '<circle cx="' + x + '" cy="' + y + '" r="16" fill="' + c + '"/><text x="' + x + '" y="' + y + '" class="f-jn">' + esc(a?.jersey || "") + "</text>" +
+          (name ? '<rect x="' + (x - 60) + '" y="' + (ly - 15) + '" width="120" height="25" rx="12.5" class="f-pill"/><text x="' + x + '" data-cx="' + x + '" y="' + (ly + 3) + '" class="f-lbl">' + esc(name) + "</text>" : "") + "</g></g>";
+      };
+      const tag = (x, y, txt, delay) => '<g class="f-mark" style="animation-delay:' + delay + 's"><rect x="' + (x - 60) + '" y="' + (y - 15) + '" width="120" height="25" rx="12.5" class="f-pill f-tagp"/><text x="' + x + '" data-cx="' + x + '" y="' + (y + 3) + '" class="f-lbl">' + esc(txt) + "</text></g>";
+      const arc = (x0, y0, x1, y1, h) => "M" + x0 + " " + y0 + " Q" + (x0 + x1) / 2 + " " + (Math.min(y0, y1) - h) + " " + x1 + " " + y1;
+      const fly = (path, begin, dur) => '<path d="' + path + '" class="f-throw" style="animation-delay:' + Math.max(0, begin - 0.1) + 's"/>' +
+        (still ? "" : '<circle r="6" class="f-ball" style="animation-delay:' + begin + 's"><animateMotion begin="' + begin + 's" dur="' + dur + 's" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".3 0 .5 1" path="' + path + '"/></circle>');
+      const land = (x, y, delay) => '<g class="f-mark" style="animation-delay:' + delay + 's"><circle cx="' + x + '" cy="' + y + '" r="10" class="f-land"/><circle cx="' + x + '" cy="' + y + '" r="3.5" class="f-landc"/></g>';
+      const run = (d, delay, dur) => '<path d="' + d + '" class="f-run draw" pathLength="1" style="animation-delay:' + delay + "s;animation-duration:" + dur + 's" marker-end="url(#farw)"/>';
+      const isKO = /kickoff/i.test(ty), isPunt = /punt/i.test(ty), isFG = /field goal|extra point/i.test(ty) || /extra point/i.test(t);
+      const qbX = xL - dir * (/shotgun/i.test(t) ? 5 : 2) * S;
+      const kd = isKO || isPunt ? Number((t.match(/(?:punts|kicks) (-?\d+) yards?/i) || [])[1]) : NaN;
+
+      if (isFG) {
+        const hx = xL - dir * 7 * S, gx = dir === 1 ? W - 4 : 4;
+        const blocked = /blocked/i.test(t), miss = blocked || /no good|missed|wide|short/i.test(t);
+        const wl = /wide left|left upright/i.test(t) ? -1 : /wide right|right upright/i.test(t) ? 1 : 0;
+        const ex = blocked ? hx + dir * 4 * S : /\bshort\b/i.test(t) ? gx - dir * EZ * 1.3 : gx, ey = blocked ? CY : CY + wl * (/upright/i.test(t) ? 20 : 40) * dir;
+        const xp = /extra point/i.test(ty + " " + t);
+        const label = blocked ? "Blocked" : !miss ? (xp ? "Extra point good" : "Field goal good") : /wide left/i.test(t) ? "Wide left" : /wide right/i.test(t) ? "Wide right" : /upright/i.test(t) ? "Hit the upright" : /crossbar/i.test(t) ? "Hit the crossbar" : /\bshort\b/i.test(t) ? "Short" : "No good";
+        s += fly(arc(hx, CY, ex, ey, blocked ? 20 : 80), 0.35, blocked ? 0.35 : 1.0) + land(ex, ey, blocked ? 0.75 : 1.35);
+        s += tag(clampX(ex - dir * 90), CY + 62, label, blocked ? 0.8 : 1.4);
+        s += mark(hx, CY, oc, ath("kicker"), nm(/([A-Z][a-z]?\.[\w'-]+) \d+/), 0.1, false);
+      } else if ((isKO || isPunt) && !isNaN(kd) && !/blocked/i.test(t)) {
+        const kFrom = isKO ? t0 : Math.min(110, t0 + 14), kc = Math.max(-9, t0 - kd);
+        const kx = X(pos(kFrom)), cx2 = X(pos(kc));
+        const noRet = /fair catch|touchback|downed|out of bounds/i.test(t) || Math.abs(xE - cx2) < 3;
+        const rYds = Math.round(t1 - kc);
+        s += fly(arc(kx, CY, cx2, CY, Math.min(125, Math.abs(cx2 - kx) * 0.5)), 0.3, 1.2) + land(cx2, CY, 1.5);
+        if (!noRet) s += run("M" + cx2 + " " + CY + " L" + xE + " " + CY, 1.6, 0.8);
+        const label = /touchback/i.test(t) ? "Touchback" : /fair catch/i.test(t) ? "Fair catch" : /downed/i.test(t) ? "Downed" : /out of bounds/i.test(t) && noRet ? "Out of bounds" : rYds + "-yd return";
+        s += tag(clampX(noRet ? cx2 : (cx2 + xE) / 2), CY - 50, label, noRet ? 1.5 : 2.2);
+        s += mark(kx, CY, oc, ath("punter") || ath("kicker"), nm(/([A-Z][a-z]?\.[\w'-]+) (?:punts|kicks)/), 0.1, false);
+        const rn = nm(/fair catch by ([A-Z][a-z]?\.[\w'-]+)/) || nm(/\.\s*([A-Z][a-z]?\.[\w'-]+) (?:to|for|MUFFS|pushed|ran)/);
+        if (ath("returner") || rn) s += mark(noRet ? cx2 : xE, CY, dc, ath("returner"), rn, 1.5, false, noRet ? null : { x: cx2, y: CY, begin: 1.6, dur: 0.8 });
+      } else if (G.isPass) {
+        const tc = G.air != null ? t0 - G.air : t1, cxp = X(pos(tc)), ly = side ? lane(72) : CY - 28;
+        s += fly(arc(qbX, CY, cxp, ly, 60), 0.35, 0.7) + land(cxp, ly, 1.05);
+        if (Math.abs(xE - cxp) > 3) s += run("M" + cxp + " " + ly + " L" + xE + " " + ly, 1.1, 0.6);
+        s += mark(qbX, CY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/), 0.1, false);
+        s += mark(xE, ly, oc, ath("receiver"), nm(/ to ([A-Z][a-z]?\.[\w'-]+)/), 1.05, ly < CY, { x: cxp, y: ly, begin: 1.1, dur: 0.6 });
+      } else if (/incomplet|interception/i.test(ty)) {
+        const tx = xL + dir * (/deep/i.test(t) ? 22 : 9) * S, ly = side ? lane(72) : CY - 28, pick = /interception/i.test(ty);
+        s += fly(arc(qbX, CY, tx, ly, 60), 0.35, 0.7);
+        s += pick ? land(tx, ly, 1.05) : '<text x="' + tx + '" y="' + (ly + 8) + '" class="f-x" style="animation-delay:1.05s">✕</text>';
+        s += tag(clampX(tx), ly < CY ? ly - 34 : ly + 38, pick ? "Intercepted" : "Incomplete", 1.1);
+        s += mark(qbX, CY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/), 0.1, false);
+        if (pick && ath("interceptor")) { if (Math.abs(xE - tx) > 3) s += run("M" + tx + " " + ly + " L" + xE + " " + ly, 1.2, 0.6); s += mark(xE, ly, dc, ath("interceptor"), "", 1.2, ly >= CY, { x: tx, y: ly, begin: 1.2, dur: 0.6 }); }
+      } else if (/sack/i.test(ty)) {
+        s += run("M" + qbX + " " + CY + " L" + xE + " " + CY, 0.4, 0.5);
+        s += mark(xE, CY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) sacked/), 0.1, false, { x: qbX, y: CY, begin: 0.4, dur: 0.5 }) + tag(clampX(xE), CY - 50, "Sack", 0.9);
+      } else if (/rush|run|scramble|kneel|fumble/i.test(ty) || G.gain) {
+        const sx = xL - dir * 4 * S, ly = side ? CY + side * 44 * dir : CY;
+        s += run("M" + sx + " " + CY + " C" + xL + " " + CY + " " + xL + " " + ly + " " + xE + " " + ly, 0.35, 0.8);
+        s += mark(xE, ly, oc, ath("rusher") || ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) /), 0.3, ly <= CY, { x: sx, y: CY, begin: 0.35, dur: 0.8 });
+      } else {
+        s += tag(clampX(xL), CY - 50, ty || "Play", 0.2);
+      }
+      return s + "</g></svg>";
+    }
     function drawField(v, still) {
       const F = v.field, sec = v.el.querySelector("[data-field]");
       if (!F || !sec) return;
       const D = F.drives[F.di];
       const col = (t) => "#" + (t?.team?.color || "8a93a5");
       const ab = (t) => esc(t?.team?.abbreviation || "");
-      // Vertical field: the offense always moves UP. Y(ytez) = (ytez + 10) * SC, top end zone = the one being attacked.
-      const W = 360, H = 340, CX = W / 2;
       const pi = F.pi ?? D.plays.length - 1, P = D.plays[pi];
       const G = P ? playGeom(P, F) : null;
-      const offTeam = G && G.team === String(F.away.team?.id) ? F.away : F.home, defTeam = offTeam === F.away ? F.home : F.away;
-      const ath = (type) => { const r = (P?.participants || []).find((x) => x.type === type)?.athlete?.$ref; return r ? athCache[r] : null; };
-      const t = P?.text || "";
-      const t0 = G ? P.start.yardsToEndzone : 50, t1 = G ? endYtez(P) : 50;
-      const air = G?.air ?? null, tc = air != null ? t0 - air : null;
-      // Punts and kickoffs: the ball flies to the catch spot (kc), then the return runs to the end spot (t1).
-      const isKickoff = G && /kickoff/i.test(P.type?.text || ""), isKick = G && (isKickoff || /punt/i.test(P.type?.text || "")) && !/blocked/i.test(t);
-      const kd = isKick ? Number((t.match(/(?:punts|kicks) (-?\d+) yards?/i) || [])[1]) : NaN;
-      const kc = isKick && !isNaN(kd) ? Math.max(-8, t0 - kd) : null;
-      const kFrom = kc == null ? null : isKickoff ? t0 : Math.min(108, t0 + 14);
-      const span = G ? Math.max(t0, t1, tc ?? t0, kc ?? t0, kFrom ?? t0) - Math.min(t0, t1, tc ?? t0, kc ?? t0) : 0;
-      const SC = Math.max(3.4, Math.min(8.5, (H - 110) / Math.max(span + 8, 1))), Y = (yy) => (yy + 10) * SC, FH = 120 * SC;
-      const side = /\bleft\b/i.test(t) ? -1 : /\bright\b/i.test(t) ? 1 : 0;
-      const laneX = side ? CX + side * (/deep/i.test(t) ? 120 : 95) : CX + 34;
-      const ys = G ? [Y(t0), Y(t1), tc != null ? Y(tc) : Y(t0), kc != null ? Y(kc) : Y(t0), kFrom != null ? Y(kFrom) : Y(t0)] : [Y(50)];
-      const camY = Math.max(0, Math.min(FH - H, (Math.min(...ys) + Math.max(...ys)) / 2 - H / 2));
-      const fromY = v.camY ?? camY; v.camY = camY;
-      let svg = '<svg class="field' + (still ? " still" : "") + '" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Field"><defs><clipPath id="fclip"><rect width="' + W + '" height="' + H + '" rx="14"/></clipPath>' +
-        '<linearGradient id="fvig" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".35"/><stop offset=".18" stop-color="#000" stop-opacity="0"/><stop offset=".82" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></linearGradient>' +
-        '<marker id="farw" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#ff5a36"/></marker></defs>' +
-        '<g clip-path="url(#fclip)"><g class="cam" data-to="' + camY + '" style="transform:translateY(' + -fromY + 'px)">';
-      for (let y = 0; y < 100; y += 5) svg += '<rect x="0" y="' + Y(y) + '" width="' + W + '" height="' + 5 * SC + '" class="' + (y / 5 % 2 ? "f-s2" : "f-s1") + '"/>';
-      const ezRect = (y0, team) => '<rect x="0" y="' + y0 + '" width="' + W + '" height="' + 10 * SC + '" fill="' + esc(col(team)) + '" opacity=".8"/><text x="' + CX + '" y="' + (y0 + 5 * SC) + '" class="f-ez">' + esc(team.team?.name || ab(team)) + "</text>";
-      svg += ezRect(0, defTeam) + ezRect(Y(100), offTeam);
-      for (let y = 0; y <= 100; y += 5) svg += '<line x1="0" x2="' + W + '" y1="' + Y(y) + '" y2="' + Y(y) + '" class="f-yl' + (y % 10 ? "" : " ten") + (y === 0 || y === 100 ? " goal" : "") + '"/>';
-      for (let y = 1; y < 100; y++) if (y % 5) [6, W * .41, W * .59, W - 6].forEach((hx) => { svg += '<line x1="' + (hx - 5) + '" x2="' + (hx + 5) + '" y1="' + Y(y) + '" y2="' + Y(y) + '" class="f-hash"/>'; });
-      for (let y = 10; y < 100; y += 10) { const n = Math.min(y, 100 - y); svg += '<text x="34" y="' + Y(y) + '" class="f-num" transform="rotate(90 34 ' + Y(y) + ')">' + n + '</text><text x="' + (W - 34) + '" y="' + Y(y) + '" class="f-num" transform="rotate(-90 ' + (W - 34) + " " + Y(y) + ')">' + n + "</text>"; }
-      if (G) {
-        const oc = esc(col(offTeam)), dc = esc(col(defTeam));
-        const dist = Number(P.start.distance) || 0;
-        svg += '<line x1="0" x2="' + W + '" y1="' + Y(t0) + '" y2="' + Y(t0) + '" class="f-los"/>';
-        if (dist && dist < t0) svg += '<line x1="0" x2="' + W + '" y1="' + Y(t0 - dist) + '" y2="' + Y(t0 - dist) + '" class="f-1st"/>';
-        const mark = (x, y, c, a, fallback, small, delay = 0, labelUp, from) => {
-          // "from": start spot the player runs from (catch point, backfield) before ending at x,y.
-          const mv = from && !still && (Math.abs(from.x - x) > 1 || Math.abs(from.y - y) > 1);
-          const open = mv ? '<g transform="translate(' + (from.x - x) + " " + (from.y - y) + ')"><animateTransform attributeName="transform" type="translate" from="' + (from.x - x) + " " + (from.y - y) + '" to="0 0" begin="' + from.begin + 's" dur="' + from.dur + 's" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".35 0 .25 1"/>' : "<g>";
-          const r = small ? 11 : 15, name = [a?.short || fallback || "", a?.pos].filter(Boolean).join(" · ");
-          const ly = labelUp ? y - r - 9 : y + r + 15, lw = Math.max(40, name.length * 6.2 + 14);
-          const lx = Math.max(lw / 2 + 4, Math.min(W - lw / 2 - 4, x));
-          return '<g class="f-mark" style="animation-delay:' + delay + 's">' + open + '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + c + '"/><text x="' + x + '" y="' + y + '" class="f-jn' + (small ? " s" : "") + '">' + esc(a?.jersey || "") + "</text>" +
-            (small || !name ? "" : '<rect x="' + (lx - lw / 2) + '" y="' + (ly - 11) + '" width="' + lw + '" height="17" rx="8.5" class="f-pill"/><text x="' + lx + '" data-cx="' + x + '" y="' + (ly - 2.5) + '" class="f-lbl">' + esc(name) + "</text>") + "</g></g>";
-        };
-        const nm = (re) => (t.match(re) || [])[1];
-        const qbY = Y(t0) + (/shotgun/i.test(t) ? 5 : 2) * SC;
-        if (G.isPass && tc != null) {
-          const cy = Y(tc), path = "M" + CX + " " + qbY + " Q" + (CX + (laneX - CX) * .35) + " " + (Math.min(qbY, cy) - 40) + " " + laneX + " " + cy;
-          svg += '<path d="' + path + '" class="f-throw" style="animation-delay:.4s"/><path d="M' + laneX + " " + cy + " L" + laneX + " " + Y(t1) + '" class="f-run draw" pathLength="1" style="animation-delay:1.1s" marker-end="url(#farw)"/>';
-          svg += '<circle r="5" class="f-ball"><animateMotion begin="0.45s" dur="0.7s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".3 0 .4 1" path="' + path + '"/></circle>';
-          svg += '<circle cx="' + laneX + '" cy="' + cy + '" r="4" class="f-catchpt" style="animation-delay:1.1s"/>';
-          svg += mark(CX, qbY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/)) + mark(laneX, Y(t1), oc, ath("receiver"), nm(/ to ([A-Z][a-z]?\.[\w'-]+)/), false, 1.05, true, { x: laneX, y: cy, begin: 1.15, dur: 0.6 });
-        } else if (kc != null) {
-          // ESPN-style kick: dotted arc that the ball flies along, then the return (or fair catch / touchback).
-          const ky = Y(kFrom), cy = Y(kc), ey = Y(t1), midY = (ky + cy) / 2;
-          const path = "M" + CX + " " + ky + " Q" + (CX + 110) + " " + midY + " " + CX + " " + cy;
-          const noRet = /fair catch|touchback|downed|out of bounds|no play/i.test(t) || !ath("returner") || Math.abs(ey - cy) < 2;
-          const rYds = Math.round(t1 - kc);
-          svg += '<path d="' + path + '" class="f-throw" style="animation-delay:.3s"/>';
-          svg += '<circle r="5" class="f-ball"><animateMotion begin="0.35s" dur="1.1s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".3 0 .5 1" path="' + path + '"/></circle>';
-          svg += '<circle cx="' + CX + '" cy="' + cy + '" r="4" class="f-catchpt" style="animation-delay:1.45s"/>';
-          if (!noRet) svg += '<path d="M' + CX + " " + cy + " L" + CX + " " + ey + '" class="f-run draw" pathLength="1" style="animation-delay:1.5s;animation-duration:.8s" marker-end="url(#farw)"/>';
-          const tag = /touchback/i.test(t) ? "Touchback" : /fair catch/i.test(t) ? "Fair catch" : /downed/i.test(t) ? "Downed" : /out of bounds/i.test(t) && noRet ? "Out of bounds" : !noRet ? rYds + "-yd return" : "";
-          if (tag) { const tw = tag.length * 6.4 + 16, ty2 = noRet ? cy : (cy + ey) / 2; svg += '<g class="f-mark" style="animation-delay:' + (noRet ? 1.5 : 2) + 's"><rect x="' + (CX - 74 - tw / 2) + '" y="' + (ty2 - 10) + '" width="' + tw + '" height="18" rx="9" class="f-pill"/><text x="' + (CX - 74) + '" y="' + (ty2 + 3.5) + '" class="f-lbl">' + esc(tag) + "</text></g>"; }
-          svg += mark(CX, ky, oc, ath("punter") || ath("kicker"), nm(/([A-Z][a-z]?\.[\w'-]+) (?:punts|kicks)/));
-          if (!noRet || /fair catch/i.test(t)) svg += mark(CX, noRet ? cy : ey, dc, ath("returner"), (nm(/fair catch by ([A-Z][a-z]?\.[\w'-]+)/) || nm(/\.\s*([A-Z][a-z]?\.[\w'-]+) (?:to|for|MUFFS|pushed|ran)/)), false, 1.5, true, noRet ? null : { x: CX, y: cy, begin: 1.5, dur: 0.8 });
-        } else if (/incomplet/i.test(P.type?.text || "")) {
-          const ty = Y(t0 - (/deep/i.test(t) ? 22 : 9)), path = "M" + CX + " " + qbY + " Q" + (CX + (laneX - CX) * .35) + " " + (ty - 40) + " " + laneX + " " + ty;
-          svg += '<path d="' + path + '" class="f-throw" style="animation-delay:.4s"/><text x="' + laneX + '" y="' + (ty + 5) + '" class="f-x" style="animation-delay:1s">✕</text>';
-          svg += mark(CX, qbY, oc, ath("passer"), nm(/([A-Z][a-z]?\.[\w'-]+) pass/));
-        } else {
-          const ex = /middle/i.test(t) || !side ? CX + 6 : CX + side * 70, sy = qbY, ey = Y(t1);
-          if (Math.abs(sy - ey) > 2) svg += '<path d="M' + CX + " " + sy + " C" + CX + " " + (sy - 20) + " " + ex + " " + (ey + 30) + " " + ex + " " + ey + '" class="f-run draw" pathLength="1" style="animation-delay:.45s;animation-duration:.8s" marker-end="url(#farw)"/>';
-          const carrier = ath("rusher") || ath("passer") || ath("kicker") || ath("punter");
-          svg += mark(ex, ey, oc, carrier, nm(/([A-Z][a-z]?\.[\w'-]+)\s/), false, 0.35, true, { x: CX, y: sy, begin: 0.45, dur: 0.8 });
-        }
-        // Defenders the data credits on this play (no tracking data exists publicly, so only these are shown)
-        const athAll = (type) => (P?.participants || []).filter((x) => x.type === type).map((x) => athCache[x.athlete?.$ref]).filter(Boolean);
-        const endX = G.isPass && tc != null ? laneX : /incomplet/i.test(P.type?.text || "") ? laneX : (/middle/i.test(t) || !side ? CX + 6 : CX + side * 70);
-        const endY = /incomplet/i.test(P.type?.text || "") ? Y(t0 - (/deep/i.test(t) ? 22 : 9)) : Y(t1);
-        const push = endX > CX ? -1 : 1;
-        const defs = [];
-        athAll("passDefender").forEach((a) => defs.push([a, "Coverage"]));
-        athAll("sackedBy").forEach((a) => defs.push([a, "Sack"]));
-        athAll("tackler").forEach((a) => defs.push([a, "Tackle"]));
-        (kc != null ? [] : defs.slice(0, 2)).forEach(([a, role], k) => {
-          const sack = role === "Sack";
-          const dx = (sack ? CX : endX) + push * (58 + k * 46);
-          const dy = (sack ? qbY : endY) + (k % 2 ? 26 : -4);
-          svg += mark(Math.max(20, Math.min(W - 20, dx)), dy, dc, { jersey: a.jersey }, "", true, 1.75 + k * .12);
-        });
-      }
-      svg += "</g></g></svg>";
+      const svg = fieldSvg(F, P, G, still, col);
       const dteam = D.team === String(F.away.team?.id) ? F.away : F.home;
       const last = D.plays[D.plays.length - 1];
       let html = (F.h2 ? '<div class="h2"><span>2nd half</span><b>' + (F.h2.team.team?.logos?.[0]?.href ? '<img src="' + esc(F.h2.team.team.logos[0].href) + '" alt="">' : "") + esc(F.h2.team.team?.displayName || ab(F.h2.team)) + "</b><small>" + (F.h2.actual ? "received the 2nd-half kickoff" : "gets the ball first") + "</small></div>" : "") + scoreBug(F) + sitLine(F) + '<div data-c="plays"><div class="g-label f-title">Plays' + (F.live ? '<span class="live-pill">Live</span><small data-ago>just now</small>' : "") + '</div><div class="f-nav"><button type="button" class="sheet-btn" data-drive="-1" ' + (F.di ? "" : "disabled") + '>‹</button><div><b>' + ab(dteam) + " drive " + (F.di + 1) + " of " + F.drives.length + "</b><small>" + D.plays.length + " plays · " + esc(last?.type?.text || "") + "</small></div>" +
         '<button type="button" class="sheet-btn" data-drive="1" ' + (F.di < F.drives.length - 1 ? "" : "disabled") + ">›</button></div>" + svg +
-        '<div class="f-key"><span><i class="k-los"></i>Line of scrimmage</span><span><i class="k-1st"></i>First down</span><span><i class="k-air"></i>Throw</span></div>';
+        '<div class="f-key"><span><i class="k-los"></i>Line of scrimmage</span><span><i class="k-1st"></i>First down</span><span><i class="k-air"></i>Ball in the air</span><span><i class="k-run"></i>Run</span></div>';
       if (P) {
         const g = G, t = P.text || "", ty = P.type?.text || "";
         const refOf = (type) => (P.participants || []).find((x) => x.type === type)?.athlete?.$ref;
@@ -2921,19 +2935,37 @@
     }
 
     const ROSTER_GROUPS ={ offense: "Offense", defense: "Defense", specialTeam: "Special teams", injuredReserveOrOut: "Injured reserve / out", suspended: "Suspended", practiceSquad: "Practice squad" };
-    /* ---------- kick graphic: goalposts seen from behind the kicker, drawn from the play text ---------- */
+    /* ---------- kick graphic: goalposts seen from behind the kicker, ball animated, drawn from the play text ---------- */
     function kickSvg(t) {
       const s = String(t || "");
+      const good = /\bgood\b/i.test(s) && !/no good/i.test(s);
       const where = /blocked/i.test(s) ? "blocked" : /left upright/i.test(s) ? "lpost" : /right upright/i.test(s) ? "rpost" : /crossbar/i.test(s) ? "bar" :
-        /wide left/i.test(s) ? "left" : /wide right/i.test(s) ? "right" : /\bshort\b/i.test(s) ? "short" : /no good|missed/i.test(s) ? "" : /good/i.test(s) ? "good" : "";
+        /wide left/i.test(s) ? "left" : /wide right/i.test(s) ? "right" : /\bshort\b/i.test(s) ? "short" : good ? "good" : "";
       if (!where) return '<div class="g-note">Kick missed. The play description doesn\'t say where it went.</div>';
-      const end = { good: [100, 30], left: [38, 26], right: [162, 26], short: [100, 82], lpost: [60, 34], rpost: [140, 34], bar: [100, 70], blocked: [100, 104] }[where];
-      const label = { good: "Through the uprights", left: "Wide left", right: "Wide right", short: "Short", lpost: "Hit the left upright", rpost: "Hit the right upright", bar: "Hit the crossbar", blocked: "Blocked" }[where];
-      return '<div class="kick"><svg viewBox="0 0 200 124" role="img" aria-label="' + label + '">' +
-        '<line x1="0" y1="118" x2="200" y2="118" class="k-ground"/><path d="M100 118V70M60 70H140M60 70V8M140 70V8" class="k-post"/>' +
-        (where === "blocked" ? "" : '<path d="M100 120Q' + ((100 + end[0]) / 2) + " " + (end[1] - 30) + " " + end[0] + " " + end[1] + '" class="k-path"/>') +
-        '<ellipse cx="' + end[0] + '" cy="' + end[1] + '" rx="6" ry="4" class="k-ball' + (where === "good" ? " ok" : "") + '"/>' + (where === "blocked" ? '<path d="M92 96l16 16M108 96l-16 16" class="k-x"/>' : "") +
-        "</svg><div><b>" + label + "</b><small>Drawn from the play description; no ball-tracking data exists for kicks.</small></div></div>";
+      // Flight path from the kicker (bottom) and, for doinks, the bounce after hitting the post or bar.
+      const P = {
+        good: ["M100 146 Q100 70 100 22", ""],
+        left: ["M100 146 Q62 60 28 22", ""],
+        right: ["M100 146 Q138 60 172 22", ""],
+        short: ["M100 146 Q100 50 100 86", ""],
+        blocked: ["M100 146 L100 122", ""],
+        lpost: ["M100 146 Q72 70 62 40", good ? "M62 40 Q74 30 84 18" : "M62 40 Q48 34 34 56"],
+        rpost: ["M100 146 Q128 70 138 40", good ? "M138 40 Q126 30 116 18" : "M138 40 Q152 34 166 56"],
+        bar: ["M100 146 Q100 100 100 72", good ? "M100 72 Q104 58 102 40" : "M100 72 Q110 92 118 122"],
+      }[where];
+      const label = { good: "Through the uprights", left: "Wide left", right: "Wide right", short: "Short", blocked: "Blocked",
+        lpost: good ? "Off the left upright and in" : "Off the left upright, no good", rpost: good ? "Off the right upright and in" : "Off the right upright, no good",
+        bar: good ? "Off the crossbar and over" : "Off the crossbar, no good" }[where];
+      const end = (P[1] || P[0]).trim().split(/\s+/).slice(-2).map(Number);
+      const full = P[0] + (P[1] ? " " + P[1].replace(/^M[\d.]+ [\d.]+/, "") : "");
+      const mark = good ? '<path d="M' + (end[0] - 7) + " " + end[1] + "l5 5 9-10" + '" class="k-ok" style="animation-delay:1.25s"/>' :
+        '<path d="M' + (end[0] - 7) + " " + (end[1] - 7) + "l14 14M" + (end[0] + 7) + " " + (end[1] - 7) + "l-14 14" + '" class="k-x" style="animation-delay:1.25s"/>';
+      return '<div class="kick"><svg viewBox="0 0 200 156" role="img" aria-label="' + esc(label) + '">' +
+        '<line x1="0" y1="150" x2="200" y2="150" class="k-ground"/><path d="M100 150V72M60 72H140M60 72V6M140 72V6" class="k-post"/>' +
+        '<path d="' + P[0] + '" class="k-path ' + (good && !P[1] ? "ok" : P[1] ? "bounce" : "bad") + '" pathLength="1"/>' +
+        (P[1] ? '<path d="' + P[1] + '" class="k-path k2 ' + (good ? "ok" : "bad") + '" pathLength="1"/>' : "") +
+        '<ellipse rx="6" ry="4.5" class="k-ball"><animateMotion dur="1.2s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".25 0 .45 1" path="' + full + '"/></ellipse>' + mark +
+        "</svg><div><b>" + esc(label) + "</b><small>Drawn from the play description; no ball-tracking data exists for kicks.</small></div></div>";
     }
 
     async function openTeam(lg, id) {
