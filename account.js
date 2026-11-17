@@ -263,7 +263,7 @@ function refreshAccountSheet() {
   } else {
     const F = friendState;
     const person = (uid, actions) => '<div class="opt"><span><b>@' + esc(names[uid] || "…") + "</b></span><span class=\"acct-acts\">" + actions + "</span></div>";
-    h = '<div class="acct-me">' + avatarHtml(myCard?.avatar, profile?.username) + "<div><b>@" + esc(profile?.username || "") + "</b><small data-email>" + emailLine() + '</small></div><button class="pill-btn" type="button" data-logout>Log out</button></div>' +
+    h = '<div class="acct-me' + bnCls(myCard?.banner) + '">' + avatarHtml(myCard?.avatar, profile?.username) + "<div><b>@" + esc(profile?.username || "") + "</b>" + titleTag(myCard?.title) + "<small data-email>" + emailLine() + '</small></div><button class="pill-btn" type="button" data-logout>Log out</button></div>' +
       '<div class="g-note">★ teams and alert settings are synced.</div>' +
       '<div class="g-label" style="margin-top:18px">Your profile</div><div class="card-edit">' +
         '<div class="card-photo">' + avatarHtml(myCard.avatar, profile?.username, "lg") + '<div class="card-photo-acts"><label class="pill-btn">Change photo<input type="file" accept="image/jpeg,image/png,image/webp" data-avatarfile hidden></label>' + (myCard.avatar ? '<button type="button" class="acct-link" data-avatarclear>Remove photo</button>' : "") + "</div></div>" +
@@ -378,6 +378,7 @@ document.addEventListener("click", async (e) => {
       bio: String(document.querySelector("[data-bio]")?.value || "").trim().slice(0, 160),
       teams: followedTeams(),
       show: document.querySelector("[data-cardshow].active")?.dataset.cardshow || "friends",
+      title: myCard?.title || "", banner: myCard?.banner || "",   // keep what you equipped from the Shop
       updatedAt: fb.serverTimestamp(),
     };
     try { await fb.setDoc(fb.doc(db, "cards", user.uid), card); myCard = card; pendingAvatar = null; buzz(10); toast("Profile saved"); refreshAccountSheet(); }
@@ -394,7 +395,7 @@ async function openCard(uid) {
   try { const d = await fb.getDoc(fb.doc(db, "cards", uid)); c = d.exists() ? d.data() : null; } catch { c = null; }
   const name = names[uid] || "friend";
   const body = c
-    ? '<div class="card-view">' + avatarHtml(c.avatar, name, "lg") + "<b>@" + esc(name) + "</b>" + (c.bio ? "<p>" + esc(c.bio) + "</p>" : "") +
+    ? '<div class="card-view' + bnCls(c.banner) + '">' + avatarHtml(c.avatar, name, "lg") + "<b>@" + esc(name) + "</b>" + titleTag(c.title) + (c.bio ? "<p>" + esc(c.bio) + "</p>" : "") +
       (c.teams?.length ? '<div class="g-label">Follows</div><div class="card-teams">' + c.teams.map((t) => "<span>" + esc(t) + "</span>").join("") + "</div>" : "") + "</div>"
     : '<div class="empty">@' + esc(name) + " keeps their profile private.</div>";
   setBody(v, "@" + name, body);
@@ -584,6 +585,32 @@ window.scorelinePicks = {
     if (!pickReady()) return [];
     const r = await fb.getDocs(fb.query(fb.collection(db, "picks"), fb.where("uid", "==", user.uid))).catch(() => null);
     return (r?.docs || []).map((d) => d.data());
+  },
+  // Shop: titles and banners (in-app only). Buying is one batch the rules check: item + Marks off + ledger entry.
+  async shopItems() {
+    await startFirebase();
+    const r = await fb.getDocs(fb.collection(db, "shopItems")).catch(() => null);
+    return (r?.docs || []).map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  },
+  async owned() {
+    if (!pickReady()) return new Set();
+    const r = await fb.getDocs(fb.collection(db, "inventory", user.uid, "items")).catch(() => null);
+    return new Set((r?.docs || []).map((d) => d.id));
+  },
+  async buy(item, price) {
+    const b = fb.writeBatch(db), at = fb.serverTimestamp();
+    b.set(fb.doc(db, "inventory", user.uid, "items", item), { price, at });
+    b.update(fb.doc(db, "wallets", user.uid), { balance: fb.increment(-price), updatedAt: at });
+    b.set(fb.doc(db, "ledger", user.uid, "entries", "shop_" + item), { amount: -price, reason: "shop", refId: item, createdAt: at });
+    await b.commit();
+  },
+  equipped: () => ({ title: myCard?.title || "", banner: myCard?.banner || "" }),
+  async equip(kind, id) {
+    const card = { avatar: myCard?.avatar || "", bio: myCard?.bio || "", teams: myCard?.teams || followedTeams(), show: myCard?.show || "friends",
+      title: myCard?.title || "", banner: myCard?.banner || "", updatedAt: fb.serverTimestamp() };
+    card[kind] = id;
+    await fb.setDoc(fb.doc(db, "cards", user.uid), card);
+    myCard = card;
   },
   // Games still open for picks, soonest first (lockAt is in the future). Single-field range, so no extra index needed.
   async upcoming(n = 40) {
