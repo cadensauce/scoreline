@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794882005" />
+  <meta name="build" content="1794882137" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2627,7 +2627,7 @@
       const land0 = (x, y, delay) => '<g class="f-mark" style="animation-delay:' + delay + 's"><circle cx="' + x + '" cy="' + y + '" r="10" class="f-land"/><circle cx="' + x + '" cy="' + y + '" r="3.5" class="f-landc"/></g>';
       // The trail draws behind the runner at the same pace.
       const run = (d, delay, dur) => '<path d="' + d + '" class="f-run draw" pathLength="1" style="animation-delay:' + delay + "s;animation-duration:" + dur + 's;animation-timing-function:cubic-bezier(.45,0,.35,1)" marker-end="url(#farw)"/>';
-      const isKO = /kickoff/i.test(ty), isPunt = /punt/i.test(ty), isFG = /field goal|extra point/i.test(ty) || /extra point/i.test(t);
+      const isKO = /kickoff/i.test(ty), isPunt = /punt/i.test(ty), isFG = /field goal|extra point/i.test(ty);   // by play type: a touchdown play's text also mentions the extra point
       const qbX = xL - dir * (/shotgun/i.test(t) ? 5 : 2) * S;
       const kd = isKO || isPunt ? Number((t.match(/(?:punts|kicks) (-?\d+) yards?/i) || [])[1]) : NaN;
       const route = (d, begin, dur) => ({ d, begin, dur });
