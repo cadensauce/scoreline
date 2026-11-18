@@ -619,6 +619,18 @@ window.scorelinePicks = {
     return (r?.docs || []).map((d) => ({ id: d.id, ...d.data() }));
   },
   async balance() { if (!pickReady()) return 0; const d = await fb.getDoc(fb.doc(db, "wallets", user.uid)).catch(() => null); return d?.data()?.balance || 0; },
+  // Dev accounts (devs/<uid>, set by hand in the Firebase console): give Marks to anyone 13+ by username, yourself included.
+  async isDev() { if (!pickReady()) return false; const d = await fb.getDoc(fb.doc(db, "devs", user.uid)).catch(() => null); return !!d?.exists(); },
+  async grant(username, amount) {
+    const name = cleanName(username).replace(/^@/, "");
+    const u = name ? await fb.getDoc(fb.doc(db, "usernames", name)) : null;
+    if (!u?.exists()) throw new Error("No one has that username.");
+    const uid = u.data().uid, id = "grant_" + crypto.randomUUID().replace(/-/g, ""), at = fb.serverTimestamp(), b = fb.writeBatch(db);
+    b.set(fb.doc(db, "ledger", uid, "entries", id), { amount, reason: "dev", by: user.uid, createdAt: at });
+    b.set(fb.doc(db, "wallets", uid), { balance: fb.increment(amount), updatedAt: at, lastGrant: id }, { merge: true });
+    try { await b.commit(); } catch { throw new Error("Couldn't give Marks. They only go to accounts that agreed to the Terms (13+)."); }
+    return name;
+  },
 };
 
 // Start Firebase (~270 KB) once the scores are on screen, or right away when the account button is tapped.

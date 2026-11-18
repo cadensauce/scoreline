@@ -91,3 +91,25 @@ test("shop: show a title you own", async () => {
 });
 test("shop: can't show a title you don't own", () => assertFails(card("teen", { title: "t_sharp" })));
 test("shop: profile card without shop fields still saves", () => assertSucceeds(card("teen", {})));
+
+// Dev accounts: give Marks by username (devs/<uid> is set by hand in the console).
+const DEV_SETUP = () => env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "devs/dev"), { note: "owner" }));
+const grant = (by, uid, amount, o = {}) => {
+  const db = as(by), id = o.id || "grant_" + Math.random().toString(36).slice(2, 14), at = serverTimestamp(), b = writeBatch(db);
+  if (o.ledger !== false) b.set(doc(db, "ledger/" + uid + "/entries/" + id), { amount: o.logged ?? amount, reason: "dev", by: o.byField || by, createdAt: at });
+  b.set(doc(db, "wallets/" + uid), { balance: increment(amount), updatedAt: at, lastGrant: id }, { merge: true });
+  return b.commit();
+};
+test("dev: give Marks to someone 13+", async () => { await DEV_SETUP(); await assertSucceeds(grant("dev", "teen", 500)); });
+test("dev: give Marks to yourself (if 13+)", async () => {
+  await DEV_SETUP();
+  await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "ages/dev"), { is13plus: true, at: Timestamp.now() }));
+  await assertSucceeds(grant("dev", "dev", 50));   // no wallet yet: created with the gift
+});
+test("dev: not to people who didn't agree (13+)", async () => { await DEV_SETUP(); await assertFails(grant("dev", "kid", 50)); });
+test("dev: amount must match the ledger entry", async () => { await DEV_SETUP(); await assertFails(grant("dev", "teen", 5000, { logged: 5 })); });
+test("dev: needs the ledger entry", async () => { await DEV_SETUP(); await assertFails(grant("dev", "teen", 50, { ledger: false })); });
+test("dev: at most 10,000 at a time", async () => { await DEV_SETUP(); await assertFails(grant("dev", "teen", 10001)); });
+test("dev: gift is signed with the real dev", async () => { await DEV_SETUP(); await assertFails(grant("dev", "teen", 50, { byField: "someone" })); });
+test("non-dev can't give Marks, even to themselves", () => assertFails(grant("teen", "teen", 50)));
+test("can't make yourself a dev", () => assertFails(setDoc(doc(as("teen"), "devs/teen"), { note: "me" })));
