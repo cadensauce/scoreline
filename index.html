@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1794935924" />
+  <meta name="build" content="1795032518" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -505,6 +505,9 @@
     .shop-me { display: flex; align-items: center; min-height: 64px; padding: 12px 14px; border-radius: 14px; margin-bottom: 14px; background: var(--panel-2); }
     .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin-bottom: 16px; }
     .shop-it { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 600; } .shop-bn { height: 44px; border-radius: 10px; }
+    .dev-form { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .dev-form input { flex: 1 1 140px; min-width: 0; height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; outline: none; }
+    .dev-form input[type="number"] { flex: 0 1 110px; } .dev-form input:focus { border-color: var(--muted); } .dev-form .pill-btn { flex: none; }
     .shop-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; } .shop-row { display: flex; align-items: center; justify-content: space-between; } .shop-row .title-tag { margin-left: 0; }
     .pill-btn.sm { padding: 5px 10px; font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; } .pill-btn.sm:disabled { opacity: .45; }
     /* Banners (unlocked in the Shop). Text on them stays readable: dark gradients with light text. */
@@ -1623,9 +1626,7 @@
     let hpHtml = "", hpAt = 0;   // last "Make your picks" block, so Home's live refreshes don't flicker or re-read every time
     document.addEventListener("click", (e) => {
       const g = e.target.closest("[data-game]");
-      if (g) { const [lg, id] = g.dataset.game.split("|"); return openGame(lg, id); }
-      if (e.target.closest("[data-home-picks] [data-pick-side]")) setTimeout(() => fillHomePicks().catch(() => {}), 900);   // update "N of M picked"
-    });
+      if (g) { const [lg, id] = g.dataset.game.split("|"); return openGame(lg, id); }    });
     window.addEventListener("scoreline-user", () => { hpAt = 0; if (state.tab === "home") fillHomePicks().catch(() => {}); });
     async function renderHome() {
       const main = $("main");
@@ -2351,7 +2352,7 @@
        enforced by the Firestore rules; the push worker sets the Upset bonus and pays Marks after the final. */
     const PICK_LGS = ["nfl", "cfb", "nba", "mlb"];
     /* ---------- Terms of Service (shown from Picks and You → About). Plain wording; update TERMS_DATE when it changes. ---------- */
-    const TERMS_DATE = "November 17, 2026";   // Picks are kept clear of gambling law: free (no consideration), no prizes or cash value (no prize). See docs/research-legal-phase5.md.
+    const TERMS_DATE = "November 18, 2026";   // Picks are kept clear of gambling law: free (no consideration), no prizes or cash value (no prize). See docs/research-legal-phase5.md.
     const TERMS_HTML = '<div class="terms"><p class="muted">Last updated ' + TERMS_DATE + "</p>" +
       '<div class="terms-key"><b>Marks are NOT real money and NOT a real currency.</b> They are points for fun that live only inside Scoreline. ' +
       "You can <b>only earn</b> them by making right predictions in Picks (and in fantasy games, when those arrive). " +
@@ -2367,7 +2368,7 @@
       "<li>Picks are a free prediction game for fun. Nothing is paid in, nothing of value can be won, so they are not gambling, betting or a sweepstakes. Scoreline doesn't link to or advertise betting sites, and nothing in it is betting advice.</li>" +
       "<li>Picks lock when the game starts. Results come from public game data, which can be late or wrong; we may correct results, Marks or picks when that happens.</li>" +
       "<li>If a game is postponed, cancelled or can't be decided, picks on it may be cancelled with no Marks given.</li>" +
-      "<li>We may change how many Marks a pick is worth, reset Marks, or change or end Picks at any time.</li></ul>" +
+      "<li>We may change how many Marks a pick is worth, reset Marks, or change or end Picks at any time. The Scoreline team may also add Marks to an account (for example to fix a mistake, for testing, or as a thank-you); these are still free points with no real-world value.</li></ul>" +
       "<h3>4. Play fair</h3><p>One account per person. Don't use bots or scripts, don't exploit bugs, and don't try to change your own or anyone else's picks, Marks or data. If you do, we may remove your picks and Marks or close your account.</p>" +
       "<h3>5. What other people can see</h3><ul>" +
       "<li><b>Your username:</b> anyone signed in to Scoreline can see it, so friends can find you. Choose one that doesn't include your real name, age, school or location.</li>" +
@@ -2437,10 +2438,11 @@
       const b = t.closest("[data-pick-side]");
       if (b && P && !b.disabled) {
         const row = b.closest(".pick-row"), gid = row.dataset.gid, clear = b.classList.contains("on");
-        row.querySelectorAll(".pick-btn").forEach((x) => x.classList.toggle("on", !clear && x === b)); buzz(8);
-        try { await (clear ? P.clearPick(gid) : P.setPick(gid, b.dataset.pickSide)); }
+        const side = b.dataset.pickSide;   // the same game can be on Home and in the open game at once: keep every copy in step
+        document.querySelectorAll('.pick-row[data-gid="' + CSS.escape(gid) + '"]').forEach((r) => r.querySelectorAll("[data-pick-side]").forEach((x) => x.classList.toggle("on", !clear && x.dataset.pickSide === side))); buzz(8);
+        try { await (clear ? P.clearPick(gid) : P.setPick(gid, side)); }
         catch { toast("Couldn't save your pick. Picks lock at kickoff."); }
-        refillPick(b.closest("[data-pick]"));
+        document.querySelectorAll("[data-pick]").forEach(refillPick); hpAt = 0; fillHomePicks().catch(() => {});
       }
     });
     /* ---------- Marks in the top bar (only for people who agreed to the Terms, 13+) ----------
@@ -2516,6 +2518,29 @@
         try { await P.equip(kind, id); buzz(8); } catch { toast("Couldn't change that. Try again."); }
         fillShopYou();
       }
+    });
+    /* ---------- Dev tools (You tab, dev accounts only): give Marks to anyone 13+ by username, yourself included.
+       Who is a dev is set by hand in the Firebase console; the rules check it and log every gift. ---------- */
+    async function fillDevYou() {
+      const el = document.querySelector("[data-dev-you]"), P = window.scorelinePicks;
+      if (!el) return;
+      if (!P?.isDev || !(await P.isDev().catch(() => false))) { el.remove(); return; }
+      if (!el.isConnected || el.firstChild) return;
+      el.innerHTML = '<div class="section-title"><b>Dev tools</b><span class="muted">Only you see this</span></div><div class="panel">' +
+        '<form class="dev-form" data-dev-form><input name="who" placeholder="Username" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="21" required>' +
+        '<input name="n" type="number" inputmode="numeric" min="1" max="10000" step="1" placeholder="Marks" required><button type="submit" class="pill-btn">Give Marks</button></form>' +
+        '<div class="g-note">Gives Marks to any account that agreed to the Terms (13+). Use your own username to give yourself Marks. Each gift shows in their Marks history.</div></div>';
+    }
+    document.addEventListener("submit", async (e) => {
+      const f = e.target.closest("[data-dev-form]"), P = window.scorelinePicks;
+      if (!f || !P) return;
+      e.preventDefault();
+      const n = Math.floor(Number(f.n.value)), btn = f.querySelector("button");
+      if (!(n >= 1 && n <= 10000)) { toast("Pick an amount from 1 to 10,000."); return; }
+      btn.disabled = true;
+      try { const who = await P.grant(f.who.value, n); toast("Gave " + n.toLocaleString() + " Marks to @" + who + "."); f.reset(); buzz(12); syncMarks(); fillShopYou().catch(() => {}); fillPicksYou().catch(() => {}); }
+      catch (err) { toast(err?.message || "Couldn't give Marks. Try again."); }
+      btn.disabled = false;
     });
     // You tab: Marks and recent picks.
     async function fillPicksYou() {
@@ -4327,7 +4352,7 @@
       let h = '<div class="bar"><h1>You</h1></div>' +
         '<div class="section-title"><b>Account</b></div><div class="panel nteams"><div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>' + (signedIn ? "Your account" : "Sign in") + "</b><small>" +
         (signedIn ? (reqs ? reqs + " friend request" + (reqs === "1" ? "" : "s") : "Friends, chat and sync") : "Keep your teams and alerts on every device") + '</small></span><span class="chev">›</span></div></div>' +
-        '<div data-picks-you></div><div data-shop-you></div>' +
+        '<div data-picks-you></div><div data-shop-you></div><div data-dev-you></div>' +
         '<div class="section-title"><b>Sports in your bar</b></div><div class="pin-row">' + ALL_SPORTS.map((k) =>
           '<button type="button" class="pin ' + (pins().includes(k) ? "on" : "") + '" data-pin="' + k + '">' + esc(tabName(k)) + "</button>").join("") + "</div>" +
         '<div class="g-note">Pick up to ' + MAX_PINS + ". Home shows only these sports.</div>" +
@@ -4343,7 +4368,7 @@
       if (IS_DEV && window.top === window) h += '<div class="section-title"><b>Developer</b></div><div class="panel"><button type="button" class="opt" data-phonepreview><span><b>Phone preview</b><small>See the site as the phone app, right here. Only shown on your account.</small></span><span class="chev">›</span></button></div>';
       if (TAURI?.app?.getVersion) TAURI.app.getVersion().then((v) => { const el = document.getElementById("appVer"); if (el) el.textContent = "Updated " + builtOn() + " · app " + v; }).catch(() => {});
       $("main").innerHTML = h;
-      fillPicksYou().catch(() => {}); fillShopYou().catch(() => {}); fillMarksRow().catch(() => {}); syncMarks();
+      fillPicksYou().catch(() => {}); fillShopYou().catch(() => {}); fillDevYou().catch(() => {}); fillMarksRow().catch(() => {}); syncMarks();
       stamp();
     }
     // Version shown in You → About. One source: <meta name="version"> (major.minor) + <meta name="build"> (when this page was published).
