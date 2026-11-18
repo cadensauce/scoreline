@@ -16,6 +16,8 @@ const V = "10.12.2";
 let fb = null;        // loaded Firebase modules
 let auth = null, db = null, user = null, profile = null;
 let unsubs = [];
+// Resolves once Firebase has said who is signed in (first onUser finished), so "signed in?" is never answered too early.
+let authDone; const authReady = new Promise((r) => { authDone = r; });
 let friendState = { incoming: [], outgoing: [], friends: [] };
 const names = {};     // uid -> username cache
 
@@ -47,6 +49,7 @@ async function onUser(u) {
     if (twoStepOn && !verifiedHere) {
       pending2 = true; watchOtp(); requestCode("signin");
       syncButton(); if (!sheetView?.el?.isConnected) openAccount(); else refreshAccountSheet();
+      authDone();
       return;
     }
     const p = await fb.getDoc(fb.doc(db, "profiles", u.uid));
@@ -58,6 +61,7 @@ async function onUser(u) {
   }
   syncButton();
   refreshAccountSheet();
+  authDone();
   window.dispatchEvent(new Event("scoreline-user"));   // picks and Marks refresh on sign-in/out
 }
 function syncButton() {
@@ -571,6 +575,7 @@ const pickReady = () => !!(db && user && !pending2);
 window.scorelinePicks = {
   async status() {
     await startFirebase();
+    if (FIREBASE_CONFIG && fb) await Promise.race([authReady, new Promise((r) => setTimeout(r, 8000))]);   // wait for the real answer
     if (!pickReady()) return { signedIn: false };
     const a = await fb.getDoc(fb.doc(db, "ages", user.uid)).catch(() => null);
     return { signedIn: true, teen: a?.exists() ? a.data().is13plus === true : null };
@@ -619,17 +624,17 @@ window.scorelinePicks = {
     return (r?.docs || []).map((d) => ({ id: d.id, ...d.data() }));
   },
   async balance() { if (!pickReady()) return 0; const d = await fb.getDoc(fb.doc(db, "wallets", user.uid)).catch(() => null); return d?.data()?.balance || 0; },
-  // Dev accounts (devs/<uid>, set by hand in the Firebase console): give Marks to anyone 13+ by username, yourself included.
-  myUid: () => (pickReady() ? user.uid : ""),
+  // Dev accounts (devs/<username>, set by hand in the Firebase console): give Marks to anyone 13+ by username, yourself included.
+  myName: () => (pickReady() ? profile?.username || "" : ""),
   // Withdraw from the Terms: Marks stop (the worker only pays agreed accounts) and the Shop closes. Picks and Marks are kept.
   withdraw: () => fb.deleteDoc(fb.doc(db, "ages", user.uid)),
-  async isDev() { if (!pickReady()) return false; const d = await fb.getDoc(fb.doc(db, "devs", user.uid)).catch(() => null); return !!d?.exists(); },
+  async isDev() { const n = pickReady() && profile?.username; if (!n) return false; const d = await fb.getDoc(fb.doc(db, "devs", n)).catch(() => null); return !!d?.exists(); },
   async grant(username, amount) {
     const name = cleanName(username).replace(/^@/, "");
     const u = name ? await fb.getDoc(fb.doc(db, "usernames", name)) : null;
     if (!u?.exists()) throw new Error("No one has that username.");
     const uid = u.data().uid, id = "grant_" + crypto.randomUUID().replace(/-/g, ""), at = fb.serverTimestamp(), b = fb.writeBatch(db);
-    b.set(fb.doc(db, "ledger", uid, "entries", id), { amount, reason: "dev", by: user.uid, createdAt: at });
+    b.set(fb.doc(db, "ledger", uid, "entries", id), { amount, reason: "dev", by: user.uid, dev: profile?.username || "", createdAt: at });
     b.set(fb.doc(db, "wallets", uid), { balance: fb.increment(amount), updatedAt: at, lastGrant: id }, { merge: true });
     try { await b.commit(); } catch { throw new Error("Couldn't give Marks. They only go to accounts that agreed to the Terms (13+)."); }
     return name;

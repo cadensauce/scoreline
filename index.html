@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795034502" />
+  <meta name="build" content="1795035028" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -505,6 +505,7 @@
     .shop-me { display: flex; align-items: center; min-height: 64px; padding: 12px 14px; border-radius: 14px; margin-bottom: 14px; background: var(--panel-2); }
     .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin-bottom: 16px; }
     .shop-it { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 600; } .shop-bn { height: 44px; border-radius: 10px; }
+    .dev-panel { margin-top: 10px; }
     .dev-form { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
     .dev-form input { flex: 1 1 140px; min-width: 0; height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; outline: none; }
     .dev-form input[type="number"] { flex: 0 1 110px; } .dev-form input:focus { border-color: var(--muted); } .dev-form .pill-btn { flex: none; }
@@ -2475,8 +2476,14 @@
     // You → Settings: Marks status, and a way to agree to the Terms later (after "No thanks").
     /* The You tab redraws whenever sign-in finishes or a setting changes. Each section keeps its last content here, so a
        redraw shows it straight away instead of blanking until its data comes back (that was the flicker). */
-    const youCache = {};
-    const youSet = (key, el, html) => { youCache[key] = html; if (el.isConnected) el.innerHTML = html; };
+    // Also kept between visits, so the sections are there at once on the next load (fills then bring them up to date).
+    const youCache = store.get("youCache", {}) || {};
+    const YOU_SECS = [["picks", "[data-picks-you]"], ["shop", "[data-shop-you]"], ["marks", "[data-marks-row]"], ["dev", "[data-dev-you]"]];
+    let youSkel = "";
+    const youSet = (key, el, html) => {
+      if (youCache[key] !== html) { youCache[key] = html; store.set("youCache", youCache); }
+      if (el.isConnected && el.innerHTML !== html) el.innerHTML = html;
+    };
     async function fillMarksRow() {
       const el = document.querySelector("[data-marks-row]"), P = window.scorelinePicks;
       if (!el) return;
@@ -2543,9 +2550,9 @@
       if (!dev && !IS_DEV) { youSet("dev", el, ""); return; }
       if (el.querySelector("[data-dev-form]") && el.dataset.ok === String(dev)) return;   // keep what's typed
       el.dataset.ok = String(dev);
-      const uid = P?.myUid?.() || "";
-      youSet("dev", el, '<div class="section-title"><b>Dev tools</b><span class="muted">Dev accounts only</span></div><div class="panel">' +
-        (dev ? "" : '<div class="g-note dev-setup"><b>Not set up yet.</b> In the Firebase console go to Firestore → Data → Start collection <code>devs</code>, and use this Document ID: <code class="dev-uid">' + esc(uid || "sign in first") + "</code> (add any field, like note = owner). Then reload.</div>") +
+      const uid = P?.myName?.() || "", underDev = IS_DEV && window.top === window;   // sits inside the Developer section
+      youSet("dev", el, (underDev ? '<div class="panel dev-panel"><div class="g-label">Give Marks</div>' : '<div class="section-title"><b>Developer</b></div><div class="panel"><div class="g-label">Give Marks</div>') +
+        (dev ? "" : '<div class="g-note dev-setup"><b>Not set up yet.</b> In the Firebase console go to Firestore → Data → Start collection <code>devs</code>, and use your username as the Document ID: <code class="dev-uid">' + esc(uid || "pick a username first") + "</code> (add any field, like note = owner). Then reload.</div>") +
         '<form class="dev-form" data-dev-form><input name="who" placeholder="Username" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="21" required>' +
         '<input name="n" type="number" inputmode="numeric" min="1" max="10000" step="1" placeholder="Marks" required><button type="submit" class="pill-btn"' + (dev ? "" : " disabled") + ">Give Marks</button></form>" +
         '<div class="g-note">Gives Marks to any account that agreed to the Terms (13+). Use your own username to give yourself Marks. Each gift shows in their Marks history.</div></div>');
@@ -4371,12 +4378,12 @@
       let h = '<div class="bar"><h1>You</h1></div>' +
         '<div class="section-title"><b>Account</b></div><div class="panel nteams"><div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>' + (signedIn ? "Your account" : "Sign in") + "</b><small>" +
         (signedIn ? (reqs ? reqs + " friend request" + (reqs === "1" ? "" : "s") : "Friends, chat and sync") : "Keep your teams and alerts on every device") + '</small></span><span class="chev">›</span></div></div>' +
-        '<div data-picks-you>' + (youCache.picks || "") + '</div><div data-shop-you>' + (youCache.shop || "") + "</div>" +
+        "<div data-picks-you></div><div data-shop-you></div>" +
         '<div class="section-title"><b>Sports in your bar</b></div><div class="pin-row">' + ALL_SPORTS.map((k) =>
           '<button type="button" class="pin ' + (pins().includes(k) ? "on" : "") + '" data-pin="' + k + '">' + esc(tabName(k)) + "</button>").join("") + "</div>" +
         '<div class="g-note">Pick up to ' + MAX_PINS + ". Home shows only these sports.</div>" +
         '<div class="section-title"><b>Settings</b></div><div class="panel"><div class="set-row"><b>Theme</b><div class="seg theme-seg">' + [["system", "System"], ["dark", "Dark"], ["light", "Light"]].map(([k, l]) => '<button type="button" data-theme-pick="' + k + '" class="' + ((document.documentElement.dataset.theme || "dark") === k ? "active" : "") + '">' + l + "</button>").join("") + "</div></div>" +
-        '<button type="button" class="opt ' + (DUMMY ? "on" : "") + '" data-dummy><span><b>Dummy Mode</b><small>Explains terms, stats and rules as you go, for every sport. Tap anything with an ⓘ.</small></span><i class="switch"></i></button><button type="button" class="opt" data-tour><span><b>Replay the tour</b><small>The quick walkthrough new visitors see</small></span><span class="chev">›</span></button><div data-marks-row>' + (youCache.marks || "") + "</div></div>";
+        '<button type="button" class="opt ' + (DUMMY ? "on" : "") + '" data-dummy><span><b>Dummy Mode</b><small>Explains terms, stats and rules as you go, for every sport. Tap anything with an ⓘ.</small></span><i class="switch"></i></button><button type="button" class="opt" data-tour><span><b>Replay the tour</b><small>The quick walkthrough new visitors see</small></span><span class="chev">›</span></button><div data-marks-row></div></div>';
       if (MOBILE_APP) h += '<div class="section-title"><b>Alerts</b></div>' +
         '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Only about the teams you follow</small></span><i class="switch"></i></button><button type="button" class="pill-btn test-btn" id="testNotify">Send test notification</button>' + (alertsOn ? '<div class="g-note" id="pushState">' + esc(pushStatus) + "</div>" : "") + "</div>" +
         (() => { const p = alertPrefs(), cur = p.quietFrom != null && p.quietFrom !== "" ? p.quietFrom + "-" + p.quietTo : "off"; return '<div class="section-title"><b>Quiet hours</b></div><div class="panel"><div class="seg chips">' + QUIET.map(([k, l]) => '<button type="button" data-quiet="' + k + '" class="' + (k === cur ? "active" : "") + '">' + l + "</button>").join("") + '</div><div class="g-note">No alerts during these hours. Uses your phone\'s time.</div></div>'; })() +
@@ -4384,10 +4391,18 @@
           '<div class="opt nteam" role="button" tabindex="0" data-teamalerts="' + esc(k) + '"><span><b>' + esc(teamNames[k] || findName(k) || "Team") + "</b><small>" + esc(teamAlertSummary(k)) + '</small></span><span class="acct-acts"><button class="fav on" type="button" data-fav="' + esc(k) + '" aria-label="Unfollow">★</button><span class="chev">›</span></span></div>').join("") : '<div class="g-note">Follow a team from its team page to get alerts about it.</div>') + "</div>" +
         '<div class="panel nteams" style="margin-top:10px"><div class="opt nteam" role="button" tabindex="0" data-teamalerts=""><span><b>Defaults for new teams</b><small>What a team starts with when you follow it</small></span><span class="chev">›</span></div></div>';
       h += '<div class="section-title"><b>About</b></div><div class="panel about"><div class="opt"><span><b>Version ' + esc(versionText()) + '</b><small id="appVer">Updated ' + esc(builtOn()) + '</small></span></div><button type="button" class="opt" data-terms><span><b>Terms of Service</b><small>Rules for Picks and Marks, and using Scoreline</small></span><span class="chev">›</span></button><details class="legal"><summary>Data sources and legal</summary>' + document.querySelector("footer").innerHTML + "</details></div>";
-      h += "<div data-dev-you>" + (youCache.dev || "") + "</div>";   // Dev tools (dev accounts only; filled by fillDevYou)
+      // Developer: Phone preview (owner only) and Dev tools (dev accounts; filled by fillDevYou) under one heading
       if (IS_DEV && window.top === window) h += '<div class="section-title"><b>Developer</b></div><div class="panel"><button type="button" class="opt" data-phonepreview><span><b>Phone preview</b><small>See the site as the phone app, right here. Only shown on your account.</small></span><span class="chev">›</span></button></div>';
       if (TAURI?.app?.getVersion) TAURI.app.getVersion().then((v) => { const el = document.getElementById("appVer"); if (el) el.textContent = "Updated " + builtOn() + " · app " + v; }).catch(() => {});
-      $("main").innerHTML = h;
+      h += "<div data-dev-you></div>";
+      // Many things ask for a redraw (sign-in finishing, settings syncing, the 2-minute refresh). If the page would come out
+      // the same, keep it as it is (no jump, typed text kept) and only let the sections below update themselves.
+      const main = $("main");
+      if (h !== youSkel || !main.querySelector("[data-picks-you]")) {
+        youSkel = h;
+        main.innerHTML = h;
+        for (const [k, sel] of YOU_SECS) { const el = main.querySelector(sel); if (el && youCache[k]) el.innerHTML = youCache[k]; }   // last content, straight away
+      }
       fillPicksYou().catch(() => {}); fillShopYou().catch(() => {}); fillDevYou().catch(() => {}); fillMarksRow().catch(() => {}); syncMarks();
       stamp();
     }
