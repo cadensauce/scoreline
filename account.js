@@ -575,7 +575,7 @@ window.scorelinePicks = {
     const a = await fb.getDoc(fb.doc(db, "ages", user.uid)).catch(() => null);
     return { signedIn: true, teen: a?.exists() ? a.data().is13plus === true : null };
   },
-  // Only true/false is saved, never the birth date. It can't be changed later.
+  // Only true/false is saved, never the birth date. It can't be edited, only withdrawn (deleted) and agreed to again.
   setAge: (is13plus) => fb.setDoc(fb.doc(db, "ages", user.uid), { is13plus: !!is13plus, at: fb.serverTimestamp() }),
   async game(gameId) { await startFirebase(); const d = await fb.getDoc(fb.doc(db, "games", gameId)).catch(() => null); return d?.exists() ? d.data() : null; },
   async pick(gameId) { if (!pickReady()) return null; const d = await fb.getDoc(fb.doc(db, "picks", user.uid + "_" + gameId)).catch(() => null); return d?.exists() ? d.data() : null; },
@@ -620,6 +620,9 @@ window.scorelinePicks = {
   },
   async balance() { if (!pickReady()) return 0; const d = await fb.getDoc(fb.doc(db, "wallets", user.uid)).catch(() => null); return d?.data()?.balance || 0; },
   // Dev accounts (devs/<uid>, set by hand in the Firebase console): give Marks to anyone 13+ by username, yourself included.
+  myUid: () => (pickReady() ? user.uid : ""),
+  // Withdraw from the Terms: Marks stop (the worker only pays agreed accounts) and the Shop closes. Picks and Marks are kept.
+  withdraw: () => fb.deleteDoc(fb.doc(db, "ages", user.uid)),
   async isDev() { if (!pickReady()) return false; const d = await fb.getDoc(fb.doc(db, "devs", user.uid)).catch(() => null); return !!d?.exists(); },
   async grant(username, amount) {
     const name = cleanName(username).replace(/^@/, "");

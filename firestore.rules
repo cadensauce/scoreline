@@ -138,13 +138,15 @@ service cloud.firestore {
 
 
     // ---- Picks and Marks (Phase 5) ----
-    // Terms agreement: "I agree" to the Terms (which include being 13 or older). Saved once, can't be changed.
+    // Terms agreement: "I agree" to the Terms (which include being 13 or older). Can't be edited; can be withdrawn and given again.
     match /ages/{uid} {
       allow get: if member() && me() == uid;
       allow create: if member() && me() == uid
         && request.resource.data.keys().hasOnly(['is13plus', 'at'])
         && request.resource.data.is13plus is bool && request.resource.data.at == request.time;
-      allow list, update, delete: if false;
+      // You can withdraw (delete it) any time; Marks stop until you agree again.
+      allow delete: if member() && me() == uid;
+      allow list, update: if false;
     }
     function lockOf(gameId) { return get(/databases/$(database)/documents/games/$(gameId)).data.lockAt; }
     // Games open for picks: written only by the push worker (kickoff time = lock time, Upset bonus, result).

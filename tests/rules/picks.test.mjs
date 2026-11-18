@@ -59,7 +59,12 @@ test("games are public to read, nobody writes them", async () => {
 test("age: answered once, then can't change", async () => {
   await assertSucceeds(setDoc(doc(as("newbie"), "ages/newbie"), { is13plus: true, at: serverTimestamp() }));
   await assertFails(setDoc(doc(as("kid"), "ages/kid"), { is13plus: true, at: serverTimestamp() }));
-  await assertFails(deleteDoc(doc(as("kid"), "ages/kid")));
+  await assertFails(updateDoc(doc(as("kid"), "ages/kid"), { is13plus: true }));
+});
+test("age: you can withdraw your own agreement, not someone else's", async () => {
+  await assertFails(deleteDoc(doc(as("other"), "ages/teen")));
+  await assertSucceeds(deleteDoc(doc(as("teen"), "ages/teen")));
+  await assertSucceeds(setDoc(doc(as("teen"), "ages/teen"), { is13plus: true, at: serverTimestamp() }));   // and agree again
 });
 test("age: only true/false is stored", () => assertFails(setDoc(doc(as("newbie"), "ages/newbie"), { is13plus: true, at: serverTimestamp(), birthYear: 2010 })));
 test("age: only your own", () => assertFails(setDoc(doc(as("newbie"), "ages/someone"), { is13plus: true, at: serverTimestamp() })));
