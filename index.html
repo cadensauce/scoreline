@@ -501,6 +501,21 @@
     .hp-top { display: flex; gap: 6px; width: 100%; border: 0; background: none; padding: 0 2px 8px; color: var(--muted); font: 600 11.5px Inter, sans-serif; text-align: left; cursor: pointer; } .hp-top span { color: var(--text); }
     .hp-card .pick-row { align-items: center; gap: 6px; } .hp-card .pick-btn { padding: 8px 4px; border-radius: 12px; } .hp-card .pick-btn b { font-size: 14px; } .hp-at { color: var(--muted); font-size: 12px; }
     .qotd p.qin { animation: qin .35s ease both; } @keyframes qin { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .title-tag { display: inline-block; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line-hi, var(--line)); background: var(--panel-2); font: 700 11px Inter, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--text); margin-left: 6px; vertical-align: 2px; }
+    .shop-me { display: flex; align-items: center; min-height: 64px; padding: 12px 14px; border-radius: 14px; margin-bottom: 14px; background: var(--panel-2); }
+    .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .shop-it { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 600; } .shop-bn { height: 44px; border-radius: 10px; }
+    .shop-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; } .shop-row { display: flex; align-items: center; justify-content: space-between; } .shop-row .title-tag { margin-left: 0; }
+    .pill-btn.sm { padding: 5px 10px; font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; } .pill-btn.sm:disabled { opacity: .45; }
+    /* Banners (unlocked in the Shop). Text on them stays readable: dark gradients with light text. */
+    .bn { color: #fff; } .bn .title-tag { background: rgba(0,0,0,.35); border-color: rgba(255,255,255,.35); color: #fff; } .bn small { color: rgba(255,255,255,.8) !important; }
+    .bn.b_midnight { background: linear-gradient(135deg, #0b1023, #1d2a5b); }
+    .bn.b_gridiron { background: repeating-linear-gradient(90deg, rgba(255,255,255,.18) 0 2px, transparent 2px 28px), linear-gradient(135deg, #1f5f2b, #2f7d3a); }
+    .bn.b_hardwood { background: repeating-linear-gradient(90deg, rgba(0,0,0,.12) 0 1px, transparent 1px 22px), linear-gradient(135deg, #a8642b, #d08b45); }
+    .bn.b_diamond { background: radial-gradient(circle at 50% 120%, #b07a4a 0 30%, transparent 31%), linear-gradient(135deg, #2a6b33, #3c8a46); }
+    .bn.b_pitlane { background: repeating-conic-gradient(#1a1a1a 0 25%, #3a3a3a 0 50%) 0 0 / 14px 14px; }
+    .bn.b_aurora { background: linear-gradient(120deg, #1b2a4a, #2c6e6a 45%, #6b3d8a); }
+    .bn.b_gold { background: linear-gradient(135deg, #6b4a12, #c9952e 50%, #7a5414); }
     .marks-chip[hidden] { display: none; } .marks-chip:hover { background: var(--panel-2); } .mark-ic { flex: none; vertical-align: -3px; }
     .marks-agree { flex-direction: column; align-items: stretch !important; gap: 10px; }
     @media (max-width: 720px) { .getapp-btn { min-height: 34px !important; padding: 6px 10px !important; font-size: 12.5px; } }
@@ -2460,6 +2475,48 @@
             '<div class="age-row"><button type="button" class="pill-btn tos-go" data-tos-agree>I agree</button><button type="button" class="pill-btn" data-terms>TOS</button></div>' +
             '<div class="g-note">By clicking "I agree" you agree to the TOS and understand the consequences.</div></div>';
     }
+    /* ---------- Shop: titles and banners you unlock with Marks (You tab, 13+ only). In-app only, no real-world value. ----------
+       Prices come from shopItems (published by the push worker; ids match push/picks.mjs SHOP). These names are for showing
+       a friend's title without another read. */
+    const SHOP_NAMES = { t_rookie: "Rookie", t_sharp: "Sharp", t_upset: "Upset Hunter", t_clutch: "Clutch", t_filmroom: "Film Room", t_hof: "Hall of Famer", t_goat: "GOAT" };
+    const bnCls = (b) => (/^b_[a-z]+$/.test(b || "") ? " bn " + b : "");
+    const titleTag = (t) => (SHOP_NAMES[t] ? '<span class="title-tag">' + esc(SHOP_NAMES[t]) + "</span>" : "");
+    async function fillShopYou() {
+      const el = document.querySelector("[data-shop-you]"), P = window.scorelinePicks;
+      if (!el) return;
+      const s = P ? await P.status().catch(() => ({})) : {};
+      if (!s.signedIn || s.teen !== true) { el.remove(); return; }
+      const [items, owned, bal] = await Promise.all([P.shopItems(), P.owned(), P.balance()]);
+      if (!el.isConnected || !items.length) return;
+      const eq = P.equipped();
+      const btn = (it) => {
+        const on = eq[it.kind] === it.id;
+        if (on) return '<button type="button" class="pill-btn sm on" data-equip="' + it.kind + '|">Using</button>';
+        if (owned.has(it.id)) return '<button type="button" class="pill-btn sm" data-equip="' + it.kind + "|" + esc(it.id) + '">Use</button>';
+        return '<button type="button" class="pill-btn sm" data-buy="' + esc(it.id) + "|" + it.price + '"' + (bal < it.price ? " disabled" : "") + ">" + MARK_SVG(12) + " " + it.price + "</button>";
+      };
+      const titles = items.filter((i) => i.kind === "title"), banners = items.filter((i) => i.kind === "banner");
+      el.innerHTML = '<div class="section-title"><b>Shop</b><span class="muted">' + MARK_SVG(13) + " " + bal + " Marks</span></div>" +
+        '<div class="panel"><div class="shop-me' + bnCls(eq.banner) + '"><b>You</b>' + titleTag(eq.title) + "</div>" +
+        '<div class="g-label">Banners</div><div class="shop-grid">' + banners.map((it) => '<div class="shop-it"><div class="shop-bn bn ' + esc(it.id) + '"></div><span>' + esc(it.name) + "</span>" + btn(it) + "</div>").join("") + "</div>" +
+        '<div class="g-label">Titles</div><div class="shop-list">' + titles.map((it) => '<div class="shop-row"><span class="title-tag">' + esc(it.name) + "</span>" + btn(it) + "</div>").join("") + "</div>" +
+        '<div class="g-note">Unlocked with Marks you earn from picks. Titles and banners only exist inside Scoreline: they have no real-world value and can\'t be sold or traded. Friends see them on your profile.</div></div>';
+    }
+    document.addEventListener("click", async (e) => {
+      const P = window.scorelinePicks, b = e.target.closest("[data-buy]"), q = e.target.closest("[data-equip]");
+      if (b && P && !b.disabled) {
+        const [id, price] = b.dataset.buy.split("|");
+        if (!b.dataset.sure) { b.dataset.sure = "1"; b.innerHTML = "Unlock for " + price + "?"; setTimeout(() => { if (b.isConnected && b.dataset.sure) fillShopYou(); }, 3500); return; }
+        b.disabled = true;
+        try { await P.buy(id, Number(price)); buzz(12); toast("Unlocked!"); } catch { toast("Couldn't unlock that. Check your Marks and try again."); }
+        fillShopYou(); syncMarks(); fillPicksYou().catch(() => {});
+      } else if (q && P) {
+        const [kind, id] = q.dataset.equip.split("|");
+        q.disabled = true;
+        try { await P.equip(kind, id); buzz(8); } catch { toast("Couldn't change that. Try again."); }
+        fillShopYou();
+      }
+    });
     // You tab: Marks and recent picks.
     async function fillPicksYou() {
       const el = document.querySelector("[data-picks-you]"), P = window.scorelinePicks;
@@ -4270,7 +4327,7 @@
       let h = '<div class="bar"><h1>You</h1></div>' +
         '<div class="section-title"><b>Account</b></div><div class="panel nteams"><div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>' + (signedIn ? "Your account" : "Sign in") + "</b><small>" +
         (signedIn ? (reqs ? reqs + " friend request" + (reqs === "1" ? "" : "s") : "Friends, chat and sync") : "Keep your teams and alerts on every device") + '</small></span><span class="chev">›</span></div></div>' +
-        '<div data-picks-you></div>' +
+        '<div data-picks-you></div><div data-shop-you></div>' +
         '<div class="section-title"><b>Sports in your bar</b></div><div class="pin-row">' + ALL_SPORTS.map((k) =>
           '<button type="button" class="pin ' + (pins().includes(k) ? "on" : "") + '" data-pin="' + k + '">' + esc(tabName(k)) + "</button>").join("") + "</div>" +
         '<div class="g-note">Pick up to ' + MAX_PINS + ". Home shows only these sports.</div>" +
@@ -4286,7 +4343,7 @@
       if (IS_DEV && window.top === window) h += '<div class="section-title"><b>Developer</b></div><div class="panel"><button type="button" class="opt" data-phonepreview><span><b>Phone preview</b><small>See the site as the phone app, right here. Only shown on your account.</small></span><span class="chev">›</span></button></div>';
       if (TAURI?.app?.getVersion) TAURI.app.getVersion().then((v) => { const el = document.getElementById("appVer"); if (el) el.textContent = "Updated " + builtOn() + " · app " + v; }).catch(() => {});
       $("main").innerHTML = h;
-      fillPicksYou().catch(() => {}); fillMarksRow().catch(() => {}); syncMarks();
+      fillPicksYou().catch(() => {}); fillShopYou().catch(() => {}); fillMarksRow().catch(() => {}); syncMarks();
       stamp();
     }
     // Version shown in You → About. One source: <meta name="version"> (major.minor) + <meta name="build"> (when this page was published).

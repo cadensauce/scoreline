@@ -137,7 +137,7 @@ async function sweep(db, admin) {
   }
 }
 
-// Deleted accounts: the site can't remove picks, Marks, the ledger or the Terms answer (the rules don't let it),
+// Deleted accounts: the site can't remove picks, Marks, the ledger, shop items or the Terms answer (the rules don't let it),
 // so the worker removes them for any account that no longer exists. Runs at the start of each shift, then every 6 hours.
 // Safety: if the account list can't be read (or comes back empty), nothing is deleted.
 export async function cleanupDeleted(db, admin) {
@@ -155,7 +155,23 @@ export async function cleanupDeleted(db, admin) {
   }
   const picks = await db.collection("picks").select("uid").get().catch(() => null);
   for (const d of picks?.docs || []) if (gone(d.get("uid"))) { await d.ref.delete().catch(() => {}); n++; }
-  const ledgers = await db.collection("ledger").listDocuments().catch(() => []);
-  for (const ref of ledgers) if (gone(ref.id)) { await db.recursiveDelete(ref).catch(() => {}); n++; }
+  for (const top of ["ledger", "inventory"]) {
+    const refs = await db.collection(top).listDocuments().catch(() => []);
+    for (const ref of refs) if (gone(ref.id)) { await db.recursiveDelete(ref).catch(() => {}); n++; }
+  }
   if (n) console.log("cleanup: removed", n, "items from deleted accounts");
+}
+
+// Shop: titles and banners you unlock with Marks. In-app only, no real-world value. The worker publishes the list
+// (shopItems/{id}); the rules read prices from it when you buy. Ids must stay the same once published.
+export const SHOP = [
+  ["t_rookie", "title", "Rookie", 25], ["t_sharp", "title", "Sharp", 75], ["t_upset", "title", "Upset Hunter", 150],
+  ["t_clutch", "title", "Clutch", 250], ["t_filmroom", "title", "Film Room", 350], ["t_hof", "title", "Hall of Famer", 600], ["t_goat", "title", "GOAT", 1000],
+  ["b_midnight", "banner", "Midnight", 50], ["b_gridiron", "banner", "Gridiron", 150], ["b_hardwood", "banner", "Hardwood", 150],
+  ["b_diamond", "banner", "Diamond", 150], ["b_pitlane", "banner", "Pit Lane", 200], ["b_aurora", "banner", "Aurora", 300], ["b_gold", "banner", "Gold", 500],
+];
+export async function seedShop(db) {
+  const batch = db.batch();
+  SHOP.forEach(([id, kind, name, price], order) => batch.set(db.collection("shopItems").doc(id), { kind, name, price, order }));
+  await batch.commit().catch((e) => console.log("shop seed failed", e.message));
 }

@@ -2,7 +2,7 @@
 import { test, before, after, beforeEach } from "node:test";
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertSucceeds, assertFails } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc, deleteDoc, updateDoc, serverTimestamp, Timestamp, collection, getDocs, query, where } from "firebase/firestore";
+import { doc, getDoc, setDoc, deleteDoc, updateDoc, serverTimestamp, Timestamp, collection, getDocs, query, where, writeBatch, increment } from "firebase/firestore";
 
 let env;
 const HOUR = 3600e3;
@@ -18,6 +18,10 @@ beforeEach(async () => {
     await setDoc(doc(db, "games/nfl_2"), { lockAt: Timestamp.fromMillis(Date.now() - HOUR), rewards: { home: 15, away: 15 } });   // started
     await setDoc(doc(db, "ages/teen"), { is13plus: true, at: Timestamp.now() });
     await setDoc(doc(db, "ages/kid"), { is13plus: false, at: Timestamp.now() });
+    await setDoc(doc(db, "shopItems/t_sharp"), { kind: "title", name: "Sharp", price: 75, order: 1 });
+    await setDoc(doc(db, "shopItems/b_gold"), { kind: "banner", name: "Gold", price: 500, order: 2 });
+    await setDoc(doc(db, "wallets/teen"), { balance: 100 });
+    await setDoc(doc(db, "wallets/kid"), { balance: 100 });
     await setDoc(doc(db, "picks/teen_nfl_2"), { uid: "teen", gameId: "nfl_2", side: "home", updatedAt: Timestamp.fromMillis(Date.now() - 2 * HOUR) });
   });
 });
@@ -59,3 +63,31 @@ test("age: answered once, then can't change", async () => {
 });
 test("age: only true/false is stored", () => assertFails(setDoc(doc(as("newbie"), "ages/newbie"), { is13plus: true, at: serverTimestamp(), birthYear: 2010 })));
 test("age: only your own", () => assertFails(setDoc(doc(as("newbie"), "ages/someone"), { is13plus: true, at: serverTimestamp() })));
+
+// ---- Shop ----
+const buy = (uid, item, price, { charge = price, ledger = true } = {}) => {
+  const db = as(uid), b = writeBatch(db), at = serverTimestamp();
+  b.set(doc(db, "inventory/" + uid + "/items/" + item), { price, at });
+  b.update(doc(db, "wallets/" + uid), { balance: increment(-charge), updatedAt: at });
+  if (ledger) b.set(doc(db, "ledger/" + uid + "/entries/shop_" + item), { amount: -price, reason: "shop", refId: item, createdAt: at });
+  return b.commit();
+};
+const card = (uid, extra) => setDoc(doc(as(uid), "cards/" + uid), { avatar: "", bio: "", teams: [], show: "friends", updatedAt: serverTimestamp(), ...extra });
+test("shop: buy a title with enough Marks", () => assertSucceeds(buy("teen", "t_sharp", 75)));
+test("shop: not enough Marks", () => assertFails(buy("teen", "b_gold", 500)));
+test("shop: wrong price", () => assertFails(buy("teen", "t_sharp", 1, { charge: 1 })));
+test("shop: Marks must actually come off", () => assertFails(buy("teen", "t_sharp", 75, { charge: 1 })));
+test("shop: needs the ledger entry", () => assertFails(buy("teen", "t_sharp", 75, { ledger: false })));
+test("shop: can't buy the same thing twice", async () => {
+  await assertSucceeds(buy("teen", "t_sharp", 75));
+  await assertFails(buy("teen", "t_sharp", 75));
+});
+test("shop: only people who agreed (13+)", () => assertFails(buy("kid", "t_sharp", 75)));
+test("shop: can't raise your own balance", () => assertFails(updateDoc(doc(as("teen"), "wallets/teen"), { balance: 5000 })));
+test("shop: can't add a ledger entry without the item", () => assertFails(setDoc(doc(as("teen"), "ledger/teen/entries/shop_t_sharp"), { amount: -75, reason: "shop", refId: "t_sharp", createdAt: serverTimestamp() })));
+test("shop: show a title you own", async () => {
+  await assertSucceeds(buy("teen", "t_sharp", 75));
+  await assertSucceeds(card("teen", { title: "t_sharp", banner: "" }));
+});
+test("shop: can't show a title you don't own", () => assertFails(card("teen", { title: "t_sharp" })));
+test("shop: profile card without shop fields still saves", () => assertSucceeds(card("teen", {})));

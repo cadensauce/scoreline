@@ -33,7 +33,10 @@ service cloud.firestore {
     match /cards/{uid} {
       allow read: if member() && (me() == uid || (resource.data.show == 'friends' && friends(me(), uid)));
       allow create, update: if member() && me() == uid
-        && request.resource.data.keys().hasOnly(['avatar', 'bio', 'teams', 'show', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['avatar', 'bio', 'teams', 'show', 'updatedAt', 'title', 'banner'])
+        // A title or banner can only be shown if you own it.
+        && (!('title' in request.resource.data) || request.resource.data.title == '' || exists(/databases/$(database)/documents/inventory/$(uid)/items/$(request.resource.data.title)))
+        && (!('banner' in request.resource.data) || request.resource.data.banner == '' || exists(/databases/$(database)/documents/inventory/$(uid)/items/$(request.resource.data.banner)))
         && request.resource.data.avatar is string && request.resource.data.avatar.size() <= 60000
         && (request.resource.data.avatar == '' || request.resource.data.avatar.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$'))
         && request.resource.data.bio is string && request.resource.data.bio.size() <= 160
@@ -165,13 +168,50 @@ service cloud.firestore {
       allow delete: if member() && resource.data.uid == me() && request.time < lockOf(resource.data.gameId);
     }
     // Marks balance and its history: you can read your own; only the push worker writes them.
+    // ---- Shop: titles and banners you unlock with Marks (in-app only, no real-world value) ----
+    function teen() {
+      return exists(/databases/$(database)/documents/ages/$(me()))
+        && get(/databases/$(database)/documents/ages/$(me())).data.is13plus == true;
+    }
+    function priceOf(item) { return get(/databases/$(database)/documents/shopItems/$(item)).data.price; }
+    function walletPath(uid) { return /databases/$(database)/documents/wallets/$(uid); }
+    // The list of items and prices: written only by the push worker.
+    match /shopItems/{item} {
+      allow read: if true;
+      allow write: if false;
+    }
+    // What you own. Buying is one batch: this item + the Marks taken off your balance + a ledger entry.
+    // The rules check the price, that you had enough Marks, and that you can't buy the same item twice.
+    match /inventory/{uid}/items/{item} {
+      allow read: if member() && me() == uid;
+      allow create: if member() && me() == uid && teen()
+        && request.resource.data.keys().hasOnly(['price', 'at'])
+        && request.resource.data.price == priceOf(item)
+        && request.resource.data.at == request.time
+        && exists(walletPath(uid))
+        && getAfter(walletPath(uid)).data.balance == get(walletPath(uid)).data.balance - priceOf(item)
+        && getAfter(walletPath(uid)).data.balance >= 0
+        && existsAfter(/databases/$(database)/documents/ledger/$(uid)/entries/$('shop_' + item));
+      allow update, delete: if false;
+    }
     match /wallets/{uid} {
       allow read: if member() && me() == uid;
-      allow write: if false;
+      // You can only lower your own balance (when buying; the item rules check the amount). Only the worker adds Marks.
+      allow update: if member() && me() == uid && teen()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['balance', 'updatedAt'])
+        && request.resource.data.balance < resource.data.balance && request.resource.data.balance >= 0;
+      allow create, delete: if false;
     }
     match /ledger/{uid}/entries/{entry} {
       allow read: if member() && me() == uid;
-      allow write: if false;
+      // A purchase writes its own entry (shop_<item>), matching the item's price. Everything else is the worker's.
+      allow create: if member() && me() == uid && teen() && entry.matches('shop_[a-z0-9_]{1,40}')
+        && request.resource.data.keys().hasOnly(['amount', 'reason', 'refId', 'createdAt'])
+        && request.resource.data.reason == 'shop' && entry == 'shop_' + request.resource.data.refId
+        && request.resource.data.amount == -priceOf(request.resource.data.refId)
+        && request.resource.data.createdAt == request.time
+        && existsAfter(/databases/$(database)/documents/inventory/$(uid)/items/$(request.resource.data.refId));
+      allow update, delete: if false;
     }
     // Chats: only between friends, only members can read or write.
     match /chats/{chatId} {

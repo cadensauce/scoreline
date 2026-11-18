@@ -9,7 +9,7 @@ import webpush from "web-push";
 import admin from "firebase-admin";
 import nodemailer from "nodemailer";
 import crypto from "node:crypto";
-import { picksTick, cleanupDeleted } from "./picks.mjs";
+import { picksTick, cleanupDeleted, seedShop } from "./picks.mjs";
 
 const RUN_FOR_MS = (Number(process.env.RUN_MINUTES) || 345) * 60_000;
 const TICK_MS = 20_000;            // games
@@ -358,6 +358,7 @@ async function checkNews() {
 // ---- main loop ---------------------------------------------------------------------------
 try { const d = await stateDoc.get(); if (d.exists) newsState = { seen: d.data().seen || [], caps: d.data().caps || {} }; } catch {}
 let picksAt = 0, cleanupAt = 0;
+await seedShop(db);
 const until = Date.now() + RUN_FOR_MS;
 console.log("Push worker running until", new Date(until).toISOString());
 while (Date.now() < until) {
