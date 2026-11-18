@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795032518" />
+  <meta name="build" content="1795033378" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -2526,7 +2526,7 @@
       if (!el) return;
       if (!P?.isDev || !(await P.isDev().catch(() => false))) { el.remove(); return; }
       if (!el.isConnected || el.firstChild) return;
-      el.innerHTML = '<div class="section-title"><b>Dev tools</b><span class="muted">Only you see this</span></div><div class="panel">' +
+      el.innerHTML = '<div class="section-title"><b>Dev tools</b><span class="muted">Dev accounts only</span></div><div class="panel">' +
         '<form class="dev-form" data-dev-form><input name="who" placeholder="Username" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="21" required>' +
         '<input name="n" type="number" inputmode="numeric" min="1" max="10000" step="1" placeholder="Marks" required><button type="submit" class="pill-btn">Give Marks</button></form>' +
         '<div class="g-note">Gives Marks to any account that agreed to the Terms (13+). Use your own username to give yourself Marks. Each gift shows in their Marks history.</div></div>';
@@ -4352,7 +4352,7 @@
       let h = '<div class="bar"><h1>You</h1></div>' +
         '<div class="section-title"><b>Account</b></div><div class="panel nteams"><div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>' + (signedIn ? "Your account" : "Sign in") + "</b><small>" +
         (signedIn ? (reqs ? reqs + " friend request" + (reqs === "1" ? "" : "s") : "Friends, chat and sync") : "Keep your teams and alerts on every device") + '</small></span><span class="chev">›</span></div></div>' +
-        '<div data-picks-you></div><div data-shop-you></div><div data-dev-you></div>' +
+        '<div data-picks-you></div><div data-shop-you></div>' +
         '<div class="section-title"><b>Sports in your bar</b></div><div class="pin-row">' + ALL_SPORTS.map((k) =>
           '<button type="button" class="pin ' + (pins().includes(k) ? "on" : "") + '" data-pin="' + k + '">' + esc(tabName(k)) + "</button>").join("") + "</div>" +
         '<div class="g-note">Pick up to ' + MAX_PINS + ". Home shows only these sports.</div>" +
@@ -4365,6 +4365,7 @@
           '<div class="opt nteam" role="button" tabindex="0" data-teamalerts="' + esc(k) + '"><span><b>' + esc(teamNames[k] || findName(k) || "Team") + "</b><small>" + esc(teamAlertSummary(k)) + '</small></span><span class="acct-acts"><button class="fav on" type="button" data-fav="' + esc(k) + '" aria-label="Unfollow">★</button><span class="chev">›</span></span></div>').join("") : '<div class="g-note">Follow a team from its team page to get alerts about it.</div>') + "</div>" +
         '<div class="panel nteams" style="margin-top:10px"><div class="opt nteam" role="button" tabindex="0" data-teamalerts=""><span><b>Defaults for new teams</b><small>What a team starts with when you follow it</small></span><span class="chev">›</span></div></div>';
       h += '<div class="section-title"><b>About</b></div><div class="panel about"><div class="opt"><span><b>Version ' + esc(versionText()) + '</b><small id="appVer">Updated ' + esc(builtOn()) + '</small></span></div><button type="button" class="opt" data-terms><span><b>Terms of Service</b><small>Rules for Picks and Marks, and using Scoreline</small></span><span class="chev">›</span></button><details class="legal"><summary>Data sources and legal</summary>' + document.querySelector("footer").innerHTML + "</details></div>";
+      h += "<div data-dev-you></div>";   // Dev tools (dev accounts only; filled by fillDevYou)
       if (IS_DEV && window.top === window) h += '<div class="section-title"><b>Developer</b></div><div class="panel"><button type="button" class="opt" data-phonepreview><span><b>Phone preview</b><small>See the site as the phone app, right here. Only shown on your account.</small></span><span class="chev">›</span></button></div>';
       if (TAURI?.app?.getVersion) TAURI.app.getVersion().then((v) => { const el = document.getElementById("appVer"); if (el) el.textContent = "Updated " + builtOn() + " · app " + v; }).catch(() => {});
       $("main").innerHTML = h;

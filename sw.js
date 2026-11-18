@@ -18,7 +18,7 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET" || url.origin !== self.location.origin) return;
   // Network first so updates show up right away; fall back to the cached shell when offline.
   event.respondWith(
-    fetch(event.request, event.request.mode === "navigate" ? { cache: "no-store" } : undefined)
+    fetch(event.request, { cache: event.request.mode === "navigate" ? "no-store" : "no-cache" })   // no-cache: always ask the server if a file changed (a quick 304 if not), so new code shows on the next load
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(event.request, copy));
