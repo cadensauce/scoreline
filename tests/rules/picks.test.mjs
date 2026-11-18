@@ -98,10 +98,10 @@ test("shop: can't show a title you don't own", () => assertFails(card("teen", { 
 test("shop: profile card without shop fields still saves", () => assertSucceeds(card("teen", {})));
 
 // Dev accounts: give Marks by username (devs/<uid> is set by hand in the console).
-const DEV_SETUP = () => env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "devs/dev"), { note: "owner" }));
+const DEV_SETUP = () => env.withSecurityRulesDisabled(async (c) => { const db = c.firestore(); await setDoc(doc(db, "devs/devname"), { note: "owner" }); await setDoc(doc(db, "usernames/devname"), { uid: "dev" }); await setDoc(doc(db, "usernames/teenname"), { uid: "teen" }); });
 const grant = (by, uid, amount, o = {}) => {
   const db = as(by), id = o.id || "grant_" + Math.random().toString(36).slice(2, 14), at = serverTimestamp(), b = writeBatch(db);
-  if (o.ledger !== false) b.set(doc(db, "ledger/" + uid + "/entries/" + id), { amount: o.logged ?? amount, reason: "dev", by: o.byField || by, createdAt: at });
+  if (o.ledger !== false) b.set(doc(db, "ledger/" + uid + "/entries/" + id), { amount: o.logged ?? amount, reason: "dev", by: o.byField || by, dev: o.devName ?? (by === "dev" ? "devname" : "teenname"), createdAt: at });
   b.set(doc(db, "wallets/" + uid), { balance: increment(amount), updatedAt: at, lastGrant: id }, { merge: true });
   return b.commit();
 };
@@ -118,3 +118,9 @@ test("dev: at most 10,000 at a time", async () => { await DEV_SETUP(); await ass
 test("dev: gift is signed with the real dev", async () => { await DEV_SETUP(); await assertFails(grant("dev", "teen", 50, { byField: "someone" })); });
 test("non-dev can't give Marks, even to themselves", () => assertFails(grant("teen", "teen", 50)));
 test("can't make yourself a dev", () => assertFails(setDoc(doc(as("teen"), "devs/teen"), { note: "me" })));
+test("dev: can't borrow a dev's username", async () => { await DEV_SETUP(); await assertFails(grant("teen", "teen", 50, { devName: "devname" })); });
+test("dev: a dev can read their own devs entry, others can't", async () => {
+  await DEV_SETUP();
+  await assertSucceeds(getDoc(doc(as("dev"), "devs/devname")));
+  await assertFails(getDoc(doc(as("teen"), "devs/devname")));
+});
