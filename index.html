@@ -1551,7 +1551,7 @@
        counts. No fantasy, betting, rankings or talk shows. Nothing big in the last 2 days = no headline (never padded out). */
     const NEWS_SKIP = /fantasy|betting|\bbets?\b|\bodds\b|\bpicks?\b|predict|how to watch|start time|ranking|mock draft|\bbuzz\b|roundtable|takeaways|\bgrades?\b|tracker|podcast|uniform|\bquiz\b|what we learned|speculat|\breacts?\b|debate|power poll|highlights|over\/under|\bwho's\b/i;
     const NEWS_BIG = /\b(releas\w*|cuts?|waive[sd]?|waiving|trade[ds]?|trading|signs?|signed|signing|agree(s|d|ment)?|extension|contract|fired|fires|hired|hires|hiring|resign\w*|retire\w*|retirement|suspend\w*|suspension|injur\w*|out for (the )?season|torn|tears?|fractur\w*|surgery|acl|ruled out|benched|will start|named (the )?starter|arrest\w*|dies|died|penalty|penalt\w*|disqualif\w*|replac\w*|leaves|leaving|joins|exit)\b/i;
-    const NEWS_VIP = { nfl: /\b(qb|quarterback|head coach|coach)\b/i, cfb: /\b(qb|quarterback|head coach|coach)\b/i, nba: /\b(all-star|mvp|star|coach)\b/i, mlb: /\b(all-star|mvp|cy young|ace|manager|star)\b/i };
+    const NEWS_VIP = { nfl: /\b(qb|quarterback|head coach|fire[sd]|hire[sd])\b/i, cfb: /\b(qb|quarterback|head coach|fire[sd]|hire[sd])\b/i, nba: /\b(all-star|mvp|superstar|head coach|fire[sd]|hire[sd])\b/i, mlb: /\b(all-star|mvp|cy young|ace|manager|fire[sd]|hire[sd])\b/i };
     const headCache = store.get("headlines", {}) || {}, headAt = {};
     function pickHeadline(key, feed) {
       const arts = feed?.articles || [], now = Date.now();
@@ -1561,8 +1561,8 @@
       for (const a of arts) {
         const h = a.headline || "", t = Date.parse(a.published || "") || 0;
         if (!["HeadlineNews", "Story"].includes(a.type) || !h || now - t > 2 * 864e5 || NEWS_SKIP.test(h)) continue;
-        const text = h + " " + (a.description || ""), big = NEWS_BIG.test(text), people = who(a);
-        const hot = Math.max(0, ...people.map((id) => buzz[id] || 0)), vip = NEWS_VIP[key]?.test(text) || false;
+        const big = NEWS_BIG.test(h), people = who(a);   // judged on the headline itself (summaries mention too much)
+        const hot = Math.max(0, ...people.map((id) => buzz[id] || 0)), vip = NEWS_VIP[key]?.test(h) || false;
         const ok = key === "f1" ? (people.length > 0 || big) : big && (vip || hot >= 2);
         if (!ok) continue;
         const score = (big ? 3 : 0) + (vip ? 2 : 0) + Math.min(hot, 4) + (now - t < 864e5 ? 1 : 0);
