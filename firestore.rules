@@ -17,14 +17,16 @@ service cloud.firestore {
     match /users/{uid} {
       allow read, delete: if member() && me() == uid;
       // Only the settings the app saves, at sensible sizes (old extra fields are left alone on update).
-      allow create: if member() && me() == uid && request.resource.data.keys().hasOnly(['favs', 'favNames', 'alertPrefs', 'updatedAt']) && settingsOk();
+      allow create: if member() && me() == uid && request.resource.data.keys().hasOnly(['favs', 'favNames', 'alertPrefs', 'updatedAt', 'heldTitle', 'heldBanner']) && settingsOk();
       allow update: if member() && me() == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['favs', 'favNames', 'alertPrefs', 'updatedAt']) && settingsOk();
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['favs', 'favNames', 'alertPrefs', 'updatedAt', 'heldTitle', 'heldBanner']) && settingsOk();
     }
     function settingsOk() {
       return (!('favs' in request.resource.data) || (request.resource.data.favs is list && request.resource.data.favs.size() <= 200))
         && (!('favNames' in request.resource.data) || (request.resource.data.favNames is map && request.resource.data.favNames.size() <= 400))
-        && (!('alertPrefs' in request.resource.data) || (request.resource.data.alertPrefs is map && request.resource.data.alertPrefs.size() <= 80));
+        && (!('alertPrefs' in request.resource.data) || (request.resource.data.alertPrefs is map && request.resource.data.alertPrefs.size() <= 80))
+        && (!('heldTitle' in request.resource.data) || (request.resource.data.heldTitle is string && request.resource.data.heldTitle.size() <= 40))
+        && (!('heldBanner' in request.resource.data) || (request.resource.data.heldBanner is string && request.resource.data.heldBanner.size() <= 40));
     }
 
     // Public profile: just the username, so friends can find each other.
@@ -43,7 +45,9 @@ service cloud.firestore {
       allow read: if member() && (me() == uid || (resource.data.show == 'friends' && friends(me(), uid)));
       allow create, update: if member() && me() == uid
         && request.resource.data.keys().hasOnly(['avatar', 'bio', 'teams', 'show', 'updatedAt', 'title', 'banner'])
-        // A title or banner can only be shown if you own it.
+        // A title or banner can only be shown if you own it, and only while you've agreed to the Terms (withdrawing freezes them).
+        && ((request.resource.data.get('title', '') == '' && request.resource.data.get('banner', '') == '')
+          || (exists(/databases/$(database)/documents/ages/$(uid)) && get(/databases/$(database)/documents/ages/$(uid)).data.is13plus == true))
         && (!('title' in request.resource.data) || request.resource.data.title == '' || exists(/databases/$(database)/documents/inventory/$(uid)/items/$(request.resource.data.title)))
         && (!('banner' in request.resource.data) || request.resource.data.banner == '' || exists(/databases/$(database)/documents/inventory/$(uid)/items/$(request.resource.data.banner)))
         && request.resource.data.avatar is string && request.resource.data.avatar.size() <= 60000
@@ -192,6 +196,39 @@ service cloud.firestore {
     }
     function priceOf(item) { return get(/databases/$(database)/documents/shopItems/$(item)).data.price; }
     function walletPath(uid) { return /databases/$(database)/documents/wallets/$(uid); }
+    // ---- Fantasy: Free Fantasy (no currency) and Marks Fantasy (Terms agreement / 13+ only; free to enter, earns Marks,
+    // which are NOT real money). Contests and boards are written only by the push worker.
+    match /fcontests/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /fboard/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+    function contestOf(cid) { return get(/databases/$(database)/documents/fcontests/$(cid)).data; }
+    // Your lineup for one contest in one mode: fentries/{contestId}_{mode}_{uid}. Locks at the contest's first game
+    // (server clock). Only players from that contest, no repeats, up to 10 spots. Marks mode needs the Terms agreement.
+    // Friends can see each other's lineups and scores; nobody else can.
+    match /fentries/{id} {
+      allow get: if member() && (resource.data.uid == me() || friends(me(), resource.data.uid));
+      allow list: if member() && resource.data.uid == me();
+      allow create, update: if member()
+        && request.resource.data.keys().hasOnly(['uid', 'contestId', 'mode', 'lineup', 'updatedAt'])
+        && request.resource.data.uid == me()
+        && request.resource.data.mode in ['free', 'marks']
+        && (request.resource.data.mode == 'free' || teen())
+        && request.resource.data.contestId is string
+        && id == request.resource.data.contestId + '_' + request.resource.data.mode + '_' + me()
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.lineup is map && request.resource.data.lineup.size() <= 10
+        && request.resource.data.lineup.values().toSet().size() == request.resource.data.lineup.size()
+        && exists(/databases/$(database)/documents/fcontests/$(request.resource.data.contestId))
+        && request.time < contestOf(request.resource.data.contestId).lockAt
+        && contestOf(request.resource.data.contestId).pool.keys().hasAll(request.resource.data.lineup.values());
+      allow delete: if member() && resource.data.uid == me() && request.time < contestOf(resource.data.contestId).lockAt;
+    }
+
     // The list of items and prices: written only by the push worker.
     match /shopItems/{item} {
       allow read: if true;

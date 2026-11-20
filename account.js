@@ -597,7 +597,17 @@ window.scorelinePicks = {
     return { signedIn: true, teen: a?.exists() ? a.data().is13plus === true : null };
   },
   // Only true/false is saved, never the birth date. It can't be edited, only withdrawn (deleted) and agreed to again.
-  setAge: (is13plus) => fb.setDoc(fb.doc(db, "ages", user.uid), { is13plus: !!is13plus, at: fb.serverTimestamp() }),
+  async setAge(is13plus) {
+    await fb.setDoc(fb.doc(db, "ages", user.uid), { is13plus: !!is13plus, at: fb.serverTimestamp() });
+    if (!is13plus) return;
+    // Agreeing again after a withdrawal: put back the title and banner you had on (if you still own them).
+    const u = (await fb.getDoc(fb.doc(db, "users", user.uid)).catch(() => null))?.data() || {};
+    if (!u.heldTitle && !u.heldBanner) return;
+    const card = { avatar: myCard?.avatar || "", bio: myCard?.bio || "", teams: myCard?.teams || followedTeams(), show: myCard?.show || "friends",
+      title: u.heldTitle || "", banner: u.heldBanner || "", updatedAt: fb.serverTimestamp() };
+    try { await fb.setDoc(fb.doc(db, "cards", user.uid), card); myCard = card; } catch {}
+    await fb.setDoc(fb.doc(db, "users", user.uid), { heldTitle: "", heldBanner: "", updatedAt: fb.serverTimestamp() }, { merge: true }).catch(() => {});
+  },
   async game(gameId) { await startFirebase(); const d = await fb.getDoc(fb.doc(db, "games", gameId)).catch(() => null); return d?.exists() ? d.data() : null; },
   async pick(gameId) { if (!pickReady()) return null; const d = await fb.getDoc(fb.doc(db, "picks", user.uid + "_" + gameId)).catch(() => null); return d?.exists() ? d.data() : null; },
   setPick: (gameId, side) => fb.setDoc(fb.doc(db, "picks", user.uid + "_" + gameId), { uid: user.uid, gameId, side, updatedAt: fb.serverTimestamp() }),
@@ -642,8 +652,18 @@ window.scorelinePicks = {
   async balance() { if (!pickReady()) return 0; const d = await fb.getDoc(fb.doc(db, "wallets", user.uid)).catch(() => null); return d?.data()?.balance || 0; },
   // Dev accounts (devs/<username>, set by hand in the Firebase console): give Marks to anyone 13+ by username, yourself included.
   myName: () => (pickReady() ? profile?.username || "" : ""),
-  // Withdraw from the Terms: Marks stop (the worker only pays agreed accounts) and the Shop closes. Picks and Marks are kept.
-  withdraw: () => fb.deleteDoc(fb.doc(db, "ages", user.uid)),
+  // Withdraw from the Terms = a freeze: Marks stop (the worker only pays agreed accounts), the Shop and Marks Fantasy close,
+  // and your title and banner come off your profile. Nothing is deleted: the Marks and items are kept, and agreeing again
+  // (setAge) brings them all back, including what you had equipped (saved privately in users/{uid} as heldTitle/heldBanner).
+  async withdraw() {
+    const held = { heldTitle: myCard?.title || "", heldBanner: myCard?.banner || "" };
+    await fb.setDoc(fb.doc(db, "users", user.uid), { ...held, updatedAt: fb.serverTimestamp() }, { merge: true });
+    if (held.heldTitle || held.heldBanner) {
+      const card = { avatar: myCard?.avatar || "", bio: myCard?.bio || "", teams: myCard?.teams || followedTeams(), show: myCard?.show || "friends", title: "", banner: "", updatedAt: fb.serverTimestamp() };
+      await fb.setDoc(fb.doc(db, "cards", user.uid), card); myCard = card;
+    }
+    await fb.deleteDoc(fb.doc(db, "ages", user.uid));
+  },
   async isDev() { const n = pickReady() && profile?.username; if (!n) return false; const d = await fb.getDoc(fb.doc(db, "devs", n)).catch(() => null); return !!d?.exists(); },
   async grant(username, amount) {
     const name = cleanName(username).replace(/^@/, "");
@@ -654,6 +674,27 @@ window.scorelinePicks = {
     b.set(fb.doc(db, "wallets", uid), { balance: fb.increment(amount), updatedAt: at, lastGrant: id }, { merge: true });
     try { await b.commit(); } catch { throw new Error("Couldn't give Marks. They only go to accounts that agreed to the Terms (13+)."); }
     return name;
+  },
+};
+
+/* ---------- Fantasy: Free Fantasy (no currency) and Marks Fantasy (Terms agreement / 13+ only).
+   Contests come from the push worker (fcontests, fboard). Your lineup: fentries/{contestId}_{mode}_{uid}. The rules
+   lock it at the first game, check every player is in the contest, and only allow Marks mode with the agreement. */
+const fentryId = (cid, mode, uid) => cid + "_" + mode + "_" + uid;
+window.scorelineFantasy = {
+  async board(lg, fmt) { await startFirebase(); const d = await fb.getDoc(fb.doc(db, "fboard", lg + "_" + fmt)).catch(() => null); return d?.data()?.contests || []; },
+  async contest(id) { await startFirebase(); const d = await fb.getDoc(fb.doc(db, "fcontests", id)).catch(() => null); return d?.exists() ? { id: d.id, ...d.data() } : null; },
+  async mine(cid, mode) { if (!pickReady()) return null; const d = await fb.getDoc(fb.doc(db, "fentries", fentryId(cid, mode, user.uid))).catch(() => null); return d?.exists() ? d.data() : null; },
+  save: (cid, mode, lineup) => fb.setDoc(fb.doc(db, "fentries", fentryId(cid, mode, user.uid)), { uid: user.uid, contestId: cid, mode, lineup, updatedAt: fb.serverTimestamp() }),
+  clear: (cid, mode) => fb.deleteDoc(fb.doc(db, "fentries", fentryId(cid, mode, user.uid))),
+  // Friends' lineups in the same contest and mode (friends only, by the rules).
+  async friends(cid, mode) {
+    if (!pickReady()) return [];
+    const out = await Promise.all((friendState.friends || []).map(async (f) => {
+      const d = await fb.getDoc(fb.doc(db, "fentries", fentryId(cid, mode, f))).catch(() => null);
+      return d?.exists() ? { name: await nameOf(f), ...d.data() } : null;
+    }));
+    return out.filter(Boolean);
   },
 };
 

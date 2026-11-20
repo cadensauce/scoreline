@@ -147,3 +147,35 @@ test("messages: server time only, no extra fields", async () => {
   await assertFails(setDoc(doc(as("teen"), "chats/other_teen/messages/m3"), { from: "teen", text: "hi", at: serverTimestamp(), html: "<b>x</b>" }));
   await assertFails(updateDoc(doc(as("teen"), "chats/other_teen"), { junk: "x" }));
 });
+
+// Fantasy: Free mode for anyone signed in; Marks mode only with the Terms agreement (13+); lineups lock at first game.
+const FSETUP = () => env.withSecurityRulesDisabled(async (c) => {
+  const db = c.firestore();
+  await setDoc(doc(db, "fcontests/nfl_w_1"), { lg: "nfl", fmt: "w", lockAt: Timestamp.fromMillis(Date.now() + HOUR), pool: { p1: { n: "A", t: "SF", p: "QB" }, p2: { n: "B", t: "SF", p: "RB" } } });
+  await setDoc(doc(db, "fcontests/nfl_w_0"), { lg: "nfl", fmt: "w", lockAt: Timestamp.fromMillis(Date.now() - HOUR), pool: { p1: { n: "A", t: "SF", p: "QB" } } });
+});
+const lineup = (uid, cid, mode, lu) => setDoc(doc(as(uid), "fentries/" + cid + "_" + mode + "_" + uid), { uid, contestId: cid, mode, lineup: lu, updatedAt: serverTimestamp() });
+test("fantasy: free mode works without the Terms agreement", async () => { await FSETUP(); await assertSucceeds(lineup("newbie", "nfl_w_1", "free", { qb: "p1", rb1: "p2" })); });
+test("fantasy: marks mode works with the agreement", async () => { await FSETUP(); await assertSucceeds(lineup("teen", "nfl_w_1", "marks", { qb: "p1" })); });
+test("fantasy: marks mode blocked without the agreement", async () => { await FSETUP(); await assertFails(lineup("newbie", "nfl_w_1", "marks", { qb: "p1" })); await assertFails(lineup("kid", "nfl_w_1", "marks", { qb: "p1" })); });
+test("fantasy: locked after first game", async () => { await FSETUP(); await assertFails(lineup("teen", "nfl_w_0", "free", { qb: "p1" })); });
+test("fantasy: only players from the contest, no repeats", async () => {
+  await FSETUP();
+  await assertFails(lineup("teen", "nfl_w_1", "free", { qb: "zzz" }));
+  await assertFails(lineup("teen", "nfl_w_1", "free", { qb: "p1", rb1: "p1" }));
+});
+test("fantasy: can't write a score or someone else's lineup", async () => {
+  await FSETUP();
+  await assertFails(setDoc(doc(as("teen"), "fentries/nfl_w_1_free_teen"), { uid: "teen", contestId: "nfl_w_1", mode: "free", lineup: {}, updatedAt: serverTimestamp(), score: 999 }));
+  await assertFails(setDoc(doc(as("teen"), "fentries/nfl_w_1_free_other"), { uid: "other", contestId: "nfl_w_1", mode: "free", lineup: {}, updatedAt: serverTimestamp() }));
+});
+test("fantasy: contests are public, nobody writes them", async () => {
+  await FSETUP();
+  await assertSucceeds(getDoc(doc(env.unauthenticatedContext().firestore(), "fcontests/nfl_w_1")));
+  await assertFails(setDoc(doc(as("teen"), "fcontests/x"), { lockAt: Timestamp.now() }));
+});
+test("withdrawn: can't show a title or banner (frozen), can still clear them", async () => {
+  await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "inventory/kid/items/t_sharp"), { price: 75, at: Timestamp.now() }));
+  await assertFails(card("kid", { title: "t_sharp" }));
+  await assertSucceeds(card("kid", { title: "", banner: "" }));
+});
