@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795207245" />
+  <meta name="build" content="1795208840" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -518,6 +518,24 @@
     .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin-bottom: 16px; }
     .shop-it { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 600; } .shop-bn { height: 44px; border-radius: 10px; }
     .dev-panel { margin-top: 10px; }
+    /* Fantasy */
+    .fx-ask { display: grid; gap: 12px; max-width: 640px; } .fx-ask > b { font-family: var(--display); font-size: 22px; } .fx-ask-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .fx-tut { display: grid; gap: 10px; max-width: 640px; } .fx-tut > b { font-family: var(--display); font-size: 22px; } .fx-tut-body { line-height: 1.55; font-size: 14.5px; } .fx-tut-body .terms-key { margin: 0; }
+    .fx-dots { display: flex; gap: 6px; } .fx-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--panel-3); } .fx-dots i.on { background: var(--text); }
+    .fx-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 760px; margin-bottom: 14px; } @media (max-width: 520px) { .fx-modes { grid-template-columns: 1fr; } }
+    .fx-card { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; text-align: left; padding: 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; cursor: pointer; }
+    .fx-card:hover { background: var(--panel-2); } .fx-card b { font-family: var(--display); font-size: 19px; } .fx-card small { color: var(--muted); font-size: 13px; line-height: 1.45; } .fx-card em { color: var(--text); font-style: normal; font-weight: 600; } .fx-card.locked { opacity: .8; }
+    .fx-tag { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line-hi); border-radius: 999px; padding: 2px 8px; }
+    .fx-key { max-width: 760px; } .fx-list-cards { display: grid; gap: 10px; max-width: 760px; } .fx-back { margin: 0 8px 12px 0; }
+    .fx-mode-tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; margin-bottom: 12px; border: 1px solid var(--line-hi); } .fx-mode-tag.marks { background: var(--text); color: var(--bg); }
+    .fx-lock { max-width: 640px; } .fx-lock > b { font-size: 17px; } .fx-lock p { color: var(--muted); line-height: 1.5; margin: 6px 0 0; }
+    .fx-sports { margin-bottom: 12px; flex-wrap: wrap; } .fx-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; } .fx-head b { font-size: 17px; } .fx-head small { color: var(--muted); }
+    .fx-lineup { display: grid; gap: 6px; max-width: 640px; } .fx-slot { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+    .fx-slot.on { border-color: var(--text); } .fx-slot:disabled { cursor: default; } .fx-pos { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+    .fx-who { display: flex; flex-direction: column; min-width: 0; } .fx-who b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .fx-who small { color: var(--muted); font-size: 12px; } .fx-pts { font-variant-numeric: tabular-nums; }
+    .fx-picker { border: 1px solid var(--line); border-radius: 12px; padding: 8px; display: grid; gap: 6px; } .fx-picker input { width: 100%; min-width: 0; height: 38px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; outline: none; }
+    .fx-opts { max-height: 320px; overflow-y: auto; display: grid; gap: 2px; } .fx-opt { display: flex; justify-content: space-between; gap: 10px; padding: 9px 10px; border: 0; border-radius: 8px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; } .fx-opt:hover { background: var(--panel-2); } .fx-opt small { color: var(--muted); } .fx-opt.used { opacity: .35; }
+    .fx-total { display: flex; justify-content: space-between; padding: 8px 12px 0; font-weight: 700; } .fx-result { display: flex; flex-direction: column; gap: 2px; max-width: 640px; margin-top: 10px; } .fx-result small { color: var(--muted); }
     .dev-form { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
     .dev-form input { flex: 1 1 140px; min-width: 0; height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; outline: none; }
     .dev-form input[type="number"] { flex: 0 1 110px; } .dev-form input:focus { border-color: var(--muted); } .dev-form .pill-btn { flex: none; }
@@ -1123,7 +1141,7 @@
       if (e.target.closest("[data-ppclose]")) e.target.closest(".pp-wrap")?.remove();
     });
     const MOBILE_APP = !!window.__PREVIEW_APP || (IS_PHONE && (!!window.__TAURI__ || STANDALONE));
-    const navOrder = () => { const p = pins(); return ["home", ...p, ...(ALL_SPORTS.includes(state.tab) && !p.includes(state.tab) ? [state.tab] : []), "you"]; };
+    const navOrder = () => { const p = pins(); return ["home", ...p, ...(ALL_SPORTS.includes(state.tab) && !p.includes(state.tab) ? [state.tab] : []), "fantasy", "you"]; };
     /* ---------- native-app feel (phone app only) ---------- */
     if (MOBILE_APP) {
       document.documentElement.classList.add("mobile-app");
@@ -1361,10 +1379,11 @@
       const btn = (k, label, active, extra) => '<button class="btab ' + (active ? "active" : "") + '" type="button" ' + extra + ">" + ICONS[k] + label + (k !== "home" && k !== "more" && liveIn(k) ? '<span class="dot"></span>' : "") + "</button>";
       $("btabs").innerHTML = navOrder().map((k) => btn(k, tabName(k), state.tab === k, 'data-tab="' + k + '"')).join("");
     }
-    const tabName = (k) => k === "home" ? "Home" : k === "you" ? "You" : (LEAGUES[k].short || LEAGUES[k].name);
+    const tabName = (k) => k === "home" ? "Home" : k === "you" ? "You" : k === "fantasy" ? "Fantasy" : (LEAGUES[k].short || LEAGUES[k].name);
     const svg = (d) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + "</svg>";
     const ICONS = {
       home: svg('<path d="M4 11l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>'),
+      fantasy: svg('<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7M10 17h4"/>'),
       nfl: svg('<ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-45 12 12)"/><path d="M9.5 14.5l5-5M11 11.5l1.5 1.5M12.5 10l1.5 1.5"/>'),
       cfb: svg('<path d="M3 9l9-5 9 5-9 5z"/><path d="M7 11.5V16c0 1.5 2.5 3 5 3s5-1.5 5-3v-4.5M21 9v5"/>'),
       f1: svg('<path d="M5 21V4M5 4h13l-2.5 4L18 12H5"/>'),
@@ -2036,7 +2055,7 @@
       store.set("tab", state.tab);
       renderTabs();
       if (state.tab !== "f1") clearInterval(countdownTimer);
-      const p = state.tab === "you" ? renderAlerts() : state.tab === "home" ? renderHome() : state.tab === "f1" ? renderF1() : renderLeague(state.tab, force);
+      const p = state.tab === "you" ? renderAlerts() : state.tab === "fantasy" ? renderFantasy() : state.tab === "home" ? renderHome() : state.tab === "f1" ? renderF1() : renderLeague(state.tab, force);
       Promise.resolve(p).finally(() => $("main").classList.add("calm"));
       return p;
     }
@@ -2419,32 +2438,32 @@
        enforced by the Firestore rules; the push worker sets the Upset bonus and pays Marks after the final. */
     const PICK_LGS = ["nfl", "cfb", "nba", "mlb"];
     /* ---------- Terms of Service (shown from Picks and You → About). Plain wording; update TERMS_DATE when it changes. ---------- */
-    const TERMS_DATE = "November 18, 2026";   // Picks are kept clear of gambling law: free (no consideration), no prizes or cash value (no prize). See docs/research-legal-phase5.md.
+    const TERMS_DATE = "November 20, 2026";   // Picks are kept clear of gambling law: free (no consideration), no prizes or cash value (no prize). See docs/research-legal-phase5.md.
     const TERMS_HTML = '<div class="terms"><p class="muted">Last updated ' + TERMS_DATE + "</p>" +
       '<div class="terms-key"><b>Marks are NOT real money and NOT a real currency.</b> They are points for fun that live only inside Scoreline. ' +
-      "You can <b>only earn</b> them by making right predictions in Picks (and in fantasy games, when those arrive). " +
+      "You can <b>only earn</b> them by making right predictions in Picks and by finishing well in Marks Fantasy. " +
       "They <b>can never be bought</b>, and they have <b>no cash value</b>: they can't be sold, traded, transferred, cashed out, or exchanged for money, prizes, gift cards or anything outside Scoreline. The only thing you can do with them is unlock fun extras inside Scoreline, like titles and banners.</div>" +
       "<h3>1. What Scoreline is</h3><p>Scoreline is a free, independent fan app for scores, stats and game details. It is not affiliated with, endorsed by or connected to ESPN, any league, team, player or Formula 1. It has no ads and nothing for sale.</p>" +
-      "<h3>2. Who can use what</h3><p>Anyone can use the scores and game features without an account. Anyone can make an account; creating one means you agree to these Terms. <b>Some features are only for people who are 13 or older</b>: earning and using Marks (and anything you unlock with them). If you are under 13, you can still use everything else, including making picks just for fun. If we learn that someone under 13 is using a 13+ feature, we may remove their Marks and anything unlocked with them.</p>" +
+      "<h3>2. Who can use what</h3><p>Anyone can use the scores and game features without an account. Anyone can make an account; creating one means you agree to these Terms. <b>Some features are only for people who are 13 or older and have agreed to these Terms</b> (agreeing confirms you are 13 or older): earning and using Marks, the Shop, and Marks Fantasy. <b>Without that agreement you can't get, earn or use Marks or any other currency in Scoreline, and you can't open Marks Fantasy.</b> Free Fantasy is open to everyone. If you are under 13, you can still use everything else, including making picks just for fun. If we learn that someone under 13 is using a 13+ feature, we may remove their Marks and anything unlocked with them.</p>" +
       "<h3>3. Picks and Marks</h3><ul>" +
       "<li>Picks are free. You never pay, a pick never costs or risks any Marks, and having zero Marks never stops you from playing.</li>" +
       "<li>Marks are points you earn for right picks. They are not money, not property, and not something you own; they exist only to keep score inside Scoreline.</li>" +
-      "<li><b>What Marks are for:</b> keeping score in Picks, unlocking fun extras for your profile (like titles and banners), and fantasy. Fantasy games can use Marks, but <b>you never need Marks to play fantasy</b>: every fantasy game is free to join and play, and having zero Marks never stops you.</li>" +
+      "<li><b>What Marks are for:</b> keeping score in Picks and Marks Fantasy, and unlocking fun extras for your profile (like titles and banners). Nothing else.</li>" +
       "<li>No real-world prizes, ever. Scoreline never gives money, gift cards, merchandise or anything else of real value for Marks, picks or rankings.</li>" +
       "<li>You may be able to spend Marks on things that only exist inside Scoreline, like titles, banners and other looks for your profile. These are for fun too: they have no real-world value, can't be bought with money, and can't be sold, traded or given to anyone else. We may change, remove or reset them.</li>" +
-      "<li>Picks are a free prediction game for fun. Nothing is paid in, nothing of value can be won, so they are not gambling, betting or a sweepstakes. Scoreline doesn't link to or advertise betting sites, and nothing in it is betting advice.</li>" +
+      "<li><b>Fantasy has two separate modes.</b> <b>Free Fantasy</b> never uses Marks or any other currency: it's just for fun. <b>Marks Fantasy</b> is free to enter and never costs Marks; finishing higher can earn Marks, but only if you have agreed to these Terms (13+). <b>There is no paid fantasy and no real money, ever</b>: nothing can be paid in, and nothing of real value can be won in either mode. Even when you earn Marks, they are NOT real money.</li><li>Picks are a free prediction game for fun. Nothing is paid in, nothing of value can be won, so they are not gambling, betting or a sweepstakes. Scoreline doesn't link to or advertise betting sites, and nothing in it is betting advice.</li>" +
       "<li>Picks lock when the game starts. Results come from public game data, which can be late or wrong; we may correct results, Marks or picks when that happens.</li>" +
       "<li>If a game is postponed, cancelled or can't be decided, picks on it may be cancelled with no Marks given.</li>" +
       "<li>We may change how many Marks a pick is worth, reset Marks, or change or end Picks at any time. The Scoreline team may also add Marks to an account (for example to fix a mistake, for testing, or as a thank-you); these are still free points with no real-world value.</li>" +
-      "<li>You can withdraw your agreement any time in You → Settings → Marks. You keep your picks and Marks, but stop earning Marks and can't use the Shop until you agree again.</li></ul>" +
+      "<li>You can withdraw your agreement any time in You → Settings → Marks. Withdrawing works like a reset: your Marks, the titles and banners you unlocked, and Marks Fantasy are frozen and hidden, you stop earning Marks, and you can't use the Shop. Nothing is deleted: if you agree again later, you get all of your Marks and everything you unlocked back.</li></ul>" +
       "<h3>4. Play fair</h3><p>One account per person. Don't use bots or scripts, don't exploit bugs, and don't try to change your own or anyone else's picks, Marks or data. If you do, we may remove your picks and Marks or close your account.</p>" +
       "<h3>5. What other people can see</h3><ul>" +
       "<li><b>Your username:</b> anyone signed in to Scoreline can see it, so friends can find you. Choose one that doesn't include your real name, age, school or location.</li>" +
       "<li><b>Your profile card</b> (photo, bio and the teams you follow): only people you accepted as friends, and only if you set it to share with friends. Otherwise only you see it.</li>" +
       "<li><b>Chat messages:</b> only you and the friend you are chatting with. Anything you send can be seen, saved or screenshotted by that friend, so never share personal details like your address, phone number, school or passwords.</li>" +
-      "<li><b>Friend requests:</b> the person you send one to sees your username.</li>" +
+      "<li><b>Fantasy:</b> your friends can see your fantasy lineups and scores. People who aren't your friends only ever see your final place as a number, never your name.</li><li><b>Friend requests:</b> the person you send one to sees your username.</li>" +
       "<li><b>Private, never shown to anyone:</b> your email, your password, your picks, your Marks, your alert settings and whether you ticked 13 or older.</li></ul>" +
-      "<h3>6. Your account and your data</h3><p>We store your username, the teams you follow, your settings, your picks and Marks, and that you agreed to these Terms. We never store your birth date. Friends and chat are only between people who accepted each other. You can delete your account from You → Your account.</p>" +
+      "<h3>6. Your account and your data</h3><p>We store your username, the teams you follow, your settings, your picks, your fantasy lineups and Marks, and that you agreed to these Terms. We never store your birth date. Friends and chat are only between people who accepted each other. You can delete your account from You → Your account.</p>" +
       "<h3>7. Be respectful</h3><p>Don't use Scoreline to harass, threaten or spam anyone, or to share anything illegal or hateful. We may remove content or accounts that do.</p>" +
       "<h3>8. No guarantees</h3><p>Scoreline is provided as is. Scores, stats, predictions and win chances may be delayed, incomplete or wrong, and features may change or stop working. We are not responsible for decisions you make based on it.</p>" +
       "<h3>9. Changes</h3><p>We may update these Terms. The date at the top shows the latest version. If you keep using Picks after a change, you accept the updated Terms.</p></div>";
@@ -2500,7 +2519,7 @@
         if (!wd.dataset.sure) { wd.dataset.sure = "1"; wd.textContent = "Tap to confirm"; setTimeout(() => { if (wd.isConnected && wd.dataset.sure) { delete wd.dataset.sure; wd.textContent = "Withdraw"; } }, 3500); return; }
         wd.disabled = true;
         try { await P.withdraw(); } catch { toast("Couldn't save that. Try again."); wd.disabled = false; return; }
-        store.set("tosNo", true); toast("Withdrawn. Picks are just for fun now; agree again any time."); syncMarks();
+        store.set("tosNo", true); toast("Withdrawn. Your Marks and items are frozen; agree again any time to get them back."); syncMarks();
         refillAll();
         return;
       }
@@ -2566,7 +2585,7 @@
       const s = P ? await P.status().catch(() => ({})) : {};
       if (!s.signedIn) { youSet("marks", el, ""); return; }
       youSet("marks", el, s.teen === true
-        ? '<div class="opt marks-agree"><span><b>Marks</b><small>On. You agreed to the Terms of Service. You can withdraw any time: you keep your picks and Marks, but stop earning Marks and can\'t use the Shop until you agree again.</small></span>' +
+        ? '<div class="opt marks-agree"><span><b>Marks</b><small>On. You agreed to the Terms of Service. Withdrawing freezes your Marks, Shop items and Marks Fantasy (nothing is deleted); agree again any time to get it all back.</small></span>' +
           '<div class="age-row"><button type="button" class="pill-btn" data-terms>TOS</button><button type="button" class="pill-btn" data-tos-withdraw>Withdraw</button></div></div>'
         : s.teen === false
           ? '<div class="opt"><span><b>Marks</b><small>Marks are for ages 13 and up. You can still make picks just for fun.</small></span><button type="button" class="pill-btn" data-terms>TOS</button></div>'
@@ -4516,6 +4535,178 @@
       const t = e.target.closest("[data-teamalerts]");
       if (t && !e.target.closest("[data-fav]")) openAlertSettings(t.dataset.teamalerts || null);
     });
+    /* ---------- Fantasy tab: two separate modes, the same games.
+       Free Fantasy: no Marks or any other currency, open to everyone with an account.
+       Marks Fantasy: free to enter, finishing higher earns Marks; only for accounts that agreed to the Terms (13+). Checked
+       every time it's drawn, and the database rules refuse Marks lineups without the agreement, so it can't be bypassed.
+       Formats: Weekly lineup, Daily lineup (Season leagues come next). Contests come from the push worker. */
+    const FX = { mode: null, fmt: null, lg: null, cid: null, tut: -1, draft: null, open: null, q: "" };
+    const FX_FORMATS = [["w", "Weekly lineup", "Pick a lineup for the whole week. One score for the week."], ["d", "Daily lineup", "Pick a lineup for one day's games. A new contest every day."], ["s", "Season league", "A whole season against your friends, with a draft."]];
+    const FX_SPORTS = ["nfl", "cfb", "nba", "mlb", "f1"];
+    const FX_POS = { QB: "QB", RB: "RB", WR: "WR", TE: "TE", G: "Guard", F: "Forward", C: "Center", H: "Hitter", P: "Pitcher", D: "Driver" };
+    const FX_SCORING = {
+      nfl: "1 pt per 25 passing yards, 10 rushing or receiving yards and each catch · 4 per passing TD, 6 per other TD · −2 per interception or lost fumble",
+      cfb: "1 pt per 25 passing yards, 10 rushing or receiving yards and each catch · 4 per passing TD, 6 per other TD · −2 per interception or lost fumble",
+      nba: "1 per point · 1.2 per rebound · 1.5 per assist · 3 per steal or block · −1 per turnover",
+      mlb: "Hitters: 3 per hit, 2 per run, RBI or walk, +4 per home run · Pitchers: 2.25 per inning, 2 per strikeout, −2 per earned run",
+      f1: "Race points: 25 for 1st, 18, 15, 12, 10, 8, 6, 4, 2, 1 for 10th",
+    };
+    const FX_LINEUP = { nfl: "1 QB, 2 RB, 2 WR, 1 TE", cfb: "1 QB, 2 RB, 2 WR, 1 TE", nba: "2 Guards, 2 Forwards, 1 Center", mlb: "3 Hitters, 1 Pitcher", f1: "3 drivers" };
+    const FX_NOTREAL = "<b>No real rewards, ever.</b> Neither mode gives money, prizes or anything of real value. Even when you earn Marks, <b>Marks are NOT real money</b>: they can't be bought, sold, traded or cashed out, and only exist inside Scoreline.";
+    const FX_TUT = [
+      ["What is fantasy?", "You pick <b>real players</b>. When they play well in their <b>real games</b>, your lineup gets points. The more points, the higher you finish."],
+      ["Your lineup", "Each sport has spots to fill: " + FX_SPORTS.map((k) => "<b>" + esc(tabName(k)) + "</b> " + esc(FX_LINEUP[k])).join(" · ") + ". Tap a spot, pick a player. Your lineup <b>locks when the first game starts</b>, so set it before then."],
+      ["How points work", FX_SPORTS.filter((k) => k !== "cfb").map((k) => "<b>" + esc(k === "nfl" ? "Football" : tabName(k)) + ":</b> " + esc(FX_SCORING[k])).join("<br>")],
+      ["Pick a format", FX_FORMATS.map(([, n, d]) => "<b>" + esc(n) + ":</b> " + esc(d)).join("<br>")],
+      ["Free Fantasy", "<b>No Marks and no currency at all.</b> Anyone with an account can play. You play just for fun and to beat your friends, and your friends can see your lineups and scores."],
+      ["Marks Fantasy", "The same games, but <b>finishing higher earns Marks</b>. It's <b>free to enter and never costs Marks</b>. Only for accounts that <b>agreed to the Terms of Service</b> (which confirms you're 13 or older). Without that, you can't open it, but Free Fantasy is always open."],
+      ["Important", '<div class="terms-key">' + FX_NOTREAL + "</div>"],
+    ];
+    function fxAsk() {
+      return '<div class="panel fx-ask"><b>Do you know how to play fantasy?</b><div class="fx-ask-btns"><button type="button" class="pill-btn" data-fx-skip>Yeah, skip the tutorial.</button><button type="button" class="pill-btn tos-go" data-fx-tut>No, Show me how to play!</button></div>' +
+        '<div class="g-note">' + FX_NOTREAL + "</div></div>";
+    }
+    function fxTutHtml() {
+      const [t, body] = FX_TUT[FX.tut], last = FX.tut === FX_TUT.length - 1;
+      return '<div class="panel fx-tut"><div class="g-label">How to play · ' + (FX.tut + 1) + " of " + FX_TUT.length + "</div><b>" + esc(t) + "</b><div class=\"fx-tut-body\">" + body + "</div>" +
+        '<div class="fx-dots">' + FX_TUT.map((_, i) => "<i" + (i === FX.tut ? ' class="on"' : "") + "></i>").join("") + "</div>" +
+        '<div class="fx-ask-btns">' + (FX.tut ? '<button type="button" class="pill-btn" data-fx-step="-1">Back</button>' : '<button type="button" class="pill-btn" data-fx-skip>Skip</button>') +
+        '<button type="button" class="pill-btn tos-go" data-fx-step="1">' + (last ? "Got it, let's play" : "Next") + "</button></div></div>";
+    }
+    // Why Marks Fantasy is closed for this account (null = it's open).
+    function fxLock(s) {
+      if (!s.signedIn) return ["Sign in first", "Marks Fantasy needs an account that has agreed to the Terms of Service.", "signin"];
+      if (s.teen === true) return null;
+      if (s.teen === false) return ["Only for ages 13 and up", "Your account said you're under 13, so Marks and Marks Fantasy are off for you. You can still play Free Fantasy.", ""];
+      return ["Agree to the Terms of Service first", "Marks Fantasy needs you to agree to the Terms of Service. Agreeing also confirms you're 13 or older. Without it you can't earn, see or use Marks, or open Marks Fantasy.", "agree"];
+    }
+    const fxCrumb = (label, back) => '<button type="button" class="pill-btn sm fx-back" data-fx-back="' + back + '">‹ ' + esc(label) + "</button>";
+    const fxModeName = (m) => (m === "marks" ? "Marks Fantasy" : "Free Fantasy");
+    async function renderFantasy() {
+      const main = $("main"), P = window.scorelinePicks, F = window.scorelineFantasy;
+      let h = '<div class="bar"><h1>Fantasy</h1>' + (store.get("fxTutDone", false) && FX.tut < 0 ? '<button type="button" class="pill-btn sm" data-fx-tut>How to play</button>' : "") + "</div>";
+      if (FX.tut < 0 && !store.get("fxTutDone", false)) { main.innerHTML = h + fxAsk(); return; }
+      if (FX.tut >= 0) { main.innerHTML = h + fxTutHtml(); return; }
+      const s = P ? await P.status().catch(() => ({ signedIn: false })) : { signedIn: false };
+      if (state.tab !== "fantasy") return;
+      const lock = fxLock(s);
+      if (!FX.mode) {   // choose a mode
+        h += '<div class="fx-modes">' +
+          '<button type="button" class="fx-card" data-fx-mode="free"><span class="fx-tag">No currency</span><b>Free Fantasy</b><small>No Marks or any other currency. Just for fun and bragging rights. Open to everyone.</small></button>' +
+          '<button type="button" class="fx-card' + (lock ? " locked" : "") + '" data-fx-mode="marks"><span class="fx-tag">' + (lock ? "🔒 " : "") + "13+ · Terms</span><b>Marks Fantasy</b><small>Free to enter, never costs Marks. Finish higher to earn Marks." + (lock ? " <em>" + esc(lock[0]) + ".</em>" : "") + "</small></button></div>" +
+          '<div class="terms-key fx-key">' + FX_NOTREAL + "</div>";
+        main.innerHTML = h; return;
+      }
+      if (FX.mode === "marks" && lock) {   // closed: explain why, and offer Free Fantasy
+        h += fxCrumb("Fantasy", "mode") + '<div class="panel fx-lock"><b>🔒 ' + esc(lock[0]) + "</b><p>" + esc(lock[1]) + "</p>" +
+          (lock[2] === "agree" ? '<div class="fx-ask-btns"><button type="button" class="pill-btn tos-go" data-fx-agree>I agree</button><button type="button" class="pill-btn" data-terms>TOS</button></div><div class="g-note">By clicking "I agree" you agree to the TOS and understand the consequences.</div>' : "") +
+          (lock[2] === "signin" ? '<div class="fx-ask-btns"><button type="button" class="pill-btn tos-go" data-pick-signin>Sign in</button></div>' : "") +
+          '<div class="fx-ask-btns"><button type="button" class="pill-btn" data-fx-mode="free">Play Free Fantasy instead</button></div></div>';
+        main.innerHTML = h; return;
+      }
+      const tag = '<span class="fx-mode-tag ' + FX.mode + '">' + esc(fxModeName(FX.mode)) + "</span>";
+      if (!FX.fmt) {   // choose a format
+        h += fxCrumb("Fantasy", "mode") + tag + '<div class="fx-list-cards">' + FX_FORMATS.map(([k, n, d]) =>
+          '<button type="button" class="fx-card" data-fx-fmt="' + k + '"><b>' + esc(n) + "</b><small>" + esc(d) + "</small>" + (k === "s" ? '<span class="fx-tag">Coming soon</span>' : "") + "</button>").join("") + "</div>";
+        main.innerHTML = h; return;
+      }
+      if (FX.fmt === "s") { h += fxCrumb(fxModeName(FX.mode), "fmt") + tag + '<div class="panel"><b>Season league</b><p class="muted">Coming soon: play a whole season against your friends, with a draft. Weekly and Daily lineups are ready now.</p></div>'; main.innerHTML = h; return; }
+      const lg = FX.lg || (FX.lg = pins().find((k) => FX_SPORTS.includes(k)) || "nfl");
+      const fmtName = FX_FORMATS.find(([k]) => k === FX.fmt)[1];
+      if (!FX.cid) {   // choose a sport and a contest
+        h += fxCrumb(fxModeName(FX.mode), "fmt") + tag + '<div class="seg chips fx-sports">' + FX_SPORTS.map((k) => '<button type="button" data-fx-lg="' + k + '" class="' + (k === lg ? "active" : "") + '">' + esc(tabName(k)) + "</button>").join("") + "</div>";
+        if (lg === "f1" && FX.fmt === "d") { main.innerHTML = h + '<div class="panel"><p class="muted">F1 races once a weekend, so F1 is Weekly only. Pick Weekly lineup to play F1.</p></div>'; return; }
+        main.innerHTML = h + skeleton(2);
+        const list = F ? await F.board(lg, FX.fmt) : [];
+        if (state.tab !== "fantasy" || FX.cid || FX.lg !== lg) return;
+        h += '<div class="g-label">' + esc(fmtName) + " · " + esc(tabName(lg)) + "</div>" + (list.length ? '<div class="panel">' + list.map((c) => {
+          const lock = c.lockAt?.toDate?.(), open = lock && lock > new Date();
+          return '<button type="button" class="opt" data-fx-cid="' + esc(c.id) + '"><span><b>' + esc(c.label) + "</b><small>" + (open ? "Open · locks " + esc(fmtDay(lock.toISOString()) + " " + fmtTime(lock.toISOString())) : c.status === "final" ? "Final" : "Live now") + '</small></span><span class="chev">›</span></button>';
+        }).join("") + "</div>" : '<div class="panel"><p class="muted">No ' + esc(tabName(lg)) + " contests right now. They show up when games are on the schedule" + (lg === "mlb" ? " (MLB is in its offseason)." : ".") + "</p></div>") +
+          '<div class="g-note">Lineup: ' + esc(FX_LINEUP[lg]) + ". Scoring: " + esc(FX_SCORING[lg]) + ".</div>";
+        main.innerHTML = h; return;
+      }
+      // One contest: your lineup
+      // The contest is kept for a minute while you're on it, so picking and searching don't re-download it.
+      const key = FX.cid + "|" + FX.mode;
+      if (!FX.cache || FX.cache.key !== key || Date.now() - FX.cache.at > 60000) {
+        if (!FX.cache || FX.cache.key !== key) main.innerHTML = h + skeleton(2);
+        const [c0, m0] = await Promise.all([F.contest(FX.cid), s.signedIn ? F.mine(FX.cid, FX.mode) : null]);
+        FX.cache = { key, c: c0, mine: m0, at: Date.now() };
+      }
+      const { c, mine } = FX.cache;
+      if (state.tab !== "fantasy" || !FX.cid) return;
+      if (!c) { main.innerHTML = h + fxCrumb("Contests", "cid") + '<div class="panel"><p class="muted">This contest isn\'t available.</p></div>'; return; }
+      if (!FX.draft) FX.draft = { ...(mine?.lineup || {}) };
+      const open = c.lockAt?.toMillis?.() > Date.now(), slots = (c.slots || []).map((x) => x.split(":")), pts = c.points || {};
+      const ptsOf = (id, g) => (id && c.pool?.[id]?.p === g ? pts[id] || 0 : 0);
+      const total = Math.round(slots.reduce((t, [k, g]) => t + ptsOf(FX.draft[k], g), 0) * 10) / 10;
+      const lockD = c.lockAt?.toDate?.();
+      h += fxCrumb("Contests", "cid") + tag + '<div class="fx-head"><b>' + esc(tabName(c.lg)) + " · " + esc(c.label) + "</b><small>" +
+        (open ? "Open · locks " + esc(fmtDay(lockD.toISOString()) + " " + fmtTime(lockD.toISOString())) : c.status === "final" ? "Final" : "Live · locked") + "</small></div>";
+      if (!s.signedIn) h += '<div class="panel"><p class="muted">Sign in to make a lineup. Free Fantasy is open to everyone with an account.</p><button type="button" class="pill-btn tos-go" data-pick-signin>Sign in</button></div>';
+      h += '<div class="panel fx-lineup">' + slots.map(([k, g]) => {
+        const id = FX.draft[k], pl = id && c.pool?.[id];
+        let row = '<button type="button" class="fx-slot' + (FX.open === k ? " on" : "") + '" data-fx-slot="' + k + '"' + (open && s.signedIn ? "" : " disabled") + '><span class="fx-pos">' + esc(FX_POS[g] || g) + "</span><span class=\"fx-who\">" +
+          (pl ? "<b>" + esc(pl.n) + "</b><small>" + esc(pl.t) + "</small>" : '<small class="muted">' + (open ? "Tap to pick" : "Empty") + "</small>") + "</span>" + (!open ? "<b class=\"fx-pts\">" + ptsOf(id, g) + "</b>" : "") + "</button>";
+        if (FX.open === k && open) {
+          const q = FX.q.trim().toLowerCase(), taken = new Set(Object.values(FX.draft));
+          const opts = Object.entries(c.pool || {}).filter(([pid, p]) => p.p === g && (!q || p.n.toLowerCase().includes(q) || p.t.toLowerCase().includes(q)))
+            .sort((a, b) => a[1].t.localeCompare(b[1].t) || a[1].n.localeCompare(b[1].n)).slice(0, 120);
+          row += '<div class="fx-picker"><input type="search" data-fx-q placeholder="Search players or teams" value="' + esc(FX.q) + '" autocomplete="off"><div class="fx-opts">' +
+            (opts.length ? opts.map(([pid, p]) => '<button type="button" class="fx-opt' + (taken.has(pid) && FX.draft[k] !== pid ? " used" : "") + '" data-fx-player="' + esc(pid) + '"' + (taken.has(pid) && FX.draft[k] !== pid ? " disabled" : "") + "><b>" + esc(p.n) + "</b><small>" + esc(p.t) + "</small></button>").join("") : '<div class="g-note">No players match.</div>') +
+            (FX.draft[k] ? '<button type="button" class="fx-opt" data-fx-player=""><small>Clear this spot</small></button>' : "") + "</div></div>";
+        }
+        return row;
+      }).join("") + (open ? "" : '<div class="fx-total"><span>Total</span><b>' + total + " pts</b></div>") + "</div>";
+      if (open && s.signedIn) h += '<div class="fx-ask-btns"><button type="button" class="pill-btn tos-go" data-fx-save>Save lineup</button>' + (mine ? '<button type="button" class="pill-btn" data-fx-clear>Remove lineup</button>' : "") + "</div>";
+      if (mine?.rank) h += '<div class="panel fx-result"><b>You finished #' + mine.rank + " of " + mine.of + "</b><small>" + mine.score + " pts" + (FX.mode === "marks" ? (mine.reward ? " · +" + mine.reward + " Marks (NOT real money)" : " · no Marks this time") : "") + "</small></div>";
+      h += '<div class="g-note">' + (FX.mode === "marks" ? "Marks Fantasy: free to enter, never costs Marks. Top 10% earn " + (c.fmt === "w" ? 50 : 20) + " Marks, top 25% " + (c.fmt === "w" ? 30 : 12) + ", top 50% " + (c.fmt === "w" ? 15 : 6) + ", any other full lineup that scores " + (c.fmt === "w" ? 5 : 2) + ". Marks are NOT real money." : "Free Fantasy: no Marks or any other currency.") + " Scoring: " + esc(FX_SCORING[c.lg]) + ".</div>";
+      main.innerHTML = h + '<div data-fx-friends></div>';
+      if (s.signedIn && F) F.friends(FX.cid, FX.mode).then((fr) => {
+        const el = main.querySelector("[data-fx-friends]"); if (!el || !fr.length) return;
+        const sc = (lu) => Math.round(slots.reduce((t, [k, g]) => t + ptsOf(lu?.[k], g), 0) * 10) / 10;
+        el.innerHTML = '<div class="section-title"><b>Friends</b></div><div class="panel">' + fr.sort((a, b) => sc(b.lineup) - sc(a.lineup)).map((f) => '<div class="pick-line"><span>@' + esc(f.name) + "</span><span>" + (open ? "Lineup set" : sc(f.lineup) + " pts") + "</span></div>").join("") + "</div>";
+      }).catch(() => {});
+      if (!open && c.status !== "final") { clearTimeout(timer); timer = setTimeout(() => { if (state.tab === "fantasy" && !FX.open) { FX.cache = null; render(); } }, 60000); }   // live points refresh
+    }
+    document.addEventListener("click", async (e) => {
+      const t = e.target, F = window.scorelineFantasy, P = window.scorelinePicks;
+      if (!t.closest("#main") || state.tab !== "fantasy") return;
+      const go = () => renderFantasy().catch(() => {});
+      if (t.closest("[data-fx-skip]")) { store.set("fxTutDone", true); FX.tut = -1; return go(); }
+      if (t.closest("[data-fx-tut]")) { FX.tut = 0; return go(); }
+      const st = t.closest("[data-fx-step]");
+      if (st) { FX.tut += Number(st.dataset.fxStep); if (FX.tut >= FX_TUT.length) { FX.tut = -1; store.set("fxTutDone", true); } FX.tut = Math.max(FX.tut, FX.tut < 0 ? -1 : 0); return go(); }
+      const md = t.closest("[data-fx-mode]"); if (md) { FX.mode = md.dataset.fxMode; FX.fmt = FX.cid = null; FX.draft = null; FX.open = null; buzz(8); return go(); }
+      const fm = t.closest("[data-fx-fmt]"); if (fm) { FX.fmt = fm.dataset.fxFmt; FX.cid = null; buzz(8); return go(); }
+      const lgb = t.closest("[data-fx-lg]"); if (lgb) { FX.lg = lgb.dataset.fxLg; FX.cid = null; return go(); }
+      const cb = t.closest("[data-fx-cid]"); if (cb) { FX.cid = cb.dataset.fxCid; FX.draft = null; FX.open = null; FX.q = ""; buzz(8); return go(); }
+      const bk = t.closest("[data-fx-back]");
+      if (bk) { const to = bk.dataset.fxBack; if (to === "mode") FX.mode = FX.fmt = FX.cid = null; else if (to === "fmt") FX.fmt = FX.cid = null; else FX.cid = null; FX.draft = null; FX.open = null; return go(); }
+      const sl = t.closest("[data-fx-slot]"); if (sl && !sl.disabled) { FX.open = FX.open === sl.dataset.fxSlot ? null : sl.dataset.fxSlot; FX.q = ""; return go(); }
+      const pl = t.closest("[data-fx-player]");
+      if (pl && !pl.disabled && FX.open) { if (pl.dataset.fxPlayer) FX.draft[FX.open] = pl.dataset.fxPlayer; else delete FX.draft[FX.open]; FX.open = null; FX.q = ""; buzz(8); return go(); }
+      if (t.closest("[data-fx-save]") && F) {
+        const b = t.closest("[data-fx-save]"); b.disabled = true;
+        try { await F.save(FX.cid, FX.mode, { ...FX.draft }); FX.cache = null; buzz(12); toast("Lineup saved"); }
+        catch { toast(FX.mode === "marks" ? "Couldn't save. Marks Fantasy needs the Terms agreement, and lineups lock at the first game." : "Couldn't save. Lineups lock when the first game starts."); }
+        return go();
+      }
+      if (t.closest("[data-fx-clear]") && F) { try { await F.clear(FX.cid, FX.mode); FX.draft = {}; FX.cache = null; toast("Lineup removed"); } catch { toast("Couldn't remove it. Lineups lock at the first game."); } return go(); }
+      if (t.closest("[data-fx-agree]") && P) {   // agree to the Terms right here (confirms 13+), then Marks Fantasy opens
+        const b = t.closest("[data-fx-agree]"); b.disabled = true;
+        try { await P.setAge(true); store.set("tosNo", false); syncMarks(); toast("Thanks! Marks Fantasy is open."); } catch { toast("Couldn't save that. Try again."); }
+        return go();
+      }
+    });
+    document.addEventListener("input", (e) => {
+      const q = e.target.closest("[data-fx-q]"); if (!q) return;
+      FX.q = q.value; const pos = q.selectionStart;
+      renderFantasy().then(() => { const n = document.querySelector("[data-fx-q]"); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch {} } }).catch(() => {});
+    });
+    window.addEventListener("scoreline-user", () => { if (state.tab === "fantasy") renderFantasy().catch(() => {}); });
+
     function renderAlerts() {   // the "You" tab: account, pinned sports, alerts (phones), about
       const favs = [...state.favs];
       const signedIn = $("accountBtn")?.classList.contains("on"), reqs = $("accountBtn")?.dataset.count || "";

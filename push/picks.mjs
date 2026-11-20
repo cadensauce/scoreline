@@ -155,6 +155,8 @@ export async function cleanupDeleted(db, admin) {
   }
   const picks = await db.collection("picks").select("uid").get().catch(() => null);
   for (const d of picks?.docs || []) if (gone(d.get("uid"))) { await d.ref.delete().catch(() => {}); n++; }
+  const lineups = await db.collection("fentries").select("uid").get().catch(() => null);   // fantasy lineups
+  for (const d of lineups?.docs || []) if (gone(d.get("uid"))) { await d.ref.delete().catch(() => {}); n++; }
   for (const top of ["ledger", "inventory"]) {
     const refs = await db.collection(top).listDocuments().catch(() => []);
     for (const ref of refs) if (gone(ref.id)) { await db.recursiveDelete(ref).catch(() => {}); n++; }
