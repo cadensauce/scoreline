@@ -15,7 +15,16 @@ service cloud.firestore {
 
     // Private settings: favourite teams, alert settings. Only the owner can see or change them.
     match /users/{uid} {
-      allow read, write: if member() && me() == uid;
+      allow read, delete: if member() && me() == uid;
+      // Only the settings the app saves, at sensible sizes (old extra fields are left alone on update).
+      allow create: if member() && me() == uid && request.resource.data.keys().hasOnly(['favs', 'favNames', 'alertPrefs', 'updatedAt']) && settingsOk();
+      allow update: if member() && me() == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['favs', 'favNames', 'alertPrefs', 'updatedAt']) && settingsOk();
+    }
+    function settingsOk() {
+      return (!('favs' in request.resource.data) || (request.resource.data.favs is list && request.resource.data.favs.size() <= 200))
+        && (!('favNames' in request.resource.data) || (request.resource.data.favNames is map && request.resource.data.favNames.size() <= 400))
+        && (!('alertPrefs' in request.resource.data) || (request.resource.data.alertPrefs is map && request.resource.data.alertPrefs.size() <= 80));
     }
 
     // Public profile: just the username, so friends can find each other.
@@ -57,6 +66,8 @@ service cloud.firestore {
       allow read: if member() && (resource.data.from == me() || resource.data.to == me());
       allow create: if member() && request.resource.data.from == me()
         && id == me() + '_' + request.resource.data.to
+        && request.resource.data.keys().hasOnly(['from', 'to', 'status', 'at'])
+        && request.resource.data.to is string && request.resource.data.to.size() <= 128
         && request.resource.data.status == 'pending'
         && request.resource.data.to != me();
       allow update: if member() && resource.data.to == me()
@@ -79,7 +90,11 @@ service cloud.firestore {
       allow create, update: if id.matches('^[0-9a-f]{64}$')
         && request.resource.data.keys().hasOnly(['endpoint', 'p256dh', 'auth', 'favs', 'prefs', 'updatedAt'])
         && request.resource.data.endpoint is string && request.resource.data.endpoint.matches('^https://.*')
-        && request.resource.data.favs is list && request.resource.data.favs.size() <= 200;
+        && request.resource.data.favs is list && request.resource.data.favs.size() <= 200
+        && request.resource.data.endpoint.size() <= 1000
+        && (!('p256dh' in request.resource.data) || (request.resource.data.p256dh is string && request.resource.data.p256dh.size() <= 200))
+        && (!('auth' in request.resource.data) || (request.resource.data.auth is string && request.resource.data.auth.size() <= 100))
+        && (!('prefs' in request.resource.data) || (request.resource.data.prefs is map && request.resource.data.prefs.size() <= 80));
       allow delete: if id.matches('^[0-9a-f]{64}$');
     }
 
@@ -256,16 +271,19 @@ service cloud.firestore {
       allow create: if member() && me() in request.resource.data.members
         && request.resource.data.members.size() == 2
         && chatId == request.resource.data.members[0] + '_' + request.resource.data.members[1]
-        && friends(request.resource.data.members[0], request.resource.data.members[1]);
+        && friends(request.resource.data.members[0], request.resource.data.members[1])
+        && request.resource.data.keys().hasOnly(['members', 'updatedAt']);
       allow update: if member() && me() in resource.data.members
-        && request.resource.data.members == resource.data.members;
+        && request.resource.data.members == resource.data.members
+        && request.resource.data.keys().hasOnly(['members', 'updatedAt']);
 
       match /messages/{msg} {
         allow read: if member() && me() in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
         allow create: if member() && request.resource.data.from == me()
           && me() in get(/databases/$(database)/documents/chats/$(chatId)).data.members
           && request.resource.data.text is string
-          && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 500;
+          && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 500
+          && request.resource.data.keys().hasOnly(['from', 'text', 'at']) && request.resource.data.at == request.time;   // server time, no backdating
         allow delete: if member() && resource.data.from == me();
       }
     }

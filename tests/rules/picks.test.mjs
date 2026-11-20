@@ -124,3 +124,26 @@ test("dev: a dev can read their own devs entry, others can't", async () => {
   await assertSucceeds(getDoc(doc(as("dev"), "devs/devname")));
   await assertFails(getDoc(doc(as("teen"), "devs/devname")));
 });
+
+// Security limits: settings, friend requests, chats and messages only take what the app writes.
+test("settings: normal save works, junk fields don't", async () => {
+  await assertSucceeds(setDoc(doc(as("teen"), "users/teen"), { favs: ["nfl|1"], favNames: { "nfl|1": "Team" }, alertPrefs: { finals: true }, updatedAt: serverTimestamp() }, { merge: true }));
+  await assertFails(setDoc(doc(as("teen"), "users/teen"), { hack: "x".repeat(1000) }, { merge: true }));
+  await assertFails(setDoc(doc(as("teen"), "users/teen"), { favs: Array.from({ length: 500 }, (_, i) => "t" + i) }, { merge: true }));
+  await assertFails(getDoc(doc(as("other"), "users/teen")));
+});
+test("friend request: only from/to/status/at", async () => {
+  await assertSucceeds(setDoc(doc(as("teen"), "requests/teen_other"), { from: "teen", to: "other", status: "pending", at: serverTimestamp() }));
+  await assertFails(setDoc(doc(as("teen"), "requests/teen_kid"), { from: "teen", to: "kid", status: "pending", at: serverTimestamp(), extra: "x" }));
+});
+test("messages: server time only, no extra fields", async () => {
+  await env.withSecurityRulesDisabled(async (c) => {
+    const db = c.firestore();
+    await setDoc(doc(db, "requests/teen_other"), { from: "teen", to: "other", status: "accepted" });
+    await setDoc(doc(db, "chats/other_teen"), { members: ["other", "teen"], updatedAt: Timestamp.now() });
+  });
+  await assertSucceeds(setDoc(doc(as("teen"), "chats/other_teen/messages/m1"), { from: "teen", text: "hi", at: serverTimestamp() }));
+  await assertFails(setDoc(doc(as("teen"), "chats/other_teen/messages/m2"), { from: "teen", text: "hi", at: Timestamp.fromMillis(Date.now() - 864e5) }));
+  await assertFails(setDoc(doc(as("teen"), "chats/other_teen/messages/m3"), { from: "teen", text: "hi", at: serverTimestamp(), html: "<b>x</b>" }));
+  await assertFails(updateDoc(doc(as("teen"), "chats/other_teen"), { junk: "x" }));
+});
