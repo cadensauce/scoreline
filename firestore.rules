@@ -229,6 +229,116 @@ service cloud.firestore {
       allow delete: if member() && resource.data.uid == me() && request.time < contestOf(resource.data.contestId).lockAt;
     }
 
+    // ---- Season leagues with friends: create, invite friends, join, a snake draft, then weekly starters. ----
+    // The worker publishes fpool/{lg} (draftable players) and writes the scores (locked, weeks, totals, scored).
+    match /fpool/{lg} {
+      allow read: if true;
+      allow write: if false;
+    }
+    function rosterFor(lg) { return lg == 'nba' ? 7 : lg == 'mlb' ? 6 : lg == 'f1' ? 3 : 8; }
+    function maxFor(lg) { return lg == 'f1' ? 7 : 12; }
+    function slotKeys(lg) {
+      return lg == 'nba' ? ['g1', 'g2', 'f1', 'f2', 'c'] : lg == 'mlb' ? ['h1', 'h2', 'h3', 'p'] : lg == 'f1' ? ['d1', 'd2', 'd3'] : ['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'te'];
+    }
+    // Whose turn it is (snake order: 1-2-3, 3-2-1, ...).
+    function drafter(d) {
+      let n = d.order.size();
+      let r = math.floor(d.pick / n);
+      let p = d.pick % n;
+      return d.order[r % 2 == 0 ? p : n - 1 - p];
+    }
+    match /leagues/{id} {
+      allow read: if member() && (me() in resource.data.members || me() in resource.data.invites);
+      // Create: you're the owner and the only member; invite up to 11 people (they must be your friends to join).
+      allow create: if member()
+        && request.resource.data.keys().hasOnly(['name', 'lg', 'mode', 'owner', 'members', 'invites', 'status', 'rosterSize', 'createdAt', 'updatedAt'])
+        && request.resource.data.owner == me() && request.resource.data.members == [me()]
+        && request.resource.data.status == 'forming'
+        && request.resource.data.name is string && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 40
+        && request.resource.data.lg in ['nfl', 'cfb', 'nba', 'mlb', 'f1']
+        && request.resource.data.mode in ['free', 'marks'] && (request.resource.data.mode == 'free' || teen())
+        && request.resource.data.invites is list && request.resource.data.invites.size() <= 11 && !(me() in request.resource.data.invites)
+        && request.resource.data.rosterSize == rosterFor(request.resource.data.lg)
+        && request.resource.data.createdAt == request.time;
+      // Owner changes who's invited (before the draft).
+      allow update: if member() && resource.data.status == 'forming' && me() == resource.data.owner
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['invites', 'updatedAt'])
+        && request.resource.data.invites is list && request.resource.data.invites.size() <= 11;
+      // Join: you were invited, you're friends with the owner, there's room (Marks leagues: Terms agreement).
+      allow update: if member() && resource.data.status == 'forming' && me() in resource.data.invites && !(me() in resource.data.members)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'invites', 'updatedAt'])
+        && request.resource.data.members == resource.data.members.concat([me()])
+        && request.resource.data.invites == resource.data.invites.removeAll([me()])
+        && request.resource.data.members.size() <= maxFor(resource.data.lg)
+        && friends(me(), resource.data.owner)
+        && (resource.data.mode == 'free' || teen());
+      // Decline an invite, or leave before the draft (the owner can't leave; they delete the league instead).
+      allow update: if member() && resource.data.status == 'forming' && me() != resource.data.owner
+        && (me() in resource.data.invites || me() in resource.data.members)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'invites', 'updatedAt'])
+        && request.resource.data.members == resource.data.members.removeAll([me()])
+        && request.resource.data.invites == resource.data.invites.removeAll([me()]);
+      // Owner starts the draft: a draft order made of exactly the members.
+      allow update: if member() && resource.data.status == 'forming' && me() == resource.data.owner && resource.data.members.size() >= 2
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'order', 'pick', 'taken', 'invites', 'updatedAt'])
+        && request.resource.data.status == 'drafting' && request.resource.data.pick == 0 && request.resource.data.taken == {}
+        && request.resource.data.invites == []
+        && request.resource.data.order.size() == resource.data.members.size()
+        && request.resource.data.order.toSet() == resource.data.members.toSet();
+      // A draft pick: by whoever's turn it is (or the owner, for them). One player nobody has, from the player list.
+      // The last pick ends the draft and starts the season.
+      allow update: if member() && resource.data.status == 'drafting'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pick', 'taken', 'last', 'status', 'startedAt', 'updatedAt'])
+        && request.resource.data.pick == resource.data.pick + 1
+        && resource.data.pick < resource.data.order.size() * resource.data.rosterSize
+        && request.resource.data.last.keys().hasOnly(['uid', 'pid'])
+        && request.resource.data.last.uid == drafter(resource.data)
+        && (me() == request.resource.data.last.uid || me() == resource.data.owner)
+        && request.resource.data.last.pid is string && !(request.resource.data.last.pid in resource.data.taken)
+        && request.resource.data.taken.diff(resource.data.taken).affectedKeys() == [request.resource.data.last.pid].toSet()
+        && request.resource.data.taken[request.resource.data.last.pid] == request.resource.data.last.uid
+        && get(/databases/$(database)/documents/fpool/$(resource.data.lg)).data.players.keys().hasAny([request.resource.data.last.pid])
+        && (request.resource.data.pick == resource.data.order.size() * resource.data.rosterSize
+          ? (request.resource.data.status == 'active' && request.resource.data.startedAt == request.time)
+          : (request.resource.data.status == 'drafting' && !('startedAt' in request.resource.data)));
+      allow delete: if member() && me() == resource.data.owner && resource.data.status in ['forming', 'drafting'];
+    }
+    // Your starters in a league: lstarts/{leagueId}_{uid}. Only players you drafted, only the sport's spots.
+    // The worker copies them into the league when each week locks, so changes count from the next week.
+    function league(lid) { return get(/databases/$(database)/documents/leagues/$(lid)).data; }
+    function mineAt(t, lu, k) { return !(k in lu) || (lu[k] in t && t[lu[k]] == me()); }
+    match /lstarts/{id} {
+      allow get: if member() && me() in league(resource.data.leagueId).members;
+      allow create, update: if member()
+        && request.resource.data.keys().hasOnly(['uid', 'leagueId', 'lineup', 'updatedAt'])
+        && request.resource.data.uid == me() && request.resource.data.leagueId is string
+        && id == request.resource.data.leagueId + '_' + me()
+        && request.resource.data.updatedAt == request.time
+        && league(request.resource.data.leagueId).status == 'active' && me() in league(request.resource.data.leagueId).members
+        && request.resource.data.lineup is map
+        && request.resource.data.lineup.keys().hasOnly(slotKeys(league(request.resource.data.leagueId).lg))
+        && request.resource.data.lineup.values().toSet().size() == request.resource.data.lineup.size()
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'qb')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'rb1')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'rb2')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'wr1')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'wr2')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'te')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'g1')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'g2')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'f1')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'f2')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'c')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'h1')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'h2')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'h3')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'p')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'd1')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'd2')
+        && mineAt(league(request.resource.data.leagueId).taken, request.resource.data.lineup, 'd3');
+      allow delete: if member() && resource.data.uid == me();
+    }
+
     // The list of items and prices: written only by the push worker.
     match /shopItems/{item} {
       allow read: if true;

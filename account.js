@@ -153,6 +153,7 @@ function watchFriends() {
     friendState.friends = [...new Set([...(friendState.inAccepted || []), ...(friendState.outAccepted || [])])];
     const badge = document.getElementById("accountBtn");
     if (badge) badge.dataset.count = friendState.incoming.length || "";
+    window.dispatchEvent(new Event("scoreline-social"));   // the Social tab redraws with the new requests and friends
     refreshAccountSheet();
   };
   unsubs.push(fb.onSnapshot(fb.query(col, fb.where("to", "==", user.uid)), (s) => apply("in", s)));
@@ -300,7 +301,24 @@ function refreshAccountSheet() {
   }
   setBody(v, user ? "Account" : "Scoreline account", h);
 }
-const errBox = (el, msg) => { const b = el.closest(".sheet")?.querySelector("[data-err]"); if (b) b.textContent = msg; };
+const errBox = (el, msg) => { const b = el.closest(".sheet, [data-social]")?.querySelector("[data-err]"); if (b) b.textContent = msg; };
+/* ---------- Social tab: the same friends, requests and chats as the account sheet, in their own tab.
+   Uses the existing friend requests (requests/{from_to}) and chats; nothing new is stored. */
+window.scorelineSocial = {
+  async html() {
+    await startFirebase();
+    if (FIREBASE_CONFIG && fb) await Promise.race([authReady, new Promise((r) => setTimeout(r, 8000))]);
+    if (!user || pending2) return '<div class="panel"><b>Friends and messages</b><p class="muted">Sign in to add friends, see requests and message your friends.</p><button type="button" class="pill-btn tos-go" data-social-signin>Sign in</button></div>';
+    const F = friendState;
+    await Promise.all([...F.friends, ...F.incoming.map((r) => r.from), ...F.outgoing.map((r) => r.to)].map(nameOf));
+    const person = (uid, sub, actions) => '<div class="opt"><span><b>@' + esc(names[uid] || "…") + "</b>" + (sub ? "<small>" + sub + "</small>" : "") + '</span><span class="acct-acts">' + actions + "</span></div>";
+    return '<div class="section-title"><b>Add a friend</b></div><form class="acct-add" data-addf><input placeholder="Their username" maxlength="21" autocomplete="off" autocapitalize="none" spellcheck="false"><button class="pill-btn" type="submit">Add</button></form><div class="acct-err" data-err></div>' +
+      (F.incoming.length ? '<div class="section-title"><b>Friend requests</b><span class="muted">' + F.incoming.length + "</span></div><div class=\"panel\">" + F.incoming.map((r) => person(r.from, "Wants to be friends", '<button class="pill-btn" type="button" data-accept="' + esc(r.id) + '">Accept</button><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '" aria-label="Decline">✕</button>')).join("") + "</div>" : "") +
+      '<div class="section-title"><b>Friends</b><span class="muted">' + F.friends.length + '</span></div><div class="panel">' + (F.friends.length ? F.friends.slice().sort((a, b) => (names[a] || "").localeCompare(names[b] || "")).map((uid) => person(uid, "", '<button class="pill-btn" type="button" data-chat="' + esc(uid) + '">Message</button><button class="pill-btn" type="button" data-viewcard="' + esc(uid) + '">Profile</button><button class="pill-btn" type="button" data-unfriend="' + esc(uid) + '" aria-label="Remove friend">✕</button>')).join("") : '<div class="g-note">No friends yet. Add someone by their username above.</div>') + "</div>" +
+      (F.outgoing.length ? '<div class="section-title"><b>Sent requests</b></div><div class="panel">' + F.outgoing.map((r) => person(r.to, "Waiting for them to accept", '<button class="pill-btn" type="button" data-decline="' + esc(r.id) + '" aria-label="Cancel request">✕</button>')).join("") + "</div>" : "") +
+      '<div class="g-note">Only people you both accepted can message each other. Never share personal details like your address, school or passwords.</div>';
+  },
+};
 const niceErr = (e) => {
   const c = e?.code || "";
   if (/invalid-credential|wrong-password|user-not-found/.test(c)) return "Wrong email or password.";
@@ -675,6 +693,50 @@ window.scorelinePicks = {
     try { await b.commit(); } catch { throw new Error("Couldn't give Marks. They only go to accounts that agreed to the Terms (13+)."); }
     return name;
   },
+};
+
+/* ---------- Season leagues with friends (leagues/{id}): create, invite, join, snake draft, weekly starters.
+   Every step is checked by the rules; the push worker scores the weeks. ---------- */
+const LEAGUE_ROSTER = { nfl: 8, cfb: 8, nba: 7, mlb: 6, f1: 3 };
+const poolCache = {};
+window.scorelineLeagues = {
+  me: () => (pickReady() ? user.uid : ""),
+  async friendsList() { if (!pickReady()) return []; return Promise.all((friendState.friends || []).map(async (uid) => ({ uid, name: await nameOf(uid) }))); },
+  name: (uid) => nameOf(uid),
+  async mine() {
+    if (!pickReady()) return { leagues: [], invites: [] };
+    const q = (field) => fb.getDocs(fb.query(fb.collection(db, "leagues"), fb.where(field, "array-contains", user.uid))).then((r) => r.docs.map((d) => ({ id: d.id, ...d.data() }))).catch(() => []);
+    const [leagues, invites] = await Promise.all([q("members"), q("invites")]);
+    return { leagues, invites };
+  },
+  async create({ name, lg, mode, invites }) {
+    const ref = fb.doc(fb.collection(db, "leagues"));
+    await fb.setDoc(ref, { name, lg, mode, owner: user.uid, members: [user.uid], invites, status: "forming", rosterSize: LEAGUE_ROSTER[lg], createdAt: fb.serverTimestamp(), updatedAt: fb.serverTimestamp() });
+    return ref.id;
+  },
+  watch(id, cb) { return fb.onSnapshot(fb.doc(db, "leagues", id), (d) => cb(d.exists() ? { id: d.id, ...d.data() } : null), () => cb(null)); },
+  invite: (id, invites) => fb.updateDoc(fb.doc(db, "leagues", id), { invites, updatedAt: fb.serverTimestamp() }),
+  join: (L) => fb.updateDoc(fb.doc(db, "leagues", L.id), { members: [...L.members, user.uid], invites: L.invites.filter((x) => x !== user.uid), updatedAt: fb.serverTimestamp() }),
+  leave: (L) => fb.updateDoc(fb.doc(db, "leagues", L.id), { members: L.members.filter((x) => x !== user.uid), invites: L.invites.filter((x) => x !== user.uid), updatedAt: fb.serverTimestamp() }),
+  remove: (id) => fb.deleteDoc(fb.doc(db, "leagues", id)),
+  start(L) {   // random draft order
+    const order = [...L.members]; for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+    return fb.updateDoc(fb.doc(db, "leagues", L.id), { status: "drafting", order, pick: 0, taken: {}, invites: [], updatedAt: fb.serverTimestamp() });
+  },
+  pick(L, who, pid) {
+    const last = L.pick + 1 === L.order.length * L.rosterSize;
+    return fb.updateDoc(fb.doc(db, "leagues", L.id), { pick: L.pick + 1, last: { uid: who, pid }, ["taken." + pid]: who, status: last ? "active" : "drafting",
+      ...(last ? { startedAt: fb.serverTimestamp() } : {}), updatedAt: fb.serverTimestamp() });
+  },
+  async pool(lg) {
+    if (poolCache[lg] && Date.now() - poolCache[lg].at < 30 * 60_000) return poolCache[lg].players;
+    await startFirebase();
+    const d = await fb.getDoc(fb.doc(db, "fpool", lg)).catch(() => null);
+    poolCache[lg] = { at: Date.now(), players: d?.data()?.players || {} };
+    return poolCache[lg].players;
+  },
+  async starters(id) { const d = await fb.getDoc(fb.doc(db, "lstarts", id + "_" + user.uid)).catch(() => null); return d?.exists() ? d.data().lineup || {} : null; },
+  saveStarters: (id, lineup) => fb.setDoc(fb.doc(db, "lstarts", id + "_" + user.uid), { uid: user.uid, leagueId: id, lineup, updatedAt: fb.serverTimestamp() }),
 };
 
 /* ---------- Fantasy: Free Fantasy (no currency) and Marks Fantasy (Terms agreement / 13+ only).

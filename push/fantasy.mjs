@@ -163,6 +163,7 @@ export async function fantasyTick(db, admin) {
       } catch (e) { console.log("fantasy plan", lg, e.message); }
     }
   }
+  await leaguesTick(db, admin).catch((e) => console.log("leagues", e.message));
   // 2) Live points for locked contests, then results.
   const live = await db.collection("fcontests").where("settled", "==", false).get().catch(() => null);
   const summaries = new Map();
@@ -240,4 +241,84 @@ async function settleContest(db, admin, ref, d) {
   await ref.update({ settled: true, status: "final", settledAt: FV.serverTimestamp() });
   await board(db, d.lg).catch(() => {});
   console.log("fantasy settled", ref.id, snap.size, "lineups");
+}
+
+// ---------- Season leagues (with friends, with a draft) ----------
+// The site handles creating, joining and the draft (the rules check every step). The worker:
+//   - publishes fpool/{lg}: every player a league can draft (NFL, NBA, MLB: all teams; CFB: the AP Top 25 teams; F1: drivers)
+//   - at each week's lock, copies every member's current starters into the league (locked.{contestId})
+//   - when that week's contest is final, scores the starters with the same points as the weekly contest, adds them to the
+//     season totals, and in Marks leagues gives the week's top score LEAGUE_WIN Marks (agreed accounts only).
+export const ROSTER = { nfl: 8, cfb: 8, nba: 7, mlb: 6, f1: 3 };
+const LEAGUE_WIN = 20;
+const poolAt = new Map();
+async function publishPool(db, admin, lg) {
+  if (Date.now() - (poolAt.get(lg) || 0) < 12 * 3600e3) return;
+  poolAt.set(lg, Date.now());
+  const players = {};
+  try {
+    if (lg === "f1") {
+      const st = await getJSON("https://site.api.espn.com/apis/v2/sports/racing/f1/standings");
+      for (const e of st?.children?.[0]?.standings?.entries || []) if (e.athlete?.id) players[String(e.athlete.id)] = { n: e.athlete.displayName || "", t: "", p: "D" };
+    } else {
+      let teams = [];
+      if (lg === "cfb") {
+        const rk = await getJSON(API + LGS.cfb + "/rankings");
+        const ap = (rk.rankings || []).find((r) => /AP/.test(r.name || "")) || rk.rankings?.[0];
+        teams = (ap?.ranks || []).map((r) => ({ id: String(r.team?.id), t: r.team?.abbreviation || "" })).filter((x) => x.id);
+      } else {
+        const j = await getJSON(API + LGS[lg] + "/teams");
+        teams = (j.sports?.[0]?.leagues?.[0]?.teams || []).map((x) => ({ id: String(x.team?.id), t: x.team?.abbreviation || "" })).filter((x) => x.id);
+      }
+      for (const tm of teams) for (const p of await roster(lg, tm.id)) players[p.id] = { n: p.n, t: tm.t, p: p.p };
+    }
+    if (Object.keys(players).length) await db.collection("fpool").doc(lg).set({ players, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+  } catch (e) { console.log("fantasy pool", lg, e.message); poolAt.set(lg, Date.now() - 11 * 3600e3); }   // try again in an hour
+}
+
+export async function leaguesTick(db, admin) {
+  for (const lg of Object.keys(ROSTER)) await publishPool(db, admin, lg);
+  const FV = admin.firestore.FieldValue;
+  const snap = await db.collection("leagues").where("status", "==", "active").get().catch(() => null);
+  for (const L of snap?.docs || []) {
+    const d = L.data(), start = d.startedAt?.toMillis?.() || 0;
+    try {
+      const cs = await db.collection("fcontests").where("lg", "==", d.lg).get();
+      const weeks = cs.docs.map((x) => ({ id: x.id, ...x.data() })).filter((x) => x.fmt === "w" && (x.lockAt?.toMillis?.() || 0) > start && x.lockAt.toMillis() <= Date.now())
+        .sort((a, b) => a.lockAt.toMillis() - b.lockAt.toMillis());
+      const locked = d.locked || {}, scored = new Set(d.scored || []);
+      for (const w of weeks) {
+        if (!locked[w.id]) {   // week just locked: freeze everyone's current starters for it
+          const lu = {};
+          await Promise.all((d.members || []).map(async (uid) => { const s = await db.collection("lstarts").doc(L.id + "_" + uid).get().catch(() => null); lu[uid] = s?.exists ? s.data().lineup || {} : {}; }));
+          locked[w.id] = lu;
+          await L.ref.update({ ["locked." + w.id]: lu, ["labels." + w.id]: w.label || w.id });
+        }
+        if (w.settled && !scored.has(w.id)) {   // week is final: score it
+          const slots = (w.slots || []).map((s) => s.split(":"));
+          const pool = (await db.collection("fpool").doc(d.lg).get()).data()?.players || {};
+          const scores = {};
+          for (const [uid, lu] of Object.entries(locked[w.id] || {})) {
+            scores[uid] = Math.round(slots.reduce((t, [k, g]) => { const id = lu?.[k]; const grp = pool[id]?.p || w.pool?.[id]?.p; return t + (id && d.taken?.[id] === uid && grp === g ? w.points?.[id] || 0 : 0); }, 0) * 10) / 10;
+          }
+          const batch = db.batch(), top = Math.max(0, ...Object.values(scores));
+          const upd = { ["weeks." + w.id]: scores, scored: FV.arrayUnion(w.id) };
+          for (const [uid, s] of Object.entries(scores)) upd["totals." + uid] = FV.increment(s);
+          batch.update(L.ref, upd);
+          if (d.mode === "marks" && top > 0) {
+            for (const [uid, s] of Object.entries(scores)) {
+              if (s !== top) continue;
+              const a = await db.collection("ages").doc(uid).get().catch(() => null);
+              if (!(a?.exists && a.data().is13plus === true)) continue;   // Marks only with the Terms agreement
+              batch.create(db.doc("ledger/" + uid + "/entries/league_" + L.id + "_" + w.id), { amount: LEAGUE_WIN, reason: "league", refId: L.id, createdAt: FV.serverTimestamp() });
+              batch.set(db.doc("wallets/" + uid), { balance: FV.increment(LEAGUE_WIN), updatedAt: FV.serverTimestamp() }, { merge: true });
+            }
+          }
+          await batch.commit();
+          scored.add(w.id);
+          console.log("league week scored", L.id, w.id);
+        }
+      }
+    } catch (e) { console.log("league", L.id, e.message); }
+  }
 }
