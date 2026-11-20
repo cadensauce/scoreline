@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795205661" />
+  <meta name="build" content="1795205764" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -525,6 +525,7 @@
     .bn.b_gold { background: linear-gradient(135deg, #6b4a12, #c9952e 50%, #7a5414); }
     .fs-btn { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); cursor: pointer; } .fs-btn:hover { color: var(--text); background: var(--panel-2); }
     @media (max-width: 720px) { .fs-btn { display: none; } } .fs-btn[hidden] { display: none; }
+    .p-head img.drv-photo { object-fit: cover; object-position: top; background: var(--panel-2); } .p-head small .flag { width: 16px; height: 11px; vertical-align: -1px; border-radius: 2px; }
     .drv-races { display: grid; gap: 5px; } .drv-race { display: grid; grid-template-columns: 44px 1fr 30px; align-items: center; gap: 10px; font-size: 12.5px; }
     .drv-race span { color: var(--muted); font-weight: 700; } .drv-race i { height: 8px; border-radius: 99px; background: var(--panel-3); overflow: hidden; } .drv-race em { display: block; height: 100%; border-radius: 99px; background: var(--text); }
     .drv-race b { text-align: right; font-variant-numeric: tabular-nums; } .sheet .headline { margin: 0 0 8px; max-width: none; }
@@ -3923,6 +3924,18 @@
     }
     /* ---------- F1 driver profile: championship place and points, gaps, points race by race, teammate, bio, news.
        Everything comes from the standings, the latest race and the driver's own feed; anything missing is left out. */
+    const f1Cars = store.get("f1cars", {}) || {};   // driver id -> { team, number, engine, at }
+    async function f1Car(id) {
+      if (!id) return null;
+      const c = f1Cars[id];
+      if (c && Date.now() - c.at < 864e5) return c;
+      const d = await getJSON("https://sports.core.api.espn.com/v2/sports/racing/leagues/f1/athletes/" + id).catch(() => null);
+      const vh = d?.vehicles?.[0];
+      if (!vh) return c || null;
+      f1Cars[id] = { team: vh.team || vh.manufacturer || "", number: vh.number || "", engine: vh.engine || "", at: Date.now() };
+      store.set("f1cars", f1Cars);
+      return f1Cars[id];
+    }
     async function openDriver(id) {
       const v = { kind: "driver", key: "driver|" + id };
       if (!pushView(v)) return;
@@ -3936,14 +3949,14 @@
       const a = bio?.athlete || {}, name = a.displayName || e?.athlete?.displayName;
       if (!name) return setBody(v, "Driver", '<div class="error">Couldn\'t load this driver.</div>');
       const pts = (x) => Number((x?.stats || []).find((s) => s.name === "championshipPts")?.value) || 0;
-      // Team: from the latest session that lists this driver
-      const comps = (sb?.events || []).flatMap((ev) => ev.competitions || []).flatMap((c) => c.competitors || []);
-      const teamOf = (aid) => comps.find((c) => String(c.athlete?.id) === String(aid))?.team?.displayName || "";
-      const team = teamOf(id);
-      const mate = team ? ents.find((x) => x !== e && teamOf(x.athlete?.id) === team) : null;
-      const head = e?.athlete?.headshot?.href || a.headshot?.href || "", flag = a.flag?.href || e?.athlete?.flag?.href || "";
-      let h = '<div class="p-head">' + (head ? '<img src="' + esc(head) + '" alt="">' : "") + "<div><b>" + esc(name) + "</b><small>" +
-        (flag ? '<img class="flag" src="' + esc(flag) + '" alt=""> ' : "") + esc([team, e ? "P" + (i + 1) + " in the championship" : ""].filter(Boolean).join(" · ")) + "</small></div>" +
+      // Team, car number and engine: from each driver's own record (saved for a day), so the teammate can be found too
+      const cars = await Promise.all(ents.map((x) => f1Car(x.athlete?.id)));
+      const car = (await f1Car(id)) || {}, team = car.team || "";
+      const mate = team ? ents.find((x, j) => x !== e && cars[j]?.team === team) : null;
+      // The driver's photo (not the flag, which the feed sometimes puts in the headshot spot); hidden if there isn't one yet
+      const head = /^\d+$/.test(String(id)) ? "https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/" + id + ".png&w=168&h=168&scale=crop" : "", flag = a.flag?.href || e?.athlete?.flag?.href || "";
+      let h = '<div class="p-head">' + (head ? '<img class="drv-photo" src="' + esc(head) + '" alt="' + esc(name) + '" onerror="this.remove()">' : "") + "<div><b>" + esc(name) + "</b><small>" +
+        (flag ? '<img class="flag" src="' + esc(flag) + '" alt=""> ' : "") + esc([team, car.number ? "#" + car.number : "", e ? "P" + (i + 1) + " in the championship" : ""].filter(Boolean).join(" · ")) + "</small></div>" +
         pfBtn("f1|" + id, name, team, head) + "</div>";
       if (e) {
         const mine = pts(e), lead = pts(ents[0]), ahead = i > 0 ? ents[i - 1] : null, behind = ents[i + 1];
@@ -3967,7 +3980,7 @@
             (diff > 0 ? '<span class="good">' + esc(name.split(" ").pop()) + " +" + diff + "</span>" : diff < 0 ? '<span class="bad">' + esc(name.split(" ").pop()) + " " + diff + "</span>" : "Level") + "</span></div></div>";
         }
       }
-      const facts = [["Born", a.displayDOB ? a.displayDOB + (a.age ? " (age " + a.age + ")" : "") : ""], ["Birthplace", a.displayBirthPlace], ["Height", a.displayHeight]].filter(([, x]) => x);
+      const facts = [["Born", a.displayDOB ? a.displayDOB + (a.age ? " (age " + a.age + ")" : "") : ""], ["Birthplace", a.displayBirthPlace], ["Height", a.displayHeight], ["Engine", car.engine]].filter(([, x]) => x);
       if (facts.length) h += '<div class="g-sec"><div class="g-label">About</div>' + facts.map(([k, x]) => '<div class="pick-line"><span class="muted">' + esc(k) + "</span><span>" + esc(x) + "</span></div>").join("") + "</div>";
       const last = name.split(" ").pop().toLowerCase();
       const news = (ov?.news || []).filter((n) => (n.headline || "").toLowerCase().includes(last) && /^https:\/\//.test(n.links?.web?.href || "")).slice(0, 3);
