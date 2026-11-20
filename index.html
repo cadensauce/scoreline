@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795035028" />
+  <meta name="build" content="1795205060" />
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
@@ -488,6 +488,9 @@
     .getapp-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--panel) !important; color: var(--accent) !important; border-color: transparent !important; font-weight: 700; padding: 7px 13px; }
     .getapp-btn:hover { background: var(--panel-2) !important; }
     .marks-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: 700 13.5px Inter, sans-serif; font-variant-numeric: tabular-nums; cursor: pointer; }
+    .headline { display: block; max-width: 760px; margin: 2px 0 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); border-left: 3px solid var(--text); background: var(--panel); color: var(--text); text-decoration: none; }
+    .headline:hover { background: var(--panel-2); } .headline-k { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+    .headline b { display: block; font-size: 15px; line-height: 1.35; } .headline small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; color: var(--muted); font-size: 12.5px; line-height: 1.4; }
     .qotd { position: relative; overflow: hidden; max-width: 760px; margin: 4px 0 22px; padding: 16px 18px 16px; border-radius: 18px; border: 1px solid var(--line); background: linear-gradient(135deg, var(--panel) 0%, var(--panel-2) 100%); }
     .qotd::before { content: "\201C"; position: absolute; right: 10px; top: -22px; font: 700 120px/1 Georgia, "Times New Roman", serif; color: var(--text); opacity: .07; pointer-events: none; }
     .qotd-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -1542,6 +1545,48 @@
       stamp();
       return events.some(isLive);
     }
+    /* ---------- Headline: the one big story at the top of each sport (from the public news feed; links out to read it).
+       Only real news about important people: a release, trade, signing, firing/hiring, major injury, suspension or retirement,
+       about a QB or head coach (football), a star (NBA/MLB), or a player several stories are about at once. In F1 every driver
+       counts. No fantasy, betting, rankings or talk shows. Nothing big in the last 2 days = no headline (never padded out). */
+    const NEWS_SKIP = /fantasy|betting|\bbets?\b|\bodds\b|\bpicks?\b|predict|how to watch|start time|ranking|mock draft|\bbuzz\b|roundtable|takeaways|\bgrades?\b|tracker|podcast|uniform|\bquiz\b|what we learned|speculat|\breacts?\b|debate|power poll|highlights|over\/under|\bwho's\b/i;
+    const NEWS_BIG = /\b(releas\w*|cuts?|waive[sd]?|waiving|trade[ds]?|trading|signs?|signed|signing|agree(s|d|ment)?|extension|contract|fired|fires|hired|hires|hiring|resign\w*|retire\w*|retirement|suspend\w*|suspension|injur\w*|out for (the )?season|torn|tears?|fractur\w*|surgery|acl|ruled out|benched|will start|named (the )?starter|arrest\w*|dies|died|penalty|penalt\w*|disqualif\w*|replac\w*|leaves|leaving|joins|exit)\b/i;
+    const NEWS_VIP = { nfl: /\b(qb|quarterback|head coach|coach)\b/i, cfb: /\b(qb|quarterback|head coach|coach)\b/i, nba: /\b(all-star|mvp|star|coach)\b/i, mlb: /\b(all-star|mvp|cy young|ace|manager|star)\b/i };
+    const headCache = store.get("headlines", {}) || {}, headAt = {};
+    function pickHeadline(key, feed) {
+      const arts = feed?.articles || [], now = Date.now();
+      const who = (a) => (a.categories || []).filter((c) => c.type === "athlete" && c.athleteId).map((c) => c.athleteId);
+      const buzz = {}; arts.forEach((a) => new Set(who(a)).forEach((id) => { buzz[id] = (buzz[id] || 0) + 1; }));   // how many stories are about this person
+      let best = null;
+      for (const a of arts) {
+        const h = a.headline || "", t = Date.parse(a.published || "") || 0;
+        if (!["HeadlineNews", "Story"].includes(a.type) || !h || now - t > 2 * 864e5 || NEWS_SKIP.test(h)) continue;
+        const text = h + " " + (a.description || ""), big = NEWS_BIG.test(text), people = who(a);
+        const hot = Math.max(0, ...people.map((id) => buzz[id] || 0)), vip = NEWS_VIP[key]?.test(text) || false;
+        const ok = key === "f1" ? (people.length > 0 || big) : big && (vip || hot >= 2);
+        if (!ok) continue;
+        const score = (big ? 3 : 0) + (vip ? 2 : 0) + Math.min(hot, 4) + (now - t < 864e5 ? 1 : 0);
+        if (!best || score > best.score || (score === best.score && t > best.t)) best = { score, t, h, d: a.description || "", url: a.links?.web?.href || "" };
+      }
+      return best;
+    }
+    async function loadHeadline(key) {
+      headAt[key] = Date.now();
+      const path = key === "f1" ? "racing/f1" : LEAGUES[key]?.path;
+      if (!path) return;
+      const feed = await getJSON(API + path + "/news?limit=50").catch(() => null);
+      if (!feed) return;   // offline: keep what we had
+      const b = pickHeadline(key, feed);
+      const html = b && /^https:\/\//.test(b.url) ? '<a class="headline" href="' + esc(b.url) + '" target="_blank" rel="noopener" data-ext><span class="headline-k">Headline · ' + esc(agoText(b.t)) + "</span><b>" + esc(b.h) + "</b>" + (b.d ? "<small>" + esc(b.d) + "</small>" : "") + "</a>" : "";
+      if (headCache[key] !== html) { headCache[key] = html; store.set("headlines", headCache); }
+      document.querySelectorAll('[data-headline="' + key + '"]').forEach((el) => { if (el.innerHTML !== html) el.innerHTML = html; });
+    }
+    function agoText(t) { const m = Math.max(1, Math.round((Date.now() - t) / 6e4)); return m < 60 ? m + "m ago" : m < 1440 ? Math.round(m / 60) + "h ago" : Math.round(m / 1440) + "d ago"; }
+    function headlineHtml(key) {   // drawn from the last copy at once (no blink on live refreshes); re-checked every 10 minutes
+      if (!key || (key !== "f1" && !LEAGUES[key]) || !store.get("headlinesOn", true)) return "";   // You → Settings → Headlines
+      if (Date.now() - (headAt[key] || 0) > 6e5) setTimeout(() => loadHeadline(key), 0);
+      return '<div data-headline="' + key + '">' + (headCache[key] || "") + "</div>";
+    }
     function barHtml(title, key) {
       const L = key && LEAGUES[key];
       const paged = !!L?.paging, day = paged && viewOf(key) === "day";
@@ -1553,7 +1598,7 @@
       const open = paged && (searchOpen[key] || searchQ[key]);
       const sBtn = paged ? '<button type="button" class="icon-btn' + (open ? " on" : "") + '" data-searchtoggle aria-label="Search ' + esc(L.short || L.name) + ' teams"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>' : "";
       const hBtn = key !== "f1" ? '<button type="button" class="icon-btn' + (HEAT ? " on" : "") + '" data-heat aria-label="' + (HEAT ? "Show as list" : "Show as heat map") + '" title="' + (HEAT ? "List" : "Heat map") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2" opacity=".55"/><rect x="3" y="13" width="8" height="8" rx="2" opacity=".3"/><rect x="13" y="13" width="8" height="8" rx="2" opacity=".75"/></svg></button>' : "";
-      return '<div class="bar"><h1>' + esc(title) + "</h1>" + hBtn + sBtn + "</div>" + (open ? search : "") +
+      return '<div class="bar"><h1>' + esc(title) + "</h1>" + hBtn + sBtn + "</div>" + headlineHtml(key) + (open ? search : "") +
         '<div class="bar-row">' + liveBtn + (paged ? '<button type="button" class="pill-btn st-pill" data-standings="' + key + '">' + (key === "cfb" ? "Standings · Top 25" : "Standings") + "</button>" : "") + "</div>" + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
         (HEAT ? '<div class="heat-key"><span>One-sided</span><i></i><span>Close game</span></div>' : "") + (HEAT ? dm("<b>Reading the heat map.</b> Each tile is one game. The brighter the tile, the closer the game is to a coin flip (from win probability), so the most exciting games stand out. Upcoming games use the pre-game odds; finished games are dimmed. The ball icon shows who has it.") : "");
     }
@@ -2030,6 +2075,7 @@
       if (ap) { const p = alertPrefs(); p[ap.dataset.ap] = !p[ap.dataset.ap]; store.set("alertPrefs", p); window.scorelineSettingsChanged?.(); if (alertsOn) pushSync(); ap.classList.toggle("on", p[ap.dataset.ap]); return; }
       const np = e.target.closest(".news-note p");
       if (np) { np.classList.toggle("full"); return; }
+      if (e.target.closest("[data-headlines-toggle]")) { store.set("headlinesOn", !store.get("headlinesOn", true)); for (const k in viewMem) delete viewMem[k]; ["home", "f1", ...Object.keys(LEAGUES)].forEach((k) => store.set("shell:" + k, "")); buzz(8); return renderAlerts(); }
       const ext = e.target.closest("a[data-ext]");
       if (ext && TAURI?.opener) { e.preventDefault(); TAURI.opener.openUrl(ext.href).catch(() => window.open(ext.href, "_blank")); return; }
       const pl = e.target.closest("[data-player]");
@@ -4383,7 +4429,7 @@
           '<button type="button" class="pin ' + (pins().includes(k) ? "on" : "") + '" data-pin="' + k + '">' + esc(tabName(k)) + "</button>").join("") + "</div>" +
         '<div class="g-note">Pick up to ' + MAX_PINS + ". Home shows only these sports.</div>" +
         '<div class="section-title"><b>Settings</b></div><div class="panel"><div class="set-row"><b>Theme</b><div class="seg theme-seg">' + [["system", "System"], ["dark", "Dark"], ["light", "Light"]].map(([k, l]) => '<button type="button" data-theme-pick="' + k + '" class="' + ((document.documentElement.dataset.theme || "dark") === k ? "active" : "") + '">' + l + "</button>").join("") + "</div></div>" +
-        '<button type="button" class="opt ' + (DUMMY ? "on" : "") + '" data-dummy><span><b>Dummy Mode</b><small>Explains terms, stats and rules as you go, for every sport. Tap anything with an ⓘ.</small></span><i class="switch"></i></button><button type="button" class="opt" data-tour><span><b>Replay the tour</b><small>The quick walkthrough new visitors see</small></span><span class="chev">›</span></button><div data-marks-row></div></div>';
+        '<button type="button" class="opt ' + (DUMMY ? "on" : "") + '" data-dummy><span><b>Dummy Mode</b><small>Explains terms, stats and rules as you go, for every sport. Tap anything with an ⓘ.</small></span><i class="switch"></i></button><button type="button" class="opt ' + (store.get("headlinesOn", true) ? "on" : "") + '" data-headlines-toggle><span><b>Headlines</b><small>The one big news story at the top of each sport</small></span><i class="switch"></i></button><button type="button" class="opt" data-tour><span><b>Replay the tour</b><small>The quick walkthrough new visitors see</small></span><span class="chev">›</span></button><div data-marks-row></div></div>';
       if (MOBILE_APP) h += '<div class="section-title"><b>Alerts</b></div>' +
         '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Only about the teams you follow</small></span><i class="switch"></i></button><button type="button" class="pill-btn test-btn" id="testNotify">Send test notification</button>' + (alertsOn ? '<div class="g-note" id="pushState">' + esc(pushStatus) + "</div>" : "") + "</div>" +
         (() => { const p = alertPrefs(), cur = p.quietFrom != null && p.quietFrom !== "" ? p.quietFrom + "-" + p.quietTo : "off"; return '<div class="section-title"><b>Quiet hours</b></div><div class="panel"><div class="seg chips">' + QUIET.map(([k, l]) => '<button type="button" data-quiet="' + k + '" class="' + (k === cur ? "active" : "") + '">' + l + "</button>").join("") + '</div><div class="g-note">No alerts during these hours. Uses your phone\'s time.</div></div>'; })() +
