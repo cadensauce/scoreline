@@ -17,9 +17,9 @@ service cloud.firestore {
     match /users/{uid} {
       allow read, delete: if member() && me() == uid;
       // Only the settings the app saves, at sensible sizes (old extra fields are left alone on update).
-      allow create: if member() && me() == uid && request.resource.data.keys().hasOnly(['favs', 'favNames', 'alertPrefs', 'updatedAt', 'heldTitle', 'heldBanner') && settingsOk();
+      allow create: if member() && me() == uid && request.resource.data.keys().hasOnly(['favs', 'favNames', 'alertPrefs', 'updatedAt', 'heldTitle', 'heldBanner']) && settingsOk();
       allow update: if member() && me() == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['favs', 'favNames', 'alertPrefs', 'updatedAt', 'heldTitle', 'heldBanner') && settingsOk();
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['favs', 'favNames', 'alertPrefs', 'updatedAt', 'heldTitle', 'heldBanner']) && settingsOk();
     }
     function settingsOk() {
       return (!('favs' in request.resource.data) || (request.resource.data.favs is list && request.resource.data.favs.size() <= 200))
