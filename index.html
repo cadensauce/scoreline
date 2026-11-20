@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795208840" />
+  <meta name="build" content="1795210690" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -520,6 +520,12 @@
     .dev-panel { margin-top: 10px; }
     /* Fantasy */
     .bar [data-fx-tut] { white-space: nowrap; flex: none; }
+    [data-social] .opt { flex-wrap: wrap; gap: 8px; } [data-social] .acct-acts { flex-wrap: wrap; justify-content: flex-end; margin-left: auto; } [data-social] .acct-add { max-width: 640px; }
+    .fx-new { display: grid; gap: 10px; max-width: 640px; } .fx-in { width: 100%; min-width: 0; height: 42px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; outline: none; }
+    .fx-invites { display: grid; gap: 2px; } .fx-invites .pill-btn { justify-self: start; margin-top: 8px; }
+    .fx-clock { display: flex; flex-direction: column; gap: 2px; max-width: 640px; } .fx-clock b { font-size: 17px; } .fx-clock small { color: var(--muted); } .fx-clock.me { border: 1px solid var(--text); }
+    .fx-order { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; } .fx-order span { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); } .fx-order span.on { color: var(--bg); background: var(--text); border-color: var(--text); }
+    div.fx-opt { align-items: center; cursor: default; } div.fx-opt:hover { background: none; } div.fx-opt span { min-width: 0; overflow: hidden; text-overflow: ellipsis; } div.fx-opt .pill-btn { flex: none; }
     .fx-ask { display: grid; gap: 12px; max-width: 640px; } .fx-ask > b { font-family: var(--display); font-size: 22px; } .fx-ask-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
     .fx-tut { display: grid; gap: 10px; max-width: 640px; } .fx-tut > b { font-family: var(--display); font-size: 22px; } .fx-tut-body { line-height: 1.55; font-size: 14.5px; } .fx-tut-body .terms-key { margin: 0; }
     .fx-dots { display: flex; gap: 6px; } .fx-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--panel-3); } .fx-dots i.on { background: var(--text); }
@@ -1142,7 +1148,7 @@
       if (e.target.closest("[data-ppclose]")) e.target.closest(".pp-wrap")?.remove();
     });
     const MOBILE_APP = !!window.__PREVIEW_APP || (IS_PHONE && (!!window.__TAURI__ || STANDALONE));
-    const navOrder = () => { const p = pins(); return ["home", ...p, ...(ALL_SPORTS.includes(state.tab) && !p.includes(state.tab) ? [state.tab] : []), "fantasy", "you"]; };
+    const navOrder = () => { const p = pins(); return ["home", ...p, ...(ALL_SPORTS.includes(state.tab) && !p.includes(state.tab) ? [state.tab] : []), "fantasy", "social", "you"]; };
     /* ---------- native-app feel (phone app only) ---------- */
     if (MOBILE_APP) {
       document.documentElement.classList.add("mobile-app");
@@ -1380,11 +1386,12 @@
       const btn = (k, label, active, extra) => '<button class="btab ' + (active ? "active" : "") + '" type="button" ' + extra + ">" + ICONS[k] + label + (k !== "home" && k !== "more" && liveIn(k) ? '<span class="dot"></span>' : "") + "</button>";
       $("btabs").innerHTML = navOrder().map((k) => btn(k, tabName(k), state.tab === k, 'data-tab="' + k + '"')).join("");
     }
-    const tabName = (k) => k === "home" ? "Home" : k === "you" ? "You" : k === "fantasy" ? "Fantasy" : (LEAGUES[k].short || LEAGUES[k].name);
+    const tabName = (k) => k === "home" ? "Home" : k === "you" ? "You" : k === "fantasy" ? "Fantasy" : k === "social" ? "Social" : (LEAGUES[k].short || LEAGUES[k].name);
     const svg = (d) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + "</svg>";
     const ICONS = {
       home: svg('<path d="M4 11l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>'),
       fantasy: svg('<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7M10 17h4"/>'),
+      social: svg('<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.2A4.6 4.6 0 0 1 21 18.5"/>'),
       nfl: svg('<ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-45 12 12)"/><path d="M9.5 14.5l5-5M11 11.5l1.5 1.5M12.5 10l1.5 1.5"/>'),
       cfb: svg('<path d="M3 9l9-5 9 5-9 5z"/><path d="M7 11.5V16c0 1.5 2.5 3 5 3s5-1.5 5-3v-4.5M21 9v5"/>'),
       f1: svg('<path d="M5 21V4M5 4h13l-2.5 4L18 12H5"/>'),
@@ -2056,7 +2063,7 @@
       store.set("tab", state.tab);
       renderTabs();
       if (state.tab !== "f1") clearInterval(countdownTimer);
-      const p = state.tab === "you" ? renderAlerts() : state.tab === "fantasy" ? renderFantasy() : state.tab === "home" ? renderHome() : state.tab === "f1" ? renderF1() : renderLeague(state.tab, force);
+      const p = state.tab === "you" ? renderAlerts() : state.tab === "fantasy" ? renderFantasy() : state.tab === "social" ? renderSocial() : state.tab === "home" ? renderHome() : state.tab === "f1" ? renderF1() : renderLeague(state.tab, force);
       Promise.resolve(p).finally(() => $("main").classList.add("calm"));
       return p;
     }
@@ -4541,8 +4548,8 @@
        Marks Fantasy: free to enter, finishing higher earns Marks; only for accounts that agreed to the Terms (13+). Checked
        every time it's drawn, and the database rules refuse Marks lineups without the agreement, so it can't be bypassed.
        Formats: Weekly lineup, Daily lineup (Season leagues come next). Contests come from the push worker. */
-    const FX = { mode: null, fmt: null, lg: null, cid: null, tut: -1, draft: null, open: null, q: "" };
-    const FX_FORMATS = [["w", "Weekly lineup", "Pick a lineup for the whole week. One score for the week."], ["d", "Daily lineup", "Pick a lineup for one day's games. A new contest every day."], ["s", "Season league", "A whole season against your friends, with a draft."]];
+    const FX = { mode: null, fmt: null, lg: null, cid: null, tut: -1, draft: null, open: null, q: "", lid: null, L: null, lnew: false, newLg: "nfl", ldraft: null, lgrp: "", names: {} };
+    const FX_FORMATS = [["w", "Weekly lineup", "Pick a lineup for the whole week. One score for the week."], ["d", "Daily lineup", "Pick a lineup for one day's games. A new contest every day."], ["s", "Season league", "Play a whole season against your friends: draft players in turns, then set your starters each week."]];
     const FX_SPORTS = ["nfl", "cfb", "nba", "mlb", "f1"];
     const FX_POS = { QB: "QB", RB: "RB", WR: "WR", TE: "TE", G: "Guard", F: "Forward", C: "Center", H: "Hitter", P: "Pitcher", D: "Driver" };
     const FX_SCORING = {
@@ -4608,10 +4615,10 @@
       const tag = '<span class="fx-mode-tag ' + FX.mode + '">' + esc(fxModeName(FX.mode)) + "</span>";
       if (!FX.fmt) {   // choose a format
         h += fxCrumb("Fantasy", "mode") + tag + '<div class="fx-list-cards">' + FX_FORMATS.map(([k, n, d]) =>
-          '<button type="button" class="fx-card" data-fx-fmt="' + k + '"><b>' + esc(n) + "</b><small>" + esc(d) + "</small>" + (k === "s" ? '<span class="fx-tag">Coming soon</span>' : "") + "</button>").join("") + "</div>";
+          '<button type="button" class="fx-card" data-fx-fmt="' + k + '"><b>' + esc(n) + "</b><small>" + esc(d) + "</small>" + (k === "s" ? '<span class="fx-tag">With friends</span>' : "") + "</button>").join("") + "</div>";
         main.innerHTML = h; return;
       }
-      if (FX.fmt === "s") { h += fxCrumb(fxModeName(FX.mode), "fmt") + tag + '<div class="panel"><b>Season league</b><p class="muted">Coming soon: play a whole season against your friends, with a draft. Weekly and Daily lineups are ready now.</p></div>'; main.innerHTML = h; return; }
+      if (FX.fmt === "s") { main.innerHTML = h + fxCrumb(fxModeName(FX.mode), "fmt") + tag + "<div data-leagues></div>"; return renderLeagues(main.querySelector("[data-leagues]"), s); }
       const lg = FX.lg || (FX.lg = pins().find((k) => FX_SPORTS.includes(k)) || "nfl");
       const fmtName = FX_FORMATS.find(([k]) => k === FX.fmt)[1];
       if (!FX.cid) {   // choose a sport and a contest
@@ -4707,6 +4714,146 @@
       renderFantasy().then(() => { const n = document.querySelector("[data-fx-q]"); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch {} } }).catch(() => {});
     });
     window.addEventListener("scoreline-user", () => { if (state.tab === "fantasy") renderFantasy().catch(() => {}); });
+
+    /* ---------- Season leagues (Fantasy → a mode → Season league): with friends, a snake draft, weekly starters, season totals.
+       Same two modes: Free (no currency) and Marks (Terms agreement; the week's top score earns Marks, NOT real money). ---------- */
+    const LG_SLOTS = { nfl: [["qb", "QB"], ["rb1", "RB"], ["rb2", "RB"], ["wr1", "WR"], ["wr2", "WR"], ["te", "TE"]], cfb: [["qb", "QB"], ["rb1", "RB"], ["rb2", "RB"], ["wr1", "WR"], ["wr2", "WR"], ["te", "TE"]],
+      nba: [["g1", "G"], ["g2", "G"], ["f1", "F"], ["f2", "F"], ["c", "C"]], mlb: [["h1", "H"], ["h2", "H"], ["h3", "H"], ["p", "P"]], f1: [["d1", "D"], ["d2", "D"], ["d3", "D"]] };
+    const LG_ROSTER = { nfl: 8, cfb: 8, nba: 7, mlb: 6, f1: 3 };
+    const lgName = (uid) => { const L = window.scorelineLeagues; if (FX.names[uid] === undefined && L) { FX.names[uid] = "…"; L.name(uid).then((n) => { FX.names[uid] = n; if (state.tab === "fantasy" && FX.fmt === "s") renderFantasy().catch(() => {}); }); } return FX.names[uid] || "…"; };
+    const drafterOf = (L) => { const n = L.order.length, r = Math.floor(L.pick / n), p = L.pick % n; return L.order[r % 2 === 0 ? p : n - 1 - p]; };
+    async function renderLeagues(box, s) {
+      const LG = window.scorelineLeagues; if (!box || !LG) return;
+      if (!s.signedIn) { box.innerHTML = '<div class="panel"><b>Season leagues</b><p class="muted">Sign in to create a league or join one your friends made.</p><button type="button" class="pill-btn tos-go" data-pick-signin>Sign in</button></div>'; return; }
+      const me = LG.me(), mt = FX.mode === "marks" ? "Marks league" : "Free league";
+      if (FX.lnew) {   // create a league
+        const friends = await LG.friendsList();
+        if (!box.isConnected) return;
+        box.innerHTML = '<div class="panel fx-new"><div class="g-label">New ' + esc(mt.toLowerCase()) + '</div><input class="fx-in" data-lg-name maxlength="40" placeholder="League name" value="' + esc(FX.newName || "") + '">' +
+          '<div class="seg chips fx-sports">' + FX_SPORTS.map((k) => '<button type="button" data-lg-sport="' + k + '" class="' + (k === FX.newLg ? "active" : "") + '">' + esc(tabName(k)) + "</button>").join("") + "</div>" +
+          '<div class="g-note">' + esc(tabName(FX.newLg)) + ": each team drafts " + LG_ROSTER[FX.newLg] + " " + (FX.newLg === "f1" ? "drivers (up to 7 teams)" : "players (" + esc(FX_LINEUP[FX.newLg]) + " start each week; up to 12 teams)") + (FX.newLg === "cfb" ? ". College players come from the AP Top 25 teams." : ".") + "</div>" +
+          '<div class="g-label">Invite friends</div>' + (friends.length ? '<div class="fx-invites">' + friends.map((f) => '<label class="acct-check"><input type="checkbox" data-lg-inv="' + esc(f.uid) + '"' + ((FX.newInv || []).includes(f.uid) ? " checked" : "") + "> @" + esc(f.name) + "</label>").join("") + "</div>" : '<p class="muted">Add friends in the Social tab first, then invite them here.</p>') +
+          (FX.mode === "marks" ? '<div class="g-note">Marks league: everyone who joins needs the Terms agreement. The top score each week earns 20 Marks. Marks are NOT real money.</div>' : '<div class="g-note">Free league: no Marks or any other currency.</div>') +
+          '<div class="fx-ask-btns"><button type="button" class="pill-btn tos-go" data-lg-create>Create league</button><button type="button" class="pill-btn" data-lg-cancel>Cancel</button></div><div class="acct-err" data-lg-err></div></div>';
+        return;
+      }
+      if (!FX.lid) {   // your leagues and invites (this mode only)
+        const { leagues, invites } = await LG.mine();
+        if (!box.isConnected) return;
+        const mine = leagues.filter((x) => x.mode === FX.mode), inv = invites.filter((x) => x.mode === FX.mode);
+        const st = (L) => L.status === "forming" ? "Waiting to draft · " + L.members.length + " in" : L.status === "drafting" ? "Drafting now" : "Season on";
+        box.innerHTML = '<div class="fx-ask-btns" style="margin:0 0 12px"><button type="button" class="pill-btn tos-go" data-lg-new>+ Create a league</button></div>' +
+          (inv.length ? '<div class="section-title"><b>Invites</b></div><div class="panel">' + inv.map((L) => '<div class="opt"><span><b>' + esc(L.name) + "</b><small>" + esc(tabName(L.lg)) + " · from @" + esc(lgName(L.owner)) + '</small></span><span class="acct-acts"><button type="button" class="pill-btn" data-lg-join="' + esc(L.id) + '">Join</button><button type="button" class="pill-btn" data-lg-decline="' + esc(L.id) + '" aria-label="Decline">✕</button></span></div>').join("") + "</div>" : "") +
+          '<div class="section-title"><b>Your leagues</b></div>' + (mine.length ? '<div class="panel">' + mine.map((L) => '<button type="button" class="opt" data-lg-open="' + esc(L.id) + '"><span><b>' + esc(L.name) + "</b><small>" + esc(tabName(L.lg)) + " · " + esc(st(L)) + '</small></span><span class="chev">›</span></button>').join("") + "</div>" : '<div class="panel"><p class="muted">No ' + esc(mt.toLowerCase()) + "s yet. Create one and invite friends.</p></div>") +
+          '<div class="g-note">How it works: create a league and invite friends. Everyone drafts players in turns (1-2-3, then 3-2-1). Then each week you pick your starters from your team; they score from that week\'s real games, and the season total wins.' + (FX.mode === "marks" ? " The top score each week earns 20 Marks (NOT real money)." : " No Marks or any other currency.") + "</div>";
+        FX.leagueList = { leagues: mine, invites: inv };
+        return;
+      }
+      const L = FX.L;
+      if (!L) { box.innerHTML = fxCrumb("Leagues", "lid") + skeleton(2); return; }
+      const owner = L.owner === me, head = fxCrumb("Leagues", "lid") + '<div class="fx-head"><b>' + esc(L.name) + "</b><small>" + esc(tabName(L.lg)) + " · " + (L.mode === "marks" ? "Marks league" : "Free league") + " · " + L.members.length + " teams</small></div>";
+      if (L.status === "forming") {
+        const friends = owner ? await LG.friendsList() : [];
+        if (!box.isConnected || FX.L !== L) return;
+        const more = friends.filter((f) => !L.members.includes(f.uid) && !L.invites.includes(f.uid));
+        box.innerHTML = head + '<div class="section-title"><b>Teams</b></div><div class="panel">' + L.members.map((u) => '<div class="pick-line"><span>@' + esc(lgName(u)) + (u === L.owner ? " · owner" : "") + "</span></div>").join("") +
+          L.invites.map((u) => '<div class="pick-line"><span class="muted">@' + esc(lgName(u)) + "</span><span class=\"muted\">Invited</span></div>").join("") + "</div>" +
+          (owner && more.length ? '<div class="section-title"><b>Invite more friends</b></div><div class="panel fx-invites">' + more.map((f) => '<label class="acct-check"><input type="checkbox" data-lg-more="' + esc(f.uid) + '"> @' + esc(f.name) + "</label>").join("") + '<button type="button" class="pill-btn" data-lg-sendinv>Send invites</button></div>' : "") +
+          '<div class="fx-ask-btns">' + (owner ? (L.members.length >= 2 ? '<button type="button" class="pill-btn tos-go" data-lg-start>Start the draft</button>' : '<span class="muted">Start the draft once a friend joins.</span>') + '<button type="button" class="pill-btn" data-lg-delete>Delete league</button>'
+            : L.members.includes(me) ? '<button type="button" class="pill-btn" data-lg-leave>Leave league</button>' : '<button type="button" class="pill-btn tos-go" data-lg-join="' + esc(L.id) + '">Join</button>') + "</div>" +
+          '<div class="g-note">Each team drafts ' + L.rosterSize + (L.lg === "f1" ? " drivers." : " players.") + " The draft order is random. The owner can make a pick for anyone who's away.</div>";
+        return;
+      }
+      const pool = await LG.pool(L.lg);
+      if (!box.isConnected || FX.L !== L) return;
+      const taken = L.taken || {}, mineIds = Object.keys(taken).filter((p) => taken[p] === me), pn = (id) => pool[id]?.n || "Player", pt = (id) => pool[id]?.t || "";
+      if (L.status === "drafting") {
+        const total = L.order.length * L.rosterSize, up = drafterOf(L), myTurn = up === me, canPick = myTurn || owner;
+        const groups = [...new Set(LG_SLOTS[L.lg].map(([, g]) => g))], q = (FX.q || "").trim().toLowerCase();
+        const avail = Object.entries(pool).filter(([id, p]) => !taken[id] && (!FX.lgrp || p.p === FX.lgrp) && (!q || p.n.toLowerCase().includes(q) || p.t.toLowerCase().includes(q)))
+          .sort((a, b) => a[1].n.localeCompare(b[1].n)).slice(0, 150);
+        box.innerHTML = head + '<div class="panel fx-clock' + (myTurn ? " me" : "") + '"><b>' + (myTurn ? "You're on the clock" : "On the clock: @" + esc(lgName(up))) + "</b><small>Pick " + (L.pick + 1) + " of " + total + (L.last ? " · last: @" + esc(lgName(L.last.uid)) + " took " + esc(pn(L.last.pid)) : "") + "</small></div>" +
+          '<div class="fx-order">' + L.order.map((u) => '<span class="' + (u === up ? "on" : "") + '">@' + esc(lgName(u)) + "</span>").join("") + "</div>" +
+          '<div class="section-title"><b>Your team</b><span class="muted">' + mineIds.length + " of " + L.rosterSize + '</span></div><div class="panel">' + (mineIds.length ? mineIds.map((id) => '<div class="pick-line"><span>' + esc(pn(id)) + '</span><span class="muted">' + esc((FX_POS[pool[id]?.p] || "") + (pt(id) ? " · " + pt(id) : "")) + "</span></div>").join("") : '<p class="muted">No players yet.</p>') + "</div>" +
+          '<div class="section-title"><b>Players</b></div><div class="seg chips fx-sports"><button type="button" data-lg-grp="" class="' + (!FX.lgrp ? "active" : "") + '">All</button>' + groups.map((g) => '<button type="button" data-lg-grp="' + g + '" class="' + (FX.lgrp === g ? "active" : "") + '">' + esc(FX_POS[g]) + "</button>").join("") + "</div>" +
+          '<div class="fx-picker"><input type="search" data-fx-q placeholder="Search players or teams" value="' + esc(FX.q || "") + '" autocomplete="off"><div class="fx-opts">' +
+          (avail.length ? avail.map(([id, p]) => '<div class="fx-opt"><span><b>' + esc(p.n) + "</b> <small>" + esc(FX_POS[p.p] + (p.t ? " · " + p.t : "")) + "</small></span>" + (canPick ? '<button type="button" class="pill-btn sm" data-lg-pick="' + esc(id) + '">' + (myTurn ? "Draft" : "Pick for @" + esc(lgName(up))) + "</button>" : "") + "</div>").join("") : '<div class="g-note">No players match.</div>') + "</div></div>" +
+          '<div class="g-note">Need ' + esc(FX_LINEUP[L.lg]) + " to fill your weekly lineup, so draft those spots first. The page updates by itself when anyone picks.</div>";
+        return;
+      }
+      // Season on: standings, your starters, weekly results
+      if (!FX.ldraft) { FX.ldraft = { ...((await LG.starters(L.id)) || {}) }; if (!box.isConnected || FX.L !== L) return; }
+      const totals = L.totals || {}, ranked = [...L.members].sort((a, b) => (totals[b] || 0) - (totals[a] || 0));
+      const weeks = Object.keys(L.weeks || {}).sort((a, b) => (L.labels?.[a] || a).localeCompare(L.labels?.[b] || b, undefined, { numeric: true }));
+      let h = head + '<div class="section-title"><b>Standings</b></div><div class="panel">' + ranked.map((u, i) => '<div class="pick-line"><span>' + (i + 1) + ". @" + esc(lgName(u)) + (u === me ? " (you)" : "") + "</span><b>" + (Math.round((totals[u] || 0) * 10) / 10) + " pts</b></div>").join("") + "</div>";
+      h += '<div class="section-title"><b>Your starters</b></div><div class="panel fx-lineup">' + LG_SLOTS[L.lg].map(([k, g]) => {
+        const id = FX.ldraft[k];
+        let row = '<button type="button" class="fx-slot' + (FX.open === k ? " on" : "") + '" data-lg-slot="' + k + '"><span class="fx-pos">' + esc(FX_POS[g]) + '</span><span class="fx-who">' + (id ? "<b>" + esc(pn(id)) + "</b><small>" + esc(pt(id)) + "</small>" : '<small class="muted">Tap to pick</small>') + "</span></button>";
+        if (FX.open === k) {
+          const used = new Set(Object.values(FX.ldraft)), opts = mineIds.filter((p) => pool[p]?.p === g);
+          row += '<div class="fx-picker"><div class="fx-opts">' + (opts.length ? opts.map((p) => '<button type="button" class="fx-opt' + (used.has(p) && FX.ldraft[k] !== p ? " used" : "") + '" data-lg-player="' + esc(p) + '"' + (used.has(p) && FX.ldraft[k] !== p ? " disabled" : "") + "><b>" + esc(pn(p)) + "</b><small>" + esc(pt(p)) + "</small></button>").join("") : '<div class="g-note">You didn\'t draft a ' + esc(FX_POS[g]) + ".</div>") +
+            (FX.ldraft[k] ? '<button type="button" class="fx-opt" data-lg-player=""><small>Clear this spot</small></button>' : "") + "</div></div>";
+        }
+        return row;
+      }).join("") + '</div><div class="fx-ask-btns"><button type="button" class="pill-btn tos-go" data-lg-save>Save starters</button></div><div class="g-note">Changes count from the next week\'s lock (the first game of the week).' + (L.mode === "marks" ? " The top score each week earns 20 Marks (NOT real money)." : "") + "</div>";
+      if (weeks.length) h += '<div class="section-title"><b>Weeks</b></div><div class="panel">' + weeks.map((w) => { const sc = L.weeks[w] || {}, top = Math.max(0, ...Object.values(sc)); const win = Object.keys(sc).filter((u) => sc[u] === top && top > 0);
+        return '<div class="pick-line"><span>' + esc(L.labels?.[w] || w) + "</span><span>You " + (sc[me] ?? 0) + (win.length ? " · top: @" + esc(win.map(lgName).join(", @")) + " " + top : "") + "</span></div>"; }).join("") + "</div>";
+      h += '<div class="section-title"><b>Your team</b></div><div class="panel">' + mineIds.map((id) => '<div class="pick-line"><span>' + esc(pn(id)) + '</span><span class="muted">' + esc((FX_POS[pool[id]?.p] || "") + (pt(id) ? " · " + pt(id) : "")) + "</span></div>").join("") + "</div>";
+      box.innerHTML = h;
+    }
+    const lgOpen = (id) => {
+      FX.unwatch?.(); FX.lid = id; FX.L = null; FX.ldraft = null; FX.open = null; FX.q = ""; FX.lgrp = "";
+      FX.unwatch = window.scorelineLeagues.watch(id, (L) => { if (FX.lid !== id) return; FX.L = L; if (!L) { FX.lid = null; FX.unwatch?.(); } if (state.tab === "fantasy" && FX.fmt === "s" && !FX.open && !document.activeElement?.matches?.("[data-fx-q]")) renderFantasy().catch(() => {}); });
+    };
+    document.addEventListener("click", async (e) => {
+      const t = e.target, LG = window.scorelineLeagues;
+      if (!LG || state.tab !== "fantasy" || !t.closest("#main")) return;
+      const go = () => renderFantasy().catch(() => {}), err = (m) => { const b = document.querySelector("[data-lg-err]"); if (b) b.textContent = m; else toast(m); };
+      if (t.closest("[data-fx-back='lid']")) { FX.unwatch?.(); FX.lid = null; FX.L = null; e.stopImmediatePropagation(); return go(); }
+      if (t.closest("[data-lg-new]")) { FX.lnew = true; FX.newInv = []; FX.newName = ""; return go(); }
+      if (t.closest("[data-lg-cancel]")) { FX.lnew = false; return go(); }
+      const sp = t.closest("[data-lg-sport]"); if (sp) { FX.newName = document.querySelector("[data-lg-name]")?.value || ""; FX.newInv = [...document.querySelectorAll("[data-lg-inv]:checked")].map((x) => x.dataset.lgInv); FX.newLg = sp.dataset.lgSport; return go(); }
+      if (t.closest("[data-lg-create]")) {
+        const name = (document.querySelector("[data-lg-name]")?.value || "").trim(), invites = [...document.querySelectorAll("[data-lg-inv]:checked")].map((x) => x.dataset.lgInv);
+        if (!name) return err("Give your league a name.");
+        const b = t.closest("[data-lg-create]"); b.disabled = true;
+        try { const id = await LG.create({ name: name.slice(0, 40), lg: FX.newLg, mode: FX.mode, invites: invites.slice(0, 11) }); FX.lnew = false; buzz(12); toast("League created"); lgOpen(id); }
+        catch { b.disabled = false; return err(FX.mode === "marks" ? "Couldn't create it. Marks leagues need the Terms agreement." : "Couldn't create it. Try again."); }
+        return go();
+      }
+      const op = t.closest("[data-lg-open]"); if (op) { lgOpen(op.dataset.lgOpen); return go(); }
+      const jn = t.closest("[data-lg-join]");
+      if (jn) { const L = FX.L?.id === jn.dataset.lgJoin ? FX.L : FX.leagueList?.invites.find((x) => x.id === jn.dataset.lgJoin); if (!L) return;
+        try { await LG.join(L); buzz(12); toast("You're in"); lgOpen(L.id); } catch { toast(L.mode === "marks" ? "Couldn't join. Marks leagues need the Terms agreement, and you must be friends with the owner." : "Couldn't join. You must be friends with the owner, and the league may be full."); } return go(); }
+      const dc = t.closest("[data-lg-decline]"); if (dc) { const L = FX.leagueList?.invites.find((x) => x.id === dc.dataset.lgDecline); if (L) await LG.leave(L).catch(() => toast("Couldn't decline.")); return go(); }
+      if (t.closest("[data-lg-leave]") && FX.L) { try { await LG.leave(FX.L); toast("You left the league"); FX.unwatch?.(); FX.lid = null; FX.L = null; } catch { toast("Couldn't leave."); } return go(); }
+      const del = t.closest("[data-lg-delete]");
+      if (del && FX.L) { if (!del.dataset.sure) { del.dataset.sure = "1"; del.textContent = "Tap again to delete"; return; } try { await LG.remove(FX.L.id); toast("League deleted"); FX.unwatch?.(); FX.lid = null; FX.L = null; } catch { toast("Couldn't delete it."); } return go(); }
+      if (t.closest("[data-lg-sendinv]") && FX.L) { const add = [...document.querySelectorAll("[data-lg-more]:checked")].map((x) => x.dataset.lgMore); if (!add.length) return; try { await LG.invite(FX.L.id, [...FX.L.invites, ...add].slice(0, 11)); toast("Invites sent"); } catch { toast("Couldn't send invites."); } return; }
+      if (t.closest("[data-lg-start]") && FX.L) { const b = t.closest("[data-lg-start]"); b.disabled = true; try { await LG.start(FX.L); buzz(12); toast("The draft is on!"); } catch { b.disabled = false; toast("Couldn't start the draft."); } return; }
+      const gp = t.closest("[data-lg-grp]"); if (gp) { FX.lgrp = gp.dataset.lgGrp; return go(); }
+      const pk = t.closest("[data-lg-pick]");
+      if (pk && FX.L) { pk.disabled = true; const L = FX.L; try { await LG.pick(L, drafterOf(L), pk.dataset.lgPick); buzz(12); FX.q = ""; } catch { toast("Couldn't make that pick. Someone may have just picked; try again."); pk.disabled = false; } return; }
+      const sl = t.closest("[data-lg-slot]"); if (sl) { FX.open = FX.open === sl.dataset.lgSlot ? null : sl.dataset.lgSlot; return go(); }
+      const lp = t.closest("[data-lg-player]"); if (lp && !lp.disabled && FX.open) { if (lp.dataset.lgPlayer) FX.ldraft[FX.open] = lp.dataset.lgPlayer; else delete FX.ldraft[FX.open]; FX.open = null; buzz(8); return go(); }
+      if (t.closest("[data-lg-save]") && FX.L) { try { await LG.saveStarters(FX.L.id, { ...FX.ldraft }); buzz(12); toast("Starters saved"); } catch { toast("Couldn't save your starters."); } return; }
+    }, true);
+
+    /* ---------- Social tab: add friends, answer requests, message friends, see their profiles (account.js does the work). ---------- */
+    async function renderSocial() {
+      const main = $("main");
+      if (!main.querySelector("[data-social]")) main.innerHTML = '<div class="bar"><h1>Social</h1></div><div data-social>' + skeleton(2) + "</div>";
+      const html = window.scorelineSocial ? await window.scorelineSocial.html().catch(() => "") : "";
+      const box = main.querySelector("[data-social]");
+      if (state.tab !== "social" || !box) return;
+      const typed = box.querySelector("[data-addf] input")?.value || "", focused = document.activeElement?.closest?.("[data-addf]");
+      box.innerHTML = html || '<div class="panel"><p class="muted">Couldn\'t load your friends. Check your connection and try again.</p></div>';
+      const inp = box.querySelector("[data-addf] input");
+      if (inp && typed) { inp.value = typed; if (focused) inp.focus(); }   // keep what you were typing when a request comes in
+    }
+    window.addEventListener("scoreline-social", () => { if (state.tab === "social") renderSocial().catch(() => {}); });
+    window.addEventListener("scoreline-user", () => { if (state.tab === "social") renderSocial().catch(() => {}); });
+    document.addEventListener("click", (e) => { if (e.target.closest("[data-social-signin]")) $("accountBtn")?.click(); });
 
     function renderAlerts() {   // the "You" tab: account, pinned sports, alerts (phones), about
       const favs = [...state.favs];

@@ -179,3 +179,52 @@ test("withdrawn: can't show a title or banner (frozen), can still clear them", a
   await assertFails(card("kid", { title: "t_sharp" }));
   await assertSucceeds(card("kid", { title: "", banner: "" }));
 });
+
+// Season leagues: create, join (friends of the owner), snake draft turns, starters from your own roster.
+const LSETUP = () => env.withSecurityRulesDisabled(async (c) => {
+  const db = c.firestore();
+  await setDoc(doc(db, "fpool/f1"), { players: { d1: { n: "A", t: "", p: "D" }, d2: { n: "B", t: "", p: "D" }, d3: { n: "C", t: "", p: "D" }, d4: { n: "D", t: "", p: "D" }, d5: { n: "E", t: "", p: "D" }, d6: { n: "F", t: "", p: "D" } } });
+  await setDoc(doc(db, "requests/teen_pal"), { from: "teen", to: "pal", status: "accepted" });
+});
+const newLeague = (uid, extra = {}) => setDoc(doc(as(uid), "leagues/L1"), { name: "Friends", lg: "f1", mode: "free", owner: uid, members: [uid], invites: ["pal", "stranger"], status: "forming", rosterSize: 3, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), ...extra });
+const leagueAs = async (state) => env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "leagues/L1"), { name: "Friends", lg: "f1", mode: "free", owner: "teen", invites: [], rosterSize: 3, createdAt: Timestamp.now(), ...state }));
+test("league: create (free), and Marks leagues need the agreement", async () => {
+  await LSETUP();
+  await assertSucceeds(newLeague("teen"));
+  await assertFails(setDoc(doc(as("newbie"), "leagues/L2"), { name: "x", lg: "f1", mode: "marks", owner: "newbie", members: ["newbie"], invites: [], status: "forming", rosterSize: 3, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+});
+test("league: invited friend can join, invited non-friend can't", async () => {
+  await LSETUP(); await assertSucceeds(newLeague("teen"));
+  await assertSucceeds(updateDoc(doc(as("pal"), "leagues/L1"), { members: ["teen", "pal"], invites: ["stranger"], updatedAt: serverTimestamp() }));
+  await assertFails(updateDoc(doc(as("stranger"), "leagues/L1"), { members: ["teen", "pal", "stranger"], invites: [], updatedAt: serverTimestamp() }));
+});
+test("league: only the owner starts the draft, with exactly the members", async () => {
+  await LSETUP(); await leagueAs({ members: ["teen", "pal"], status: "forming" });
+  await assertFails(updateDoc(doc(as("pal"), "leagues/L1"), { status: "drafting", order: ["pal", "teen"], pick: 0, taken: {}, invites: [], updatedAt: serverTimestamp() }));
+  await assertFails(updateDoc(doc(as("teen"), "leagues/L1"), { status: "drafting", order: ["teen", "zed"], pick: 0, taken: {}, invites: [], updatedAt: serverTimestamp() }));
+  await assertSucceeds(updateDoc(doc(as("teen"), "leagues/L1"), { status: "drafting", order: ["pal", "teen"], pick: 0, taken: {}, invites: [], updatedAt: serverTimestamp() }));
+});
+const pickAs = (uid, pick, who, pid, taken, extra = {}) => updateDoc(doc(as(uid), "leagues/L1"), { pick, last: { uid: who, pid }, taken, status: "drafting", updatedAt: serverTimestamp(), ...extra });
+test("league draft: your turn only, one free player from the list", async () => {
+  await LSETUP(); await leagueAs({ members: ["teen", "pal"], status: "drafting", order: ["pal", "teen"], pick: 0, taken: {} });
+  await assertFails(pickAs("teen", 1, "teen", "d1", { d1: "teen" }));          // not teen's turn (pal is first)
+  await assertFails(pickAs("pal", 1, "pal", "zz", { zz: "pal" }));             // not a real player
+  await assertSucceeds(pickAs("pal", 1, "pal", "d1", { d1: "pal" }));
+  await assertFails(pickAs("teen", 2, "teen", "d1", { d1: "teen" }));          // already taken
+  await assertSucceeds(pickAs("teen", 2, "teen", "d2", { d1: "pal", d2: "teen" }));
+  await assertSucceeds(pickAs("teen", 3, "teen", "d3", { d1: "pal", d2: "teen", d3: "teen" }));   // snake: teen again
+});
+test("league draft: owner can pick for whoever's turn it is; last pick starts the season", async () => {
+  await LSETUP(); await leagueAs({ members: ["teen", "pal"], status: "drafting", order: ["pal", "teen"], pick: 5, taken: { d1: "pal", d2: "teen", d3: "teen", d4: "pal", d5: "pal" } });
+  // pick 5: round 2 (even) -> order[1] = teen. Owner (teen) makes it; it's the last pick (2 x 3 = 6).
+  await assertFails(pickAs("teen", 6, "teen", "d6", { d1: "pal", d2: "teen", d3: "teen", d4: "pal", d5: "pal", d6: "teen" }));   // must start the season
+  await assertSucceeds(pickAs("teen", 6, "teen", "d6", { d1: "pal", d2: "teen", d3: "teen", d4: "pal", d5: "pal", d6: "teen" }, { status: "active", startedAt: serverTimestamp() }));
+});
+test("league starters: only your own drafted players, only the sport's spots", async () => {
+  await LSETUP(); await leagueAs({ members: ["teen", "pal"], status: "active", order: ["pal", "teen"], pick: 6, taken: { d1: "pal", d2: "teen", d3: "teen" } });
+  const st = (uid, lineup) => setDoc(doc(as(uid), "lstarts/L1_" + uid), { uid, leagueId: "L1", lineup, updatedAt: serverTimestamp() });
+  await assertSucceeds(st("teen", { d1: "d2", d2: "d3" }));
+  await assertFails(st("teen", { d1: "d1" }));       // pal's driver
+  await assertFails(st("teen", { qb: "d2" }));       // not an F1 spot
+  await assertFails(st("stranger", { d1: "d2" }));   // not in the league
+});
