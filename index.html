@@ -12,8 +12,8 @@
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <script>
     // Don't let other websites show Scoreline inside their own page (a trick to make people click things there).
-    // Scoreline's own previews (same site) are fine.
-    if (window.top !== window) { let own = false; try { own = !!window.top.document; } catch {}   // reading the top page only works for our own site if (!own) { try { window.top.location = location.href; } catch { document.documentElement.style.display = "none"; } } }
+    // Scoreline's own previews (same site) are fine: reading the top page only works for our own site.
+    if (window.top !== window) { let own = false; try { own = !!window.top.document; } catch {} if (!own) { try { window.top.location = location.href; } catch { document.documentElement.style.display = "none"; } } }
   </script>
   <title>Scoreline</title>
   <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
