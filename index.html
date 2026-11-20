@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795206102" />
+  <meta name="build" content="1795207245" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <script>
     // Don't let other websites show Scoreline inside their own page (a trick to make people click things there).
@@ -4998,9 +4998,14 @@
     // Each phone gets ONE fixed random id, so turning alerts off always removes the right entry,
     // even if the phone's push address changed or isn't available right now.
     const PUSH_DB = "https://firestore.googleapis.com/v1/projects/scoreline-41f14/databases/(default)/documents/pushSubs/";
+    // Direct database calls carry the App Check pass when there is one (needed once App Check is enforced).
+    async function pfetch(url, opts = {}) {
+      const t = await Promise.race([window.scorelineAppCheck?.().catch(() => null), new Promise((r) => setTimeout(r, 4000))]);
+      return fetch(url, t ? { ...opts, headers: { ...(opts.headers || {}), "X-Firebase-AppCheck": t } } : opts);
+    }
     const PUSH_KEY = "AIzaSyAGyc1udyqVakTuZJ0Iqb8Lb9uy4IHdO2w";
     const DOCS = PUSH_DB.replace("pushSubs/", "");
-    async function vapidKey() { try { const d = await (await fetch(DOCS + "public/push?key=" + PUSH_KEY, { cache: "no-store" })).json(); return d.fields?.vapidPublic?.stringValue || null; } catch { return null; } }
+    async function vapidKey() { try { const d = await (await pfetch(DOCS + "public/push?key=" + PUSH_KEY, { cache: "no-store" })).json(); return d.fields?.vapidPublic?.stringValue || null; } catch { return null; } }
     const hex = (bytes) => [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
     const deviceId = (() => { let id = store.get("deviceId", ""); if (!/^[0-9a-f]{64}$/.test(id)) { id = hex(crypto.getRandomValues(new Uint8Array(32))); store.set("deviceId", id); } return id; })();
     const subUrl = (id) => PUSH_DB + id + "?key=" + PUSH_KEY;
@@ -5019,7 +5024,7 @@
     async function report(code) {
       if (!MOBILE_APP || window.__PREVIEW_APP) return;
       const app = TAURI?.app?.getVersion ? "app " + (await TAURI.app.getVersion().catch(() => "?")) : STANDALONE ? "home screen" : "browser";
-      fetch(DOCS + "diag/" + deviceId + "?key=" + PUSH_KEY, { method: "PATCH", headers: { "Content-Type": "application/json" },
+      pfetch(DOCS + "diag/" + deviceId + "?key=" + PUSH_KEY, { method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fields: { code: { stringValue: String(code).slice(0, 120) }, app: { stringValue: app.slice(0, 20) }, at: { timestampValue: new Date().toISOString() } } }) }).catch(() => {});
     }
     // Shown under the Alerts switch so you can tell if alerts will reach you with the app closed.
@@ -5030,7 +5035,7 @@
       pushActive = false;
       store.set("pushOffPending", true);                    // retried on next launch if we're offline now
       const ids = [deviceId, store.get("pushLegacyId", "")].filter(Boolean);
-      const results = await Promise.all(ids.map((id) => fetch(subUrl(id), { method: "DELETE" }).then((r) => r.ok || r.status === 404).catch(() => false)));
+      const results = await Promise.all(ids.map((id) => pfetch(subUrl(id), { method: "DELETE" }).then((r) => r.ok || r.status === 404).catch(() => false)));
       if (results.every(Boolean)) { store.set("pushOffPending", false); store.set("pushLegacyId", ""); }
       try { const sub = await (await navigator.serviceWorker?.getRegistration())?.pushManager?.getSubscription(); await sub?.unsubscribe(); } catch {}
       report("off");
@@ -5064,13 +5069,13 @@
           prefs: { mapValue: { fields: Object.fromEntries(Object.entries(p).map(([k, v]) => [k, { stringValue: String(v) }])) } },
           updatedAt: { timestampValue: new Date().toISOString() },
         };
-        const r = await fetch(subUrl(deviceId), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fields }) });
+        const r = await pfetch(subUrl(deviceId), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fields }) });
         pushActive = r.ok;
         if (r.ok) {
           store.set("pushOffPending", false);
           // Older versions saved this phone under a hash of its push address; remove that copy once.
           const legacy = await sha256(endpoint);
-          if (!store.get("pushMigrated", false)) { store.set("pushLegacyId", legacy); fetch(subUrl(legacy), { method: "DELETE" }).then((d) => { if (d.ok || d.status === 404) { store.set("pushMigrated", true); store.set("pushLegacyId", ""); } }).catch(() => {}); }
+          if (!store.get("pushMigrated", false)) { store.set("pushLegacyId", legacy); pfetch(subUrl(legacy), { method: "DELETE" }).then((d) => { if (d.ok || d.status === 404) { store.set("pushMigrated", true); store.set("pushLegacyId", ""); } }).catch(() => {}); }
         }
         setPushStatus(r.ok ? (state.favs.size ? "✓ Background alerts on: they arrive even when Scoreline is closed." : "✓ Connected. Follow a team (★) to get alerts.") : "Couldn't save background alerts (error " + r.status + ")." + OPEN_ONLY, r.ok ? "ok" : "save " + r.status);
       } catch (e) { pushActive = false; setPushStatus("Couldn't connect background alerts (" + (e?.message || "error") + ")." + OPEN_ONLY, "err: " + (e?.message || "error")); }
