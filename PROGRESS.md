@@ -245,3 +245,31 @@ Next session, in order:
   - Rules: ages, games, picks, wallets, ledger (published by you). Emulator rules tests (21) + worker syntax check in CI.
 - Next for Phase 5: titles and banners to unlock with Marks (in-app only), fantasy (free to join, Marks optional),
   nightly balance-vs-ledger check.
+
+## 2026-11-18 to 2026-11-20: Shop, security, Fantasy, leagues, Social (PRs #86–#96 and this one)
+- Shop (#86): titles and banners unlocked with Marks (13+), shown on your profile and to friends. Rules check price,
+  balance and ownership.
+- Picks stay in step on Home and the game page (#87). Dev accounts (`devs/<username>`, set by hand) can give 1–10,000
+  Marks by username, logged in the ledger (#87, #90). Dev tools sit in You → Developer.
+- You tab no longer flickers or jumps (#89, #90): redraws keep the page when nothing changed; sections remember their
+  last content; sign-in status waits for Firebase. Withdraw from the Terms (#89).
+- Headlines (#91): one big story per sport (releases, trades, signings, firings, major injuries…; important people only,
+  any F1 driver). You → Settings → Headlines turns it off.
+- Full screen (#92): expand button on every page that opens on top (remembered) + whole-site full screen (computers).
+  F1 driver profiles: photo, team, car number, place, gaps, points race by race, teammate, bio, news.
+- Security (#93, #94): Content Security Policy, other sites can't frame Scoreline, tighter rules (settings, requests,
+  chats, messages, alert sign-ups). App Check (reCAPTCHA Enterprise, invisible) in watch-only mode; turn on blocking
+  after a few days of numbers.
+- Fantasy (#95): Fantasy tab with a first-visit "Do you know how to play fantasy?" prompt and a 7-step tutorial.
+  Two separate modes: Free Fantasy (no currency, everyone) and Marks Fantasy (free to enter, earns Marks; only with the
+  Terms agreement, enforced by the rules too). Weekly and Daily lineups for NFL, CFB, NBA, MLB, F1. Worker
+  `push/fantasy.mjs`: contests + player lists, live points from box scores, final ranks, Marks (ledger `fantasy_<id>`).
+  Terms: no paid fantasy, no real money; withdrawing freezes Marks, items and equipped title/banner, agreeing restores.
+- Season leagues + Social (#96): create a league, invite friends, random snake draft (owner can pick for someone away),
+  weekly starters, season standings; Marks leagues give the week's top score 20 Marks. Social tab: add friends,
+  requests, message, profiles. Worker publishes draft pools (`fpool`) and scores league weeks.
+- This PR: Marks check every worker shift (balance must equal the ledger sum; mismatches go to `meta/marksCheck` and
+  the log, nothing changed automatically). Browser tests for Fantasy (tutorial, the Marks lock, a lineup), a league
+  draft, the Social tab, and 320 px fit (`tests/specs/fantasy.spec.js`).
+- Rules tests: 62. Still to watch: first real Fantasy settlements (CFB Friday, F1 Las Vegas), first real league week,
+  App Check numbers before enforcing.

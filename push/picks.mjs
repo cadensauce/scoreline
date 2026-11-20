@@ -179,3 +179,21 @@ export async function seedShop(db) {
   SHOP.forEach(([id, kind, name, price], order) => batch.set(db.collection("shopItems").doc(id), { kind, name, price, order }));
   await batch.commit().catch((e) => console.log("shop seed failed", e.message));
 }
+
+// Marks check (each 6-hour worker shift, so several times a day): every balance must equal the sum of that account's ledger entries (picks, fantasy, leagues,
+// dev gifts, shop purchases). Nothing is changed automatically: mismatches are written to meta/marksCheck (worker-only,
+// visible in the Firebase console) and the Actions log, so a person can look before anything is fixed.
+export async function marksCheck(db, admin) {
+  const FV = admin.firestore.FieldValue;
+  const wallets = await db.collection("wallets").get();
+  const bad = [];
+  for (const w of wallets.docs) {
+    const entries = await db.collection("ledger").doc(w.id).collection("entries").select("amount").get();
+    const sum = Math.round(entries.docs.reduce((t, e) => t + (Number(e.get("amount")) || 0), 0) * 100) / 100;
+    const bal = Math.round((Number(w.get("balance")) || 0) * 100) / 100;
+    if (sum !== bal) bad.push({ uid: w.id, balance: bal, ledger: sum, entries: entries.size });
+  }
+  await db.collection("meta").doc("marksCheck").set({ at: FV.serverTimestamp(), wallets: wallets.size, mismatchCount: bad.length, mismatches: bad.slice(0, 50) });
+  console.log("marks check:", wallets.size, "wallets,", bad.length, "mismatch" + (bad.length === 1 ? "" : "es"), bad.length ? JSON.stringify(bad.slice(0, 10)) : "");
+  return bad;
+}
