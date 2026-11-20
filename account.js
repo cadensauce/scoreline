@@ -16,6 +16,15 @@ const V = "10.12.2";
 let fb = null;        // loaded Firebase modules
 let auth = null, db = null, user = null, profile = null;
 let unsubs = [];
+const APP_CHECK_KEY = "6LcfWyouAAAAAAuoOwM2PIf6SVBsYC0RoTbzzqz9";   // public reCAPTCHA Enterprise site key (meant to be in the page)
+let appCheck = null;
+// For the page's direct database calls (alert sign-ups): the App Check token to send along, or null.
+window.scorelineAppCheck = async () => {
+  if (location.hostname !== "cadensauce.github.io") return null;   // the key only works on the real site (not tests/previews)
+  await startFirebase();
+  if (!appCheck || !fb?.getAppCheckToken) return null;
+  return (await fb.getAppCheckToken(appCheck, false).catch(() => null))?.token || null;
+};
 // Resolves once Firebase has said who is signed in (first onUser finished), so "signed in?" is never answered too early.
 let authDone; const authReady = new Promise((r) => { authDone = r; });
 let friendState = { incoming: [], outgoing: [], friends: [] };
@@ -30,6 +39,13 @@ async function boot() {
   ]);
   fb = { ...app, ...a, ...f };
   const appInst = fb.initializeApp(FIREBASE_CONFIG);
+  // App Check: proves requests come from the real Scoreline site (invisible reCAPTCHA Enterprise score, no puzzles).
+  // Set up before the other services so their requests carry it. If it can't load (blocked), everything still works.
+  if (location.hostname === "cadensauce.github.io") try {
+    const ac = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-app-check.js`);
+    appCheck = ac.initializeAppCheck(appInst, { provider: new ac.ReCaptchaEnterpriseProvider(APP_CHECK_KEY), isTokenAutoRefreshEnabled: true });
+    fb.getAppCheckToken = ac.getToken;
+  } catch {}
   auth = fb.getAuth(appInst);
   db = fb.getFirestore(appInst);
   fb.onAuthStateChanged(auth, onUser);
