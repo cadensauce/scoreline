@@ -4304,8 +4304,9 @@
       }
       if (!rows.length) return null;
       const best = rows.slice().sort((a, b) => a.rank - b.rank || b.ptsN - a.ptsN)[0].year;
+      const gone = core?.active === false || rows[0].year !== String(now);   // not in this season's standings = retired (the feed's flag lags)
       return { cats: [{ name: "Championship", labels: ["POS", "PTS", "SCORED"], full: ["Championship position", "Points", "Races with points"], rows, totals: null }],
-        years: rows.map((r) => r.year), label: (y) => y, best, keyIdx: 0, key: "", why: "best championship finish", pick: core?.active === false ? best : rows[0].year, retired: core?.active === false };
+        years: rows.map((r) => r.year), label: (y) => y, best, keyIdx: 0, key: "", why: "best championship finish", pick: gone ? best : rows[0].year, retired: gone };
     }
     /* Career stats: every season from ESPN, one tap each. Retired players open on their best season. */
     const slugName = (s) => String(s || "").split("-").map((w) => (w ? w[0].toUpperCase() + w.slice(1) : "")).join(" ");
