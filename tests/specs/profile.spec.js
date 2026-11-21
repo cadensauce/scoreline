@@ -55,7 +55,7 @@ test("profile: a friend's page has Message and their players; a private one says
   await expect(sheet(page).locator(".prof-tile")).toContainText("LeBron James");
   await expect(sheet(page).getByRole("button", { name: "Message" })).toBeVisible();
   await expect(sheet(page)).toContainText("7–3");
-  await page.goBack();
+  await page.goBack(); await page.waitForTimeout(600);   // one sheet per tap: a second tap within half a second is ignored
   await page.locator('#main [data-viewcard="ghost"]').click();
   await expect(sheet(page)).toContainText("keeps their profile private");
   expect(errors).toEqual([]);

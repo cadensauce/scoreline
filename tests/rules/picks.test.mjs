@@ -260,8 +260,9 @@ test("stats: nobody can write their own", async () => {
 });
 test("stats: you and your friends can read them; strangers and 'Only me' profiles can't", async () => {
   await env.withSecurityRulesDisabled(async (c) => {
-    await setDoc(doc(c.firestore(), "pstats/teen"), { picks: { w: 3, l: 1 }, at: Date.now() });
-    await setDoc(doc(c.firestore(), "requests/teen_pal"), { from: "teen", to: "pal", status: "accepted" });
+    const db = c.firestore();
+    await setDoc(doc(db, "pstats/teen"), { picks: { w: 3, l: 1 }, at: Date.now() });
+    await setDoc(doc(db, "requests/teen_pal"), { from: "teen", to: "pal", status: "accepted" });
   });
   await fullCard("teen");
   await assertSucceeds(getDoc(doc(as("teen"), "pstats/teen")));
