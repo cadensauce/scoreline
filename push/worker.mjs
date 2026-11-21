@@ -11,6 +11,7 @@ import nodemailer from "nodemailer";
 import crypto from "node:crypto";
 import { picksTick, cleanupDeleted, seedShop, marksCheck } from "./picks.mjs";
 import { fantasyTick } from "./fantasy.mjs";
+import { profileStats } from "./profile.mjs";
 
 const RUN_FOR_MS = (Number(process.env.RUN_MINUTES) || 345) * 60_000;
 const TICK_MS = 20_000;            // games
@@ -358,7 +359,7 @@ async function checkNews() {
 
 // ---- main loop ---------------------------------------------------------------------------
 try { const d = await stateDoc.get(); if (d.exists) newsState = { seen: d.data().seen || [], caps: d.data().caps || {} }; } catch {}
-let picksAt = 0, cleanupAt = 0, fantasyAt = 0, marksAt = 0;
+let picksAt = 0, cleanupAt = 0, fantasyAt = 0, marksAt = 0, statsAt = 0;
 await seedShop(db);
 const until = Date.now() + RUN_FOR_MS;
 console.log("Push worker running until", new Date(until).toISOString());
@@ -372,6 +373,7 @@ while (Date.now() < until) {
     if (Date.now() - cleanupAt > 6 * 3600e3) { cleanupAt = Date.now(); await cleanupDeleted(db, admin).catch((e) => console.log("cleanup error", e.message)); }
     if (Date.now() - picksAt > 60_000) { picksAt = Date.now(); await picksTick(db, admin).catch((e) => console.log("picks error", e.message)); }
     if (Date.now() - fantasyAt > 5 * 60_000) { fantasyAt = Date.now(); await fantasyTick(db, admin).catch((e) => console.log("fantasy error", e.message)); }
+    if (Date.now() - statsAt > 3 * 3600e3) { statsAt = Date.now(); await profileStats(db, admin).catch((e) => console.log("profile stats error", e.message)); }   // profile stats: at shift start, then every 3 hours
     if (Date.now() - marksAt > 24 * 3600e3) { marksAt = Date.now(); await marksCheck(db, admin).catch((e) => console.log("marks check error", e.message)); }   // at the start of each 6-hour shift
   } catch (e) { console.log("tick error", e.message); }
   await new Promise((r) => setTimeout(r, Math.max(1000, TICK_MS - (Date.now() - t0))));

@@ -17,9 +17,9 @@ service cloud.firestore {
     match /users/{uid} {
       allow read, delete: if member() && me() == uid;
       // Only the settings the app saves, at sensible sizes (old extra fields are left alone on update).
-      allow create: if member() && me() == uid && request.resource.data.keys().hasOnly(['favs', 'favNames', 'alertPrefs', 'updatedAt', 'heldTitle', 'heldBanner']) && settingsOk();
+      allow create: if member() && me() == uid && request.resource.data.keys().hasOnly(['favs', 'favNames', 'alertPrefs', 'updatedAt', 'heldTitle', 'heldBanner', 'heldDeco']) && settingsOk();
       allow update: if member() && me() == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['favs', 'favNames', 'alertPrefs', 'updatedAt', 'heldTitle', 'heldBanner']) && settingsOk();
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['favs', 'favNames', 'alertPrefs', 'updatedAt', 'heldTitle', 'heldBanner', 'heldDeco']) && settingsOk();
     }
     function settingsOk() {
       return (!('favs' in request.resource.data) || (request.resource.data.favs is list && request.resource.data.favs.size() <= 200))
@@ -39,23 +39,37 @@ service cloud.firestore {
       allow delete: if member() && me() == uid;
     }
 
-    // Profile card: photo (a small JPEG made on the device), one-line bio, followed team names.
-    // Visible to you, and to your friends when you choose "Friends"; nobody else.
+    // Profile: photo (a small JPEG made on the device), display name, bio, a free theme, favourite sports, teams and
+    // players, plus Shop extras (title, banner, picture decoration). Visible to you, and to friends when you choose "Friends".
     match /cards/{uid} {
       allow read: if member() && (me() == uid || (resource.data.show == 'friends' && friends(me(), uid)));
       allow create, update: if member() && me() == uid
-        && request.resource.data.keys().hasOnly(['avatar', 'bio', 'teams', 'show', 'updatedAt', 'title', 'banner'])
-        // A title or banner can only be shown if you own it, and only while you've agreed to the Terms (withdrawing freezes them).
-        && ((request.resource.data.get('title', '') == '' && request.resource.data.get('banner', '') == '')
+        && request.resource.data.keys().hasOnly(['avatar', 'bio', 'teams', 'show', 'updatedAt', 'title', 'banner', 'deco', 'name', 'theme', 'sports', 'favTeams', 'favPlayers'])
+        // Shop extras can only be shown if you own them, and only while you've agreed to the Terms (withdrawing freezes them).
+        && ((request.resource.data.get('title', '') == '' && request.resource.data.get('banner', '') == '' && request.resource.data.get('deco', '') == '')
           || (exists(/databases/$(database)/documents/ages/$(uid)) && get(/databases/$(database)/documents/ages/$(uid)).data.is13plus == true))
         && (!('title' in request.resource.data) || request.resource.data.title == '' || exists(/databases/$(database)/documents/inventory/$(uid)/items/$(request.resource.data.title)))
         && (!('banner' in request.resource.data) || request.resource.data.banner == '' || exists(/databases/$(database)/documents/inventory/$(uid)/items/$(request.resource.data.banner)))
+        && (!('deco' in request.resource.data) || request.resource.data.deco == '' || exists(/databases/$(database)/documents/inventory/$(uid)/items/$(request.resource.data.deco)))
+        && (!('name' in request.resource.data) || (request.resource.data.name is string && request.resource.data.name.size() <= 30))
+        && (!('theme' in request.resource.data) || request.resource.data.theme in ['', 'plain', 'night', 'field', 'court', 'diamond', 'track'])
+        && (!('sports' in request.resource.data) || (request.resource.data.sports is list && request.resource.data.sports.size() <= 5 && request.resource.data.sports.hasOnly(['nfl', 'cfb', 'nba', 'mlb', 'f1'])))
+        && (!('favTeams' in request.resource.data) || (request.resource.data.favTeams is list && request.resource.data.favTeams.size() <= 12))
+        && (!('favPlayers' in request.resource.data) || (request.resource.data.favPlayers is list && request.resource.data.favPlayers.size() <= 12))
         && request.resource.data.avatar is string && request.resource.data.avatar.size() <= 60000
         && (request.resource.data.avatar == '' || request.resource.data.avatar.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$'))
         && request.resource.data.bio is string && request.resource.data.bio.size() <= 160
         && request.resource.data.teams is list && request.resource.data.teams.size() <= 30
         && request.resource.data.show in ['friends', 'me'];
       allow delete: if member() && me() == uid;
+    }
+
+    // Profile stats (Picks record, Fantasy, leagues, friends). Only the worker writes them, so nobody can fake theirs.
+    // Seen by the same people as the profile.
+    match /pstats/{uid} {
+      allow get: if member() && (me() == uid || (friends(me(), uid)
+        && get(/databases/$(database)/documents/cards/$(uid)).data.get('show', 'friends') == 'friends'));
+      allow write: if false;
     }
 
     // Username -> uid lookup. First come, first served; you can only claim names for yourself.

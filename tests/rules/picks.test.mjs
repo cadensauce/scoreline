@@ -228,3 +228,45 @@ test("league starters: only your own drafted players, only the sport's spots", a
   await assertFails(st("teen", { qb: "d2" }));       // not an F1 spot
   await assertFails(st("stranger", { d1: "d2" }));   // not in the league
 });
+
+// ---- profiles: name, theme, favourites, decorations; stats only from the worker ----
+const fullCard = (uid, extra) => card(uid, { name: "Caden", theme: "field", sports: ["nfl", "f1"], favTeams: [{ lg: "nfl", id: "25", n: "San Francisco 49ers", a: "SF", l: "https://a.espncdn.com/i/teamlogos/nfl/500/sf.png" }], favPlayers: [{ lg: "nfl", id: "4361741", n: "Brock Purdy", t: "SF", p: "QB" }], ...extra });
+test("profile: name, theme, sports, teams and players save", () => assertSucceeds(fullCard("teen")));
+test("profile: works without agreeing to the Terms (no Shop extras)", () => assertSucceeds(fullCard("newbie")));
+test("profile: unknown theme is refused", () => assertFails(fullCard("teen", { theme: "neon" })));
+test("profile: unknown sport is refused", () => assertFails(fullCard("teen", { sports: ["nfl", "cricket"] })));
+test("profile: at most 12 favourite players", () => assertFails(fullCard("teen", { favPlayers: Array.from({ length: 13 }, (_, i) => ({ lg: "nba", id: String(i), n: "P" + i })) })));
+test("profile: at most 12 favourite teams", () => assertFails(fullCard("teen", { favTeams: Array.from({ length: 13 }, (_, i) => ({ lg: "nba", id: String(i), n: "T" + i })) })));
+test("profile: display name at most 30 characters", () => assertFails(fullCard("teen", { name: "x".repeat(31) })));
+test("profile: no extra fields", () => assertFails(fullCard("teen", { email: "a@b.c" })));
+test("profile: decoration you don't own is refused", () => assertFails(fullCard("teen", { deco: "d_ring" })));
+test("profile: decoration you own shows (13+ and agreed)", async () => {
+  await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "inventory/teen/items/d_ring"), { price: 0, at: Timestamp.now() }));
+  await assertSucceeds(fullCard("teen", { deco: "d_ring" }));
+});
+test("profile: decoration needs the Terms agreement even if owned", async () => {
+  await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "inventory/kid/items/d_ring"), { price: 0, at: Timestamp.now() }));
+  await assertFails(fullCard("kid", { deco: "d_ring" }));
+});
+test("profile: friends can see it, strangers can't", async () => {
+  await fullCard("teen");
+  await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "requests/teen_pal"), { from: "teen", to: "pal", status: "accepted" }));
+  await assertSucceeds(getDoc(doc(as("pal"), "cards/teen")));
+  await assertFails(getDoc(doc(as("other"), "cards/teen")));
+});
+test("stats: nobody can write their own", async () => {
+  await assertFails(setDoc(doc(as("teen"), "pstats/teen"), { picks: { w: 999, l: 0 } }));
+  await assertFails(setDoc(doc(as("pal"), "pstats/teen"), { picks: { w: 0, l: 999 } }));
+});
+test("stats: you and your friends can read them; strangers and 'Only me' profiles can't", async () => {
+  await env.withSecurityRulesDisabled(async (c) => {
+    await setDoc(doc(c.firestore(), "pstats/teen"), { picks: { w: 3, l: 1 }, at: Date.now() });
+    await setDoc(doc(c.firestore(), "requests/teen_pal"), { from: "teen", to: "pal", status: "accepted" });
+  });
+  await fullCard("teen");
+  await assertSucceeds(getDoc(doc(as("teen"), "pstats/teen")));
+  await assertSucceeds(getDoc(doc(as("pal"), "pstats/teen")));
+  await assertFails(getDoc(doc(as("other"), "pstats/teen")));
+  await fullCard("teen", { show: "me" });
+  await assertFails(getDoc(doc(as("pal"), "pstats/teen")));
+});

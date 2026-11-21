@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795208875" />
+  <meta name="build" content="1795209857" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1203,6 +1203,82 @@
       .toast { left: calc(50% + var(--side) / 2); }
     }
     @media (min-width: 1600px) { :root { --side: 256px; } }
+
+    /* ---- Profiles ---- */
+    /* Free themes: quiet monochrome patterns (work in light and dark). A Shop banner (.bn.b_*) covers them. */
+    .bn-theme:not(.bn) { background-color: var(--panel-2); }
+    .bn-theme.t-plain:not(.bn) { background-image: linear-gradient(135deg, var(--panel-3), var(--panel)); }
+    .bn-theme.t-night:not(.bn) { background-image: radial-gradient(var(--line-hi) 1px, transparent 1.4px), linear-gradient(160deg, var(--panel-3), var(--bg)); background-size: 16px 16px, auto; }
+    .bn-theme.t-field:not(.bn) { background-image: repeating-linear-gradient(90deg, var(--line-hi) 0 2px, transparent 2px 44px), linear-gradient(180deg, var(--panel-3), var(--panel)); }
+    .bn-theme.t-court:not(.bn) { background-image: radial-gradient(circle at 50% 50%, transparent 0 46px, var(--line-hi) 47px 49px, transparent 50px), linear-gradient(90deg, transparent calc(50% - 1px), var(--line-hi) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)), linear-gradient(135deg, var(--panel-3), var(--panel)); }
+    .bn-theme.t-diamond:not(.bn) { background-image: repeating-linear-gradient(45deg, var(--line) 0 1px, transparent 1px 22px), repeating-linear-gradient(-45deg, var(--line) 0 1px, transparent 1px 22px), linear-gradient(135deg, var(--panel-3), var(--panel)); }
+    .bn-theme.t-track:not(.bn) { background-image: repeating-linear-gradient(-28deg, transparent 0 18px, var(--line-hi) 18px 20px), linear-gradient(135deg, var(--panel-3), var(--panel)); }
+    .prof, .pe { margin: -14px -16px 0; }
+    .prof > :not(.prof-banner):not(.prof-head), .pe > :not(.prof-banner):not(.prof-head) { margin-left: 16px; margin-right: 16px; }
+    .prof-banner { height: 132px; }
+    .prof-head { display: flex; align-items: flex-end; gap: 14px; padding: 0 16px; margin-top: -44px; position: relative; }
+    .avatar.xl { width: 96px; height: 96px; font-size: 38px; border: 4px solid var(--bg); box-sizing: content-box; flex: none; }
+    .prof-id { display: flex; flex-direction: column; min-width: 0; padding-bottom: 6px; }
+    .prof-id b { font-size: 22px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; overflow-wrap: anywhere; }
+    .prof-id .title-tag { margin: 4px 0 2px; align-self: flex-start; }
+    .prof-id small { color: var(--muted); font-size: 13.5px; }
+    .prof-acts { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; margin-top: 16px; }
+    .pill-btn.prof-main { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+    .pill-btn.prof-main:hover { background: var(--accent); opacity: .9; }
+    .prof-about p { margin: 0 0 6px; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+    .prof-about small { font-size: 13px; }
+    .prof-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+    .prof-stat { background: var(--panel); padding: 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+    .prof-stat b { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+    .prof-stat small { color: var(--muted); font-size: 12px; line-height: 1.25; }
+    .prof-note { margin: 8px 2px 0; font-size: 12px; color: var(--faint); }
+    .prof-empty { margin: 0; }
+    .prof-sports { display: flex; flex-wrap: wrap; gap: 8px; }
+    .prof-sport, .pe-chip { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); font-size: 14px; font-weight: 600; }
+    .prof-sport svg, .pe-chip svg { width: 17px; height: 17px; }
+    .prof-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 14px 10px; }
+    .prof-tile { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; min-width: 0; }
+    .prof-tile b { font-size: 13px; font-weight: 600; line-height: 1.25; margin-top: 6px; overflow-wrap: anywhere; }
+    .prof-tile small { font-size: 11.5px; color: var(--muted); }
+    .prof-logo, .prof-face { width: 68px; height: 68px; border-radius: 50%; background: var(--panel); border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; position: relative; font-weight: 700; color: var(--muted); }
+    .prof-logo img { width: 44px; height: 44px; object-fit: contain; }
+    .prof-face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; z-index: 1; }
+    .prof-face i { font-style: normal; font-size: 24px; }
+    .prof-none { padding: 2px 0; }
+    .prof-add { border-style: dashed; }
+    /* Picture decorations (Shop, d_*): a ring around the photo. Each item sets its own --deco. */
+    .deco { position: relative; display: inline-grid; border-radius: 50%; flex: none; }
+    .deco::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 3px solid var(--deco, var(--text)); pointer-events: none; }
+    /* Social: your profile on top, friends with photos */
+    .soc-me { display: flex; align-items: center; gap: 12px; padding: 18px 16px; border-radius: var(--radius); border: 1px solid var(--line); margin-bottom: 6px; }
+    .soc-me .pill-btn { margin-left: auto; flex: none; background: var(--bg); }
+    .soc-me.bn b, .soc-me.bn small { text-shadow: 0 1px 6px rgba(0, 0, 0, .5); }
+    .soc-who { display: flex; align-items: center; gap: 12px; min-width: 0; cursor: pointer; flex: 1; }
+    .soc-who > span { display: flex; flex-direction: column; min-width: 0; }
+    .soc-who b { font-size: 15.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .soc-who small { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .soc-row .avatar { width: 40px; height: 40px; font-size: 17px; }
+    .soc-row .acct-acts { flex: none; }
+    /* Editor */
+    .pe-photo { display: flex; align-items: center; gap: 12px; padding-bottom: 10px; flex-wrap: wrap; }
+    .pe-field { display: flex; flex-direction: column; gap: 6px; margin-top: 16px; font-size: 13px; font-weight: 600; color: var(--muted); }
+    .pe-field span { display: flex; justify-content: space-between; }
+    .pe-field input, .pe-field textarea { font: 400 16px/1.45 var(--display); color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-in); padding: 11px 13px; resize: none; -webkit-user-select: text; user-select: text; }
+    .pe-field input:focus, .pe-field textarea:focus { outline: none; border-color: var(--line-hi); box-shadow: 0 0 0 4px var(--glow); }
+    .pe-themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+    .pe-theme { display: flex; flex-direction: column; gap: 6px; border: 0; background: none; padding: 0; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+    .pe-theme i { display: block; height: 52px; border-radius: 12px; border: 2px solid var(--line); }
+    .pe-theme.on { color: var(--text); } .pe-theme.on i { border-color: var(--text); }
+    .pe-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pe-chip { color: var(--muted); }
+    .pe-chip small { font-weight: 500; color: var(--faint); }
+    .pe-chip.on { background: var(--accent); color: var(--on-accent); border-color: transparent; } .pe-chip.on small { color: inherit; opacity: .7; }
+    .pe-search { margin-top: 12px; }
+    .pe-hits .opt { padding: 10px 2px; }
+    .pe-save { position: sticky; bottom: 0; padding: 14px 0 6px; background: linear-gradient(transparent, var(--bg) 30%); margin-top: 10px; }
+    .pe-save .pill-btn { width: 100%; min-height: 46px; font-size: 15.5px; }
+    @media (min-width: 721px) { .prof-banner { height: 168px; } .prof, .pe { margin: -14px -16px 0; } }
+    .sheet.wide.k-profile .sheet-body > .prof, .sheet.wide.k-profile-edit .sheet-body > .pe { max-width: 820px; margin-left: auto; margin-right: auto; }
   </style>
 </head>
 <body>
@@ -4965,6 +5041,179 @@
     }, true);
 
     /* ---------- Social tab: add friends, answer requests, message friends, see their profiles (account.js does the work). ---------- */
+    /* ---------- Profiles: a full page (banner, photo, stats, favourite sports/teams/players) and an editor.
+       Data comes from account.js (window.scorelineProfile). Stats are written only by the worker, so they can't be faked. ---------- */
+    const PTHEMES = [["plain", "Plain"], ["night", "Night"], ["field", "Field"], ["court", "Court"], ["diamond", "Diamond"], ["track", "Track"]];
+    const SPORT_NAMES = { nfl: "NFL", cfb: "College Football", nba: "NBA", mlb: "MLB", f1: "Formula 1" };
+    const HS_PATH = { nfl: "nfl", cfb: "college-football", nba: "nba", mlb: "mlb", f1: "rpm" };
+    const headshot = (lg, id) => /^\d+$/.test(String(id)) && HS_PATH[lg] ? "https://a.espncdn.com/combiner/i?img=/i/headshots/" + HS_PATH[lg] + "/players/full/" + id + ".png&w=200&h=145&scale=crop" : "";
+    const safeLogo = (u) => (/^https:\/\/a\.espncdn\.com\/[\w/.\-?=&%]+$/.test(u || "") ? u : "");
+    const UID_LG = { 28: "nfl", 23: "cfb", 46: "nba", 10: "mlb" };
+    const teamFromKey = (k) => { const m = /l:(\d+)~t:(\d+)/.exec(k || ""); return m && UID_LG[m[1]] ? { lg: UID_LG[m[1]], id: m[2] } : null; };
+    const P = () => window.scorelineProfile;
+    const pAvatar = (c, name, size) => (P() ? P().avatar(c?.avatar, name, size, c?.deco) : "");
+    const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
+    const daysAgo = (t) => Math.max(0, Math.floor((Date.now() - t) / 864e5));
+
+    function profileHtml(d) {
+      const c = d.card, un = d.username || "";
+      const banner = '<div class="prof-banner bn-theme t-' + esc(c.theme || "plain") + bnCls(c.banner) + '"></div>';
+      const acts = d.mine
+        ? '<button class="pill-btn prof-main" type="button" data-editprofile>Edit profile</button><button class="pill-btn" type="button" data-pshare>Copy username</button>'
+        : d.isFriend ? '<button class="pill-btn prof-main" type="button" data-chat="' + esc(d.uid) + '">Message</button>' : "";
+      const s = d.stats, pk = s?.picks || {}, fx = s?.fantasy || {}, games = (pk.w || 0) + (pk.l || 0);
+      const tile = (v, l) => '<div class="prof-stat"><b>' + esc(String(v)) + "</b><small>" + esc(l) + "</small></div>";
+      const stats = s
+        ? '<div class="prof-stats">' + tile((pk.w || 0) + "–" + (pk.l || 0), "Picks record") + tile(games ? Math.round(100 * (pk.w || 0) / games) + "%" : "–", "Picks won") +
+          tile(pk.best || 0, "Best streak") + tile(fx.n || 0, "Fantasy contests") + tile(fx.top3 || 0, "Top-3 finishes") + tile(s.leagues || 0, "Season leagues") +
+          tile(d.friends ?? s.friends ?? 0, "Friends") + tile(pk.streak || 0, "Current streak") + tile(s.marksEarned ?? "–", "Marks earned") + "</div>" +
+          '<p class="prof-note">Updated ' + esc(s.at ? agoText(s.at) : "recently") + ". Counted by Scoreline from your picks and Fantasy, so nobody can change them.</p>"
+        : '<p class="muted prof-empty">' + (d.mine ? "Your stats show up here after your first settled pick or Fantasy contest." : "No stats yet.") + "</p>";
+      const add = (what) => (d.mine ? '<button class="pill-btn prof-add" type="button" data-editprofile="' + what + '">+ Add</button>' : "");
+      const sec = (title, what, inner, n) => '<div class="section-title"><b>' + title + "</b>" + (n ? '<span class="muted">' + n + "</span>" : "") + (d.mine && inner ? '<button class="see-all" type="button" data-editprofile="' + what + '">Edit</button>' : "") + "</div>" + (inner || '<div class="prof-none">' + (d.mine ? add(what) : '<span class="muted">None picked yet.</span>') + "</div>");
+      const sports = c.sports.length ? '<div class="prof-sports">' + c.sports.map((k) => '<span class="prof-sport">' + (ICONS[k] || "") + esc(SPORT_NAMES[k] || k) + "</span>").join("") + "</div>" : "";
+      const teams = c.favTeams.length ? '<div class="prof-tiles">' + c.favTeams.map((t) => '<div class="prof-tile"><span class="prof-logo">' + (safeLogo(t.l) ? '<img src="' + esc(safeLogo(t.l)) + '" alt="" loading="lazy">' : esc((t.a || t.n || "?").slice(0, 3))) + "</span><b>" + esc(t.n || "") + "</b><small>" + esc((LEAGUES[t.lg]?.short || LEAGUES[t.lg]?.name || "").toString()) + "</small></div>").join("") + "</div>" : "";
+      const players = c.favPlayers.length ? '<div class="prof-tiles">' + c.favPlayers.map((p) => { const h = headshot(p.lg, p.id); return '<div class="prof-tile"><span class="prof-face">' + (h ? '<img src="' + esc(h) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + "<i>" + esc((p.n || "?")[0]) + "</i></span><b>" + esc(p.n || "") + "</b><small>" + esc([p.t, p.p].filter(Boolean).join(" · ")) + "</small></div>"; }).join("") + "</div>" : "";
+      return '<div class="prof">' + banner +
+        '<div class="prof-head">' + pAvatar(c, un, "xl") + '<div class="prof-id"><b>' + esc(c.name || "@" + un) + "</b>" + titleTag(c.title) + "<small>@" + esc(un) + (d.mine ? " · " + ((c.show || "friends") === "me" ? "Only you can see this" : "Friends can see this") : "") + "</small></div></div>" +
+        (acts ? '<div class="prof-acts">' + acts + "</div>" : "") +
+        '<div class="section-title"><b>About</b></div><div class="prof-about">' + (c.bio ? "<p>" + esc(c.bio) + "</p>" : d.mine ? '<button class="link-btn" type="button" data-editprofile="bio">Add a bio</button>' : "") +
+        (d.joined ? '<small class="muted">Joined ' + esc(new Date(d.joined).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })) + " · " + esc(plural(daysAgo(d.joined), "day")) + " ago</small>" : "") + "</div>" +
+        '<div class="section-title"><b>Stats</b></div>' + stats +
+        sec("Favourite sports", "sports", sports, c.sports.length) + sec("Favourite teams", "teams", teams, c.favTeams.length) + sec("Favourite players", "players", players, c.favPlayers.length) +
+        "</div>";
+    }
+    async function openProfile(uid) {
+      const v = { kind: "profile", key: "profile|" + (uid || "me") };
+      if (!pushView(v)) return;
+      setBody(v, "Profile", '<div class="skel" style="height:220px"></div>');
+      const d = P() ? await P().load(uid).catch(() => null) : null;
+      if (!d) return setBody(v, "Profile", '<div class="panel"><b>Profiles</b><p class="muted">Sign in to see profiles.</p><button type="button" class="pill-btn" data-social-signin>Sign in</button></div>');
+      v.uid = d.uid;
+      setBody(v, d.card?.name || "@" + d.username, d.card ? profileHtml(d) : '<div class="empty">@' + esc(d.username || "this person") + " keeps their profile private" + (d.isFriend ? "." : ", or you're not friends yet.") + "</div>");
+    }
+    window.openProfile = openProfile;
+
+    /* editor */
+    let PE = null;   // the draft being edited
+    const PE_MAX = 12;
+    async function openProfileEditor(focus) {
+      const d = P() ? await P().load().catch(() => null) : null;
+      if (!d?.card && !d?.mine) { toast("Sign in to edit your profile"); return; }
+      const v = { kind: "profile-edit", key: "profile-edit" };
+      if (!pushView(v)) return;
+      const [owned, teen] = await Promise.all([P().owned().catch(() => new Set()), P().teen().catch(() => false)]);
+      PE = { v, un: d.username, owned, teen, q: "", hits: [], pools: {}, ...JSON.parse(JSON.stringify(d.card || {})) };
+      PE.sports ||= []; PE.favTeams ||= []; PE.favPlayers ||= [];
+      drawEditor(focus);
+    }
+    function drawEditor(focus) {
+      if (!PE) return;
+      const c = PE, chip = (on, attr, label) => '<button type="button" class="pe-chip' + (on ? " on" : "") + '" ' + attr + ">" + label + "</button>";
+      const ownedOf = (pre) => [...c.owned].filter((x) => x.startsWith(pre));
+      const starred = [...state.favs].filter((k) => k !== "f1" && teamFromKey(k));
+      const banners = ownedOf("b_"), decos = ownedOf("d_");
+      const shopRow = (kind, list, none) => !list.length ? '<p class="g-note">' + none + "</p>" : !c.teen ? '<p class="g-note">Agree to the Terms of Service to show Shop items on your profile.</p>'
+        : '<div class="pe-chips">' + chip(!c[kind], 'data-pe-shop="' + kind + '" data-id=""', "None") + list.map((id) => chip(c[kind] === id, 'data-pe-shop="' + kind + '" data-id="' + esc(id) + '"', esc(SHOP_NAMES[id] || id.replace(/^[a-z]_/, "").replace(/_/g, " ")))).join("") + "</div>";
+      const html =
+        '<div class="pe">' +
+        '<div class="prof-banner bn-theme t-' + esc(c.theme || "plain") + bnCls(c.banner) + '"></div>' +
+        '<div class="prof-head">' + pAvatar(c, c.un, "xl") + '<div class="pe-photo"><label class="pill-btn">Change photo<input type="file" accept="image/jpeg,image/png,image/webp" data-pe-photo hidden></label>' + (c.avatar ? '<button type="button" class="link-btn" data-pe-nophoto>Remove</button>' : "") + "</div></div>" +
+        '<div class="acct-err" data-pe-err></div>' +
+        '<label class="pe-field"><span>Display name</span><input data-pe-name maxlength="30" placeholder="@' + esc(c.un) + '" value="' + esc(c.name || "") + '"></label>' +
+        '<label class="pe-field" id="pe-bio"><span>Bio <small data-pe-count>' + (c.bio || "").length + '/160</small></span><textarea data-pe-bio maxlength="160" rows="3" placeholder="A line about you and your teams">' + esc(c.bio || "") + "</textarea></label>" +
+        '<div class="section-title"><b>Theme</b></div><div class="pe-themes">' + PTHEMES.map(([k, l]) => '<button type="button" class="pe-theme' + ((c.theme || "plain") === k ? " on" : "") + '" data-pe-theme="' + k + '"><i class="bn-theme t-' + k + '"></i>' + l + "</button>").join("") + "</div>" +
+        '<div class="section-title"><b>Banner</b><span class="muted">From the Shop · covers the theme</span></div>' + shopRow("banner", banners, "Banners you buy in the Shop show up here.") +
+        '<div class="section-title"><b>Picture decoration</b><span class="muted">From the Shop</span></div>' + shopRow("deco", decos, "Decorations around your picture are coming to the Shop. The ones you own will show up here.") +
+        '<div class="section-title" id="pe-sports"><b>Favourite sports</b></div><div class="pe-chips">' + Object.keys(SPORT_NAMES).map((k) => chip(c.sports.includes(k), 'data-pe-sport="' + k + '"', (ICONS[k] || "") + esc(SPORT_NAMES[k]))).join("") + "</div>" +
+        '<div class="section-title" id="pe-teams"><b>Favourite teams</b><span class="muted">' + c.favTeams.length + "/" + PE_MAX + "</span></div>" +
+        (starred.length ? '<div class="pe-chips">' + starred.map((k) => { const t = teamFromKey(k); return chip(c.favTeams.some((x) => x.lg === t.lg && x.id === t.id), 'data-pe-team="' + esc(k) + '"', esc(teamNames[k] || findName(k) || "Team") + " <small>" + esc(LEAGUES[t.lg]?.short || LEAGUES[t.lg]?.name) + "</small>"); }).join("") + "</div>"
+          : '<p class="g-note">Follow teams with the ★ on any game or team page, then pick your favourites here.</p>') +
+        '<div class="section-title" id="pe-players"><b>Favourite players</b><span class="muted">' + c.favPlayers.length + "/" + PE_MAX + "</span></div>" +
+        (c.favPlayers.length ? '<div class="pe-chips">' + c.favPlayers.map((p, i) => chip(true, 'data-pe-unplayer="' + i + '"', esc(p.n) + " <small>" + esc(p.t || LEAGUES[p.lg]?.short || "") + "</small> ✕")).join("") + "</div>" : "") +
+        '<div class="search pe-search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input data-pe-q type="search" placeholder="Find a player by name" autocomplete="off" value="' + esc(c.q) + '"></div><div data-pe-hits>' + hitsHtml() + "</div>" +
+        '<div class="section-title"><b>Who can see your profile</b></div><div class="seg">' + [["friends", "Friends"], ["me", "Only me"]].map(([k, l]) => '<button type="button" data-pe-show="' + k + '" class="' + ((c.show || "friends") === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" +
+        '<p class="g-note">Your stats, sports, teams and players are shown with your profile. Never put personal details like your address or school in your name or bio.</p>' +
+        '<div class="pe-save"><button class="pill-btn prof-main" type="button" data-pe-save>Save profile</button></div></div>';
+      const body = c.v.el.querySelector(".sheet-body"), y = body.scrollTop;
+      setBody(c.v, "Edit profile", html);
+      body.scrollTop = y;
+      if (focus) { const el = body.querySelector(focus === "bio" ? "#pe-bio" : "#pe-" + focus); el?.scrollIntoView({ block: "start" }); if (focus === "bio") body.querySelector("[data-pe-bio]")?.focus(); }
+    }
+    function hitsHtml() {
+      if (!PE?.q || PE.q.length < 2) return "";
+      if (!PE.hits.length) return '<p class="g-note">No players found. Try a last name.</p>';
+      return '<div class="panel pe-hits">' + PE.hits.map((h) => { const on = PE.favPlayers.some((p) => p.lg === h.lg && p.id === h.id); return '<div class="opt"><span><b>' + esc(h.n) + "</b><small>" + esc([LEAGUES[h.lg]?.short || LEAGUES[h.lg]?.name, h.t, h.p].filter(Boolean).join(" · ")) + '</small></span><button type="button" class="pill-btn" data-pe-player="' + esc(h.lg + "|" + h.id) + '"' + (on ? " disabled" : "") + ">" + (on ? "Added" : "Add") + "</button></div>"; }).join("") + "</div>";
+    }
+    let peSearchT = 0;
+    async function peSearch() {
+      const q = PE.q.toLowerCase().trim();
+      if (q.length < 2) { PE.hits = []; return; }
+      const lgs = PE.sports.length ? PE.sports : Object.keys(SPORT_NAMES);
+      await Promise.all(lgs.map(async (lg) => { if (!PE.pools[lg]) PE.pools[lg] = await P().pool(lg).catch(() => ({})); }));
+      const hits = [];
+      for (const lg of lgs) for (const [id, p] of Object.entries(PE.pools[lg] || {})) { if ((p.n || "").toLowerCase().includes(q)) hits.push({ lg, id, n: p.n, t: p.t || "", p: p.p || "" }); }
+      hits.sort((a, b) => (a.n.toLowerCase().startsWith(q) ? 0 : 1) - (b.n.toLowerCase().startsWith(q) ? 0 : 1) || a.n.localeCompare(b.n));
+      PE.hits = hits.slice(0, 12);
+    }
+    async function teamInfo(k) {
+      const t = teamFromKey(k); if (!t) return null;
+      const d = await getJSON(API + LEAGUES[t.lg].path + "/teams/" + t.id).catch(() => null), x = d?.team;
+      return { lg: t.lg, id: t.id, n: x?.displayName || teamNames[k] || findName(k) || "Team", a: x?.abbreviation || "", l: safeLogo(x?.logos?.[0]?.href) };
+    }
+    document.addEventListener("input", (e) => {
+      if (!PE) return;
+      if (e.target.matches("[data-pe-name]")) PE.name = e.target.value.slice(0, 30);
+      if (e.target.matches("[data-pe-bio]")) { PE.bio = e.target.value.slice(0, 160); const n = PE.v.el.querySelector("[data-pe-count]"); if (n) n.textContent = PE.bio.length + "/160"; }
+      if (e.target.matches("[data-pe-q]")) {
+        PE.q = e.target.value; clearTimeout(peSearchT);
+        peSearchT = setTimeout(async () => { await peSearch(); const box = PE?.v.el.querySelector("[data-pe-hits]"); if (box) box.innerHTML = hitsHtml(); }, 180);
+      }
+    });
+    document.addEventListener("change", async (e) => {
+      const inp = e.target.closest?.("[data-pe-photo]");
+      if (!inp || !PE || !inp.files?.[0]) return;
+      const err = PE.v.el.querySelector("[data-pe-err]");
+      try { PE.avatar = await P().photo(inp.files[0]); drawEditor(); } catch (x) { if (err) err.textContent = x.message; }
+    });
+    document.addEventListener("click", async (e) => {
+      const vc = e.target.closest("[data-viewcard]");
+      if (vc) { e.preventDefault(); return openProfile(vc.dataset.viewcard); }
+      const ep = e.target.closest("[data-editprofile]");
+      if (ep) { e.preventDefault(); return openProfileEditor(ep.dataset.editprofile || ""); }
+      if (e.target.closest("[data-pshare]")) { const un = PE?.un || document.querySelector(".prof-id small")?.textContent.split(" ")[0] || ""; try { await navigator.clipboard.writeText(un); toast("Username copied: friends can add you with it"); } catch { toast(un); } return; }
+      if (!PE || !PE.v.el.contains(e.target)) return;
+      const t = e.target.closest("[data-pe-theme],[data-pe-shop],[data-pe-sport],[data-pe-team],[data-pe-player],[data-pe-unplayer],[data-pe-show],[data-pe-nophoto],[data-pe-save]");
+      if (!t) return;
+      const D = t.dataset;
+      if (D.peTheme) PE.theme = D.peTheme;
+      else if (D.peShop) PE[D.peShop] = D.id;
+      else if (D.peSport) PE.sports = PE.sports.includes(D.peSport) ? PE.sports.filter((x) => x !== D.peSport) : [...PE.sports, D.peSport];
+      else if (D.peTeam) {
+        const k = D.peTeam, tk = teamFromKey(k), i = PE.favTeams.findIndex((x) => x.lg === tk.lg && x.id === tk.id);
+        if (i >= 0) PE.favTeams.splice(i, 1);
+        else if (PE.favTeams.length >= PE_MAX) return toast("Up to " + PE_MAX + " teams");
+        else { t.disabled = true; const info = await teamInfo(k); if (info) PE.favTeams.push(info); }
+      } else if (D.pePlayer) {
+        if (PE.favPlayers.length >= PE_MAX) return toast("Up to " + PE_MAX + " players");
+        const [lg, id] = D.pePlayer.split("|"), h = PE.hits.find((x) => x.lg === lg && x.id === id);
+        if (h) PE.favPlayers.push({ lg, id, n: h.n.slice(0, 60), t: h.t.slice(0, 8), p: h.p.slice(0, 8) });
+      } else if (D.peUnplayer) PE.favPlayers.splice(Number(D.peUnplayer), 1);
+      else if (D.peShow) PE.show = D.peShow;
+      else if ("peNophoto" in D) PE.avatar = "";
+      else if ("peSave" in D) {
+        t.disabled = true;
+        const out = { avatar: PE.avatar || "", name: (PE.name || "").trim().slice(0, 30), bio: (PE.bio || "").trim().slice(0, 160), theme: PE.theme || "plain", show: PE.show || "friends",
+          sports: PE.sports.slice(0, 5), favTeams: PE.favTeams.slice(0, PE_MAX), favPlayers: PE.favPlayers.slice(0, PE_MAX),
+          banner: PE.teen && PE.owned.has(PE.banner) ? PE.banner : "", deco: PE.teen && PE.owned.has(PE.deco) ? PE.deco : "" };
+        try {
+          await P().save(out); buzz(10); toast("Profile saved"); PE = null; history.back();
+          setTimeout(() => views.filter((x) => x.kind === "profile").forEach(async (x) => { const d = await P().load(x.uid).catch(() => null); if (d?.card && x.el.isConnected) setBody(x, d.card.name || "@" + d.username, profileHtml(d)); }), 450);
+        } catch { t.disabled = false; const err = PE?.v.el.querySelector("[data-pe-err]"); if (err) { err.textContent = "Couldn't save your profile. Try again."; err.scrollIntoView({ block: "center" }); } }
+        return;
+      }
+      buzz(6); drawEditor();
+    });
     async function renderSocial() {
       const main = $("main");
       if (!main.querySelector("[data-social]")) main.innerHTML = '<div class="bar"><h1>Social</h1></div><div data-social>' + skeleton(2) + "</div>";
