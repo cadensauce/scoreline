@@ -5255,7 +5255,7 @@
     }
     // Elite season for each main stat, so a QB, a point guard and a shortstop can be compared fairly.
     const PBENCH = { "Passing|YDS": 5000, "Rushing|YDS": 2000, "Receiving|YDS": 1800, YDS: 2000, PTS: 30, H: 220, W: 22, TOT: 150, SACK: 20, REC: 120 };
-    const pmeta = store.get("pmeta2", {});
+    const pmeta = store.get("pmeta3", {});
     async function playerMeta(p) {
       const k = p.lg + "|" + p.id, m = pmeta[k];
       if (m && Date.now() - m.at < 864e5) return m;
@@ -5270,7 +5270,7 @@
         const active = info?.athlete ? info.athlete.active !== false : true, C = careerOf(st, !active);
         let score = 0;
         const yds = {};   // football: total yards in a season (passing + rushing + receiving), so a running QB counts fully
-        if (C && /football/.test(LEAGUES[p.lg].path) && !/defens/i.test(C.cats[0].name)) C.cats.filter((c) => /^(passing|rushing|receiving)$/i.test(c.name)).forEach((c) => { const i = c.labels.indexOf("YDS"); if (i >= 0) c.rows.forEach((r) => { yds[r.year] = (yds[r.year] || 0) + (parseFloat(String(r.stats[i]).replace(/,/g, "")) || 0); }); });
+        if (C && /football/.test(LEAGUES[p.lg].path) && !/defens/i.test(C.cats[0].name)) C.cats.filter((c) => /^(passing|rushing|receiving)$/i.test(c.name)).forEach((c) => { const i = c.labels.indexOf("YDS"), per = {}; if (i >= 0) c.rows.forEach((r) => { per[r.year] = Math.max(per[r.year] || 0, parseFloat(String(r.stats[i]).replace(/,/g, "")) || 0); }); for (const yr in per) yds[yr] = (yds[yr] || 0) + per[yr]; });   // a traded season has a row per team: take the biggest, never add them twice
         const topYds = Math.max(0, ...Object.values(yds));
         if (topYds) score = Math.min(1.5, topYds / (/passing/i.test(C.cats[0].name) ? 5500 : 2200));
         else if (C && C.keyIdx != null) {
@@ -5280,7 +5280,7 @@
         }
         out = { active, score };
       }
-      if (out) { pmeta[k] = { ...out, at: Date.now() }; store.set("pmeta2", pmeta); }
+      if (out) { pmeta[k] = { ...out, at: Date.now() }; store.set("pmeta3", pmeta); }
       return out || { active: true, score: 0 };
     }
     async function favMeta(list) {
