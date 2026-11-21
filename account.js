@@ -286,11 +286,7 @@ function refreshAccountSheet() {
     const person = (uid, actions) => '<div class="opt"><span><b>@' + esc(names[uid] || "…") + "</b></span><span class=\"acct-acts\">" + actions + "</span></div>";
     h = '<div class="acct-me' + bnCls(myCard?.banner) + '">' + avatarHtml(myCard?.avatar, profile?.username) + "<div><b>@" + esc(profile?.username || "") + "</b>" + titleTag(myCard?.title) + "<small data-email>" + emailLine() + '</small></div><button class="pill-btn" type="button" data-logout>Log out</button></div>' +
       '<div class="g-note">★ teams and alert settings are synced.</div>' +
-      '<div class="g-label" style="margin-top:18px">Your profile</div><div class="card-edit">' +
-        '<div class="card-photo">' + avatarHtml(myCard.avatar, profile?.username, "lg") + '<div class="card-photo-acts"><label class="pill-btn">Change photo<input type="file" accept="image/jpeg,image/png,image/webp" data-avatarfile hidden></label>' + (myCard.avatar ? '<button type="button" class="acct-link" data-avatarclear>Remove photo</button>' : "") + "</div></div>" +
-        '<textarea data-bio maxlength="160" rows="2" placeholder="A line about you and your teams">' + esc(myCard.bio || "") + "</textarea>" +
-        '<div class="card-show"><span>Who can see it</span><div class="seg">' + [["friends", "Friends"], ["me", "Only me"]].map(([k, l]) => '<button type="button" data-cardshow="' + k + '" class="' + ((myCard.show || "friends") === k ? "active" : "") + '">' + l + "</button>").join("") + "</div></div>" +
-        '<p class="g-note">Shows your photo, this line and the teams you follow (★).</p><button type="button" class="pill-btn" data-savecard>Save profile</button><div class="acct-err" data-carderr></div></div>' +
+      '<div class="g-label" style="margin-top:18px">Your profile</div><div class="opt"><span><b>Photo, bio, theme and favourites</b><small>' + ((myCard?.show || "friends") === "me" ? "Only you can see it" : "Your friends can see it") + '</small></span><span class="acct-acts"><button class="pill-btn" type="button" data-viewcard="' + esc(user.uid) + '">View</button><button class="pill-btn" type="button" data-editprofile>Edit</button></span></div>' +
       '<div class="g-label" style="margin-top:18px">Two-step sign-in</div><div data-2box><div class="opt"><span><b>' + (twoStepOn ? "On" : "Off") + '</b><small>' + (twoStepOn ? "New devices need a code we email you" : "Ask for an emailed code when you sign in on a new device") + '</small></span>' +
       (twoStepOn ? '<button class="pill-btn" type="button" data-2off>Turn off</button>' : '<button class="pill-btn" type="button" data-2on>Turn on</button>') + "</div></div>" +      (window.__TAURI__ ? "" : '<div class="signin-send"><button type="button" class="pill-btn" data-sendsignin>Send sign-in to the app</button><div data-signincode></div></div>') +
       '<div class="g-label" style="margin-top:18px">Add a friend</div><form class="acct-add" data-addf><input placeholder="Username" maxlength="21" autocomplete="off"><button class="pill-btn" type="submit">Add</button></form><div class="acct-err" data-err></div>' +
@@ -302,6 +298,12 @@ function refreshAccountSheet() {
   setBody(v, user ? "Account" : "Scoreline account", h);
 }
 const errBox = (el, msg) => { const b = el.closest(".sheet, [data-social]")?.querySelector("[data-err]"); if (b) b.textContent = msg; };
+const cardCache = {};   // friends' profiles for the Social list, kept for 5 minutes
+async function friendCard(uid) {
+  if (cardCache[uid] && Date.now() - cardCache[uid].at < 300000) return cardCache[uid].c;
+  const c = await fb.getDoc(fb.doc(db, "cards", uid)).then((d) => (d.exists() ? d.data() : null)).catch(() => null);
+  cardCache[uid] = { c, at: Date.now() }; return c;
+}
 /* ---------- Social tab: the same friends, requests and chats as the account sheet, in their own tab.
    Uses the existing friend requests (requests/{from_to}) and chats; nothing new is stored. */
 window.scorelineSocial = {
@@ -311,10 +313,13 @@ window.scorelineSocial = {
     if (!user || pending2) return '<div class="panel"><b>Friends and messages</b><p class="muted">Sign in to add friends, see requests and message your friends.</p><button type="button" class="pill-btn tos-go" data-social-signin>Sign in</button></div>';
     const F = friendState;
     await Promise.all([...F.friends, ...F.incoming.map((r) => r.from), ...F.outgoing.map((r) => r.to)].map(nameOf));
-    const person = (uid, sub, actions) => '<div class="opt"><span><b>@' + esc(names[uid] || "…") + "</b>" + (sub ? "<small>" + sub + "</small>" : "") + '</span><span class="acct-acts">' + actions + "</span></div>";
-    return '<div class="section-title"><b>Add a friend</b></div><form class="acct-add" data-addf><input placeholder="Their username" maxlength="21" autocomplete="off" autocapitalize="none" spellcheck="false"><button class="pill-btn" type="submit">Add</button></form><div class="acct-err" data-err></div>' +
+    await Promise.all(F.friends.map(friendCard));
+    const me = cardWithPlain(myCard || {}), un = profile?.username || "";
+    const person = (uid, sub, actions) => { const fc = cardCache[uid]?.c; return '<div class="opt soc-row"><span class="soc-who" data-viewcard="' + esc(uid) + '" role="button" tabindex="0">' + avatarHtml(fc?.avatar, names[uid], "", fc?.deco) + "<span><b>" + esc(fc?.name || "@" + (names[uid] || "…")) + "</b><small>" + (fc?.name ? "@" + esc(names[uid] || "") + (sub ? " · " : "") : "") + (sub || "") + '</small></span></span><span class="acct-acts">' + actions + "</span></div>"; };
+    return '<div class="soc-me bn-theme t-' + esc(me.theme || "plain") + bnCls(me.banner) + '"><span class="soc-who" data-viewcard="' + esc(user.uid) + '" role="button" tabindex="0">' + avatarHtml(me.avatar, un, "lg", me.deco) + "<span><b>" + esc(me.name || "@" + un) + "</b><small>@" + esc(un) + " · " + F.friends.length + (F.friends.length === 1 ? " friend" : " friends") + '</small></span></span><button class="pill-btn" type="button" data-editprofile>Edit profile</button></div>' +
+      '<div class="section-title"><b>Add a friend</b></div><form class="acct-add" data-addf><input placeholder="Their username" maxlength="21" autocomplete="off" autocapitalize="none" spellcheck="false"><button class="pill-btn" type="submit">Add</button></form><div class="acct-err" data-err></div>' +
       (F.incoming.length ? '<div class="section-title"><b>Friend requests</b><span class="muted">' + F.incoming.length + "</span></div><div class=\"panel\">" + F.incoming.map((r) => person(r.from, "Wants to be friends", '<button class="pill-btn" type="button" data-accept="' + esc(r.id) + '">Accept</button><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '" aria-label="Decline">✕</button>')).join("") + "</div>" : "") +
-      '<div class="section-title"><b>Friends</b><span class="muted">' + F.friends.length + '</span></div><div class="panel">' + (F.friends.length ? F.friends.slice().sort((a, b) => (names[a] || "").localeCompare(names[b] || "")).map((uid) => person(uid, "", '<button class="pill-btn" type="button" data-chat="' + esc(uid) + '">Message</button><button class="pill-btn" type="button" data-viewcard="' + esc(uid) + '">Profile</button><button class="pill-btn" type="button" data-unfriend="' + esc(uid) + '" aria-label="Remove friend">✕</button>')).join("") : '<div class="g-note">No friends yet. Add someone by their username above.</div>') + "</div>" +
+      '<div class="section-title"><b>Friends</b><span class="muted">' + F.friends.length + '</span></div><div class="panel">' + (F.friends.length ? F.friends.slice().sort((a, b) => (names[a] || "").localeCompare(names[b] || "")).map((uid) => person(uid, "", '<button class="pill-btn" type="button" data-chat="' + esc(uid) + '">Message</button><button class="pill-btn" type="button" data-unfriend="' + esc(uid) + '" aria-label="Remove friend">✕</button>')).join("") : '<div class="g-note">No friends yet. Add someone by their username above.</div>') + "</div>" +
       (F.outgoing.length ? '<div class="section-title"><b>Sent requests</b></div><div class="panel">' + F.outgoing.map((r) => person(r.to, "Waiting for them to accept", '<button class="pill-btn" type="button" data-decline="' + esc(r.id) + '" aria-label="Cancel request">✕</button>')).join("") + "</div>" : "") +
       '<div class="g-note">Only people you both accepted can message each other. Never share personal details like your address, school or passwords.</div>';
   },
@@ -373,18 +378,30 @@ document.addEventListener("submit", async (e) => {
   try { await fb.setDoc(fb.doc(db, "otpAttempts", user.uid), { code, createdAt: fb.serverTimestamp() }); }
   catch { errBox(f, "Couldn't check the code. Try again."); f.querySelector("button").disabled = false; }
 });
-/* ---------- profile cards: photo, bio, followed teams; visible to friends or only you ---------- */
-let myCard = null, pendingAvatar = null;
-function avatarHtml(src, name, size) {
-  const cls = "avatar" + (size === "lg" ? " lg" : "");
-  return src ? '<img class="' + cls + '" src="' + esc(src) + '" alt="">' : '<div class="' + cls + '">' + esc((name || "?")[0].toUpperCase()) + "</div>";
+/* ---------- profiles: photo, name, bio, theme, favourite sports/teams/players, Shop extras.
+   Visible to you, and to your friends when you choose "Friends". The page and editor are drawn by index.html
+   (openProfile / openProfileEditor); this part only loads and saves. ---------- */
+let myCard = null;
+const CARD_KEYS = ["avatar", "bio", "teams", "show", "title", "banner", "deco", "name", "theme", "sports", "favTeams", "favPlayers"];
+// Every save goes through here, so a change to one field never drops the others.
+function cardWith(changes = {}) {
+  const base = { avatar: "", bio: "", teams: followedTeams(), show: "friends", title: "", banner: "", deco: "", name: "", theme: "", sports: [], favTeams: [], favPlayers: [] };
+  const out = {};
+  for (const k of CARD_KEYS) out[k] = k in changes ? changes[k] : (myCard && k in myCard ? myCard[k] : base[k]);
+  out.updatedAt = fb.serverTimestamp();
+  return out;
+}
+function avatarHtml(src, name, size, deco) {
+  const cls = "avatar" + (size === "lg" ? " lg" : size === "xl" ? " xl" : "");
+  const a = src ? '<img class="' + cls + '" src="' + esc(src) + '" alt="">' : '<div class="' + cls + '">' + esc((name || "?")[0].toUpperCase()) + "</div>";
+  return deco && /^d_[a-z0-9_]+$/.test(deco) ? '<span class="deco ' + deco + '">' + a + "</span>" : a;
 }
 // Photos are cropped square and shrunk on this device to a small JPEG (well under 60 KB) before saving.
 async function shrinkPhoto(file) {
   if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error("Pick a JPG, PNG or WebP photo.");
   if (file.size > 10 * 1024 * 1024) throw new Error("That photo is over 10 MB. Pick a smaller one.");
   const img = await createImageBitmap(file);
-  const size = 160, c = document.createElement("canvas"); c.width = c.height = size;
+  const size = 200, c = document.createElement("canvas"); c.width = c.height = size;
   const k = Math.min(img.width, img.height);
   c.getContext("2d").drawImage(img, (img.width - k) / 2, (img.height - k) / 2, k, k, 0, 0, size, size);
   let q = 0.85, url = c.toDataURL("image/jpeg", q);
@@ -393,51 +410,33 @@ async function shrinkPhoto(file) {
   return url;
 }
 const followedTeams = () => [...state.favs].filter((k) => k !== "f1").slice(0, 30).map((k) => teamNames[k] || "").filter(Boolean);
-document.addEventListener("change", async (e) => {
-  const inp = e.target.closest?.("[data-avatarfile]");
-  if (!inp || !inp.files?.[0]) return;
-  const err = document.querySelector("[data-carderr]");
-  try {
-    pendingAvatar = await shrinkPhoto(inp.files[0]);
-    document.querySelectorAll(".card-photo .avatar").forEach((el) => { const im = document.createElement("img"); im.className = el.className; im.src = pendingAvatar; im.alt = ""; el.replaceWith(im); });
-    if (err) err.textContent = "Photo ready. Tap Save profile.";
-  } catch (x) { if (err) err.textContent = x.message; }
-  inp.value = "";
-});
-document.addEventListener("click", async (e) => {
-  if (!user) return;
-  const sh = e.target.closest("[data-cardshow]");
-  if (sh) { document.querySelectorAll("[data-cardshow]").forEach((b) => b.classList.toggle("active", b === sh)); return; }
-  if (e.target.closest("[data-avatarclear]")) { pendingAvatar = ""; document.querySelectorAll(".card-photo img.avatar").forEach((el) => { const d = document.createElement("div"); d.className = el.className; d.textContent = (profile?.username || "?")[0].toUpperCase(); el.replaceWith(d); }); return; }
-  if (e.target.closest("[data-savecard]")) {
-    const err = document.querySelector("[data-carderr]");
-    const card = {
-      avatar: pendingAvatar != null ? pendingAvatar : (myCard?.avatar || ""),
-      bio: String(document.querySelector("[data-bio]")?.value || "").trim().slice(0, 160),
-      teams: followedTeams(),
-      show: document.querySelector("[data-cardshow].active")?.dataset.cardshow || "friends",
-      title: myCard?.title || "", banner: myCard?.banner || "",   // keep what you equipped from the Shop
-      updatedAt: fb.serverTimestamp(),
-    };
-    try { await fb.setDoc(fb.doc(db, "cards", user.uid), card); myCard = card; pendingAvatar = null; buzz(10); toast("Profile saved"); refreshAccountSheet(); }
-    catch { if (err) err.textContent = "Couldn't save your profile. Try again."; }
-    return;
-  }
-  const vc = e.target.closest("[data-viewcard]");
-  if (vc) return openCard(vc.dataset.viewcard);
-});
-async function openCard(uid) {
-  const v = { kind: "card", key: "card|" + uid };
-  if (!pushView(v)) return;
-  let c = null;
-  try { const d = await fb.getDoc(fb.doc(db, "cards", uid)); c = d.exists() ? d.data() : null; } catch { c = null; }
-  const name = names[uid] || "friend";
-  const body = c
-    ? '<div class="card-view' + bnCls(c.banner) + '">' + avatarHtml(c.avatar, name, "lg") + "<b>@" + esc(name) + "</b>" + titleTag(c.title) + (c.bio ? "<p>" + esc(c.bio) + "</p>" : "") +
-      (c.teams?.length ? '<div class="g-label">Follows</div><div class="card-teams">' + c.teams.map((t) => "<span>" + esc(t) + "</span>").join("") + "</div>" : "") + "</div>"
-    : '<div class="empty">@' + esc(name) + " keeps their profile private.</div>";
-  setBody(v, "@" + name, body);
-}
+window.scorelineProfile = {
+  me: () => (user && profile ? user.uid : ""),
+  // Everything a profile page needs. Private profiles come back with card: null.
+  async load(uid) {
+    await startFirebase();
+    if (FIREBASE_CONFIG && fb) await Promise.race([authReady, new Promise((r) => setTimeout(r, 8000))]);
+    if (!user) return null;
+    uid = uid || user.uid;
+    const mine = uid === user.uid;
+    if (!names[uid]) await nameOf(uid);
+    const [c, p, s] = await Promise.all([
+      mine ? Promise.resolve(myCard) : fb.getDoc(fb.doc(db, "cards", uid)).then((d) => (d.exists() ? d.data() : null)).catch(() => null),
+      fb.getDoc(fb.doc(db, "profiles", uid)).then((d) => d.data() || null).catch(() => null),
+      fb.getDoc(fb.doc(db, "pstats", uid)).then((d) => d.data() || null).catch(() => null),
+    ]);
+    const isFriend = friendState.friends.includes(uid);
+    return { uid, mine, isFriend, username: names[uid] || p?.username || "", joined: p?.createdAt?.toMillis?.() || 0,
+      card: c ? cardWithPlain(c) : null, stats: s, friends: mine ? friendState.friends.length : null };
+  },
+  async save(changes) { const card = cardWith(changes); await fb.setDoc(fb.doc(db, "cards", user.uid), card); myCard = card; window.dispatchEvent(new Event("scoreline-social")); },
+  photo: (file) => shrinkPhoto(file),
+  async pool(lg) { await startFirebase(); const d = await fb.getDoc(fb.doc(db, "fpool", lg)).catch(() => null); return d?.data()?.players || {}; },
+  async owned() { if (!user) return new Set(); const r = await fb.getDocs(fb.collection(db, "inventory", user.uid, "items")).catch(() => null); return new Set((r?.docs || []).map((d) => d.id)); },
+  async teen() { if (!user) return false; const a = await fb.getDoc(fb.doc(db, "ages", user.uid)).catch(() => null); return a?.data()?.is13plus === true; },
+  avatar: avatarHtml,
+};
+const cardWithPlain = (c) => { const o = {}; for (const k of CARD_KEYS) o[k] = c[k] ?? (Array.isArray(c[k]) ? [] : ""); o.sports ||= []; o.favTeams ||= []; o.favPlayers ||= []; o.show ||= "friends"; return o; };
 // Sign-in codes: move your sign-in from the website to a newly installed app without typing your password.
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // no 0/O or 1/I
 const pretty = (c) => c.slice(0, 4) + "-" + c.slice(4);
@@ -620,11 +619,10 @@ window.scorelinePicks = {
     if (!is13plus) return;
     // Agreeing again after a withdrawal: put back the title and banner you had on (if you still own them).
     const u = (await fb.getDoc(fb.doc(db, "users", user.uid)).catch(() => null))?.data() || {};
-    if (!u.heldTitle && !u.heldBanner) return;
-    const card = { avatar: myCard?.avatar || "", bio: myCard?.bio || "", teams: myCard?.teams || followedTeams(), show: myCard?.show || "friends",
-      title: u.heldTitle || "", banner: u.heldBanner || "", updatedAt: fb.serverTimestamp() };
+    if (!u.heldTitle && !u.heldBanner && !u.heldDeco) return;
+    const card = cardWith({ title: u.heldTitle || "", banner: u.heldBanner || "", deco: u.heldDeco || "" });
     try { await fb.setDoc(fb.doc(db, "cards", user.uid), card); myCard = card; } catch {}
-    await fb.setDoc(fb.doc(db, "users", user.uid), { heldTitle: "", heldBanner: "", updatedAt: fb.serverTimestamp() }, { merge: true }).catch(() => {});
+    await fb.setDoc(fb.doc(db, "users", user.uid), { heldTitle: "", heldBanner: "", heldDeco: "", updatedAt: fb.serverTimestamp() }, { merge: true }).catch(() => {});
   },
   async game(gameId) { await startFirebase(); const d = await fb.getDoc(fb.doc(db, "games", gameId)).catch(() => null); return d?.exists() ? d.data() : null; },
   async pick(gameId) { if (!pickReady()) return null; const d = await fb.getDoc(fb.doc(db, "picks", user.uid + "_" + gameId)).catch(() => null); return d?.exists() ? d.data() : null; },
@@ -653,11 +651,9 @@ window.scorelinePicks = {
     b.set(fb.doc(db, "ledger", user.uid, "entries", "shop_" + item), { amount: -price, reason: "shop", refId: item, createdAt: at });
     await b.commit();
   },
-  equipped: () => ({ title: myCard?.title || "", banner: myCard?.banner || "" }),
+  equipped: () => ({ title: myCard?.title || "", banner: myCard?.banner || "", deco: myCard?.deco || "" }),
   async equip(kind, id) {
-    const card = { avatar: myCard?.avatar || "", bio: myCard?.bio || "", teams: myCard?.teams || followedTeams(), show: myCard?.show || "friends",
-      title: myCard?.title || "", banner: myCard?.banner || "", updatedAt: fb.serverTimestamp() };
-    card[kind] = id;
+    const card = cardWith({ [kind]: id });
     await fb.setDoc(fb.doc(db, "cards", user.uid), card);
     myCard = card;
   },
@@ -674,10 +670,10 @@ window.scorelinePicks = {
   // and your title and banner come off your profile. Nothing is deleted: the Marks and items are kept, and agreeing again
   // (setAge) brings them all back, including what you had equipped (saved privately in users/{uid} as heldTitle/heldBanner).
   async withdraw() {
-    const held = { heldTitle: myCard?.title || "", heldBanner: myCard?.banner || "" };
+    const held = { heldTitle: myCard?.title || "", heldBanner: myCard?.banner || "", heldDeco: myCard?.deco || "" };
     await fb.setDoc(fb.doc(db, "users", user.uid), { ...held, updatedAt: fb.serverTimestamp() }, { merge: true });
-    if (held.heldTitle || held.heldBanner) {
-      const card = { avatar: myCard?.avatar || "", bio: myCard?.bio || "", teams: myCard?.teams || followedTeams(), show: myCard?.show || "friends", title: "", banner: "", updatedAt: fb.serverTimestamp() };
+    if (held.heldTitle || held.heldBanner || held.heldDeco) {
+      const card = cardWith({ title: "", banner: "", deco: "" });
       await fb.setDoc(fb.doc(db, "cards", user.uid), card); myCard = card;
     }
     await fb.deleteDoc(fb.doc(db, "ages", user.uid));

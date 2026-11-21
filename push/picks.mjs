@@ -149,7 +149,7 @@ export async function cleanupDeleted(db, admin) {
   if (!alive.size) return;
   let n = 0;
   const gone = (uid) => uid && !alive.has(uid);
-  for (const col of ["ages", "wallets"]) {
+  for (const col of ["ages", "wallets", "pstats"]) {
     const snap = await db.collection(col).select().get().catch(() => null);
     for (const d of snap?.docs || []) if (gone(d.id)) { await d.ref.delete().catch(() => {}); n++; }
   }
