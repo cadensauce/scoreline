@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795215125" />
+  <meta name="build" content="1795215330" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -2801,7 +2801,7 @@
       const [g, p] = await Promise.all([P.game(gid), P.pick(gid)]);
       if (!g) return put('<div class="pick-msg">Picks open closer to the game.</div>');
       const locked = (g.lockAt?.toMillis?.() || 0) <= Date.now();
-      const btn = (t, sd) => { const r = g.rewards?.[sd] ?? 10; return '<button type="button" class="pick-btn' + (p?.side === sd ? " on" : "") + '" data-pick-side="' + sd + '"' + (locked ? " disabled" : "") + "><b>" + ab(t) + "</b>" + (marks ? "<small>" + MARK_SVG(13) + " +" + r + " Marks" + (r >= 25 ? " · Upset bonus" : "") + "</small>" : "") + "</button>"; };
+      const btn = (t, sd) => { const r = g.rewards?.[sd] ?? 10; return '<button type="button" class="pick-btn' + (p?.side === sd ? " on" : "") + '" data-pick-side="' + sd + '"' + (locked ? " disabled" : "") + "><b>" + ab(t) + "</b>" + (marks ? "<small>" + MARK_SVG(13) + " +" + r + " Marks" + (r >= 2 * (g.rewards?.[sd === "home" ? "away" : "home"] ?? r) ? " · Upset bonus" : "") + "</small>" : "") + "</button>"; };
       put('<div class="pick-row" data-gid="' + esc(gid) + '">' + btn(away, "away") + btn(home, "home") + '</div><div class="g-note">' +
         (locked ? "Picks are locked." : p ? "Tap your pick again to clear it. Picks lock at kickoff." : "Free to play. Picks lock at kickoff.") +
         (marks ? " Marks are NOT real money: free points, only earned from predictions and fantasy." : s.teen === false ? " Just for fun: Marks are for ages 13 and up." :
@@ -5255,7 +5255,7 @@
     }
     // Elite season for each main stat, so a QB, a point guard and a shortstop can be compared fairly.
     const PBENCH = { "Passing|YDS": 5000, "Rushing|YDS": 2000, "Receiving|YDS": 1800, YDS: 2000, PTS: 30, H: 220, W: 22, TOT: 150, SACK: 20, REC: 120 };
-    const pmeta = store.get("pmeta3", {});
+    const pmeta = store.get("pmeta4", {});
     async function playerMeta(p) {
       const k = p.lg + "|" + p.id, m = pmeta[k];
       if (m && Date.now() - m.at < 864e5) return m;
@@ -5273,14 +5273,16 @@
         if (C && /football/.test(LEAGUES[p.lg].path) && !/defens/i.test(C.cats[0].name)) C.cats.filter((c) => /^(passing|rushing|receiving)$/i.test(c.name)).forEach((c) => { const i = c.labels.indexOf("YDS"), per = {}; if (i >= 0) c.rows.forEach((r) => { per[r.year] = Math.max(per[r.year] || 0, parseFloat(String(r.stats[i]).replace(/,/g, "")) || 0); }); for (const yr in per) yds[yr] = (yds[yr] || 0) + per[yr]; });   // a traded season has a row per team: take the biggest, never add them twice
         const topYds = Math.max(0, ...Object.values(yds));
         if (topYds) score = Math.min(1.5, topYds / (/passing/i.test(C.cats[0].name) ? 5500 : 2200));
-        else if (C && C.keyIdx != null) {
+        const dc = C?.cats.find((c) => /defens/i.test(c.name)), ti = dc ? dc.labels.indexOf("TOT") : -1;   // defenders: best tackles season (wins over a few trick-play yards)
+        if (ti >= 0) score = Math.max(score, Math.min(1.5, Math.max(0, ...dc.rows.map((r) => parseFloat(String(r.stats[ti]).replace(/,/g, "")) || 0)) / 150));
+        if (!score && C && C.keyIdx != null) {
           const mcat = C.cats[0], lab = mcat.labels[C.keyIdx], bench = PBENCH[mcat.name + "|" + lab] || PBENCH[lab];
           const best = Math.max(0, ...mcat.rows.map((r) => parseFloat(String(r.stats[C.keyIdx]).replace(/,/g, "")) || 0));
           if (bench) score = Math.min(1.5, best / bench);
         }
         out = { active, score };
       }
-      if (out) { pmeta[k] = { ...out, at: Date.now() }; store.set("pmeta3", pmeta); }
+      if (out) { pmeta[k] = { ...out, at: Date.now() }; store.set("pmeta4", pmeta); }
       return out || { active: true, score: 0 };
     }
     async function favMeta(list) {
@@ -5331,7 +5333,7 @@
 
     /* editor */
     let PE = null;   // the draft being edited
-    const PE_MAX = 12;
+    const PE_MAX = 12, PE_MAX_P = 20;   // teams, players
     const BANNER_NAMES = { b_midnight: "Midnight", b_gridiron: "Gridiron", b_hardwood: "Hardwood", b_diamond: "Diamond", b_pitlane: "Pit Lane", b_aurora: "Aurora", b_gold: "Gold", b_sunset: "Golden Hour", b_glacier: "Glacier", b_stadium: "Stadium Lights", b_neon: "Neon Court", b_nightrace: "Night Race", b_galaxy: "Galaxy", b_landscape: "Dusk Peaks", b_champion: "Champion" };
     async function openProfileEditor(focus) {
       const d = PF() ? await PF().load().catch(() => null) : null;
@@ -5367,7 +5369,7 @@
         (c.favTeams.length ? '<div class="pe-chips">' + c.favTeams.map((t, i) => chip(true, 'data-pe-unteam="' + i + '"', esc(t.n) + " <small>" + esc(LEAGUES[t.lg]?.short || LEAGUES[t.lg]?.name || "") + "</small> ✕")).join("") + "</div>" : "") +
         (starred.length ? '<p class="g-note pe-sub">Add from the teams you follow (★):</p><div class="pe-chips">' + starred.filter((k) => { const t = teamFromKey(k); return !c.favTeams.some((x) => x.lg === t.lg && x.id === t.id); }).map((k) => { const t = teamFromKey(k); return chip(false, 'data-pe-team="' + esc(k) + '"', "+ " + esc(teamNames[k] || findName(k) || "Team") + " <small>" + esc(LEAGUES[t.lg]?.short || LEAGUES[t.lg]?.name) + "</small>"); }).join("") + "</div>"
           : '<p class="g-note">Follow teams with the ★ on any game or team page, then pick your favourites here.</p>') +
-        '<div class="section-title" id="pe-players"><b>Favourite players</b><span class="muted">' + c.favPlayers.length + "/" + PE_MAX + "</span></div>" +
+        '<div class="section-title" id="pe-players"><b>Favourite players</b><span class="muted">' + c.favPlayers.length + "/" + PE_MAX_P + "</span></div>" +
         (c.favPlayers.length ? '<div class="pe-chips">' + c.favPlayers.map((p, i) => chip(true, 'data-pe-unplayer="' + i + '"', esc(p.n) + " <small>" + esc(p.t || LEAGUES[p.lg]?.short || "") + "</small> ✕")).join("") + "</div>" : "") +
         '<div class="search pe-search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input data-pe-q type="search" placeholder="Find a player by name" autocomplete="off" value="' + esc(c.q) + '"></div><div data-pe-hits>' + hitsHtml() + "</div>" +
         '<div class="section-title"><b>Who can see your profile</b></div><div class="seg">' + [["friends", "Friends"], ["me", "Only me"]].map(([k, l]) => '<button type="button" data-pe-show="' + k + '" class="' + ((c.show || "friends") === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" +
@@ -5448,7 +5450,7 @@
         else if (PE.favTeams.length >= PE_MAX) return toast("Up to " + PE_MAX + " teams");
         else { t.disabled = true; const info = await teamInfo(k); if (info) PE.favTeams.push(info); }
       } else if (D.pePlayer) {
-        if (PE.favPlayers.length >= PE_MAX) return toast("Up to " + PE_MAX + " players");
+        if (PE.favPlayers.length >= PE_MAX_P) return toast("Up to " + PE_MAX_P + " players");
         const [lg, id] = D.pePlayer.split("|"), h = PE.hits.find((x) => x.lg === lg && x.id === id);
         if (h) PE.favPlayers.push({ lg, id, n: h.n.slice(0, 60), t: h.t.slice(0, 30), p: h.p.slice(0, 8) });
       } else if (D.peUnplayer) PE.favPlayers.splice(Number(D.peUnplayer), 1);
@@ -5458,7 +5460,7 @@
       else if ("peSave" in D) {
         t.disabled = true;
         const out = { avatar: PE.avatar || "", name: (PE.name || "").trim().slice(0, 30), bio: (PE.bio || "").trim().slice(0, 160), theme: PE.theme || "plain", show: PE.show || "friends",
-          sports: PE.sports.slice(0, 5), favTeams: PE.favTeams.slice(0, PE_MAX), favPlayers: PE.favPlayers.slice(0, PE_MAX),
+          sports: PE.sports.slice(0, 5), favTeams: PE.favTeams.slice(0, PE_MAX), favPlayers: PE.favPlayers.slice(0, PE_MAX_P),
           title: PE.teen && PE.owned.has(PE.title) ? PE.title : "", banner: PE.teen && PE.owned.has(PE.banner) ? PE.banner : "", deco: PE.teen && PE.owned.has(PE.deco) ? PE.deco : "" };
         try {
           await PF().save(out); buzz(10); toast("Profile saved"); PE = null; history.back();
@@ -5653,7 +5655,7 @@
        [test on the title text (or a function of the title element), note text or {sport: text, all: text}] */
     const FB_PLAYS = "Every play, newest first. Tap one to see it on the field. <b>1st &amp; 10</b> means 1st try with 10 yards to go for a new set of downs.";
     const DM_SEC = [
-      [/^Your pick/, "<b>Pick the winner.</b> Choose who you think will win before the game starts. If you agreed to the Terms, a right pick earns Marks: 10 for the favourite, 15 for a toss-up, 25 (Upset bonus) for the underdog. Otherwise you still play, just for fun. It's free, and Marks can't be bought or cashed out."],
+      [/^Your pick/, "<b>Pick the winner.</b> Choose who you think will win before the game starts. If you agreed to the Terms, a right pick earns Marks, and the less likely the win, the more it earns: about 8 for a big favourite, 16 for a toss-up and 150 or more for a big underdog (Upset bonus). Otherwise you still play, just for fun. It's free, and Marks can't be bought or cashed out."],
       [/^Highlights/, "<b>Video clips.</b> The big moments from this game. Tap one to watch it on the video site."],
       [/^Track$/, "<b>Live car positions.</b> Each dot is a car in its team's colour, moving around the circuit as it happens. Dots bunched together are cars fighting for position."],
       [/^Pre|^Predict/, "<b>Our pick.</b> Worked out from each team's season so far (points scored and allowed, plus home field). It's an educated guess, not a promise: upsets happen all the time. After the game, it shows how close the pick was."],

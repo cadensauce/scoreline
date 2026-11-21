@@ -21,12 +21,12 @@ const DAY_EVERY_MS = 15 * 60_000;
 const ymd = (d) => d.toISOString().slice(0, 10).replace(/-/g, "");
 const getJSON = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error(r.status + " " + u); return r.json(); };
 
-// Upset bonus: favourite 10, toss-up 15, underdog 25. Without a pre-game win chance: 10 each.
+// Rewards follow the pre-game win chance: about 8 / chance, so the less likely the win, the more it earns.
+// 95% favourite: 8 · toss-up: 16 · 20%: 40 · 5% underdog: 160. Never under 5 or over 200. No win chance yet: 10 each.
+const forChance = (p) => Math.max(5, Math.min(200, Math.round(8 / Math.min(0.98, Math.max(0.02, p)))));
 export function tiers(pHome) {
   if (pHome == null || !Number.isFinite(pHome)) return { home: 10, away: 10 };
-  if (pHome >= 0.6) return { home: 10, away: 25 };
-  if (pHome <= 0.4) return { home: 25, away: 10 };
-  return { home: 15, away: 15 };
+  return { home: forChance(pHome), away: forChance(1 - pHome) };
 }
 
 async function homeChance(lg, id) {

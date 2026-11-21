@@ -55,7 +55,7 @@ service cloud.firestore {
         && (!('theme' in request.resource.data) || request.resource.data.theme in ['', 'plain', 'night', 'field', 'court', 'diamond', 'track'])
         && (!('sports' in request.resource.data) || (request.resource.data.sports is list && request.resource.data.sports.size() <= 5 && request.resource.data.sports.hasOnly(['nfl', 'cfb', 'nba', 'mlb', 'f1'])))
         && (!('favTeams' in request.resource.data) || (request.resource.data.favTeams is list && request.resource.data.favTeams.size() <= 12))
-        && (!('favPlayers' in request.resource.data) || (request.resource.data.favPlayers is list && request.resource.data.favPlayers.size() <= 12))
+        && (!('favPlayers' in request.resource.data) || (request.resource.data.favPlayers is list && request.resource.data.favPlayers.size() <= 20))
         && request.resource.data.avatar is string && request.resource.data.avatar.size() <= 60000
         && (request.resource.data.avatar == '' || request.resource.data.avatar.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$'))
         && request.resource.data.bio is string && request.resource.data.bio.size() <= 160
