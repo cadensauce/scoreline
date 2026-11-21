@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795212193" />
+  <meta name="build" content="1795212967" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1245,6 +1245,10 @@
     .prof-face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; z-index: 1; }
     .prof-face i { font-style: normal; font-size: 24px; }
     .prof-none { padding: 2px 0; }
+    button.prof-tile { border: 0; background: none; padding: 6px 2px; color: inherit; font: inherit; cursor: pointer; border-radius: 14px; transition: background var(--t-fast); }
+    @media (hover: hover) { button.prof-tile:hover { background: var(--panel); } } button.prof-tile:active { transform: scale(.97); }
+    .cs-years { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; margin-bottom: 10px; } .cs-years::-webkit-scrollbar { display: none; } .cs-years button { flex: none; white-space: nowrap; }
+    .cs-head { font-weight: 650; font-size: 15px; margin: 2px 0 8px; }
     .prof-add { border-style: dashed; }
     /* Picture decorations (Shop, d_*): a ring around the photo. Each item sets its own --deco. */
     .deco { position: relative; display: inline-grid; border-radius: 50%; flex: none; }
@@ -4269,13 +4273,51 @@
       if (news.length) h += '<div class="g-sec"><div class="g-label">In the news</div>' + news.map((n) => '<a class="headline" href="' + esc(n.links.web.href) + '" target="_blank" rel="noopener" data-ext><b>' + esc(n.headline) + "</b>" + (n.description ? "<small>" + esc(n.description) + "</small>" : "") + "</a>").join("") + "</div>";
       setBody(v, name, h);
     }
+    /* Career stats: every season from ESPN, one tap each. Retired players open on their best season. */
+    const slugName = (s) => String(s || "").split("-").map((w) => (w ? w[0].toUpperCase() + w.slice(1) : "")).join(" ");
+    function careerOf(d, retired) {
+      const cats = (d?.categories || []).filter((c) => !/postseason|playoff/i.test((c.name || "") + " " + (c.displayName || "")) && c.labels?.length && c.statistics?.length).map((c) => ({
+        name: c.displayName || c.name || "Stats", labels: c.labels, full: c.displayNames || c.labels,
+        rows: c.statistics.map((r) => ({ year: String(r.season?.year ?? ""), label: r.season?.displayName || String(r.season?.year ?? ""), team: slugName(r.teamSlug), stats: r.stats || [] })).filter((r) => r.year),
+        totals: Array.isArray(c.totals) && c.totals.length === c.labels.length ? c.totals : null,
+      }));
+      if (!cats.length) return null;
+      const years = [...new Set(cats.flatMap((c) => c.rows.map((r) => r.year)))].sort((a, b) => b - a);
+      const label = (y) => cats.flatMap((c) => c.rows).find((r) => r.year === y)?.label || y;
+      // Best season: the biggest number in the main stat of the player's first category (yards, points, hits, wins, tackles).
+      const main = cats[0], key = ["YDS", "PTS", "H", "W", "TOT", "REC", "SACK"].map((l) => main.labels.indexOf(l)).find((i) => i >= 0);
+      let best = "", bestVal = -1;
+      if (key != null) for (const r of main.rows) { const n = parseFloat(String(r.stats[key]).replace(/,/g, "")); if (n > bestVal) { bestVal = n; best = r.year; } }
+      return { cats, years, label, best, key: key != null ? main.full[key] || main.labels[key] : "", pick: retired && best ? best : years[0], retired };
+    }
+    function careerHtml(C, y) {
+      const chip = (val, text) => '<button type="button" data-cyear="' + val + '" class="' + (val === y ? "active" : "") + '">' + esc(text) + "</button>";
+      const head = y === "career" ? "Career totals" : (y === C.best ? (C.retired ? "Best season · " : "Season · ") + C.label(y) : "Season · " + C.label(y));
+      const tiles = (labels, full, stats) => '<div class="tiles">' + labels.map((l, i) => stats[i] === "" || stats[i] == null ? "" : '<div class="tile" title="' + esc(full[i] || l) + '"><b>' + esc(stats[i]) + "</b><small>" + esc(l) + "</small></div>").join("") + "</div>";
+      const body = C.cats.map((c) => {
+        if (y === "career") return c.totals ? '<div class="ldr-cat">' + esc(c.name) + "</div>" + tiles(c.labels, c.full, c.totals) : "";
+        const rows = c.rows.filter((r) => r.year === y);
+        return rows.map((r) => '<div class="ldr-cat">' + esc(c.name) + (rows.length > 1 || r.team ? ' <span class="muted">· ' + esc(r.team) + "</span>" : "") + "</div>" + tiles(c.labels, c.full, r.stats)).join("");
+      }).join("");
+      return '<div class="g-label">Career <span class="muted">· ' + esc(plural(C.years.length, "season")) + "</span></div>" +
+        '<div class="seg chips cs-years" data-noswipe>' + (C.best ? chip(C.best, "★ Best") : "") + (C.cats.some((c) => c.totals) ? chip("career", "Career") : "") + C.years.map((yy) => chip(yy, C.label(yy))).join("") + "</div>" +
+        '<div class="cs-head">' + esc(head) + (y === C.best && C.key ? ' <span class="muted">· most ' + esc(C.key.toLowerCase()) + "</span>" : "") + "</div>" + (body || '<p class="muted">No stats for this season.</p>');
+    }
+    document.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-cyear]"); if (!b) return;
+      const v = views.find((x) => x.el.contains(b)); if (!v?.career) return;
+      const box = b.closest("[data-career]"), sx = box.querySelector(".cs-years")?.scrollLeft || 0;
+      box.innerHTML = careerHtml(v.career, b.dataset.cyear); buzz(6);
+      const strip = box.querySelector(".cs-years"); if (strip) strip.scrollLeft = sx;
+    });
     async function openPlayer(lg, id) {
       const v = { kind: "player", key: "player|" + lg + "|" + id };
       if (!pushView(v)) return; v.el.dataset.lg = lg;
       const base = "https://site.web.api.espn.com/apis/common/v3/sports/" + LEAGUES[lg].path + "/athletes/" + id;
-      const [info, ov] = await Promise.all([getJSON(base).catch(() => null), getJSON(base + "/overview").catch(() => null)]);
+      const [info, ov, cs] = await Promise.all([getJSON(base).catch(() => null), getJSON(base + "/overview").catch(() => null), getJSON(base + "/stats").catch(() => null)]);
       if (!v.el.isConnected) return;
       const a = info?.athlete;
+      v.career = careerOf(cs, a?.active === false);
       if (!a) return setBody(v, "Player", '<div class="error">Couldn\'t load this player.</div>');
       let h = '<div class="p-head">' + (a.headshot?.href ? '<img src="' + esc(a.headshot.href) + '" alt="">' : "") + "<div><b>" + esc(a.displayName) + "</b><small>" +
         esc([a.team?.abbreviation || a.team?.displayName, a.jersey ? "#" + a.jersey : "", a.position?.abbreviation].filter(Boolean).join(" · ")) + "</small><small>" +
@@ -4304,6 +4346,7 @@
           }).join("");
         })() + "</div>";
       }
+      if (v.career) h += '<div class="g-sec" data-career>' + careerHtml(v.career, v.career.pick) + "</div>";
       const G = ov?.gameLog, gs = G?.statistics?.[0];
       if (gs?.events?.length) {
         const pick = ["YDS", "PTS", "H", "K"].map((l) => gs.labels.indexOf(l)).find((i) => i >= 0) ?? 0;
@@ -5119,8 +5162,8 @@
       const add = (what) => (d.mine ? '<button class="pill-btn prof-add" type="button" data-editprofile="' + what + '">+ Add</button>' : "");
       const sec = (title, what, inner, n) => '<div class="section-title"><b>' + title + "</b>" + (n ? '<span class="muted">' + n + "</span>" : "") + (d.mine && inner ? '<button class="see-all" type="button" data-editprofile="' + what + '">Edit</button>' : "") + "</div>" + (inner || '<div class="prof-none">' + (d.mine ? add(what) : '<span class="muted">None picked yet.</span>') + "</div>");
       const sports = c.sports.length ? '<div class="prof-sports">' + c.sports.map((k) => '<span class="prof-sport">' + (ICONS[k] || "") + esc(SPORT_NAMES[k] || k) + "</span>").join("") + "</div>" : "";
-      const teams = c.favTeams.length ? '<div class="prof-tiles">' + c.favTeams.map((t) => '<div class="prof-tile"><span class="prof-logo">' + (teamLogo(t) ? '<img src="' + esc(teamLogo(t)) + '" alt="" loading="lazy">' : esc((t.a || t.n || "?").slice(0, 3))) + "</span><b>" + esc(t.n || "") + "</b><small>" + esc((LEAGUES[t.lg]?.short || LEAGUES[t.lg]?.name || "").toString()) + "</small></div>").join("") + "</div>" : "";
-      const players = c.favPlayers.length ? '<div class="prof-tiles">' + c.favPlayers.map((p) => { const h = profHeadshot(p.lg, p.id); return '<div class="prof-tile"><span class="prof-face">' + (h ? '<img src="' + esc(h) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + "<i>" + esc((p.n || "?")[0]) + "</i></span><b>" + esc(p.n || "") + "</b><small>" + esc([p.t, p.p].filter(Boolean).join(" · ")) + "</small></div>"; }).join("") + "</div>" : "";
+      const teams = c.favTeams.length ? '<div class="prof-tiles">' + c.favTeams.map((t) => '<button type="button" class="prof-tile" data-team="' + esc(t.lg + "|" + t.id) + '"><span class="prof-logo">' + (teamLogo(t) ? '<img src="' + esc(teamLogo(t)) + '" alt="" loading="lazy">' : esc((t.a || t.n || "?").slice(0, 3))) + "</span><b>" + esc(t.n || "") + "</b><small>" + esc((LEAGUES[t.lg]?.short || LEAGUES[t.lg]?.name || "").toString()) + "</small></button>").join("") + "</div>" : "";
+      const players = c.favPlayers.length ? '<div class="prof-tiles">' + c.favPlayers.map((p) => { const h = profHeadshot(p.lg, p.id); return '<button type="button" class="prof-tile" ' + (p.lg === "f1" ? 'data-driver="' + esc(p.id) + '"' : 'data-player="' + esc(p.lg + "|" + p.id) + '"') + '><span class="prof-face">' + (h ? '<img src="' + esc(h) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + "<i>" + esc((p.n || "?")[0]) + "</i></span><b>" + esc(p.n || "") + "</b><small>" + esc([p.t, p.p].filter(Boolean).join(" · ")) + "</small></button>"; }).join("") + "</div>" : "";
       return '<div class="prof">' + banner +
         '<div class="prof-head">' + pAvatar(c, un, "xl") + '<div class="prof-id"><b>' + esc(c.name || "@" + un) + roleTag(d.role) + "</b>" + titleTag(c.title) + "<small>@" + esc(un) + (d.mine ? " · " + ((c.show || "friends") === "me" ? "Only you can see this" : "Friends can see this") : "") + "</small></div></div>" +
         (acts ? '<div class="prof-acts">' + acts + "</div>" : "") +
