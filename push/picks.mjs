@@ -174,7 +174,7 @@ export const SHOP = [
   ["b_midnight", "banner", "Midnight", 50], ["b_gridiron", "banner", "Gridiron", 150], ["b_hardwood", "banner", "Hardwood", 150],
   ["b_diamond", "banner", "Diamond", 150], ["b_pitlane", "banner", "Pit Lane", 200], ["b_aurora", "banner", "Aurora", 300], ["b_gold", "banner", "Gold", 500],
   ["b_sunset", "banner", "Golden Hour", 200], ["b_glacier", "banner", "Glacier", 200], ["b_stadium", "banner", "Stadium Lights", 250], ["b_neon", "banner", "Neon Court", 300],
-  ["b_nightrace", "banner", "Night Race", 350], ["b_galaxy", "banner", "Galaxy", 400], ["b_champion", "banner", "Champion", 750],
+  ["b_nightrace", "banner", "Night Race", 350], ["b_galaxy", "banner", "Galaxy", 400], ["b_landscape", "banner", "Dusk Peaks", 300], ["b_champion", "banner", "Champion", 750],
 ];
 export async function seedShop(db) {
   const batch = db.batch();
