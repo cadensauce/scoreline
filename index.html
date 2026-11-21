@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795215667" />
+  <meta name="build" content="1795203254" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1086,6 +1086,121 @@
     .card-teams { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s2); }
     .card-teams span { background: var(--panel); border-radius: var(--r-pill); padding: 6px 12px; font-size: var(--fs-sm); }    .poss { width: 14px; height: 14px; flex: none; color: var(--text); align-self: center; }
     .sit-mini { display: block; font-size: var(--fs-xs); color: var(--muted); font-weight: 500; }  </style>
+<style id="look-v3">
+    /* ===== Look v3: modern, simple, calm. Layered on top of the rules above (same tokens, later wins). =====
+       Phones: grouped rounded lists, a cleaner bottom bar. Computers: a left sidebar, real cards, no zoom. */
+    :root {
+      --panel: #17171a; --panel-2: #1e1e22; --panel-3: #2a2a2f;
+      --line: rgba(255, 255, 255, .065); --line-hi: rgba(255, 255, 255, .12);
+      --muted: #96969e;
+      --radius: 18px; --r-in: 12px;
+      --lift: 0 1px 0 rgba(255, 255, 255, .03) inset;
+      --t-fast: .16s; --t: .24s;
+      --side: 232px;
+    }
+    :root[data-theme="light"] { --panel-2: #f1f1f0; --lift: 0 1px 2px rgba(16, 16, 18, .05), 0 6px 20px rgba(16, 16, 18, .04); }
+    @media (prefers-color-scheme: light) { :root[data-theme="system"] { --panel-2: #f1f1f0; --lift: 0 1px 2px rgba(16, 16, 18, .05), 0 6px 20px rgba(16, 16, 18, .04); } }
+    body { font-feature-settings: "cv11", "ss01"; text-rendering: optimizeLegibility; }
+    .score, .g-score, .countdown, .st-tbl td.n, .dchip b { font-variant-numeric: tabular-nums; }
+
+    /* Headings and section labels */
+    .bar h1 { font-size: 30px; font-weight: 700; letter-spacing: -.025em; }
+    .section-title { font: 600 11.5px/1.2 var(--display); letter-spacing: .09em; color: var(--muted); margin: 30px 0 10px; }
+    .see-all { font-size: 13px; border-radius: 999px; padding: 6px 10px; margin-right: -10px; }
+    .see-all:hover { background: var(--panel); }
+
+    /* Surfaces: one radius, one border, a hint of depth */
+    .panel, .list, .nlist { border-radius: var(--radius); border: 1px solid var(--line); box-shadow: var(--lift); }
+    .panel { padding: 18px 20px; }
+    .prow { border: 1px solid var(--line); box-shadow: var(--lift); transition: background var(--t-fast), border-color var(--t-fast); }
+    @media (hover: hover) { .prow:hover { background: var(--panel-2); border-color: var(--line-hi); } }
+
+    /* Controls: even heights, soft press */
+    .pill-btn { min-height: 36px; padding: 7px 15px; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .pill-btn, .seg button, .dchip, .btab, .tab, .sheet-btn, .icon-btn, .opt, .prow { transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast), transform var(--t-fast) var(--ease); }
+    .pill-btn:active, .seg button:active, .icon-btn:active, .sheet-btn:active, .prow:active, .btab:active { transform: scale(.97); }
+    .seg { padding: 4px; border: 1px solid var(--line); gap: 2px; }
+    .seg button { padding: 6px 14px; font-size: 13px; }
+    .seg button.active { background: var(--panel-3); box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+    .search { height: 44px; border: 1px solid var(--line); }
+    .search:focus-within { border-color: var(--line-hi); box-shadow: 0 0 0 4px var(--glow); }
+    .icon-btn { border: 1px solid var(--line); width: 40px; height: 40px; }
+    .dchip { border: 1px solid var(--line); border-radius: 14px; }
+    .dchip.on { border-color: transparent; }
+    .switch { width: 44px; height: 26px; } .switch::after { width: 20px; height: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); }
+    .toast { border: 1px solid var(--line-hi); padding: 11px 18px; }
+
+    /* Sheets: rounded handle edge, softer backdrop */
+    .sheet-bg { background: rgba(0, 0, 0, .55); }
+    .sheet-bar { height: 56px; padding: 0 10px; }
+    .sheet-title { font-size: 19px; font-weight: 700; letter-spacing: -.02em; }
+    .sheet-body { padding-left: 16px; padding-right: 16px; }
+
+    /* Phone */
+    @media (max-width: 720px) {
+      .bar h1 { font-size: 28px; }
+      .getapp-btn { font-size: 0; gap: 0; padding: 10px; min-height: 36px; }   /* icon only, clear of the centred name */
+      .section-title { margin: 24px 0 8px; font-size: 11.5px; }
+      main { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+      /* score lists: one rounded group per section, rows inside */
+      .grid { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--lift); overflow: hidden; }
+      .grid .card { padding: 13px 14px; border-top: 1px solid var(--line); }
+      .grid .card:first-child { border-top: 0; }
+      .grid .card:active { background: var(--panel-2); }
+      .grid .card-head { padding-left: 10px; border-left: 1px solid var(--line); }
+      .grid .skel { border-radius: 0; height: 76px; }
+      html.heat .grid { background: none; border: 0; box-shadow: none; overflow: visible; }
+      /* bottom bar: calmer, with a soft pill behind the active icon */
+      .btabs { padding: 6px 4px; border-radius: 26px; border-color: var(--line); box-shadow: 0 12px 36px rgba(0, 0, 0, .4), var(--lift); }
+      .btab { gap: 4px; padding: 5px 0 3px; font-size: 10px; font-weight: 600; letter-spacing: .1px; }
+      .btab svg { position: relative; z-index: 1; width: 21px; height: 21px; }
+      .btab::before { content: ""; position: absolute; top: 2px; left: 50%; width: 40px; height: 28px; margin-left: -20px; border-radius: 14px; background: var(--panel-3); opacity: 0; transform: scale(.6); transition: opacity var(--t) var(--ease), transform var(--t) var(--ease); }
+      .btab.active::before { opacity: 1; transform: none; }
+      .btab .dot { z-index: 2; }
+      .sheet { border-radius: 22px 22px 0 0; box-shadow: 0 -10px 40px rgba(0, 0, 0, .35); }
+      .panel { padding: 16px; }
+    }
+
+    /* Tablets and computers: proper cards in an even grid, no shrink-zoom */
+    @media (min-width: 721px) {
+      body { zoom: 1; }
+      .grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+      .grid .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--lift); }
+      .grid .card:hover { background: var(--panel-2); border-color: var(--line-hi); transform: translateY(-1px); }
+      .grid .card:active { transform: scale(.99); }
+      .grid .card { transition: background var(--t-fast), border-color var(--t-fast), transform var(--t) var(--ease); }
+      .grid .card-foot { margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+      .grid .skel { height: 112px; }
+      .top { background: color-mix(in srgb, var(--bg) 84%, transparent); -webkit-backdrop-filter: saturate(1.4) blur(16px); backdrop-filter: saturate(1.4) blur(16px); }
+      .top-inner { height: 64px; }
+      .tabs { border: 1px solid var(--line); }
+      .tab { padding: 7px 15px; font-size: 14px; }
+      .sheet { box-shadow: -24px 0 64px rgba(0, 0, 0, .35); width: min(520px, 100%); }
+      .sheet.wide { width: 100%; box-shadow: none; }
+    }
+
+    /* Computers: left sidebar instead of header tabs, content centred in the space that's left */
+    @media (min-width: 1024px) {
+      .tabs { display: none; }
+      .top-inner { max-width: none; padding: 0 24px 0 20px; }
+      .brand { width: calc(var(--side) - 20px); font-size: 17px; letter-spacing: .06em; }
+      .btabs { display: flex; flex-direction: column; gap: 2px; position: fixed; top: 64px; left: 0; bottom: 0; width: var(--side); z-index: 15; padding: 16px 12px 24px; overflow-y: auto; scrollbar-width: none; border-right: 1px solid var(--line); background: var(--bg); }
+      .btabs::-webkit-scrollbar { display: none; }
+      .btab { flex: none; display: flex; flex-direction: row; align-items: center; gap: 12px; width: 100%; border: 0; background: none; padding: 10px 12px; border-radius: 12px; color: var(--muted); font-size: 14.5px; font-weight: 550; text-align: left; position: relative; }
+      .btab svg { width: 20px; height: 20px; flex: none; }
+      .btab:hover { background: var(--panel); color: var(--text); }
+      .btab.active { background: var(--panel-2); color: var(--text); font-weight: 650; }
+      .btab.active::after { content: ""; position: absolute; left: -12px; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--text); }
+      .btab .dot { position: static; margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: var(--live); }
+      main, footer { margin-left: var(--side); max-width: none; padding-left: max(40px, calc((100vw - var(--side) - 1240px) / 2)); padding-right: max(40px, calc((100vw - var(--side) - 1240px) / 2)); }
+      main { padding-top: 28px; }
+      .bar h1 { font-size: 34px; }
+      .grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+      .section-title { margin-top: 36px; }
+      .toast { left: calc(50% + var(--side) / 2); }
+    }
+    @media (min-width: 1600px) { :root { --side: 256px; } }
+  </style>
 </head>
 <body>
   <header class="top">
