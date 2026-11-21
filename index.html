@@ -4358,7 +4358,7 @@
       const years = [...new Set(cats.flatMap((c) => c.rows.map((r) => r.year)))].sort((a, b) => b - a);
       const label = (y) => cats.flatMap((c) => c.rows).find((r) => r.year === y)?.label || y;
       // Best season: the biggest number in the main stat of the player's first category (yards, points, hits, wins, tackles).
-      const main = cats[0], key = ["YDS", "PTS", "H", "W", "TOT", "REC", "SACK"].map((l) => main.labels.indexOf(l)).find((i) => i >= 0);
+      const main = cats[0], key = (/defens/i.test(main.name) ? ["TOT", "SACK", "INT"] : ["YDS", "PTS", "H", "W", "TOT", "REC", "SACK"]).map((l) => main.labels.indexOf(l)).find((i) => i >= 0);   // defenders: tackles, not return yards
       let best = "", bestVal = -1;
       if (key != null) for (const r of main.rows) { const n = parseFloat(String(r.stats[key]).replace(/,/g, "")); if (n > bestVal) { bestVal = n; best = r.year; } }
       return { cats, years, label, best, keyIdx: key, key: key != null ? main.full[key] || main.labels[key] : "", pick: retired && best ? best : years[0], retired };
@@ -5255,7 +5255,7 @@
     }
     // Elite season for each main stat, so a QB, a point guard and a shortstop can be compared fairly.
     const PBENCH = { "Passing|YDS": 5000, "Rushing|YDS": 2000, "Receiving|YDS": 1800, YDS: 2000, PTS: 30, H: 220, W: 22, TOT: 150, SACK: 20, REC: 120 };
-    const pmeta = store.get("pmeta", {});
+    const pmeta = store.get("pmeta2", {});
     async function playerMeta(p) {
       const k = p.lg + "|" + p.id, m = pmeta[k];
       if (m && Date.now() - m.at < 864e5) return m;
@@ -5269,14 +5269,18 @@
         const [info, st] = await Promise.all([getJSON(base).catch(() => null), getJSON(base + "/stats").catch(() => null)]);
         const active = info?.athlete ? info.athlete.active !== false : true, C = careerOf(st, !active);
         let score = 0;
-        if (C && C.keyIdx != null) {
+        const yds = {};   // football: total yards in a season (passing + rushing + receiving), so a running QB counts fully
+        if (C && /football/.test(LEAGUES[p.lg].path) && !/defens/i.test(C.cats[0].name)) C.cats.filter((c) => /^(passing|rushing|receiving)$/i.test(c.name)).forEach((c) => { const i = c.labels.indexOf("YDS"); if (i >= 0) c.rows.forEach((r) => { yds[r.year] = (yds[r.year] || 0) + (parseFloat(String(r.stats[i]).replace(/,/g, "")) || 0); }); });
+        const topYds = Math.max(0, ...Object.values(yds));
+        if (topYds) score = Math.min(1.5, topYds / (/passing/i.test(C.cats[0].name) ? 5500 : 2200));
+        else if (C && C.keyIdx != null) {
           const mcat = C.cats[0], lab = mcat.labels[C.keyIdx], bench = PBENCH[mcat.name + "|" + lab] || PBENCH[lab];
           const best = Math.max(0, ...mcat.rows.map((r) => parseFloat(String(r.stats[C.keyIdx]).replace(/,/g, "")) || 0));
           if (bench) score = Math.min(1.5, best / bench);
         }
         out = { active, score };
       }
-      if (out) { pmeta[k] = { ...out, at: Date.now() }; store.set("pmeta", pmeta); }
+      if (out) { pmeta[k] = { ...out, at: Date.now() }; store.set("pmeta2", pmeta); }
       return out || { active: true, score: 0 };
     }
     async function favMeta(list) {
