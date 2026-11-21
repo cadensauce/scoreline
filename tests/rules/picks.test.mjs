@@ -271,3 +271,9 @@ test("stats: you and your friends can read them; strangers and 'Only me' profile
   await fullCard("teen", { show: "me" });
   await assertFails(getDoc(doc(as("pal"), "pstats/teen")));
 });
+test("roles: anyone signed in can see a badge; nobody can give themselves one", async () => {
+  await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "roles/teen"), { role: "owner" }));
+  await assertSucceeds(getDoc(doc(as("other"), "roles/teen")));
+  await assertFails(setDoc(doc(as("other"), "roles/other"), { role: "owner" }));
+  await assertFails(updateDoc(doc(as("teen"), "roles/teen"), { role: "admin" }));
+});

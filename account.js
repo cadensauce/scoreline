@@ -298,6 +298,12 @@ function refreshAccountSheet() {
   setBody(v, user ? "Account" : "Scoreline account", h);
 }
 const errBox = (el, msg) => { const b = el.closest(".sheet, [data-social]")?.querySelector("[data-err]"); if (b) b.textContent = msg; };
+const roleCache = {};   // roles/{uid}: the Owner badge, set only by the worker
+async function roleOf(uid) {
+  if (uid in roleCache) return roleCache[uid];
+  const r = await fb.getDoc(fb.doc(db, "roles", uid)).then((d) => d.data()?.role || "").catch(() => "");
+  return (roleCache[uid] = /^[a-z]{1,20}$/.test(r) ? r : "");
+}
 const cardCache = {};   // friends' profiles for the Social list, kept for 5 minutes
 async function friendCard(uid) {
   if (cardCache[uid] && Date.now() - cardCache[uid].at < 300000) return cardCache[uid].c;
@@ -313,10 +319,10 @@ window.scorelineSocial = {
     if (!user || pending2) return '<div class="panel"><b>Friends and messages</b><p class="muted">Sign in to add friends, see requests and message your friends.</p><button type="button" class="pill-btn tos-go" data-social-signin>Sign in</button></div>';
     const F = friendState;
     await Promise.all([...F.friends, ...F.incoming.map((r) => r.from), ...F.outgoing.map((r) => r.to)].map(nameOf));
-    await Promise.all(F.friends.map(friendCard));
+    await Promise.all([...F.friends.map(friendCard), ...F.friends.map(roleOf), roleOf(user.uid)]);
     const me = cardWithPlain(myCard || {}), un = profile?.username || "";
-    const person = (uid, sub, actions) => { const fc = cardCache[uid]?.c; return '<div class="opt soc-row"><span class="soc-who" data-viewcard="' + esc(uid) + '" role="button" tabindex="0">' + avatarHtml(fc?.avatar, names[uid], "", fc?.deco) + "<span><b>" + esc(fc?.name || "@" + (names[uid] || "…")) + "</b><small>" + (fc?.name ? "@" + esc(names[uid] || "") + (sub ? " · " : "") : "") + (sub || "") + '</small></span></span><span class="acct-acts">' + actions + "</span></div>"; };
-    return '<div class="soc-me bn-theme t-' + esc(me.theme || "plain") + bnCls(me.banner) + '"><span class="soc-who" data-viewcard="' + esc(user.uid) + '" role="button" tabindex="0">' + avatarHtml(me.avatar, un, "lg", me.deco) + "<span><b>" + esc(me.name || "@" + un) + "</b><small>@" + esc(un) + " · " + F.friends.length + (F.friends.length === 1 ? " friend" : " friends") + '</small></span></span><button class="pill-btn" type="button" data-editprofile>Edit profile</button></div>' +
+    const person = (uid, sub, actions) => { const fc = cardCache[uid]?.c; return '<div class="opt soc-row"><span class="soc-who" data-viewcard="' + esc(uid) + '" role="button" tabindex="0">' + avatarHtml(fc?.avatar, names[uid], "", fc?.deco) + "<span><b>" + esc(fc?.name || "@" + (names[uid] || "…")) + roleTag(roleCache[uid]) + "</b><small>" + (fc?.name ? "@" + esc(names[uid] || "") + (sub ? " · " : "") : "") + (sub || "") + '</small></span></span><span class="acct-acts">' + actions + "</span></div>"; };
+    return '<div class="soc-me bn-theme t-' + esc(me.theme || "plain") + bnCls(me.banner) + '"><span class="soc-who" data-viewcard="' + esc(user.uid) + '" role="button" tabindex="0">' + avatarHtml(me.avatar, un, "lg", me.deco) + "<span><b>" + esc(me.name || "@" + un) + roleTag(roleCache[user.uid]) + "</b><small>@" + esc(un) + " · " + F.friends.length + (F.friends.length === 1 ? " friend" : " friends") + '</small></span></span><button class="pill-btn" type="button" data-editprofile>Edit profile</button></div>' +
       '<div class="section-title"><b>Add a friend</b></div><form class="acct-add" data-addf><input placeholder="Their username" maxlength="21" autocomplete="off" autocapitalize="none" spellcheck="false"><button class="pill-btn" type="submit">Add</button></form><div class="acct-err" data-err></div>' +
       (F.incoming.length ? '<div class="section-title"><b>Friend requests</b><span class="muted">' + F.incoming.length + "</span></div><div class=\"panel\">" + F.incoming.map((r) => person(r.from, "Wants to be friends", '<button class="pill-btn" type="button" data-accept="' + esc(r.id) + '">Accept</button><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '" aria-label="Decline">✕</button>')).join("") + "</div>" : "") +
       '<div class="section-title"><b>Friends</b><span class="muted">' + F.friends.length + '</span></div><div class="panel">' + (F.friends.length ? F.friends.slice().sort((a, b) => (names[a] || "").localeCompare(names[b] || "")).map((uid) => person(uid, "", '<button class="pill-btn" type="button" data-chat="' + esc(uid) + '">Message</button><button class="pill-btn" type="button" data-unfriend="' + esc(uid) + '" aria-label="Remove friend">✕</button>')).join("") : '<div class="g-note">No friends yet. Add someone by their username above.</div>') + "</div>" +
@@ -420,14 +426,15 @@ window.scorelineProfile = {
     uid = uid || user.uid;
     const mine = uid === user.uid;
     if (!names[uid]) await nameOf(uid);
-    const [c, p, s] = await Promise.all([
+    const [c, p, s, r] = await Promise.all([
       mine ? Promise.resolve(myCard) : fb.getDoc(fb.doc(db, "cards", uid)).then((d) => (d.exists() ? d.data() : null)).catch(() => null),
       fb.getDoc(fb.doc(db, "profiles", uid)).then((d) => d.data() || null).catch(() => null),
       fb.getDoc(fb.doc(db, "pstats", uid)).then((d) => d.data() || null).catch(() => null),
+      roleOf(uid),
     ]);
     const isFriend = friendState.friends.includes(uid);
     return { uid, mine, isFriend, username: names[uid] || p?.username || "", joined: p?.createdAt?.toMillis?.() || 0,
-      card: c ? cardWithPlain(c) : null, stats: s, friends: mine ? friendState.friends.length : null };
+      card: c ? cardWithPlain(c) : null, stats: s, role: r, friends: mine ? friendState.friends.length : null };
   },
   async save(changes) { const card = cardWith(changes); await fb.setDoc(fb.doc(db, "cards", user.uid), card); myCard = card; window.dispatchEvent(new Event("scoreline-social")); },
   photo: (file) => shrinkPhoto(file),

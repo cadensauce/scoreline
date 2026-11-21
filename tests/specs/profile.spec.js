@@ -18,7 +18,7 @@ async function setup(page, { stats = true } = {}) {
       me: () => "me",
       load: async (uid) => (uid === "ghost" ? { uid, mine: false, isFriend: false, username: "ghost", joined: 0, card: null, stats: null }
         : uid && uid !== "me" ? { uid, mine: false, isFriend: true, username: "pal", joined: Date.now() - 9 * 864e5, card: pal, stats: stats ? { picks: { w: 7, l: 3, streak: 2, best: 4 }, fantasy: { n: 2, top3: 1 }, leagues: 1, friends: 4, marksEarned: 120, at: Date.now() } : null }
-        : { uid: "me", mine: true, isFriend: false, username: "cadenbinglefry", joined: Date.now() - 45 * 864e5, card: JSON.parse(JSON.stringify(card)), stats: stats ? { picks: { w: 1, l: 0, streak: 1, best: 1 }, fantasy: { n: 0, top3: 0 }, leagues: 0, friends: 1, marksEarned: 10, at: Date.now() } : null, friends: 1 }),
+        : { uid: "me", mine: true, isFriend: false, role: "owner", username: "cadenbinglefry", joined: Date.now() - 45 * 864e5, card: JSON.parse(JSON.stringify(card)), stats: stats ? { picks: { w: 1, l: 0, streak: 1, best: 1 }, fantasy: { n: 0, top3: 0 }, leagues: 0, friends: 1, marksEarned: 10, at: Date.now() } : null, friends: 1 }),
       save: async (c) => { W.saved.push(c); },
       photo: async () => "",
       pool: async (lg) => (lg === "nfl" ? { "4361741": { n: "Brock Purdy", t: "SF", p: "QB" }, "3139477": { n: "Patrick Mahomes", t: "KC", p: "QB" } } : {}),
@@ -39,6 +39,7 @@ test("profile: your page shows name, bio, stats and favourites", async ({ page }
   const s = sheet(page);
   await expect(s.locator(".prof-id")).toContainText("Caden");
   await expect(s.locator(".prof-id")).toContainText("@cadenbinglefry");
+  await expect(s.locator(".prof-id .role-tag")).toHaveText("Owner");
   await expect(s).toContainText("Niners all day");
   await expect(s.locator(".prof-stat")).toHaveCount(9);
   await expect(s).toContainText("1–0");
