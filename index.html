@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795213882" />
+  <meta name="build" content="1795214106" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1203,6 +1203,20 @@
       .toast { left: calc(50% + var(--side) / 2); }
     }
     @media (min-width: 1600px) { :root { --side: 256px; } }
+    /* ---- Plain and clear: normal sentence-case headings instead of small spaced-out capitals ---- */
+    .section-title { font: 700 18px/1.25 var(--display); letter-spacing: -.01em; text-transform: none; color: var(--text); margin: 28px 0 10px; }
+    .section-title .muted, .section-title > span:not(.ldot) { font: 500 13px var(--display); letter-spacing: 0; text-transform: none; color: var(--muted); }
+    .g-label { font: 650 16px/1.3 var(--display); letter-spacing: -.01em; text-transform: none; color: var(--text); margin-bottom: 12px; }
+    .g-label .muted { font-weight: 500; font-size: 13px; }
+    .ldr-cat { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); margin: 12px 0 6px; }
+    .headline-k { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+    .st-btn { margin-left: auto; }
+    @media (max-width: 720px) {
+      .section-title { font-size: 17px; margin: 24px 0 8px; }
+      .grid .card-head .status { white-space: nowrap; font-size: 12.5px; }
+      .grid .card-head .status.live { display: inline-flex; align-items: center; gap: 5px; }
+      .bar-row { flex-wrap: nowrap; }
+    }
 
     /* ---- Profiles ---- */
     /* Free themes: quiet monochrome patterns (work in light and dark). A Shop banner (.bn.b_*) covers them. */
@@ -1918,7 +1932,7 @@
       const sBtn = paged ? '<button type="button" class="icon-btn' + (open ? " on" : "") + '" data-searchtoggle aria-label="Search ' + esc(L.short || L.name) + ' teams"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>' : "";
       const hBtn = key !== "f1" ? '<button type="button" class="icon-btn' + (HEAT ? " on" : "") + '" data-heat aria-label="' + (HEAT ? "Show as list" : "Show as heat map") + '" title="' + (HEAT ? "List" : "Heat map") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2" opacity=".55"/><rect x="3" y="13" width="8" height="8" rx="2" opacity=".3"/><rect x="13" y="13" width="8" height="8" rx="2" opacity=".75"/></svg></button>' : "";
       return '<div class="bar"><h1>' + esc(title) + "</h1>" + hBtn + sBtn + "</div>" + headlineHtml(key) + (open ? search : "") +
-        '<div class="bar-row">' + liveBtn + (paged ? '<button type="button" class="pill-btn st-pill" data-standings="' + key + '">' + (key === "cfb" ? "Standings · Top 25" : "Standings") + "</button>" : "") + "</div>" + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
+        '<div class="bar-row">' + liveBtn + (paged ? '<button type="button" class="icon-btn st-btn" data-standings="' + key + '" aria-label="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '" title="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button>' : "") + "</div>" + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
         (HEAT ? '<div class="heat-key"><span>One-sided</span><i></i><span>Close game</span></div>' : "") + (HEAT ? dm("<b>Reading the heat map.</b> Each tile is one game. The brighter the tile, the closer the game is to a coin flip (from win probability), so the most exciting games stand out. Upcoming games use the pre-game odds; finished games are dimmed. The ball icon shows who has it.") : "");
     }
 
@@ -2002,7 +2016,7 @@
       if (pins().includes("f1")) try { f1 = await getJSON(API + LEAGUES.f1.path + "/scoreboard"); cache.f1 = f1; } catch {}
       if (state.tab !== "home") return;
       let anyLive = false;
-      let html = '<div data-home>' + barHtml("Today", null) + quoteBox() + '<div data-home-picks>' + hpHtml + "</div>";
+      let html = '<div data-home>' + barHtml("Today", null) + '<div data-home-picks>' + hpHtml + "</div>";
       const liveIds = new Set();
       const liveEvs = [];
       keys.forEach((k, i) => { if (results[i].status === "fulfilled") (results[i].value.events || []).filter(isLive).forEach((e) => { liveEvs.push([e, k]); liveIds.add(e.id); }); });
@@ -2447,7 +2461,7 @@
     }
     function closeSheets() { const n = views.length; if (n) history.go(-n); }
     addEventListener("popstate", () => { while (views.length > (history.state?.sheet || 0)) popView(); });
-    const setBody = (v, title, html) => { v.el.querySelector(".sheet-title").textContent = title; v.el.querySelector(".sheet-body").innerHTML = html + SRC_NOTE; };
+    const setBody = (v, title, html) => { v.el.querySelector(".sheet-title").textContent = title; v.el.querySelector(".sheet-body").innerHTML = html; };   // the data/affiliation note lives in the footer and You → About, not on every page
     const SRC_NOTE = '<div class="src-note">Data from ESPN public feeds; may be delayed. Scoreline is an independent fan app, not affiliated with or endorsed by ESPN, the NFL, the NCAA, the NBA, MLB, Formula 1, or any team or player. Names and logos belong to their owners.</div>';
 
     const pct = (x) => Math.round(x * 100);
