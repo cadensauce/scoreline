@@ -64,6 +64,12 @@ service cloud.firestore {
       allow delete: if member() && me() == uid;
     }
 
+    // Roles (the Owner badge). Set only by the worker from a list in its code; nobody can give themselves one.
+    match /roles/{uid} {
+      allow get: if member();
+      allow write: if false;
+    }
+
     // Profile stats (Picks record, Fantasy, leagues, friends). Only the worker writes them, so nobody can fake theirs.
     // Seen by the same people as the profile.
     match /pstats/{uid} {

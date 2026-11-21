@@ -7,7 +7,14 @@
 
 const stable = (o) => (o && typeof o === "object" ? "{" + Object.keys(o).sort().map((k) => k + ":" + stable(o[k])).join(",") + "}" : JSON.stringify(o));
 
+// The Owner badge: usernames listed here get roles/{uid} = { role: "owner" }. Only the worker can write roles.
+const OWNERS = ["cadenbinglefry"];
+
 export async function profileStats(db, admin) {
+  for (const name of OWNERS) {
+    const u = await db.collection("usernames").doc(name).get().catch(() => null);
+    if (u?.exists && u.get("uid")) await db.collection("roles").doc(u.get("uid")).set({ role: "owner" }).catch((e) => console.log("role error", e.message));
+  }
   const uids = new Set((await db.collection("profiles").select().get()).docs.map((d) => d.id));
   if (!uids.size) return;
   const S = {};

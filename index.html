@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795211309" />
+  <meta name="build" content="1795211954" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1318,6 +1318,8 @@
     .bn.b_gold::after, .bn.b_champion::after { background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .3) 50%, transparent 65%); transform: translateX(-110%); animation: bn-shine 6s ease-in-out infinite; }
     @keyframes bn-shine { 0%, 60% { transform: translateX(-110%); } 100% { transform: translateX(110%); } }
     .shop-bn { height: 64px; border-radius: 12px; }
+    .role-tag { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 2px 8px 2px 7px; border-radius: 999px; background: var(--text); color: var(--bg); font: 700 11px/1.5 var(--display); letter-spacing: .05em; text-transform: uppercase; vertical-align: 3px; white-space: nowrap; }
+    .soc-who b .role-tag { font-size: 10px; vertical-align: 1px; }
   </style>
 </head>
 <body>
@@ -2846,6 +2848,9 @@
        a friend's title without another read. */
     const SHOP_NAMES = { t_rookie: "Rookie", t_sharp: "Sharp", t_upset: "Upset Hunter", t_clutch: "Clutch", t_filmroom: "Film Room", t_hof: "Hall of Famer", t_goat: "GOAT" };
     const bnCls = (b) => (/^b_[a-z]+$/.test(b || "") ? " bn " + b : "");
+    // Roles: badges only the worker can give (roles/{uid}); "owner" = the person who runs Scoreline.
+    const ROLE_NAMES = { owner: "Owner" };
+    const roleTag = (r) => (ROLE_NAMES[r] ? '<span class="role-tag"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 12H5z"/></svg>' + ROLE_NAMES[r] + "</span>" : "");
     const titleTag = (t) => (SHOP_NAMES[t] ? '<span class="title-tag">' + esc(SHOP_NAMES[t]) + "</span>" : "");
     async function fillShopYou() {
       const el = document.querySelector("[data-shop-you]"), P = window.scorelinePicks;
@@ -5088,6 +5093,8 @@
     const profHeadshot = (lg, id) => /^\d+$/.test(String(id)) && HS_PATH[lg] ? "https://a.espncdn.com/combiner/i?img=/i/headshots/" + HS_PATH[lg] + "/players/full/" + id + ".png&w=200&h=145&scale=crop" : "";
     const safeLogo = (u) => (/^https:\/\/a\.espncdn\.com\/[\w/.\-?=&%]+$/.test(u || "") ? u : "");
     const UID_LG = { 28: "nfl", 23: "cfb", 46: "nba", 10: "mlb" };
+    const LOGO_PATH = { nfl: "nfl", cfb: "ncaa", nba: "nba", mlb: "mlb" };
+    const teamLogo = (t) => safeLogo(t?.l) || (LOGO_PATH[t?.lg] && /^\d+$/.test(String(t?.id)) ? "https://a.espncdn.com/i/teamlogos/" + LOGO_PATH[t.lg] + "/500/" + t.id + ".png" : "");
     const teamFromKey = (k) => { const m = /l:(\d+)~t:(\d+)/.exec(k || ""); return m && UID_LG[m[1]] ? { lg: UID_LG[m[1]], id: m[2] } : null; };
     const PF = () => window.scorelineProfile;
     const pAvatar = (c, name, size) => (PF() ? PF().avatar(c?.avatar, name, size, c?.deco) : "");
@@ -5111,10 +5118,10 @@
       const add = (what) => (d.mine ? '<button class="pill-btn prof-add" type="button" data-editprofile="' + what + '">+ Add</button>' : "");
       const sec = (title, what, inner, n) => '<div class="section-title"><b>' + title + "</b>" + (n ? '<span class="muted">' + n + "</span>" : "") + (d.mine && inner ? '<button class="see-all" type="button" data-editprofile="' + what + '">Edit</button>' : "") + "</div>" + (inner || '<div class="prof-none">' + (d.mine ? add(what) : '<span class="muted">None picked yet.</span>') + "</div>");
       const sports = c.sports.length ? '<div class="prof-sports">' + c.sports.map((k) => '<span class="prof-sport">' + (ICONS[k] || "") + esc(SPORT_NAMES[k] || k) + "</span>").join("") + "</div>" : "";
-      const teams = c.favTeams.length ? '<div class="prof-tiles">' + c.favTeams.map((t) => '<div class="prof-tile"><span class="prof-logo">' + (safeLogo(t.l) ? '<img src="' + esc(safeLogo(t.l)) + '" alt="" loading="lazy">' : esc((t.a || t.n || "?").slice(0, 3))) + "</span><b>" + esc(t.n || "") + "</b><small>" + esc((LEAGUES[t.lg]?.short || LEAGUES[t.lg]?.name || "").toString()) + "</small></div>").join("") + "</div>" : "";
+      const teams = c.favTeams.length ? '<div class="prof-tiles">' + c.favTeams.map((t) => '<div class="prof-tile"><span class="prof-logo">' + (teamLogo(t) ? '<img src="' + esc(teamLogo(t)) + '" alt="" loading="lazy">' : esc((t.a || t.n || "?").slice(0, 3))) + "</span><b>" + esc(t.n || "") + "</b><small>" + esc((LEAGUES[t.lg]?.short || LEAGUES[t.lg]?.name || "").toString()) + "</small></div>").join("") + "</div>" : "";
       const players = c.favPlayers.length ? '<div class="prof-tiles">' + c.favPlayers.map((p) => { const h = profHeadshot(p.lg, p.id); return '<div class="prof-tile"><span class="prof-face">' + (h ? '<img src="' + esc(h) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + "<i>" + esc((p.n || "?")[0]) + "</i></span><b>" + esc(p.n || "") + "</b><small>" + esc([p.t, p.p].filter(Boolean).join(" · ")) + "</small></div>"; }).join("") + "</div>" : "";
       return '<div class="prof">' + banner +
-        '<div class="prof-head">' + pAvatar(c, un, "xl") + '<div class="prof-id"><b>' + esc(c.name || "@" + un) + "</b>" + titleTag(c.title) + "<small>@" + esc(un) + (d.mine ? " · " + ((c.show || "friends") === "me" ? "Only you can see this" : "Friends can see this") : "") + "</small></div></div>" +
+        '<div class="prof-head">' + pAvatar(c, un, "xl") + '<div class="prof-id"><b>' + esc(c.name || "@" + un) + roleTag(d.role) + "</b>" + titleTag(c.title) + "<small>@" + esc(un) + (d.mine ? " · " + ((c.show || "friends") === "me" ? "Only you can see this" : "Friends can see this") : "") + "</small></div></div>" +
         (acts ? '<div class="prof-acts">' + acts + "</div>" : "") +
         '<div class="section-title"><b>About</b></div><div class="prof-about">' + (c.bio ? "<p>" + esc(c.bio) + "</p>" : d.mine ? '<button class="link-btn" type="button" data-editprofile="bio">Add a bio</button>' : "") +
         (d.joined ? '<small class="muted">Joined ' + esc(new Date(d.joined).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })) + " · " + esc(plural(daysAgo(d.joined), "day")) + " ago</small>" : "") + "</div>" +
@@ -5214,7 +5221,7 @@
     async function teamInfo(k) {
       const t = teamFromKey(k); if (!t) return null;
       const d = await getJSON(API + LEAGUES[t.lg].path + "/teams/" + t.id).catch(() => null), x = d?.team;
-      return { lg: t.lg, id: t.id, n: x?.displayName || teamNames[k] || findName(k) || "Team", a: x?.abbreviation || "", l: safeLogo(x?.logos?.[0]?.href) };
+      return { lg: t.lg, id: t.id, n: x?.displayName || teamNames[k] || findName(k) || "Team", a: x?.abbreviation || "", l: safeLogo(x?.logos?.[0]?.href) || teamLogo(t) };
     }
     document.addEventListener("input", (e) => {
       if (!PE) return;
