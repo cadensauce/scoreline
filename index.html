@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795209857" />
+  <meta name="build" content="1795209999" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1269,7 +1269,7 @@
     .pe-theme { display: flex; flex-direction: column; gap: 6px; border: 0; background: none; padding: 0; color: var(--muted); font-size: 12.5px; font-weight: 600; }
     .pe-theme i { display: block; height: 52px; border-radius: 12px; border: 2px solid var(--line); }
     .pe-theme.on { color: var(--text); } .pe-theme.on i { border-color: var(--text); }
-    .pe-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pe-chips { display: flex; flex-wrap: wrap; gap: 8px; } .pe-sub { margin: 12px 0 8px; } .pe-chips + .pe-chips { margin-top: 8px; }
     .pe-chip { color: var(--muted); }
     .pe-chip small { font-weight: 500; color: var(--faint); }
     .pe-chip.on { background: var(--accent); color: var(--on-accent); border-color: transparent; } .pe-chip.on small { color: inherit; opacity: .7; }
@@ -5097,6 +5097,7 @@
     /* editor */
     let PE = null;   // the draft being edited
     const PE_MAX = 12;
+    const BANNER_NAMES = { b_midnight: "Midnight", b_gridiron: "Gridiron", b_hardwood: "Hardwood", b_diamond: "Diamond", b_pitlane: "Pit Lane", b_aurora: "Aurora", b_gold: "Gold" };
     async function openProfileEditor(focus) {
       const d = PF() ? await PF().load().catch(() => null) : null;
       if (!d?.card && !d?.mine) { toast("Sign in to edit your profile"); return; }
@@ -5114,7 +5115,7 @@
       const starred = [...state.favs].filter((k) => k !== "f1" && teamFromKey(k));
       const banners = ownedOf("b_"), decos = ownedOf("d_");
       const shopRow = (kind, list, none) => !list.length ? '<p class="g-note">' + none + "</p>" : !c.teen ? '<p class="g-note">Agree to the Terms of Service to show Shop items on your profile.</p>'
-        : '<div class="pe-chips">' + chip(!c[kind], 'data-pe-shop="' + kind + '" data-id=""', "None") + list.map((id) => chip(c[kind] === id, 'data-pe-shop="' + kind + '" data-id="' + esc(id) + '"', esc(SHOP_NAMES[id] || id.replace(/^[a-z]_/, "").replace(/_/g, " ")))).join("") + "</div>";
+        : '<div class="pe-chips">' + chip(!c[kind], 'data-pe-shop="' + kind + '" data-id=""', "None") + list.map((id) => chip(c[kind] === id, 'data-pe-shop="' + kind + '" data-id="' + esc(id) + '"', esc(SHOP_NAMES[id] || BANNER_NAMES[id] || id.replace(/^[a-z]_/, "").replace(/_/g, " ").replace(/^./, (x) => x.toUpperCase())))).join("") + "</div>";
       const html =
         '<div class="pe">' +
         '<div class="prof-banner bn-theme t-' + esc(c.theme || "plain") + bnCls(c.banner) + '"></div>' +
@@ -5127,7 +5128,8 @@
         '<div class="section-title"><b>Picture decoration</b><span class="muted">From the Shop</span></div>' + shopRow("deco", decos, "Decorations around your picture are coming to the Shop. The ones you own will show up here.") +
         '<div class="section-title" id="pe-sports"><b>Favourite sports</b></div><div class="pe-chips">' + Object.keys(SPORT_NAMES).map((k) => chip(c.sports.includes(k), 'data-pe-sport="' + k + '"', (ICONS[k] || "") + esc(SPORT_NAMES[k]))).join("") + "</div>" +
         '<div class="section-title" id="pe-teams"><b>Favourite teams</b><span class="muted">' + c.favTeams.length + "/" + PE_MAX + "</span></div>" +
-        (starred.length ? '<div class="pe-chips">' + starred.map((k) => { const t = teamFromKey(k); return chip(c.favTeams.some((x) => x.lg === t.lg && x.id === t.id), 'data-pe-team="' + esc(k) + '"', esc(teamNames[k] || findName(k) || "Team") + " <small>" + esc(LEAGUES[t.lg]?.short || LEAGUES[t.lg]?.name) + "</small>"); }).join("") + "</div>"
+        (c.favTeams.length ? '<div class="pe-chips">' + c.favTeams.map((t, i) => chip(true, 'data-pe-unteam="' + i + '"', esc(t.n) + " <small>" + esc(LEAGUES[t.lg]?.short || LEAGUES[t.lg]?.name || "") + "</small> ✕")).join("") + "</div>" : "") +
+        (starred.length ? '<p class="g-note pe-sub">Add from the teams you follow (★):</p><div class="pe-chips">' + starred.filter((k) => { const t = teamFromKey(k); return !c.favTeams.some((x) => x.lg === t.lg && x.id === t.id); }).map((k) => { const t = teamFromKey(k); return chip(false, 'data-pe-team="' + esc(k) + '"', "+ " + esc(teamNames[k] || findName(k) || "Team") + " <small>" + esc(LEAGUES[t.lg]?.short || LEAGUES[t.lg]?.name) + "</small>"); }).join("") + "</div>"
           : '<p class="g-note">Follow teams with the ★ on any game or team page, then pick your favourites here.</p>') +
         '<div class="section-title" id="pe-players"><b>Favourite players</b><span class="muted">' + c.favPlayers.length + "/" + PE_MAX + "</span></div>" +
         (c.favPlayers.length ? '<div class="pe-chips">' + c.favPlayers.map((p, i) => chip(true, 'data-pe-unplayer="' + i + '"', esc(p.n) + " <small>" + esc(p.t || LEAGUES[p.lg]?.short || "") + "</small> ✕")).join("") + "</div>" : "") +
@@ -5183,7 +5185,7 @@
       if (ep) { e.preventDefault(); return openProfileEditor(ep.dataset.editprofile || ""); }
       if (e.target.closest("[data-pshare]")) { const un = PE?.un || document.querySelector(".prof-id small")?.textContent.split(" ")[0] || ""; try { await navigator.clipboard.writeText(un); toast("Username copied: friends can add you with it"); } catch { toast(un); } return; }
       if (!PE || !PE.v.el.contains(e.target)) return;
-      const t = e.target.closest("[data-pe-theme],[data-pe-shop],[data-pe-sport],[data-pe-team],[data-pe-player],[data-pe-unplayer],[data-pe-show],[data-pe-nophoto],[data-pe-save]");
+      const t = e.target.closest("[data-pe-theme],[data-pe-shop],[data-pe-sport],[data-pe-team],[data-pe-unteam],[data-pe-player],[data-pe-unplayer],[data-pe-show],[data-pe-nophoto],[data-pe-save]");
       if (!t) return;
       const D = t.dataset;
       if (D.peTheme) PE.theme = D.peTheme;
@@ -5199,6 +5201,7 @@
         const [lg, id] = D.pePlayer.split("|"), h = PE.hits.find((x) => x.lg === lg && x.id === id);
         if (h) PE.favPlayers.push({ lg, id, n: h.n.slice(0, 60), t: h.t.slice(0, 8), p: h.p.slice(0, 8) });
       } else if (D.peUnplayer) PE.favPlayers.splice(Number(D.peUnplayer), 1);
+      else if (D.peUnteam) PE.favTeams.splice(Number(D.peUnteam), 1);
       else if (D.peShow) PE.show = D.peShow;
       else if ("peNophoto" in D) PE.avatar = "";
       else if ("peSave" in D) {
