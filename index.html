@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795203254" />
+  <meta name="build" content="1795206364" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1566,8 +1566,12 @@
       const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay() + 6) % 7) + off * 7);
       return Array.from({ length: 7 }, (_, i) => { const x = new Date(mon); x.setDate(mon.getDate() + i); return x; });
     }
+    const shownWeek = {};   // league -> week number of the games drawn on screen
     function weekLabel(key) {
-      if (LEAGUES[key].paging === "week") { const wk = cache[key]?.week?.number; return wk ? "Week " + wk : "This week"; }
+      if (LEAGUES[key].paging === "week") {   // the week of the games on screen, never just whatever loaded last
+        const off = state.offset[key] || 0, base = cache[key + ":base"]?.week, wk = shownWeek[key] || (base && base + off);
+        return wk ? "Week " + wk : off ? (off > 0 ? off + (off === 1 ? " week" : " weeks") + " ahead" : -off + (off === -1 ? " week" : " weeks") + " back") : "This week";
+      }
       const r = weekRange(key), f = (x) => x.toLocaleDateString([], { month: "short", day: "numeric" });
       return (state.offset[key] || 0) === 0 ? "This week" : f(r[0]) + " – " + f(r[6]);
     }
@@ -1591,7 +1595,7 @@
         noteGameDays(key, data); cache[key] = data;
         return { events: data.events || [] };
       }
-      if (L.paging === "week") { const data = await loadLeague(key); noteGameDays(key, data); return { events: data.events || [], grouped: true }; }
+      if (L.paging === "week") { const data = await loadLeague(key); noteGameDays(key, data); return { events: data.events || [], grouped: true, week: data.week?.number || 0 }; }
       const days = weekRange(key);
       const res = await Promise.allSettled(days.map((d) => getJSON(dayUrl(key, d))));
       const events = res.flatMap((r) => r.status === "fulfilled" ? r.value.events || [] : []);
@@ -1686,14 +1690,16 @@
         if (!force && Date.now() - mem.at < 30000) { schedule(live); return; }
       } else if (!main.querySelector(".grid, .empty")) main.innerHTML = savedShell(key) || barHtml(L.name, key) + skeleton();
       let res;
+      const vk = viewKey(key);   // which week/day this load is for (the user may page or switch while it loads)
       try { res = await loadView(key); }
-      catch (e) { if (!mem) main.innerHTML = barHtml(L.name, key) + '<div class="error">Couldn\'t load ' + esc(L.name) + " scores. Check your connection and try again.</div>"; return; }
-      viewMem[viewKey(key)] = { res, at: Date.now() };
-      if (state.tab !== key) return;
+      catch (e) { if (!mem && viewKey(key) === vk) main.innerHTML = barHtml(L.name, key) + '<div class="error">Couldn\'t load ' + esc(L.name) + " scores. Check your connection and try again.</div>"; return; }
+      viewMem[vk] = { res, at: Date.now() };
+      if (state.tab !== key || viewKey(key) !== vk) return;   // a newer page was asked for: never draw an old week under it
       schedule(drawLeague(key, res));
     }
     function drawLeague(key, res) {
       const L = LEAGUES[key], main = $("main");
+      shownWeek[key] = res.week || 0;
       const events = applyFilter(sortEvents(res.events), key);
       const when = viewOf(key) === "day" ? (dayOff[key] === 0 ? "today" : "on " + dateAt(dayOff[key]).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })) : weekLabel(key).toLowerCase();
       const body = !events.length ? '<div class="empty">' + (state.filter === "live" ? "No live games right now." : state.filter === "fav" ? "None of your ★ teams play " + esc(when) + "." : "No games " + esc(when) + ".") + "</div>"
@@ -2161,7 +2167,8 @@
         main.replaceChildren(...tpl.content.childNodes);
       }
       // Saved copy, shown instantly next time the app opens while fresh scores load.
-      if (key && html.length < 400000 && Date.now() - (shellSavedAt[key] || 0) > 60000) { shellSavedAt[key] = Date.now(); store.set("shell:" + key, html); }
+      // Only the current week/day is saved, so the app never opens on a week you paged to last time.
+      if (key && !state.offset[key] && !dayOff[key] && html.length < 400000 &&Date.now() - (shellSavedAt[key] || 0) > 60000) { shellSavedAt[key] = Date.now(); store.set("shell:" + key, html); }
     }
     const shellSavedAt = {};
     const savedShell = (key) => store.get("shell:" + key, "");
