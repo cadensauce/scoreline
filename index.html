@@ -4362,7 +4362,7 @@
         return top + '<div class="cs-list">' + rows.map((r) => '<button type="button" data-cyear="' + esc(r.year) + '" class="cs-row' + (r.year === C.best ? " best" : "") + '"><span class="cs-yr"><b>' + esc(lbl(r.year)) + "</b>" + (r.team ? "<small>" + esc(r.team) + "</small>" : "") + "</span>" +
           cols.map((i) => '<span class="cs-n"><b>' + esc(r.stats[i] ?? "–") + "</b><small>" + esc(m.labels[i]) + "</small></span>").join("") + "</button>").join("") + "</div>";
       }
-      const tiles = (labels, full, stats) => '<div class="tiles">' + labels.map((l, i) => stats[i] === "" || stats[i] == null ? "" : '<div class="tile" title="' + esc(full[i] || l) + '"><b>' + esc(stats[i]) + "</b><small>" + esc(l) + "</small></div>").join("") + "</div>";
+      const tiles = (labels, full, stats) => '<div class="tiles">' + labels.map((l, i) => stats[i] === "" || stats[i] == null || (/^-?0(\.0+)?$/.test(String(stats[i]).trim()) && !/^(GP|GS)$/.test(l)) ? "" : '<div class="tile" title="' + esc(full[i] || l) + '"><b>' + esc(stats[i]) + "</b><small>" + esc(l) + "</small></div>").join("") + "</div>";
       const body = C.cats.map((c) => {
         if (y === "career") return c.totals ? '<div class="ldr-cat">' + esc(c.name) + "</div>" + tiles(c.labels, c.full, c.totals) : "";
         const empty = (r) => r.stats.every((s, i) => /^(GP|GS)$/.test(c.labels[i]) || !parseFloat(String(s).replace(/[^0-9.\-]/g, "")));   // e.g. a QB's defense line: all zeros
