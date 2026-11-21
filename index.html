@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795213596" />
+  <meta name="build" content="1795213882" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1257,6 +1257,14 @@
     .cs-menu button[data-cyear].best { border-color: var(--line-hi); } .cs-menu button[data-cyear].on { background: var(--accent); color: var(--on-accent); border-color: transparent; }
     .cs-more { display: flex; gap: 6px; margin-top: 8px; } .cs-more button { flex: 1; }
     .cs-menu .g-note { margin: 10px 2px 0; }
+    .cs-best { font-weight: 650; font-size: 14px; margin: 0 0 10px; }
+    .cs-list { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--panel); }
+    .cs-row { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, 58px); align-items: center; gap: 6px; width: 100%; border: 0; border-top: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; padding: 11px 14px; cursor: pointer; transition: background var(--t-fast); }
+    .cs-row:first-child { border-top: 0; } @media (hover: hover) { .cs-row:hover { background: var(--panel-2); } }
+    .cs-row.best { background: color-mix(in srgb, var(--text) 8%, var(--panel)); box-shadow: inset 3px 0 0 var(--text); }
+    .cs-yr { display: flex; flex-direction: column; min-width: 0; } .cs-yr b { font-size: 14.5px; } .cs-yr small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cs-n { display: flex; flex-direction: column; align-items: flex-end; } .cs-n b { font-size: 14.5px; font-variant-numeric: tabular-nums; } .cs-n small { color: var(--muted); font-size: 10.5px; }
+    @media (max-width: 360px) { .cs-row { grid-template-columns: minmax(0, 1fr) repeat(3, 50px); padding: 10px 12px; } }
     .cs-pick { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; } .cs-pick .g-label { margin: 0; }
     .cs-sel { position: relative; display: inline-flex; } .cs-sel::after { content: ""; position: absolute; right: 13px; top: 50%; width: 7px; height: 7px; margin-top: -6px; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); pointer-events: none; }
     .cs-sel select { appearance: none; -webkit-appearance: none; font: 600 14px var(--display); color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 8px 34px 8px 14px; cursor: pointer; } .cs-sel select:focus-visible { outline: 2px solid var(--accent); }
@@ -4337,48 +4345,44 @@
       return { cats, years, label, best, keyIdx: key, key: key != null ? main.full[key] || main.labels[key] : "", pick: retired && best ? best : years[0], retired };
     }
     function careerHtml(C, y) {
-      const chip = (val, text) => '<button type="button" data-cyear="' + val + '" class="' + (val === y ? "active" : "") + '">' + esc(text) + "</button>";
       const why = C.why || (C.key ? "most " + C.key.toLowerCase() : "");
-      const head = y === "all" ? "Every season" : y === "career" ? "Career totals" : (y === C.best ? "Best season · " + C.label(y) : "Season · " + C.label(y));
-      const tiles = (labels, full, stats) => '<div class="tiles">' + labels.map((l, i) => stats[i] === "" || stats[i] == null ? "" : '<div class="tile" title="' + esc(full[i] || l) + '"><b>' + esc(stats[i]) + "</b><small>" + esc(l) + "</small></div>").join("") + "</div>";
-      if (y === "all") {   // every season of the main stats in one table; the best one highlighted
-        const m = C.cats[0], cols = m.labels.map((l, i) => i).filter((i) => i === C.keyIdx || i < 6).slice(0, 7);
-        const rows = m.rows.slice().sort((a, b) => b.year - a.year || 0);
-        const tbl = '<div class="cs-all"><table><thead><tr><th>Season</th>' + cols.map((i) => '<th title="' + esc(m.full[i] || m.labels[i]) + '"' + (i === C.keyIdx ? ' class="k"' : "") + ">" + esc(m.labels[i]) + "</th>").join("") + "</tr></thead><tbody>" +
-          rows.map((r) => '<tr data-cyear="' + esc(r.year) + '" class="' + (r.year === C.best ? "best" : "") + '"><td><b>' + (r.year === C.best ? "★ " : "") + esc(r.label) + "</b>" + (r.team ? "<small>" + esc(r.team) + "</small>" : "") + "</td>" + cols.map((i) => '<td' + (i === C.keyIdx ? ' class="k"' : "") + ">" + esc(r.stats[i] ?? "") + "</td>").join("") + "</tr>").join("") + "</tbody></table></div>";
-        return head0() + '<div class="cs-head">Every season <span class="muted">· ' + esc(m.name) + (C.best ? " · ★ = best (" + esc(why) + ")" : "") + "</span></div>" + tbl + '<p class="g-note">Tap a season to see all of its stats.</p>';
+      const lbl = (yy) => C.label(yy) + (yy === C.best ? " ★" : "");
+      const opt = (val, text) => '<button type="button" data-cyear="' + esc(val) + '" class="' + (val === y ? "on" : "") + (val === C.best ? " best" : "") + '">' + esc(text) + "</button>";
+      const hasTotals = C.cats.some((c) => c.totals);
+      // One rounded button for everyone; the seasons open below it (pushing the stats down, never covering them).
+      const top = '<div class="cs-pick"><span class="g-label">Career</span><button type="button" class="cs-btn" data-cymenu aria-expanded="false">' +
+        esc(y === "all" ? "All seasons" : y === "career" ? "Career totals" : lbl(y)) +
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>' +
+        '<div class="cs-menu" hidden><div class="cs-grid">' + C.years.map((yy) => opt(yy, lbl(yy))).join("") + "</div>" +
+        '<div class="cs-more">' + opt("all", "All seasons") + (hasTotals ? opt("career", "Career totals") : "") + "</div>" +
+        (C.best ? '<p class="g-note">★ = ' + esc(C.why || "best season (" + why + ")") + "</p>" : "") + "</div>";
+      if (y === "all") {   // every season as a short list: three key numbers each, best one highlighted
+        const m = C.cats[0], cols = keyCols(m, C.keyIdx);
+        const rows = m.rows.slice().sort((a, b) => b.year - a.year);
+        return top + '<div class="cs-list">' + rows.map((r) => '<button type="button" data-cyear="' + esc(r.year) + '" class="cs-row' + (r.year === C.best ? " best" : "") + '"><span class="cs-yr"><b>' + esc(lbl(r.year)) + "</b>" + (r.team ? "<small>" + esc(r.team) + "</small>" : "") + "</span>" +
+          cols.map((i) => '<span class="cs-n"><b>' + esc(r.stats[i] ?? "–") + "</b><small>" + esc(m.labels[i]) + "</small></span>").join("") + "</button>").join("") + "</div>";
       }
+      const tiles = (labels, full, stats) => '<div class="tiles">' + labels.map((l, i) => stats[i] === "" || stats[i] == null || (/^-?0(\.0+)?$/.test(String(stats[i]).trim()) && !/^(GP|GS)$/.test(l)) ? "" : '<div class="tile" title="' + esc(full[i] || l) + '"><b>' + esc(stats[i]) + "</b><small>" + esc(l) + "</small></div>").join("") + "</div>";
       const body = C.cats.map((c) => {
         if (y === "career") return c.totals ? '<div class="ldr-cat">' + esc(c.name) + "</div>" + tiles(c.labels, c.full, c.totals) : "";
         const empty = (r) => r.stats.every((s, i) => /^(GP|GS)$/.test(c.labels[i]) || !parseFloat(String(s).replace(/[^0-9.\-]/g, "")));   // e.g. a QB's defense line: all zeros
         const rows = c.rows.filter((r) => r.year === y && !empty(r));
-        return rows.map((r) => '<div class="ldr-cat">' + esc(c.name) + (rows.length > 1 || r.team ? ' <span class="muted">· ' + esc(r.team) + "</span>" : "") + "</div>" + tiles(c.labels, c.full, r.stats)).join("");
+        return rows.map((r) => '<div class="ldr-cat">' + esc(c.name) + (r.team ? ' <span class="muted">· ' + esc(r.team) + "</span>" : "") + "</div>" + tiles(c.labels, c.full, r.stats)).join("");
       }).join("");
-      return head0() + '<div class="cs-head">' + esc(head) + (y === C.best && why ? ' <span class="muted">· ' + esc(why) + "</span>" : "") + "</div>" + (body || '<p class="muted">No stats for this season.</p>');
-      function head0() {
-        // Current players: one compact year menu (no row of chips). Retired players: the chips, opening on their best season.
-        if (!C.retired) {   // current players: one rounded button; the seasons open below it (pushing the stats down, never covering them)
-          const cur = y === "all" ? "All seasons" : y === "career" ? "Career totals" : C.label(y) + (y === C.best ? " ★" : "");
-          const opt = (val, text) => '<button type="button" data-cyear="' + esc(val) + '" class="' + (val === y ? "on" : "") + (val === C.best ? " best" : "") + '">' + esc(text) + "</button>";
-          return '<div class="cs-pick"><span class="g-label">Career</span><button type="button" class="cs-btn" data-cymenu aria-expanded="false">' + esc(cur) +
-            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>' +
-            '<div class="cs-menu" hidden><div class="cs-grid">' + C.years.map((yy) => opt(yy, C.label(yy) + (yy === C.best ? " ★" : ""))).join("") + "</div>" +
-            '<div class="cs-more">' + opt("all", "All seasons") + (C.cats.some((c) => c.totals) ? opt("career", "Career totals") : "") + "</div>" +
-            (C.best ? '<p class="g-note">★ = best season (' + esc(why) + ")</p>" : "") + "</div>";
-        }
-        return '<div class="g-label">Career <span class="muted">· ' + esc(plural(C.years.length, "season")) + "</span></div>" +
-          '<div class="seg chips cs-years" data-noswipe>' + (C.best ? chip(C.best, "★ Best") : "") + chip("all", "All") + (C.cats.some((c) => c.totals) ? chip("career", "Career") : "") + C.years.map((yy) => chip(yy, (yy === C.best ? "★ " : "") + C.label(yy))).join("") + "</div>";
-      }
+      return top + (y === C.best ? '<div class="cs-best">★ Best season <span class="muted">· ' + esc(why) + "</span></div>" : "") + (body || '<p class="muted">No stats for this season.</p>');
+    }
+    // The three numbers that say the most about a season, main stat first (yards/TD/INT, PTS/REB/AST, AVG/HR/RBI, W/ERA/SO...).
+    function keyCols(m, keyIdx) {
+      const pri = ["YDS", "TD", "INT", "PTS", "REB", "AST", "AVG", "HR", "RBI", "W", "ERA", "SO", "TOT", "SACK", "REC", "POS", "PTS", "SCORED"];
+      const out = keyIdx != null ? [keyIdx] : [];
+      for (const l of pri) { const i = m.labels.indexOf(l); if (i >= 0 && !out.includes(i) && out.length < 3) out.push(i); }
+      for (let i = 0; i < m.labels.length && out.length < 3; i++) if (!out.includes(i) && !/^(GP|GS)$/.test(m.labels[i])) out.push(i);
+      return out;
     }
     document.addEventListener("click", (e) => {
       const t = e.target.closest("[data-cymenu]"); if (!t) return;
       const m = t.closest("[data-career]")?.querySelector(".cs-menu"); if (!m) return;
       m.hidden = !m.hidden; t.setAttribute("aria-expanded", String(!m.hidden)); buzz(6);
-    });
-    document.addEventListener("change", (e) => {
-      const s = e.target.closest?.("[data-cysel]"); if (!s) return;
-      const v = views.find((x) => x.el.contains(s)); if (!v?.career) return;
-      s.closest("[data-career]").innerHTML = careerHtml(v.career, s.value); buzz(6);
     });
     document.addEventListener("click", (e) => {
       const b = e.target.closest("[data-cyear]"); if (!b) return;
