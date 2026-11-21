@@ -5170,6 +5170,7 @@
         '<label class="pe-field"><span>Display name</span><input data-pe-name maxlength="30" placeholder="@' + esc(c.un) + '" value="' + esc(c.name || "") + '"></label>' +
         '<label class="pe-field" id="pe-bio"><span>Bio <small data-pe-count>' + (c.bio || "").length + '/160</small></span><textarea data-pe-bio maxlength="160" rows="3" placeholder="A line about you and your teams">' + esc(c.bio || "") + "</textarea></label>" +
         '<div class="section-title"><b>Theme</b></div><div class="pe-themes">' + PTHEMES.map(([k, l]) => '<button type="button" class="pe-theme' + ((c.theme || "plain") === k ? " on" : "") + '" data-pe-theme="' + k + '"><i class="bn-theme t-' + k + '"></i>' + l + "</button>").join("") + "</div>" +
+        '<div class="section-title" id="pe-title"><b>Title</b><span class="muted">From the Shop · shows under your name</span></div>' + shopRow("title", ownedOf("t_"), "Titles you buy in the Shop show up here.") +
         '<div class="section-title"><b>Banner</b><span class="muted">From the Shop · covers the theme</span></div>' + shopRow("banner", banners, "Banners you buy in the Shop show up here.") +
         '<div class="section-title"><b>Picture decoration</b><span class="muted">From the Shop</span></div>' + shopRow("deco", decos, "Decorations around your picture are coming to the Shop. The ones you own will show up here.") +
         '<div class="section-title" id="pe-sports"><b>Favourite sports</b></div><div class="pe-chips">' + Object.keys(SPORT_NAMES).map((k) => chip(c.sports.includes(k), 'data-pe-sport="' + k + '"', (ICONS[k] || "") + esc(SPORT_NAMES[k]))).join("") + "</div>" +
@@ -5268,7 +5269,7 @@
         t.disabled = true;
         const out = { avatar: PE.avatar || "", name: (PE.name || "").trim().slice(0, 30), bio: (PE.bio || "").trim().slice(0, 160), theme: PE.theme || "plain", show: PE.show || "friends",
           sports: PE.sports.slice(0, 5), favTeams: PE.favTeams.slice(0, PE_MAX), favPlayers: PE.favPlayers.slice(0, PE_MAX),
-          banner: PE.teen && PE.owned.has(PE.banner) ? PE.banner : "", deco: PE.teen && PE.owned.has(PE.deco) ? PE.deco : "" };
+          title: PE.teen && PE.owned.has(PE.title) ? PE.title : "", banner: PE.teen && PE.owned.has(PE.banner) ? PE.banner : "", deco: PE.teen && PE.owned.has(PE.deco) ? PE.deco : "" };
         try {
           await PF().save(out); buzz(10); toast("Profile saved"); PE = null; history.back();
           setTimeout(() => views.filter((x) => x.kind === "profile").forEach(async (x) => { const d = await PF().load(x.uid).catch(() => null); if (d?.card && x.el.isConnected) setBody(x, d.card.name || "@" + d.username, profileHtml(d)); }), 450);
