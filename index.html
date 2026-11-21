@@ -4342,7 +4342,8 @@
       }
       const body = C.cats.map((c) => {
         if (y === "career") return c.totals ? '<div class="ldr-cat">' + esc(c.name) + "</div>" + tiles(c.labels, c.full, c.totals) : "";
-        const rows = c.rows.filter((r) => r.year === y);
+        const empty = (r) => r.stats.every((s, i) => /^(GP|GS)$/.test(c.labels[i]) || !parseFloat(String(s).replace(/[^0-9.\-]/g, "")));   // e.g. a QB's defense line: all zeros
+        const rows = c.rows.filter((r) => r.year === y && !empty(r));
         return rows.map((r) => '<div class="ldr-cat">' + esc(c.name) + (rows.length > 1 || r.team ? ' <span class="muted">· ' + esc(r.team) + "</span>" : "") + "</div>" + tiles(c.labels, c.full, r.stats)).join("");
       }).join("");
       return head0() + '<div class="cs-head">' + esc(head) + (y === C.best && why ? ' <span class="muted">· ' + esc(why) + "</span>" : "") + "</div>" + (body || '<p class="muted">No stats for this season.</p>');
