@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795213282" />
+  <meta name="build" content="1795213521" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1249,6 +1249,9 @@
     @media (hover: hover) { button.prof-tile:hover { background: var(--panel); } } button.prof-tile:active { transform: scale(.97); }
     .cs-years { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; margin-bottom: 10px; } .cs-years::-webkit-scrollbar { display: none; } .cs-years button { flex: none; white-space: nowrap; }
     .cs-head { font-weight: 650; font-size: 15px; margin: 2px 0 8px; }
+    .cs-pick { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; } .cs-pick .g-label { margin: 0; }
+    .cs-sel { position: relative; display: inline-flex; } .cs-sel::after { content: ""; position: absolute; right: 13px; top: 50%; width: 7px; height: 7px; margin-top: -6px; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); pointer-events: none; }
+    .cs-sel select { appearance: none; -webkit-appearance: none; font: 600 14px var(--display); color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 8px 34px 8px 14px; cursor: pointer; } .cs-sel select:focus-visible { outline: 2px solid var(--accent); }
     .cs-all { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r-in); scrollbar-width: none; } .cs-all::-webkit-scrollbar { display: none; }
     .cs-all table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
     .cs-all th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-size: 11px; font-weight: 600; text-align: right; padding: 8px 8px; white-space: nowrap; }
@@ -4344,10 +4347,19 @@
       }).join("");
       return head0() + '<div class="cs-head">' + esc(head) + (y === C.best && why ? ' <span class="muted">· ' + esc(why) + "</span>" : "") + "</div>" + (body || '<p class="muted">No stats for this season.</p>');
       function head0() {
+        // Current players: one compact year menu (no row of chips). Retired players: the chips, opening on their best season.
+        if (!C.retired) return '<div class="cs-pick"><span class="g-label">Career</span><label class="cs-sel"><select data-cysel aria-label="Season">' +
+          C.years.map((yy) => '<option value="' + esc(yy) + '"' + (yy === y ? " selected" : "") + ">" + esc(C.label(yy)) + (yy === C.best ? "  ★ best" : "") + "</option>").join("") +
+          '<option value="all"' + (y === "all" ? " selected" : "") + ">All seasons</option>" + (C.cats.some((c) => c.totals) ? '<option value="career"' + (y === "career" ? " selected" : "") + ">Career totals</option>" : "") + "</select></label></div>";
         return '<div class="g-label">Career <span class="muted">· ' + esc(plural(C.years.length, "season")) + "</span></div>" +
           '<div class="seg chips cs-years" data-noswipe>' + (C.best ? chip(C.best, "★ Best") : "") + chip("all", "All") + (C.cats.some((c) => c.totals) ? chip("career", "Career") : "") + C.years.map((yy) => chip(yy, (yy === C.best ? "★ " : "") + C.label(yy))).join("") + "</div>";
       }
     }
+    document.addEventListener("change", (e) => {
+      const s = e.target.closest?.("[data-cysel]"); if (!s) return;
+      const v = views.find((x) => x.el.contains(s)); if (!v?.career) return;
+      s.closest("[data-career]").innerHTML = careerHtml(v.career, s.value); buzz(6);
+    });
     document.addEventListener("click", (e) => {
       const b = e.target.closest("[data-cyear]"); if (!b) return;
       const v = views.find((x) => x.el.contains(b)); if (!v?.career) return;
