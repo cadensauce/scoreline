@@ -5046,12 +5046,12 @@
     const PTHEMES = [["plain", "Plain"], ["night", "Night"], ["field", "Field"], ["court", "Court"], ["diamond", "Diamond"], ["track", "Track"]];
     const SPORT_NAMES = { nfl: "NFL", cfb: "College Football", nba: "NBA", mlb: "MLB", f1: "Formula 1" };
     const HS_PATH = { nfl: "nfl", cfb: "college-football", nba: "nba", mlb: "mlb", f1: "rpm" };
-    const headshot = (lg, id) => /^\d+$/.test(String(id)) && HS_PATH[lg] ? "https://a.espncdn.com/combiner/i?img=/i/headshots/" + HS_PATH[lg] + "/players/full/" + id + ".png&w=200&h=145&scale=crop" : "";
+    const profHeadshot = (lg, id) => /^\d+$/.test(String(id)) && HS_PATH[lg] ? "https://a.espncdn.com/combiner/i?img=/i/headshots/" + HS_PATH[lg] + "/players/full/" + id + ".png&w=200&h=145&scale=crop" : "";
     const safeLogo = (u) => (/^https:\/\/a\.espncdn\.com\/[\w/.\-?=&%]+$/.test(u || "") ? u : "");
     const UID_LG = { 28: "nfl", 23: "cfb", 46: "nba", 10: "mlb" };
     const teamFromKey = (k) => { const m = /l:(\d+)~t:(\d+)/.exec(k || ""); return m && UID_LG[m[1]] ? { lg: UID_LG[m[1]], id: m[2] } : null; };
-    const P = () => window.scorelineProfile;
-    const pAvatar = (c, name, size) => (P() ? P().avatar(c?.avatar, name, size, c?.deco) : "");
+    const PF = () => window.scorelineProfile;
+    const pAvatar = (c, name, size) => (PF() ? PF().avatar(c?.avatar, name, size, c?.deco) : "");
     const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
     const daysAgo = (t) => Math.max(0, Math.floor((Date.now() - t) / 864e5));
 
@@ -5073,7 +5073,7 @@
       const sec = (title, what, inner, n) => '<div class="section-title"><b>' + title + "</b>" + (n ? '<span class="muted">' + n + "</span>" : "") + (d.mine && inner ? '<button class="see-all" type="button" data-editprofile="' + what + '">Edit</button>' : "") + "</div>" + (inner || '<div class="prof-none">' + (d.mine ? add(what) : '<span class="muted">None picked yet.</span>') + "</div>");
       const sports = c.sports.length ? '<div class="prof-sports">' + c.sports.map((k) => '<span class="prof-sport">' + (ICONS[k] || "") + esc(SPORT_NAMES[k] || k) + "</span>").join("") + "</div>" : "";
       const teams = c.favTeams.length ? '<div class="prof-tiles">' + c.favTeams.map((t) => '<div class="prof-tile"><span class="prof-logo">' + (safeLogo(t.l) ? '<img src="' + esc(safeLogo(t.l)) + '" alt="" loading="lazy">' : esc((t.a || t.n || "?").slice(0, 3))) + "</span><b>" + esc(t.n || "") + "</b><small>" + esc((LEAGUES[t.lg]?.short || LEAGUES[t.lg]?.name || "").toString()) + "</small></div>").join("") + "</div>" : "";
-      const players = c.favPlayers.length ? '<div class="prof-tiles">' + c.favPlayers.map((p) => { const h = headshot(p.lg, p.id); return '<div class="prof-tile"><span class="prof-face">' + (h ? '<img src="' + esc(h) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + "<i>" + esc((p.n || "?")[0]) + "</i></span><b>" + esc(p.n || "") + "</b><small>" + esc([p.t, p.p].filter(Boolean).join(" · ")) + "</small></div>"; }).join("") + "</div>" : "";
+      const players = c.favPlayers.length ? '<div class="prof-tiles">' + c.favPlayers.map((p) => { const h = profHeadshot(p.lg, p.id); return '<div class="prof-tile"><span class="prof-face">' + (h ? '<img src="' + esc(h) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + "<i>" + esc((p.n || "?")[0]) + "</i></span><b>" + esc(p.n || "") + "</b><small>" + esc([p.t, p.p].filter(Boolean).join(" · ")) + "</small></div>"; }).join("") + "</div>" : "";
       return '<div class="prof">' + banner +
         '<div class="prof-head">' + pAvatar(c, un, "xl") + '<div class="prof-id"><b>' + esc(c.name || "@" + un) + "</b>" + titleTag(c.title) + "<small>@" + esc(un) + (d.mine ? " · " + ((c.show || "friends") === "me" ? "Only you can see this" : "Friends can see this") : "") + "</small></div></div>" +
         (acts ? '<div class="prof-acts">' + acts + "</div>" : "") +
@@ -5087,7 +5087,7 @@
       const v = { kind: "profile", key: "profile|" + (uid || "me") };
       if (!pushView(v)) return;
       setBody(v, "Profile", '<div class="skel" style="height:220px"></div>');
-      const d = P() ? await P().load(uid).catch(() => null) : null;
+      const d = PF() ? await PF().load(uid).catch(() => null) : null;
       if (!d) return setBody(v, "Profile", '<div class="panel"><b>Profiles</b><p class="muted">Sign in to see profiles.</p><button type="button" class="pill-btn" data-social-signin>Sign in</button></div>');
       v.uid = d.uid;
       setBody(v, d.card?.name || "@" + d.username, d.card ? profileHtml(d) : '<div class="empty">@' + esc(d.username || "this person") + " keeps their profile private" + (d.isFriend ? "." : ", or you're not friends yet.") + "</div>");
@@ -5098,11 +5098,11 @@
     let PE = null;   // the draft being edited
     const PE_MAX = 12;
     async function openProfileEditor(focus) {
-      const d = P() ? await P().load().catch(() => null) : null;
+      const d = PF() ? await PF().load().catch(() => null) : null;
       if (!d?.card && !d?.mine) { toast("Sign in to edit your profile"); return; }
       const v = { kind: "profile-edit", key: "profile-edit" };
       if (!pushView(v)) return;
-      const [owned, teen] = await Promise.all([P().owned().catch(() => new Set()), P().teen().catch(() => false)]);
+      const [owned, teen] = await Promise.all([PF().owned().catch(() => new Set()), PF().teen().catch(() => false)]);
       PE = { v, un: d.username, owned, teen, q: "", hits: [], pools: {}, ...JSON.parse(JSON.stringify(d.card || {})) };
       PE.sports ||= []; PE.favTeams ||= []; PE.favPlayers ||= [];
       drawEditor(focus);
@@ -5150,7 +5150,7 @@
       const q = PE.q.toLowerCase().trim();
       if (q.length < 2) { PE.hits = []; return; }
       const lgs = PE.sports.length ? PE.sports : Object.keys(SPORT_NAMES);
-      await Promise.all(lgs.map(async (lg) => { if (!PE.pools[lg]) PE.pools[lg] = await P().pool(lg).catch(() => ({})); }));
+      await Promise.all(lgs.map(async (lg) => { if (!PE.pools[lg]) PE.pools[lg] = await PF().pool(lg).catch(() => ({})); }));
       const hits = [];
       for (const lg of lgs) for (const [id, p] of Object.entries(PE.pools[lg] || {})) { if ((p.n || "").toLowerCase().includes(q)) hits.push({ lg, id, n: p.n, t: p.t || "", p: p.p || "" }); }
       hits.sort((a, b) => (a.n.toLowerCase().startsWith(q) ? 0 : 1) - (b.n.toLowerCase().startsWith(q) ? 0 : 1) || a.n.localeCompare(b.n));
@@ -5174,7 +5174,7 @@
       const inp = e.target.closest?.("[data-pe-photo]");
       if (!inp || !PE || !inp.files?.[0]) return;
       const err = PE.v.el.querySelector("[data-pe-err]");
-      try { PE.avatar = await P().photo(inp.files[0]); drawEditor(); } catch (x) { if (err) err.textContent = x.message; }
+      try { PE.avatar = await PF().photo(inp.files[0]); drawEditor(); } catch (x) { if (err) err.textContent = x.message; }
     });
     document.addEventListener("click", async (e) => {
       const vc = e.target.closest("[data-viewcard]");
@@ -5207,8 +5207,8 @@
           sports: PE.sports.slice(0, 5), favTeams: PE.favTeams.slice(0, PE_MAX), favPlayers: PE.favPlayers.slice(0, PE_MAX),
           banner: PE.teen && PE.owned.has(PE.banner) ? PE.banner : "", deco: PE.teen && PE.owned.has(PE.deco) ? PE.deco : "" };
         try {
-          await P().save(out); buzz(10); toast("Profile saved"); PE = null; history.back();
-          setTimeout(() => views.filter((x) => x.kind === "profile").forEach(async (x) => { const d = await P().load(x.uid).catch(() => null); if (d?.card && x.el.isConnected) setBody(x, d.card.name || "@" + d.username, profileHtml(d)); }), 450);
+          await PF().save(out); buzz(10); toast("Profile saved"); PE = null; history.back();
+          setTimeout(() => views.filter((x) => x.kind === "profile").forEach(async (x) => { const d = await PF().load(x.uid).catch(() => null); if (d?.card && x.el.isConnected) setBody(x, d.card.name || "@" + d.username, profileHtml(d)); }), 450);
         } catch { t.disabled = false; const err = PE?.v.el.querySelector("[data-pe-err]"); if (err) { err.textContent = "Couldn't save your profile. Try again."; err.scrollIntoView({ block: "center" }); } }
         return;
       }
