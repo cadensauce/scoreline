@@ -235,7 +235,7 @@ test("profile: name, theme, sports, teams and players save", () => assertSucceed
 test("profile: works without agreeing to the Terms (no Shop extras)", () => assertSucceeds(fullCard("newbie")));
 test("profile: unknown theme is refused", () => assertFails(fullCard("teen", { theme: "neon" })));
 test("profile: unknown sport is refused", () => assertFails(fullCard("teen", { sports: ["nfl", "cricket"] })));
-test("profile: at most 12 favourite players", () => assertFails(fullCard("teen", { favPlayers: Array.from({ length: 13 }, (_, i) => ({ lg: "nba", id: String(i), n: "P" + i })) })));
+test("profile: at most 20 favourite players", () => assertFails(fullCard("teen", { favPlayers: Array.from({ length: 21 }, (_, i) => ({ lg: "nba", id: String(i), n: "P" + i })) })));
 test("profile: at most 12 favourite teams", () => assertFails(fullCard("teen", { favTeams: Array.from({ length: 13 }, (_, i) => ({ lg: "nba", id: String(i), n: "T" + i })) })));
 test("profile: display name at most 30 characters", () => assertFails(fullCard("teen", { name: "x".repeat(31) })));
 test("profile: no extra fields", () => assertFails(fullCard("teen", { email: "a@b.c" })));
