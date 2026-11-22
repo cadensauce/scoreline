@@ -1211,6 +1211,7 @@
     .ldr-cat { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); margin: 12px 0 6px; }
     .headline-k { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
     .st-btn { margin-left: auto; }
+    .hp-row, .dstrip, .cs-years, .cs-all, .seg.chips { overscroll-behavior-x: contain; }   /* sliding to the end of a row never pulls the page */
     .car-shape { stroke: rgba(0, 0, 0, .55); stroke-width: .5; } .car.key .car-shape { stroke: #fff; stroke-width: .45; }
     .t-tower { margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0 14px; font-size: 13px; font-variant-numeric: tabular-nums; }
     .tt-head { grid-column: 1 / -1; color: var(--muted); font-size: 12px; font-weight: 600; margin-bottom: 4px; }
@@ -2037,9 +2038,11 @@
       const btn = (g, sd) => { const t = g[sd] || {}, r = g.rewards?.[sd] ?? 10;
         return '<button type="button" class="pick-btn' + (picked[g.id] === sd ? " on" : "") + '" data-pick-side="' + sd + '"><b>' + esc(t.abbr || "") + "</b>" +
           (marks ? "<small>" + MARK_SVG(12) + " +" + r + "</small>" : "") + "</button>"; };
+      const keepX = el.querySelector(".hp-row")?.scrollLeft || 0;   // keep the row where you slid it
       el.innerHTML = hpHtml = '<div class="section-title"><b>Make your picks</b><span class="muted">' + done + " of " + list.length + " picked</span></div>" +
         '<div class="hp-row">' + list.map((g) => '<div class="hp-card"><button type="button" class="hp-top" data-game="' + esc(g.lg) + "|" + esc(g.eventId) + '"><span>' + esc(LEAGUES[g.lg]?.short || g.lg.toUpperCase()) + "</span>" + esc(when(g)) + "</button>" +
           '<div class="pick-row" data-gid="' + esc(g.id) + '">' + btn(g, "away") + '<span class="hp-at">@</span>' + btn(g, "home") + "</div></div>").join("") + "</div>";
+      const row = el.querySelector(".hp-row"); if (row && keepX) row.scrollLeft = keepX;
     }
     let hpHtml = "", hpAt = 0;   // last "Make your picks" block, so Home's live refreshes don't flicker or re-read every time
     document.addEventListener("click", (e) => {
@@ -2426,7 +2429,15 @@
       if (busyHands() && main.childElementCount) { pendingPaint = [main, html, key]; return; }
       paintNow(main, html, key);
     }
+    // Rows you can slide sideways, kept where you left them when a page refreshes.
+    const SIDE_ROWS = ".hp-row, .dstrip, .cs-years, .cs-all, .seg.chips, .t-tower, .prof-sports";
+    const sideScroll = (root) => [...root.querySelectorAll(SIDE_ROWS)].map((e) => e.scrollLeft);
     function paintNow(main, html, key) {
+      const keep = sideScroll(main);
+      paintInner(main, html, key);
+      [...main.querySelectorAll(SIDE_ROWS)].forEach((e, i) => { if (keep[i]) e.scrollLeft = keep[i]; });
+    }
+    function paintInner(main, html, key) {
       const tpl = document.createElement("template");
       tpl.innerHTML = html;
       const oldCards = [...main.querySelectorAll("[data-ev]")], newCards = [...tpl.content.querySelectorAll("[data-ev]")];
@@ -5943,8 +5954,10 @@
       const SKIP = ".wpg, [data-wpg], [data-noswipe], .dstrip, .ls-wrap, .track, .court, .field, .gtabs, .tabs, .btabs, .seg, input, textarea, .search, .sres, .bars, .ga-modal, .chat-log, .feed-more";
       const GCATS = ["all", "plays", "stats", "players"];
       let st = null, swallow = false;
+      // Anything that scrolls sideways on its own (pick rows, tables, chip rows...) is moved by itself, never the page.
+      const slides = (t) => { for (let e = t; e && e !== document.body; e = e.parentElement) { if (e.scrollWidth > e.clientWidth + 2 && /auto|scroll/.test(getComputedStyle(e).overflowX)) return true; } return false; };
       const zone = (t) => {
-        if (!t.closest || t.closest(SKIP)) return null;
+        if (!t.closest || t.closest(SKIP) || slides(t)) return null;
         const sh = t.closest(".sheet");
         if (sh) return sh === views[views.length - 1]?.el && sh.querySelector(".gtabs") ? { kind: "game", sheet: sh } : null;
         if (views.length || !t.closest("main")) return null;
