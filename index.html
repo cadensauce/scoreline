@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795215330" />
+  <meta name="build" content="1795371355" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1211,6 +1211,9 @@
     .ldr-cat { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); margin: 12px 0 6px; }
     .headline-k { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
     .st-btn { margin-left: auto; }
+    .slot-head { font-size: 13px; font-weight: 600; color: var(--muted); margin: 14px 2px 8px; } .day-head + .slot-head { margin-top: 4px; }
+    .tv-mini { display: block; font-size: 11.5px; color: var(--muted); font-weight: 500; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    @media (min-width: 721px) { .tv-mini { display: none; } }
     [data-headline] .headline small { display: none; }   /* the headline on its own: one glance, not a paragraph */
     @media (max-width: 720px) {
       .section-title { font-size: 17px; margin: 24px 0 8px; }
@@ -1535,7 +1538,9 @@
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 15000);
       try {
-        const r = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+        // Live data: a time stamp on the address so no phone, web view or network cache can hand back an old copy.
+        const fresh = /espn\.com\/apis\/site\/v2\/.*\/(scoreboard|summary)/.test(url) ? url + (url.includes("?") ? "&" : "?") + "_=" + Math.floor(Date.now() / 5000) : url;
+        const r = await fetch(fresh, { signal: ctrl.signal, cache: "no-store" });
         if (!r.ok) throw new Error("HTTP " + r.status);
         return await r.json();
       } finally { clearTimeout(t); }
@@ -1600,7 +1605,7 @@
         teams.map((t) => '<div class="ht-row"><span><i class="ht-dot" style="background:#' + esc(t.team?.color || "8a93a5") + '"></i>' + (possId && String(t.team?.id) === possId ? POSS_ICON(key) : "") + esc(t.team?.abbreviation || t.team?.shortDisplayName || "") + "</span><b>" + (st.state === "pre" ? "" : esc(t.score ?? "")) + "</b></div>").join("") +
         '<small class="ht-st">' + (live ? '<i class="ldot"></i>' : "") + esc(status) + "</small></button>";
     }
-    function gameCard(ev, key, i, mixed) {   // mixed: a list with several sports, so each row names its league
+    function gameCard(ev, key, i, mixed, timeOnly) {   // mixed: several sports in one list (each row names its league); timeOnly: under a day + time-slot heading
       if (HEAT) return heatTile(ev, key, mixed);
       const comp = ev.competitions?.[0] || {};
       const st = ev.status?.type || {};
@@ -1614,7 +1619,9 @@
       const downTxt = football && sit ? [sit.shortDownDistanceText || sit.downDistanceText, sit.isRedZone ? "Red zone" : ""].filter(Boolean).join(" · ") : "";
       if (live) statusHtml = '<span class="status live">' + esc(st.shortDetail || "Live") + "</span>" + (downTxt ? '<small class="sit-mini">' + esc(downTxt) + "</small>" : "");
       else if (post) statusHtml = '<span class="status final">' + esc(st.shortDetail || "Final") + "</span>";
-      else statusHtml = '<span class="status">' + esc(fmtDay(ev.date)) + '<i class="sep"> · </i><span class="t">' + esc(fmtTime(ev.date)) + "</span></span>";
+      else statusHtml = timeOnly ? '<span class="status"><span class="t">' + esc(fmtTime(ev.date)) + "</span></span>" : '<span class="status">' + esc(fmtDay(ev.date)) + '<i class="sep"> · </i><span class="t">' + esc(fmtTime(ev.date)) + "</span></span>";
+      const tvShort = [...new Set((comp.broadcasts || []).flatMap((b) => b.names || []))].slice(0, 2).join(" · ");
+      if (tvShort && !post) statusHtml += '<small class="tv-mini">' + esc(tvShort) + "</small>";   // the channel under the time (phones; computers show it at the bottom of the card)
       const league = mixed ? '<span>' + esc(LEAGUES[key].short || LEAGUES[key].name) + "</span>" : "";
       const rows = teams.map((t, idx) => {
         const other = scores[1 - idx];
@@ -1775,6 +1782,15 @@
       cache[key] = { events };
       return { events, grouped: true };
     }
+    // Games in a day, grouped by start time in your own time zone: "1 PM games", "4 PM games" (4:05 and 4:25 together), "8 PM game".
+    function slotsHtml(evs, key, next) {
+      const by = {};
+      evs.forEach((e) => { const tbd = e.timeValid === false || e.competitions?.[0]?.timeValid === false; (by[tbd ? "tbd" : new Date(e.date).getHours()] ||= []).push(e); });
+      return Object.keys(by).sort((a, b) => (a === "tbd") - (b === "tbd") || a - b).map((h) => {
+        const list = by[h], label = h === "tbd" ? "Time TBD" : new Date(2000, 0, 1, +h).toLocaleTimeString([], { hour: "numeric" }) + (list.length > 1 ? " games" : " game");
+        return '<div class="slot-head">' + esc(label) + '</div><div class="grid">' + sortEvents(list).map((e) => gameCard(e, key, next(), false, h !== "tbd")).join("") + "</div>";
+      }).join("");
+    }
     function groupByDay(events, key, start = 0) {
       const by = {};
       events.slice().sort((a, b) => new Date(a.date) - new Date(b.date)).forEach((e) => { (by[ymd(new Date(e.date))] ||= []).push(e); });
@@ -1787,7 +1803,7 @@
         if (past) pastShown = true;
         const d = new Date(evs[0].date), today = ymd(dateAt(0)) === k;
         return sep + '<div class="day-head' + (past ? " past" : "") + '"><b>' + esc(today ? "Today" : d.toLocaleDateString([], { weekday: "long" })) + "</b><span>" + esc(d.toLocaleDateString([], { month: "short", day: "numeric" })) + "</span></div>" +
-          '<div class="grid">' + sortEvents(evs).map((e) => gameCard(e, key, i++)).join("") + "</div>";
+          slotsHtml(evs, key, () => i++);
       }).join("");
     }
     /* ---------- date strip: mouse wheel + click-and-drag scrolling (computer) ---------- */
@@ -1875,7 +1891,7 @@
       const events = applyFilter(sortEvents(res.events), key);
       const when = viewOf(key) === "day" ? (dayOff[key] === 0 ? "today" : "on " + dateAt(dayOff[key]).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })) : weekLabel(key).toLowerCase();
       const body = !events.length ? '<div class="empty">' + (state.filter === "live" ? "No live games right now." : state.filter === "fav" ? "None of your ★ teams play " + esc(when) + "." : "No games " + esc(when) + ".") + "</div>"
-        : res.grouped && state.filter !== "close" ? groupByDay(events, key) : '<div class="grid">' + events.map((e, i) => gameCard(e, key, i)).join("") + "</div>";
+        : res.grouped && state.filter !== "close" ? groupByDay(events, key) : state.filter !== "close" && viewOf(key) === "day" ? (() => { let i = 0; return slotsHtml(events, key, () => i++); })() : '<div class="grid">' + events.map((e, i) => gameCard(e, key, i)).join("") + "</div>";
       paint(main, barHtml(L.name, key) + body, key);
       centerChip(main.querySelector(".dchip.on"), true);   // glide, never jump (a tap may already be sliding it)
       if (searchQ[key]) applySearch(key);
@@ -2340,10 +2356,11 @@
       }
       // Saved copy, shown instantly next time the app opens while fresh scores load.
       // Only the current week/day is saved, so the app never opens on a week you paged to last time.
-      if (key && !state.offset[key] && !dayOff[key] && html.length < 400000 &&Date.now() - (shellSavedAt[key] || 0) > 60000) { shellSavedAt[key] = Date.now(); store.set("shell:" + key, html); }
+      if (key && !state.offset[key] && !dayOff[key] && html.length < 400000 &&Date.now() - (shellSavedAt[key] || 0) > 60000) { shellSavedAt[key] = Date.now(); store.set("shell:" + key, html); store.set("shellAt:" + key, Date.now()); }
     }
     const shellSavedAt = {};
-    const savedShell = (key) => store.get("shell:" + key, "");
+    // The saved copy is only shown if it's recent (10 minutes): an old one would open the app on old scores.
+    const savedShell = (key) => (Date.now() - store.get("shellAt:" + key, 0) < 6e5 ? store.get("shell:" + key, "") : "");
 
     /* ---------- refresh loop ---------- */
     function stamp() { $("updated").textContent = "Updated " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }); }
@@ -5886,7 +5903,10 @@
       } catch {}
     }
     checkBuild();
-    document.addEventListener("visibilitychange", () => { if (!document.hidden) { render(); checkBuild(); } });
+    // Back to the app: load fresh scores right away (and once more a moment later, in case the network was still waking up).
+    let hiddenAt = 0;
+    document.addEventListener("visibilitychange", () => { if (document.hidden) { hiddenAt = Date.now(); return; } render(); checkBuild(); if (Date.now() - hiddenAt > 60000) setTimeout(() => { if (!document.hidden) render(); }, 3000); });
+    addEventListener("pageshow", (e) => { if (e.persisted) render(); });
 
     /* ---------- toast ---------- */
     let toastTimer = 0;
@@ -6067,6 +6087,12 @@
       const P = alertPrefs();
       // Home-screen installs and the Android app get alerts from the push worker instead, so they are not doubled here.
       if (!MOBILE_APP || !alertsOn || !state.favs.size || pushActive) return;
+      // Only alert about changes seen while the app was open: after time away (or on opening), just remember the scores.
+      // Each alert is also sent only once, so opening the app never repeats ones you already got.
+      const fresh = Date.now() - store.get("snapAt", 0) < 150000;
+      const sent = store.get("sentAlerts", {}), now0 = Date.now();
+      for (const k in sent) if (now0 - sent[k] > 2 * 864e5) delete sent[k];
+      const say = (title, body, tag) => { const id = tag + "|" + title + "|" + body; if (!fresh || sent[id]) return; sent[id] = now0; notify(title, body, tag); };
       const keys = ["nfl", "cfb", "nba", "mlb"], ICON = { nfl: "🏈", cfb: "🏈", nba: "🏀", mlb: "⚾" };
       const datas = await Promise.allSettled(keys.map((k) => getJSON(API + LEAGUES[k].path + "/scoreboard?" + (LEAGUES[k].extra || "").replace(/^&/, ""))));
       const nick = (t) => t.team?.name || t.team?.shortDisplayName || t.team?.abbreviation;
@@ -6084,20 +6110,20 @@
             if (!state.favs.has(favKey(me))) return;
             const opp = teams[1 - j], mine = sc[j], theirs = sc[1 - j];
             const W = (k) => wants(P, favKey(me), k, ev);
-            if (W("start") && prev.st === "pre" && st === "in") notify(ic + " " + nick(me) + " vs " + nick(opp) + " is starting", "Tap to follow along", "start-" + ev.id);
+            if (W("start") && prev.st === "pre" && st === "in") say(ic + " " + nick(me) + " vs " + nick(opp) + " is starting", "Tap to follow along", "start-" + ev.id);
             if (W("score") && st === "in" && lg !== "nba" && mine > prev.sc[j]) {
               const pts = mine - prev.sc[j];
               const what = lg === "mlb" ? (pts === 1 ? "scores a run" : "scores " + pts + " runs") : pts >= 6 ? "touchdown" : pts === 3 ? "field goal" : pts === 2 ? "safety" : "score";
-              notify(ic + " " + nick(me) + " " + what, line(ev) + " · " + clock, "score-" + ev.id);
+              say(ic + " " + nick(me) + " " + what, line(ev) + " · " + clock, "score-" + ev.id);
             }
-            if (lg !== "mlb" && prev.per === 2 && per === 2 && prev.st === "in" && /halftime/i.test(clock) && !snapshot["half" + ev.id + favKey(me)] && W("halftime")) { snapshot["half" + ev.id + favKey(me)] = 1; notify(ic + " Halftime: " + (mine > theirs ? nick(me) + " lead" : mine < theirs ? nick(me) + " trail" : "Tied") + " " + Math.max(mine, theirs) + "–" + Math.min(mine, theirs), line(ev), "half-" + ev.id); }
-            if (lg !== "mlb" && W("second") && prev.per === 2 && per === 3) notify(ic + " Second half: " + nick(me) + " vs " + nick(opp), line(ev), "second-" + ev.id);
-            if (W("score") && lg === "nba" && st === "in" && per > prev.per && prev.per >= 1 && prev.per !== 2) notify(ic + " " + (prev.per === 2 ? "Halftime" : "End of Q" + prev.per) + ": " + (mine > theirs ? nick(me) + " lead" : mine < theirs ? nick(me) + " trail" : "Tied") + " " + Math.max(mine, theirs) + "–" + Math.min(mine, theirs), line(ev), "q-" + ev.id);
-            if (W("final") && st === "post" && prev.st !== "post") notify(ic + " Final: " + nick(me) + " " + (mine > theirs ? "win" : mine < theirs ? "lose" : "tie") + " " + Math.max(mine, theirs) + "–" + Math.min(mine, theirs), "vs " + (opp.team?.displayName || nick(opp)), "final-" + ev.id);
+            if (lg !== "mlb" && prev.per === 2 && per === 2 && prev.st === "in" && /halftime/i.test(clock) && !snapshot["half" + ev.id + favKey(me)] && W("halftime")) { snapshot["half" + ev.id + favKey(me)] = 1; say(ic + " Halftime: " + (mine > theirs ? nick(me) + " lead" : mine < theirs ? nick(me) + " trail" : "Tied") + " " + Math.max(mine, theirs) + "–" + Math.min(mine, theirs), line(ev), "half-" + ev.id); }
+            if (lg !== "mlb" && W("second") && prev.per === 2 && per === 3) say(ic + " Second half: " + nick(me) + " vs " + nick(opp), line(ev), "second-" + ev.id);
+            if (W("score") && lg === "nba" && st === "in" && per > prev.per && prev.per >= 1 && prev.per !== 2) say(ic + " " + (prev.per === 2 ? "Halftime" : "End of Q" + prev.per) + ": " + (mine > theirs ? nick(me) + " lead" : mine < theirs ? nick(me) + " trail" : "Tied") + " " + Math.max(mine, theirs) + "–" + Math.min(mine, theirs), line(ev), "q-" + ev.id);
+            if (W("final") && st === "post" && prev.st !== "post") say(ic + " Final: " + nick(me) + " " + (mine > theirs ? "win" : mine < theirs ? "lose" : "tie") + " " + Math.max(mine, theirs) + "–" + Math.min(mine, theirs), "vs " + (opp.team?.displayName || nick(opp)), "final-" + ev.id);
           });
           const diff = Math.abs(sc[0] - sc[1]);
           const late = lg === "mlb" ? per >= 9 && diff <= 1 : lg === "nba" ? per >= 4 && diff <= 5 && /^[0-2]:\d\d/.test(clock) : per >= 4 && diff <= 8 && /^[0-4]:\d\d/.test(clock);
-          if (st === "in" && late && !snapshot["close" + ev.id] && teams.some((t) => state.favs.has(favKey(t)) && wants(P, favKey(t), "close", ev))) { snapshot["close" + ev.id] = 1; notify(ic + " Close finish: " + nick(teams[0]) + " vs " + nick(teams[1]), line(ev) + " · " + clock, "close-" + ev.id); }
+          if (st === "in" && late && !snapshot["close" + ev.id] && teams.some((t) => state.favs.has(favKey(t)) && wants(P, favKey(t), "close", ev))) { snapshot["close" + ev.id] = 1; say(ic + " Close finish: " + nick(teams[0]) + " vs " + nick(teams[1]), line(ev) + " · " + clock, "close-" + ev.id); }
         });
       });
       // Formula 1 (followed as a whole): session starting + results.
@@ -6109,19 +6135,18 @@
             const key = "f1-" + (c.id || ab + c.date), prev = snapshot[key];
             snapshot[key] = st;
             if (!prev || prev === st || !/^(Qual|SQ|SS|Sprint|Race)$/.test(ab)) return;
-            if (prev === "pre" && st === "in" && modeFor(P, "f1", "start") !== "off") notify("🏁 " + name + " is starting", ev.name, key);
+            if (prev === "pre" && st === "in" && modeFor(P, "f1", "start") !== "off") say("🏁 " + name + " is starting", ev.name, key);
             if (prev !== "post" && st === "post" && /^(Qual|Race|Sprint)$/.test(ab) && modeFor(P, "f1", "final") !== "off") {
               const top = (c.competitors || []).slice().sort((a, b) => (a.order || 99) - (b.order || 99)).slice(0, 3).map((d) => d.athlete?.shortName || d.athlete?.displayName);
-              notify("🏁 " + (ab === "Qual" ? "Pole: " + top[0] : name + " result: " + top[0] + " wins"), ab === "Qual" ? ev.name : top.map((n2, k) => "P" + (k + 1) + " " + n2).join(" · "), key);
+              say("🏁 " + (ab === "Qual" ? "Pole: " + top[0] : name + " result: " + top[0] + " wins"), ab === "Qual" ? ev.name : top.map((n2, k) => "P" + (k + 1) + " " + n2).join(" · "), key);
             }
           });
         } catch {}
       }
-      store.set("snap", snapshot);
+      store.set("snap", snapshot); store.set("snapAt", Date.now()); store.set("sentAlerts", sent);
     }
-    if (alertsOn) pushSync();
-    setInterval(checkAlerts, 20000);
-    checkAlerts();
+    // Find out first whether this phone already gets alerts from the server, so nothing is sent twice.
+    Promise.resolve(alertsOn ? pushSync() : 0).catch(() => {}).finally(() => { checkAlerts(); setInterval(checkAlerts, 20000); });
 
     /* ---------- in-app updates (native app only) ---------- */
     // Releases are tagged build-N and the app built from them has version 1.0.N.
