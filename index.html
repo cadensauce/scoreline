@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795372839" />
+  <meta name="build" content="1795373199" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -2363,7 +2363,7 @@
       let svg = '<svg class="track" viewBox="0 0 ' + W + " " + H + '"><path d="' + d + '" class="t-outer"/><path d="' + d + '" class="t-inner"/>';
       nums.forEach((n) => {
         const c = "#" + (T.drivers[n]?.team_colour || "8a93a5"), tag = n === first ? "P1" : n === last ? "P" + T.order[n] : "";
-        svg += '<g class="car' + (tag ? " key" : "") + '" data-n="' + n + '"><g class="car-rot">' + carSvg(esc(c), tag ? 1.25 : 1.05) + '</g>' + (tag ? '<text class="car-lbl" y="' + (n === first ? -11 : 19) + '">' + esc(tag + " " + dname(n)) + "</text>" : "") + "</g>";
+        svg += '<g class="car' + (tag ? " key" : "") + '" data-n="' + n + '"><g class="car-rot">' + carSvg(esc(c), tag ? 1.25 : 1.05) + '</g>' + (tag ? '<text class="car-lbl" y="' + (n === first ? -11 : 19) + '">' + esc(dname(n)) + "</text>" : "") + "</g>";
       });
       svg += "</svg>";
       const chip = (n) => '<span class="t-chip"><i style="background:#' + esc(T.drivers[n]?.team_colour || "8a93a5") + '"></i>P' + esc(T.order[n]) + " " + esc(dname(n)) + "</span>";
