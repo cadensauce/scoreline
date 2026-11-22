@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795372113" />
+  <meta name="build" content="1795372499" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1211,7 +1211,8 @@
     .ldr-cat { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); margin: 12px 0 6px; }
     .headline-k { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
     .st-btn { margin-left: auto; }
-    .flag-line { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 12px; font-size: 13.5px; font-variant-numeric: tabular-nums; } .flag-line b { font-weight: 650; }
+    .flag-line { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 2px 8px; margin: 8px 0 0; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; } .flag-line b { font-weight: 650; color: var(--text); } .flag-line span { white-space: nowrap; }
+    .sheet.wide.k-game .flag-line { font-size: 14px; margin-top: 10px; }
     .slot-head { font-size: 13px; font-weight: 600; color: var(--muted); margin: 14px 2px 8px; } .day-head + .slot-head { margin-top: 4px; }
     .tv-mini { display: block; font-size: 11.5px; color: var(--muted); font-weight: 500; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
     @media (min-width: 721px) { .tv-mini { display: none; } }
@@ -4614,12 +4615,11 @@
         return '<button type="button" class="g-team" data-team="' + lg + "|" + esc(t.team?.id) + '">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : "") +
           "<b>" + esc(t.team?.abbreviation || t.team?.displayName) + "</b>" + (gpid && gpid === String(t.team?.id) ? POSS_ICON(lg) : "") + (st.state === "in" ? '<i class="poss-ph"></i>' : "") + '<small>' + esc(t.record?.[0]?.summary || t.record?.[0]?.displayValue || "") + "</small></button>" +
           (i === 0 ? '<div class="g-mid">' + (showScore ? '<div class="g-score">' + esc(teams[0]?.score ?? "") + "<i>–</i>" + esc(teams[1]?.score ?? "") + "</div>" : "") +
-            '<div class="status ' + (st.state === "in" ? "live" : "") + '">' + esc(st.state === "pre" ? fmtDay(comp.date) + " · " + fmtTime(comp.date) : st.shortDetail || "") + "</div></div>" : "");
+            '<div class="status ' + (st.state === "in" ? "live" : "") + '">' + esc(st.state === "pre" ? fmtDay(comp.date) + " · " + fmtTime(comp.date) : st.shortDetail || "") + "</div>" + (st.state !== "pre" ? flagLine(s, teams, lg) : "") + "</div>" : "");   // flags/fouls/errors right under the score and clock
       }).join("") + "</div>";
 
       // Order: score → plain-English status → tabs → win probability → plays → the rest.
       h += plainLine(s, teams, st.state, lg);
-      if (st.state !== "pre") h += flagLine(s, teams, lg);
       if (st.state === "in") Object.assign(v, { flagLg: lg, flagTeams: teams, flagId: id });   // keeps the flags line current while live
       const recap = recapHtml(s, teams, lg);   // finished games only: gets its own Recap tab
       if (st.state !== "post") h += '<div data-why></div>';   // why this game matters (filled in below)
