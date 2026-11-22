@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795373199" />
+  <meta name="build" content="1795374646" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -4060,11 +4060,18 @@
       if (!P || !G) return finish(s, [X(50)]);
       s += '<g class="play">';   // everything below is the play; the loop replays just this group
 
-      const t = P.text || "", ty = P.type?.text || "";
+      const t = P.text || "", ty0 = P.type?.text || "";
+      // A flag: show the play that actually happened first, then the flag. When the penalty wiped the play out, the feed
+      // calls the whole thing "Penalty", so the play is read from the description before "PENALTY on".
+      const flagName = /PENALTY on/i.test(t) ? ((t.match(/PENALTY on [^,]+, ([^,(]+)/i) || [])[1] || "Penalty").trim() + (/declined/i.test(t) ? " (declined)" : "") : "";
+      const before = t.split(/PENALTY on/i)[0], noPlay = /penalty/i.test(ty0) && before.trim().length > 12;
+      const ty = !noPlay ? ty0 : /pass incomplete/i.test(before) ? "Pass Incompletion" : /intercepted/i.test(before) ? "Interception" : /sacked/i.test(before) ? "Sack"
+        : /\bpass\b.*\bto\b.*\bfor (-?\d+|no gain)/i.test(before) ? "Pass Reception" : /scrambles|\b(left|right) (end|tackle|guard)\b|up the middle|\bfor (-?\d+ yards?|no gain)/i.test(before) ? "Rush" : ty0;
+      const playYds = noPlay ? (/no gain/i.test(before) ? 0 : Number((before.match(/for (-?\d+) yards?/i) || [])[1]) || 0) : 0;
       const right = G.team === String(F.away.team?.id), dir = right ? 1 : -1;
       const offT = right ? F.away : F.home, defT = right ? F.home : F.away, oc = esc(col(offT)), dc = esc(col(defT));
       const pos = (ytez) => (right ? 100 - ytez : ytez);
-      const t0 = P.start.yardsToEndzone, t1 = endYtez(P), xL = X(pos(t0)), xE = X(pos(t1));
+      const t0 = P.start.yardsToEndzone, t1 = noPlay && ty !== ty0 ? Math.max(-9, Math.min(109, t0 - playYds)) : endYtez(P), xL = X(pos(t0)), xE = X(pos(t1));   // a wiped-out play is drawn to where it actually went
       const dist = Number(P.start.distance) || 0;
       const clampX = (x) => Math.max(70, Math.min(W - 70, x));
       s += '<line x1="' + xL + '" x2="' + xL + '" y1="0" y2="' + H + '" class="f-los"/>';
@@ -4150,8 +4157,8 @@
         const rn = nm(/fair catch by ([A-Z][a-z]?\.[\w'-]+)/) || nm(/\.\s*([A-Z][a-z]?\.[\w'-]+) (?:to|for|MUFFS|pushed|ran)/);
         if (ath("returner") || rn) s += mark(noRet ? cx2 : xE, noRet ? CY : CY + 30, dc, ath("returner"), rn, 1.5, false, null, noRet ? null : route(rp, 1.6, 1.1));
         if (!noRet) carrier = { sx: cx2, ex: xE, ey: CY + 30, begin: 1.6, dur: 1.1, tc: oc };
-      } else if (G.isPass) {
-        const tc = G.air != null ? t0 - G.air : t1, cxp = X(pos(tc)), ly = side ? lane(72) : CY - 28, yac = Math.abs(xE - cxp) > 3;
+      } else if (G.isPass || ty === "Pass Reception") {
+        const tc = G.air != null && !noPlay ? t0 - G.air : t1, cxp = X(pos(tc)), ly = side ? lane(72) : CY - 28, yac = Math.abs(xE - cxp) > 3;
         // Timeline: receiver runs his route while the QB drops back (0.1-1.35s), the throw arrives at 1.35s,
         // then (if caught) he keeps running after the catch.
         const rd = Math.min(1.6, 0.45 + Math.abs(xE - cxp) / 200), ey2 = Math.max(40, Math.min(H - 40, ly + (side ? -side * dir * 24 : 30))), yp = weave(cxp, ly, xE, ey2);
@@ -4196,6 +4203,8 @@
       } else {
         s += tag(clampX(xL), CY - 50, /penalty/i.test(ty) ? "🚩 " + ((t.match(/PENALTY on [^,]+, ([^,(]+)/i) || [])[1] || "Penalty").trim() : ty || "Play", 0.2);
       }
+      // The flag comes in once the play has finished (the play itself is drawn above).
+      if (flagName && !/penalty/i.test(ty)) {   // (a bare "Penalty" with no play to draw already shows just the flag) const fd = tEnd + 0.35; s += tag(clampX(xL), CY - 50, "🚩 " + flagName, fd); at(fd + 1.2); }
       // Tacklers close in on the ball carrier as he is brought down (only players the data credits).
       if (carrier) {
         const head = Math.sign(carrier.ex - carrier.sx) || dir;
