@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795371941" />
+  <meta name="build" content="1795372113" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -3129,6 +3129,9 @@
         "gb": "Games behind: how far a team trails the leader in the standings.",
         "strk": "Streak: how many games in a row a team has won (W) or lost (L).",
         "diff": "Point difference: points scored minus points allowed this season.",
+        "flags": "Penalties. The first number is how many times the referees threw a flag (a penalty) on that team; the second is how many yards those penalties cost them. NYG 2:10 means the Giants got 2 penalties for 10 yards in total. Fewer is better.",
+        "fouls": "Fouls: how many times a team's players broke the rules on contact (pushing, holding, hitting a shooter). Fouls give the other team free throws. 'tech' is a technical foul, for things like arguing or bad behavior. Fewer is better.",
+        "errors": "Errors: mistakes by the fielding team (a dropped catch or a bad throw) that let a batter reach base or a runner move up when they should have been out. Fewer is better.",
       },
       nfl: {
         "scrimmage": "The line of scrimmage: the spot where each play starts. The blue line on the field.",
@@ -3266,7 +3269,7 @@
       else if (lg === "nba") { label = "Fouls"; vals = teams.map((t) => { const f = stat(t, "fouls"), tf = Number(stat(t, "totalTechnicalFouls")) || 0; return f == null ? null : f + (tf ? " (" + tf + " tech)" : ""); }); }
       else if (lg === "mlb") { label = "Errors"; vals = teams.map((t) => stat(t, "errors", "E")); }
       if (!label || vals.some((x) => x == null)) return "";
-      return '<div class="flag-line" title="' + (label === "Flags" ? "Penalties: number of flags : yards" : label) + '"><span class="muted">' + label + "</span>" +
+      return '<div class="flag-line" title="' + (label === "Flags" ? "Penalties: number of flags : yards" : label) + '"><span class="muted">' + tm(lg, label) + "</span>" +
         teams.map((t, i) => "<span><b>" + esc(t.team?.abbreviation || "") + "</b> " + esc(vals[i]) + "</span>").join('<span class="muted">·</span>') + "</div>";
     }
     function teamStatsHtml(s, lg, teams) {
