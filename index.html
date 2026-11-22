@@ -1543,7 +1543,16 @@
       }
       return url;
     }
-    async function getJSON(url) {
+    // OpenF1 (F1 car positions, laps, pits) refuses bursts, so its requests go one at a time with a short pause,
+    // and a refused one is tried once more. Without this the map, qualifying and strategy all asked at once and failed.
+    let ofLine = Promise.resolve();
+    function getJSON(url) {
+      if (!url.includes("api.openf1.org")) return getJSONnow(url);
+      const job = ofLine.then(() => getJSONnow(url).catch(() => new Promise((r) => setTimeout(r, 1500)).then(() => getJSONnow(url))));
+      ofLine = job.catch(() => {}).then(() => new Promise((r) => setTimeout(r, 300)));
+      return job;
+    }
+    async function getJSONnow(url) {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 15000);
       try {
