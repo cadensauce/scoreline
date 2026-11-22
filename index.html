@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795371355" />
+  <meta name="build" content="1795372113" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1211,6 +1211,7 @@
     .ldr-cat { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); margin: 12px 0 6px; }
     .headline-k { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
     .st-btn { margin-left: auto; }
+    .flag-line { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 12px; font-size: 13.5px; font-variant-numeric: tabular-nums; } .flag-line b { font-weight: 650; }
     .slot-head { font-size: 13px; font-weight: 600; color: var(--muted); margin: 14px 2px 8px; } .day-head + .slot-head { margin-top: 4px; }
     .tv-mini { display: block; font-size: 11.5px; color: var(--muted); font-weight: 500; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
     @media (min-width: 721px) { .tv-mini { display: none; } }
@@ -3128,6 +3129,9 @@
         "gb": "Games behind: how far a team trails the leader in the standings.",
         "strk": "Streak: how many games in a row a team has won (W) or lost (L).",
         "diff": "Point difference: points scored minus points allowed this season.",
+        "flags": "Penalties. The first number is how many times the referees threw a flag (a penalty) on that team; the second is how many yards those penalties cost them. NYG 2:10 means the Giants got 2 penalties for 10 yards in total. Fewer is better.",
+        "fouls": "Fouls: how many times a team's players broke the rules on contact (pushing, holding, hitting a shooter). Fouls give the other team free throws. 'tech' is a technical foul, for things like arguing or bad behavior. Fewer is better.",
+        "errors": "Errors: mistakes by the fielding team (a dropped catch or a bad throw) that let a batter reach base or a runner move up when they should have been out. Fewer is better.",
       },
       nfl: {
         "scrimmage": "The line of scrimmage: the spot where each play starts. The blue line on the field.",
@@ -3255,6 +3259,19 @@
       mlb: [["H", "Hits"], ["HR", "Home runs"], ["BB", "Walks"], ["SO", "Strikeouts"], ["LOB", "Left on base"], ["E", "Errors"]],
     };
     STAT_KEYS.cfb = STAT_KEYS.nfl;
+    // Discipline at a glance, under the score: football flags as count:yards, NBA fouls (+ technicals), MLB errors.
+    function flagLine(s, teams, lg) {
+      const bt = s.boxscore?.teams || [];
+      if (bt.length < 2 || teams.length < 2) return "";
+      const stat = (tm2, name, abbr) => { const t = bt.find((x) => x.team?.id === tm2.team?.id); if (!t) return null; for (const g of t.statistics || []) { if (g.name === name) return g.displayValue; for (const x of g.stats || []) if (x.abbreviation === abbr || x.name === name) return x.displayValue; } return null; };
+      let label = "", vals;
+      if (lg === "nfl" || lg === "cfb") { label = "Flags"; vals = teams.map((t) => { const v = stat(t, "totalPenaltiesYards"); return v == null ? null : String(v).replace("-", ":"); }); }
+      else if (lg === "nba") { label = "Fouls"; vals = teams.map((t) => { const f = stat(t, "fouls"), tf = Number(stat(t, "totalTechnicalFouls")) || 0; return f == null ? null : f + (tf ? " (" + tf + " tech)" : ""); }); }
+      else if (lg === "mlb") { label = "Errors"; vals = teams.map((t) => stat(t, "errors", "E")); }
+      if (!label || vals.some((x) => x == null)) return "";
+      return '<div class="flag-line" title="' + (label === "Flags" ? "Penalties: number of flags : yards" : label) + '"><span class="muted">' + tm(lg, label) + "</span>" +
+        teams.map((t, i) => "<span><b>" + esc(t.team?.abbreviation || "") + "</b> " + esc(vals[i]) + "</span>").join('<span class="muted">·</span>') + "</div>";
+    }
     function teamStatsHtml(s, lg, teams) {
       const keys = STAT_KEYS[lg];
       const bt = s.boxscore?.teams || [];
@@ -3525,6 +3542,7 @@
           if (sec && fresh) { sec.innerHTML = chartSecHtml(v); renderSportFeed(v, true); sec.classList.add("calm-sec"); }
           const comp = s.header?.competitions?.[0] || {}, cs = (comp.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
           const g = v.el.querySelector(".g-score"); if (g) g.innerHTML = esc(cs[0]?.score ?? "") + "<i>–</i>" + esc(cs[1]?.score ?? "");
+          const fl = v.el.querySelector(".flag-line"), nf = v.teams ? flagLine(s, v.teams, v.lg) : ""; if (fl && nf) fl.outerHTML = nf;
           const st = v.el.querySelector(".g-mid .status"); if (st) st.textContent = comp.status?.type?.shortDetail || st.textContent;
           if (comp.status?.type?.state !== "in") clearInterval(v.liveTimer);
         } catch {}
@@ -3632,6 +3650,13 @@
       const st = v.el.querySelector(".g-mid .status");
       if (st && p.period?.number) st.textContent = (p.period.number > 4 ? "OT" : "Q" + p.period.number) + " · " + (p.clock?.displayValue || "");
     }
+    // Football game pages update plays from another feed, so refresh their flags line every 30 seconds.
+    setInterval(() => views.forEach(async (v) => {
+      if (document.hidden || !(v.flagLg === "nfl" || v.flagLg === "cfb") || !v.el?.isConnected) return;
+      const s = await getJSON(API + LEAGUES[v.flagLg].path + "/summary?event=" + v.flagId).catch(() => null);
+      const fl = v.el.querySelector(".flag-line"), nf = s ? flagLine(s, v.flagTeams, v.flagLg) : ""; if (fl && nf) fl.outerHTML = nf;
+      if (s?.header?.competitions?.[0]?.status?.type?.state !== "in") v.flagLg = "";
+    }), 30000);
     setInterval(() => {
       views.forEach((v) => {
         const el = v.el?.querySelector("[data-ago]");
@@ -4594,6 +4619,8 @@
 
       // Order: score → plain-English status → tabs → win probability → plays → the rest.
       h += plainLine(s, teams, st.state, lg);
+      if (st.state !== "pre") h += flagLine(s, teams, lg);
+      if (st.state === "in") Object.assign(v, { flagLg: lg, flagTeams: teams, flagId: id });   // keeps the flags line current while live
       const recap = recapHtml(s, teams, lg);   // finished games only: gets its own Recap tab
       if (st.state !== "post") h += '<div data-why></div>';   // why this game matters (filled in below)
       const gcats = [["all", "Summary"], ...(recap ? [["recap", "Recap"]] : []), ["plays", "Plays"], ["stats", "Stats"], ["players", "Players"]];
