@@ -1212,7 +1212,7 @@
     .headline-k { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
     .st-btn { margin-left: auto; }
     .hp-row, .dstrip, .cs-years, .cs-all, .seg.chips { overscroll-behavior-x: contain; }   /* sliding to the end of a row never pulls the page */
-    .car-shape { stroke: rgba(0, 0, 0, .55); stroke-width: .5; } .car.key .car-shape { stroke: #fff; stroke-width: .45; }
+    .car .cw { fill: #111; } .car .cb { stroke: rgba(0, 0, 0, .55); stroke-width: .35; } .car .cc { fill: #0b0b0c; stroke: rgba(255, 255, 255, .55); stroke-width: .3; } .car.key .cb { stroke: #fff; stroke-width: .35; }
     .t-tower { margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0 14px; font-size: 13px; font-variant-numeric: tabular-nums; }
     .tt-head { grid-column: 1 / -1; color: var(--muted); font-size: 12px; font-weight: 600; margin-bottom: 4px; }
     .tt-row { display: grid; grid-template-columns: 22px 4px auto 1fr; align-items: center; gap: 7px; padding: 5px 0; border-top: 1px solid var(--line); } .tt-row b { text-align: right; } .tt-row i { width: 4px; height: 14px; border-radius: 2px; }
@@ -2247,8 +2247,15 @@
     /* ---------- F1 track map (car positions from the free OpenF1 API) ---------- */
     // Live when a session is running and data is flowing; otherwise loops a 100-second replay from the latest session.
     const OF1 = "https://api.openf1.org/v1/";
-    // A small top-down F1 car (nose to the right): front wing, narrow nose, body, sidepods, rear wing.
-    const CAR_PATH = "M7.5 -2.6h1.2v5.2h-1.2zM7.5 -0.7L3.5 -0.9L2 -2.3L-3.5 -2.3L-4.6 -1.2L-6 -1.2L-6 -3h-1.6v6H-6V1.2h1.4L-3.5 2.3L2 2.3L3.5 0.9L7.5 0.7z";
+    // A top-down F1 car, nose to the right, drawn like the real thing: wide front wing, needle nose, front and rear
+    // tyres, sidepods, dark cockpit with the halo, engine cover and rear wing. Body in the team colour, tyres black.
+    const carSvg = (col, s) => '<g transform="scale(' + s + ')">' +
+      '<rect x="-6.4" y="-4.4" width="3" height="2" rx=".5" class="cw"/><rect x="-6.4" y="2.4" width="3" height="2" rx=".5" class="cw"/>' +   // rear tyres
+      '<rect x="3.6" y="-4.1" width="2.6" height="1.7" rx=".5" class="cw"/><rect x="3.6" y="2.4" width="2.6" height="1.7" rx=".5" class="cw"/>' +   // front tyres
+      '<path class="cb" fill="' + col + '" d="M8.6 -0.45L4.2 -0.75L2.6 -1.1L1.2 -2.5L-3.6 -2.5L-5.2 -1.2L-6.6 -0.9L-6.6 0.9L-5.2 1.2L-3.6 2.5L1.2 2.5L2.6 1.1L4.2 0.75L8.6 0.45Z"/>' +   // nose, sidepods, engine cover
+      '<rect x="7.6" y="-3.9" width="1.3" height="7.8" rx=".4" fill="' + col + '" class="cb"/>' +   // front wing
+      '<rect x="-8.2" y="-3.1" width="1.5" height="6.2" rx=".4" fill="' + col + '" class="cb"/>' +   // rear wing
+      '<ellipse cx="0.4" cy="0" rx="1.6" ry="0.95" class="cc"/></g>';   // cockpit and halo
     let track = null, trackRaf = 0, trackPoll = 0;
     const q = (k, v) => k + encodeURIComponent(v);
     async function fetchLoc(key, a, b) {
@@ -2289,7 +2296,11 @@
         const nums = Object.keys(cars).filter((n) => cars[n].length > 20);
         if (!nums.length) throw new Error("no data");
         const ref = nums.slice().sort((m, n) => (order[m] || 99) - (order[n] || 99))[0];
-        track = { s, live, at: Date.now(), a: a.getTime(), b: b.getTime(), cars, order, outline: cars[ref], drivers: Object.fromEntries(drivers.map((d) => [d.driver_number, d])) };
+        // Out of the session (DNF / parked in the garage): a car that barely moves while most of the field is racing.
+        const extent = (c) => Math.hypot(Math.max(...c.map((p) => p.x)) - Math.min(...c.map((p) => p.x)), Math.max(...c.map((p) => p.y)) - Math.min(...c.map((p) => p.y)));
+        const trackSize = extent(cars[ref]), still = nums.filter((n) => extent(cars[n]) < trackSize * 0.04);
+        const out = new Set(still.length <= nums.length / 2 ? still : []);   // everyone still = red flag or end of session, keep them
+        track = { s, live, out, at: Date.now(), a: a.getTime(), b: b.getTime(), cars, order, outline: cars[ref], drivers: Object.fromEntries(drivers.map((d) => [d.driver_number, d])) };
       } catch { track = { error: true, at: Date.now() }; }
       const el2 = $("trackPanel");
       if (el2) drawTrack(el2);
@@ -2318,7 +2329,7 @@
       let rows;
       if (tw.race) {
         const gapAt = (n) => { const g = tw.gaps[n]; if (!g) return null; let v = null; for (const x of g) { if (x.t > t) break; v = x.g; } return v; };
-        rows = Object.keys(T.cars).filter((n) => T.order[n]).sort((m, n) => T.order[m] - T.order[n]).map((n) => { const g = gapAt(n); return { n, txt: T.order[n] === 1 ? "Leader" : g == null ? "" : typeof g === "number" ? "+" + g.toFixed(3) : String(g) }; });
+        rows = Object.keys(T.cars).filter((n) => T.order[n]).sort((m, n) => (T.out?.has(m) - T.out?.has(n)) || T.order[m] - T.order[n]).map((n) => { const g = gapAt(n); return { n, txt: T.out?.has(n) ? "OUT" : T.order[n] === 1 ? "Leader" : g == null ? "" : typeof g === "number" ? "+" + g.toFixed(3) : String(g) }; });
       } else {
         const best = (n) => Math.min(...(tw.laps[n] || []).filter((l) => l.end <= t).map((l) => l.d));
         const list = Object.keys(T.cars).map((n) => ({ n, b: best(n) })).sort((m, n) => m.b - n.b);
@@ -2344,14 +2355,14 @@
       const ox = (W - (maxX - minX) * k) / 2, oy = (H - (maxY - minY) * k) / 2;
       const sx = (x) => ox + (x - minX) * k, sy = (y) => H - (oy + (y - minY) * k);
       const d = T.outline.map((p0, i) => { const p = R(p0); return (i ? "L" : "M") + sx(p.x).toFixed(1) + " " + sy(p.y).toFixed(1); }).join("");
-      const nums = Object.keys(T.cars).sort((m, n) => (T.order[n] || 0) - (T.order[m] || 0));
+      const nums = Object.keys(T.cars).filter((n) => !T.out?.has(n)).sort((m, n) => (T.order[n] || 0) - (T.order[m] || 0));   // retired cars aren't drawn
       const ranked = nums.filter((n) => T.order[n]).sort((m, n) => T.order[m] - T.order[n]);
       const first = ranked[0], last = ranked[ranked.length - 1];
       const dname = (n) => T.drivers[n]?.name_acronym || n;
       let svg = '<svg class="track" viewBox="0 0 ' + W + " " + H + '"><path d="' + d + '" class="t-outer"/><path d="' + d + '" class="t-inner"/>';
       nums.forEach((n) => {
         const c = "#" + (T.drivers[n]?.team_colour || "8a93a5"), tag = n === first ? "P1" : n === last ? "P" + T.order[n] : "";
-        svg += '<g class="car' + (tag ? " key" : "") + '" data-n="' + n + '"><g class="car-rot"><path class="car-shape" d="' + CAR_PATH + '" fill="' + esc(c) + '" transform="scale(' + (tag ? 1.35 : 1.1) + ')"/></g>' + (tag ? '<text class="car-lbl" y="' + (n === first ? -11 : 19) + '">' + esc(tag + " " + dname(n)) + "</text>" : "") + "</g>";
+        svg += '<g class="car' + (tag ? " key" : "") + '" data-n="' + n + '"><g class="car-rot">' + carSvg(esc(c), tag ? 1.25 : 1.05) + '</g>' + (tag ? '<text class="car-lbl" y="' + (n === first ? -11 : 19) + '">' + esc(tag + " " + dname(n)) + "</text>" : "") + "</g>";
       });
       svg += "</svg>";
       const chip = (n) => '<span class="t-chip"><i style="background:#' + esc(T.drivers[n]?.team_colour || "8a93a5") + '"></i>P' + esc(T.order[n]) + " " + esc(dname(n)) + "</span>";
