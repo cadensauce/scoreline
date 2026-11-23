@@ -231,8 +231,17 @@ function showAddNote(f, text, ok) {
 async function findPeople(q) {
   q = cleanName(q).replace(/^@+\s*/, "").replace(/[^a-z0-9_]/g, "");
   if (!q || !user) return [];
-  const r = await fb.getDocs(fb.query(fb.collection(db, "usernames"), fb.orderBy(fb.documentId()), fb.startAt(q), fb.endAt(q + ""), fb.limit(12)));
-  const out = r.docs.map((d) => ({ username: d.id, uid: d.data().uid }));
+  // Similar names too (like Roblox): names starting with what you typed, plus names sharing its first few letters,
+  // ranked by how close they are (exact, then starts-with, then fewest letters different).
+  const pre = (p, n) => fb.getDocs(fb.query(fb.collection(db, "usernames"), fb.orderBy(fb.documentId()), fb.startAt(p), fb.endAt(p + "\uf8ff"), fb.limit(n))).then((r) => r.docs).catch(() => []);
+  const short = q.slice(0, Math.min(q.length, 3));
+  const docs = (await Promise.all([pre(q, 24), short !== q ? pre(short, 60) : []])).flat();
+  const dist = (a, b) => { const m = Array.from({ length: b.length + 1 }, (_, j) => j); for (let i = 1; i <= a.length; i++) { let prev = m[0]; m[0] = i; for (let j = 1; j <= b.length; j++) { const t = m[j]; m[j] = Math.min(m[j] + 1, m[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = t; } } return m[b.length]; };
+  const score = (n) => (n === q ? -1000 : n.startsWith(q) ? -500 + n.length : dist(q, n));
+  const seen = new Set(), out = [];
+  for (const d of docs) if (!seen.has(d.id)) { seen.add(d.id); out.push({ username: d.id, uid: d.data().uid, s: score(d.id) }); }
+  out.sort((a, b) => a.s - b.s || a.username.localeCompare(b.username));
+  out.splice(12);
   await Promise.all(out.map(async (p) => {
     names[p.uid] = p.username;
     p.rel = p.uid === user.uid ? "me" : friendState.friends.includes(p.uid) ? "friend" : friendState.outgoing.some((x) => x.to === p.uid) ? "sent" : friendState.incoming.some((x) => x.from === p.uid) ? "incoming" : "";
