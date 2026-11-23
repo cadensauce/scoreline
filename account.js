@@ -159,17 +159,45 @@ function watchFriends() {
   unsubs.push(fb.onSnapshot(fb.query(col, fb.where("to", "==", user.uid)), (s) => apply("in", s)));
   unsubs.push(fb.onSnapshot(fb.query(col, fb.where("from", "==", user.uid)), (s) => apply("out", s)));
 }
+// Returns what happened, in words for the person ("Friend request sent to @x"). The @ is optional.
 async function addFriend(username) {
-  username = cleanName(username).replace(/^@/, "");
+  username = cleanName(username).replace(/^@+\s*/, "");
+  if (!username) throw new Error("Type a username first.");
+  if (!/^[a-z0-9_]{3,20}$/.test(username)) throw new Error("No account called @" + username + ". Usernames are 3–20 letters, numbers or _.");
   const u = await fb.getDoc(fb.doc(db, "usernames", username));
-  if (!u.exists()) throw new Error("No one has that username.");
+  if (!u.exists()) throw new Error("No account called @" + username + ".");
   const to = u.data().uid;
   if (to === user.uid) throw new Error("That's you!");
-  if (friendState.friends.includes(to)) throw new Error("You're already friends.");
-  const back = friendState.incoming.find((r) => r.from === to);
-  if (back) return fb.updateDoc(fb.doc(db, "requests", back.id), { status: "accepted" });
+  if (friendState.friends.includes(to)) throw new Error("You're already friends with @" + username + ".");
+  if (friendState.outgoing.some((r) => r.to === to)) throw new Error("You already sent @" + username + " a request.");
   names[to] = username;
+  const back = friendState.incoming.find((r) => r.from === to);
+  if (back) { await fb.updateDoc(fb.doc(db, "requests", back.id), { status: "accepted" }); return "You're now friends with @" + username; }
   await fb.setDoc(fb.doc(db, "requests", user.uid + "_" + to), { from: user.uid, to, status: "pending", at: fb.serverTimestamp() });
+  return "Friend request sent to @" + username;
+}
+// The last add-a-friend result stays on screen through refreshes of the list (for 8 seconds).
+let addNote = { text: "", ok: false, at: 0 };
+const addNoteHtml = () => (Date.now() - addNote.at < 8000 && addNote.text ? '<div class="acct-err' + (addNote.ok ? " ok" : "") + '" data-err role="status">' + esc(addNote.text) + "</div>" : '<div class="acct-err" data-err role="status"></div>');
+function showAddNote(f, text, ok) {
+  addNote = { text, ok, at: Date.now() };
+  const b = f.closest(".sheet, [data-social], [data-social-you], [data-people]")?.querySelector("[data-err]") || f.parentElement?.querySelector("[data-err]");
+  if (b) { b.textContent = text; b.classList.toggle("ok", ok); }
+}
+// People search: usernames starting with what you typed. Photos and names show only for friends
+// (profiles are friends-only); everyone else shows their @username.
+async function findPeople(q) {
+  q = cleanName(q).replace(/^@+\s*/, "").replace(/[^a-z0-9_]/g, "");
+  if (!q || !user) return [];
+  const r = await fb.getDocs(fb.query(fb.collection(db, "usernames"), fb.orderBy(fb.documentId()), fb.startAt(q), fb.endAt(q + ""), fb.limit(12)));
+  const out = r.docs.map((d) => ({ username: d.id, uid: d.data().uid }));
+  await Promise.all(out.map(async (p) => {
+    names[p.uid] = p.username;
+    p.rel = p.uid === user.uid ? "me" : friendState.friends.includes(p.uid) ? "friend" : friendState.outgoing.some((x) => x.to === p.uid) ? "sent" : friendState.incoming.some((x) => x.from === p.uid) ? "incoming" : "";
+    const c = p.rel === "me" ? myCard : p.rel === "friend" ? await friendCard(p.uid) : null;
+    p.avatar = c?.avatar || ""; p.name = c?.name || ""; p.deco = c?.deco || "";
+  }));
+  return out;
 }
 const reqId = (a, b) => a + "_" + b;
 async function removeFriend(uid) {
@@ -557,7 +585,10 @@ document.addEventListener("submit", async (e) => {
   if (f.matches("[data-addf]")) {
     e.preventDefault();
     const input = f.querySelector("input"); errBox(f, "");
-    try { await addFriend(input.value); input.value = ""; toast("Friend request sent"); } catch (err) { errBox(f, niceErr(err)); }
+    const btn = f.querySelector("button[type=submit]"); if (btn) btn.disabled = true;
+    try { const msg = await addFriend(input.value); input.value = ""; showAddNote(f, msg, true); toast(msg); buzz(12); }
+    catch (err) { showAddNote(f, /permission|offline|network|unavailable/i.test(err?.code || err?.message || "") ? "That didn't go through. Check your connection and try again." : niceErr(err), false); }
+    finally { if (btn) btn.disabled = false; }
   }
 });
 document.addEventListener("click", async (e) => {
