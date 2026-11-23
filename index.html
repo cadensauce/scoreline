@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795374996" />
+  <meta name="build" content="1795375129" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -4006,7 +4006,7 @@
       svg.querySelectorAll(".anim-h").forEach((x) => x.remove());   // helper paths from a previous run
       const mk = (d) => { const pe = document.createElementNS(NS, "path"); pe.setAttribute("d", d); pe.setAttribute("fill", "none"); pe.setAttribute("visibility", "hidden"); pe.setAttribute("class", "anim-h"); svg.appendChild(pe); return pe; };
       const movers = [...svg.querySelectorAll("[data-mv]")].map((el) => ({ el, ph: (A?.[+el.dataset.mv] || []).map((p) => { const pe = mk(p.d); return { ...p, pe, L: pe.getTotalLength() }; }) })).filter((m) => m.ph.length);
-      const lines = [...svg.querySelectorAll("[data-dr]")].map((el) => { const [b, u] = el.dataset.dr.split(",").map(Number); return { el, b, u }; });
+      const lines = [...svg.querySelectorAll("[data-dr]")].map((el) => { const [b, u] = el.dataset.dr.split(",").map(Number); return { el, b, u, mk: el.getAttribute("marker-end"), on: true }; });
       let end = 0;
       movers.forEach((m) => m.ph.forEach((p) => { end = Math.max(end, p.b + p.u); }));
       lines.forEach((l) => { end = Math.max(end, l.b + l.u); });
@@ -4016,7 +4016,12 @@
         const k = t < m.ph[0].b ? 0 : clamp01((t - p.b) / p.u), pt = p.pe.getPointAtLength(ease(k) * p.L);
         m.el.setAttribute("transform", "translate(" + pt.x.toFixed(1) + " " + pt.y.toFixed(1) + ")");
       };
-      const draw = (l, t) => { l.el.style.strokeDashoffset = String(1 - ease(clamp01((t - l.b) / l.u))); };
+      const draw = (l, t) => {
+        const k = clamp01((t - l.b) / l.u);
+        l.el.style.strokeDashoffset = String(1 - ease(k));
+        // The arrowhead only appears once the runner gets there (a marker isn't hidden by the line's drawing, so add it at the end).
+        if (l.mk) { const on = k >= 0.98; if (on !== l.on) { l.on = on; if (on) l.el.setAttribute("marker-end", l.mk); else l.el.removeAttribute("marker-end"); } }
+      };
       if (still) { movers.forEach((m) => place(m, 1e9)); lines.forEach((l) => draw(l, 1e9)); return; }
       movers.forEach((m) => place(m, 0)); lines.forEach((l) => draw(l, 0));
       const t0 = performance.now();
@@ -4209,7 +4214,7 @@
         s += tag(clampX(xL), CY - 50, /penalty/i.test(ty) ? "🚩 " + ((t.match(/PENALTY on [^,]+, ([^,(]+)/i) || [])[1] || "Penalty").trim() : ty || "Play", 0.2);
       }
       // The flag comes in once the play has finished (the play itself is drawn above).
-      if (flagName && !/penalty/i.test(ty)) { const fd = tEnd + 0.35; s += tag(clampX(xL), CY - 50, "🚩 " + flagName, fd); at(fd + 1.2); }   // (a bare "Penalty" with no play to draw already shows just the flag)
+      if (flagName && !/penalty/i.test(ty)) { const fd = tEnd + 0.35; s += tag(clampX(xL), 24, "🚩 " + flagName, fd); at(fd + 1.2); }   // along the top edge, clear of the players and the ball's path   // (a bare "Penalty" with no play to draw already shows just the flag)
       // Tacklers close in on the ball carrier as he is brought down (only players the data credits).
       if (carrier) {
         const head = Math.sign(carrier.ex - carrier.sx) || dir;
