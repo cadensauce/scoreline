@@ -34,12 +34,12 @@ test("find people: search, add, and say it was sent", async ({ page }) => {
   await page.locator("#peopleBtn").click();
   await expect(sheet(page).locator(".sheet-title")).toHaveText("Find people");
   await sheet(page).locator("[data-people-q]").fill("@caden");
-  await expect(sheet(page).locator(".soc-row")).toHaveCount(3);
-  await expect(sheet(page).locator(".soc-row").nth(0)).toContainText("You");
-  await expect(sheet(page).locator(".soc-row").nth(2)).toContainText("Friends");
+  await expect(sheet(page).locator(".pc-card")).toHaveCount(3);
+  await expect(sheet(page).locator(".pc-card").nth(0)).toContainText("This is you");
+  await expect(sheet(page).locator(".pc-card").nth(2)).toContainText("You are friends");
   await sheet(page).locator('[data-people-add="cadenbinglenut"]').click();
   await expect(sheet(page).locator("[data-err]")).toHaveText("Friend request sent to @cadenbinglenut");
-  await expect(sheet(page).locator(".soc-row").nth(1)).toContainText("Sent");
+  await expect(sheet(page).locator(".pc-card").nth(1)).toContainText("Request sent");
   expect(await page.evaluate(() => window.__adds)).toEqual(["cadenbinglenut"]);
   expect(errors).toEqual([]);
 });
@@ -58,7 +58,7 @@ for (const w of [320, 375, 430]) {
     await expect(page.locator("#peopleBtn")).toBeVisible();
     await page.locator("#peopleBtn").click();
     await sheet(page).locator("[data-people-q]").fill("caden");
-    await expect(sheet(page).locator(".soc-row")).toHaveCount(3);
+    await expect(sheet(page).locator(".pc-card")).toHaveCount(3);
     const over = await page.evaluate(() => { const b = [...document.querySelectorAll(".sheet.show .sheet-body")].pop(); return b.scrollWidth > b.clientWidth + 1; });
     expect(over).toBe(false);
   });
