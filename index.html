@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795372499" />
+  <meta name="build" content="1795373199" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1211,6 +1211,14 @@
     .ldr-cat { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); margin: 12px 0 6px; }
     .headline-k { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
     .st-btn { margin-left: auto; }
+    .hp-row, .dstrip, .cs-years, .cs-all, .seg.chips { overscroll-behavior-x: contain; }   /* sliding to the end of a row never pulls the page */
+    .car .cw { fill: #2b2b30; stroke: rgba(255, 255, 255, .5); stroke-width: .3; } .car .cs { stroke: rgba(255, 255, 255, .55); stroke-width: .3; } .car .cb { stroke: rgba(0, 0, 0, .55); stroke-width: .35; } .car .cc { fill: #0b0b0c; stroke: rgba(255, 255, 255, .55); stroke-width: .3; } .car.key .cb { stroke: #fff; stroke-width: .35; }
+    .t-tower { margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 0 14px; font-size: 13px; font-variant-numeric: tabular-nums; }
+    .tt-head { grid-column: 1 / -1; color: var(--muted); font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+    .tt-row { display: grid; grid-template-columns: 22px 4px auto 1fr; align-items: center; gap: 7px; padding: 5px 0; border-top: 1px solid var(--line); } .tt-row b { text-align: right; } .tt-row i { width: 4px; height: 14px; border-radius: 2px; }
+    .tt-row small { text-align: right; color: var(--muted); } .tt-pit { font-style: normal; font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 4px; background: var(--text); color: var(--bg); justify-self: start; }
+    .tt-row:has(.tt-pit) { grid-template-columns: 22px 4px auto auto 1fr; }
+    .prof-lg { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 650; margin: 18px 0 8px; } .prof-lg svg { width: 18px; height: 18px; } .prof-lgsec:first-child .prof-lg { margin-top: 4px; }
     .flag-line { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 2px 8px; margin: 8px 0 0; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; } .flag-line b { font-weight: 650; color: var(--text); } .flag-line span { white-space: nowrap; }
     .sheet.wide.k-game .flag-line { font-size: 14px; margin-top: 10px; }
     .slot-head { font-size: 13px; font-weight: 600; color: var(--muted); margin: 14px 2px 8px; } .day-head + .slot-head { margin-top: 4px; }
@@ -1536,7 +1544,16 @@
       }
       return url;
     }
-    async function getJSON(url) {
+    // OpenF1 (F1 car positions, laps, pits) refuses bursts, so its requests go one at a time with a short pause,
+    // and a refused one is tried once more. Without this the map, qualifying and strategy all asked at once and failed.
+    let ofLine = Promise.resolve();
+    function getJSON(url) {
+      if (!url.includes("api.openf1.org")) return getJSONnow(url);
+      const job = ofLine.then(() => getJSONnow(url).catch(() => new Promise((r) => setTimeout(r, 1500)).then(() => getJSONnow(url))));
+      ofLine = job.catch(() => {}).then(() => new Promise((r) => setTimeout(r, 300)));
+      return job;
+    }
+    async function getJSONnow(url) {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 15000);
       try {
@@ -2021,9 +2038,11 @@
       const btn = (g, sd) => { const t = g[sd] || {}, r = g.rewards?.[sd] ?? 10;
         return '<button type="button" class="pick-btn' + (picked[g.id] === sd ? " on" : "") + '" data-pick-side="' + sd + '"><b>' + esc(t.abbr || "") + "</b>" +
           (marks ? "<small>" + MARK_SVG(12) + " +" + r + "</small>" : "") + "</button>"; };
+      const keepX = el.querySelector(".hp-row")?.scrollLeft || 0;   // keep the row where you slid it
       el.innerHTML = hpHtml = '<div class="section-title"><b>Make your picks</b><span class="muted">' + done + " of " + list.length + " picked</span></div>" +
         '<div class="hp-row">' + list.map((g) => '<div class="hp-card"><button type="button" class="hp-top" data-game="' + esc(g.lg) + "|" + esc(g.eventId) + '"><span>' + esc(LEAGUES[g.lg]?.short || g.lg.toUpperCase()) + "</span>" + esc(when(g)) + "</button>" +
           '<div class="pick-row" data-gid="' + esc(g.id) + '">' + btn(g, "away") + '<span class="hp-at">@</span>' + btn(g, "home") + "</div></div>").join("") + "</div>";
+      const row = el.querySelector(".hp-row"); if (row && keepX) row.scrollLeft = keepX;
     }
     let hpHtml = "", hpAt = 0;   // last "Make your picks" block, so Home's live refreshes don't flicker or re-read every time
     document.addEventListener("click", (e) => {
@@ -2159,10 +2178,12 @@
 
     async function renderF1() {
       const main = $("main");
-      main.innerHTML = barHtml("Formula 1", "f1") + skeleton(3);
+      // Refreshes update the page in place (no blank-and-rebuild), so the screen never jumps and taps aren't lost.
+      const again = !!main.querySelector("#trackPanel .track, #trackPanel .g-note") && !!main.querySelector(".f1-wrap");
+      if (!again) main.innerHTML = barHtml("Formula 1", "f1") + skeleton(3);
       let sb, st;
       try { [sb, st] = await Promise.all([getJSON(API + "racing/f1/scoreboard"), getJSON("https://site.api.espn.com/apis/v2/sports/racing/f1/standings").catch(() => null)]); }
-      catch { main.innerHTML = barHtml("Formula 1", "f1") + '<div class="error">Couldn\'t load F1 data. Try again in a moment.</div>'; return; }
+      catch { if (!again) main.innerHTML = barHtml("Formula 1", "f1") + '<div class="error">Couldn\'t load F1 data. Try again in a moment.</div>'; else schedule(false); return; }
       if (state.tab !== "f1") return;
       cache.f1 = sb; cache.f1st = st;
       const ev = sb.events?.[0];
@@ -2199,6 +2220,21 @@
           return "<tr" + (dk ? ' class="f1-follow' + (isPF(dk) ? " on" : "") + '" data-driver="' + esc(e.athlete.id) + '"' : "") + '><td class="pos">' + (i + 1) + "</td><td>" + flag + esc(who) + (dk ? ' <span class="fo">★</span>' : "") + '</td><td class="pts">' + esc(pts) + "</td></tr>";
         }).join("") + "</tbody></table>" + ("") : '<div class="empty">Standings unavailable.</div>';
       right += "</div>";
+      const wrapNow = again && main.querySelector(".f1-wrap");
+      if (wrapNow) {
+        const apply = () => {
+          const oldWx = wrapNow.querySelector("[data-wx]"), y = scrollY;
+          wrapNow.innerHTML = left + right;
+          const newWx = wrapNow.querySelector("[data-wx]");
+          if (oldWx && newWx) newWx.replaceWith(oldWx);   // keep the weather already shown
+          if (Math.abs(scrollY - y) > 2) scrollTo(0, y);
+          tickCountdown(); stamp();
+        };
+        if (busyHands()) { const wait = () => (busyHands() ? setTimeout(wait, 300) : apply()); wait(); } else apply();
+        if (!track || track.error) loadTrack();
+        schedule(ev && nextSession(ev)?.status?.type?.state === "in");
+        return;
+      }
       main.innerHTML = barHtml("Formula 1", "f1") + '<div class="panel track-panel" id="trackPanel"><div class="g-label">Track</div><div class="skel" style="height:260px"></div></div>' + '<div class="f1-wrap">' + left + right + "</div>" + '<div data-f1strat></div>';
       f1QualiHtml().catch(() => "").then((q) => new Promise((r) => setTimeout(r, 800)).then(f1StrategyHtml).catch(() => "").then((x) => { const el = main.querySelector("[data-f1strat]"); if (el) { if (q + x) el.outerHTML = q + x; else el.remove(); } }));
       renderTabs();
@@ -2211,6 +2247,15 @@
     /* ---------- F1 track map (car positions from the free OpenF1 API) ---------- */
     // Live when a session is running and data is flowing; otherwise loops a 100-second replay from the latest session.
     const OF1 = "https://api.openf1.org/v1/";
+    // A top-down F1 car, nose to the right, drawn like the real thing: wide front wing, needle nose, front and rear
+    // tyres, sidepods, dark cockpit with the halo, engine cover and rear wing. Body in the team colour, tyres black.
+    const carSvg = (col, s) => '<g transform="scale(' + s + ')">' +
+      '<rect x="-6.6" y="-4.7" width="3.2" height="2.2" rx=".55" class="cw"/><rect x="-6.6" y="2.5" width="3.2" height="2.2" rx=".55" class="cw"/>' +   // rear tyres
+      '<rect x="3.5" y="-4.3" width="2.7" height="1.9" rx=".5" class="cw"/><path d="M4.8 -2.4L3.2 -1M4.8 2.4L3.2 1M-5 -2.5L-3.6 -1.6M-5 2.5L-3.6 1.6" class="cs"/><rect x="3.5" y="2.4" width="2.7" height="1.9" rx=".5" class="cw"/>' +   // front tyres
+      '<path class="cb" fill="' + col + '" d="M8.6 -0.45L4.2 -0.75L2.6 -1.1L1.2 -2.5L-3.6 -2.5L-5.2 -1.2L-6.6 -0.9L-6.6 0.9L-5.2 1.2L-3.6 2.5L1.2 2.5L2.6 1.1L4.2 0.75L8.6 0.45Z"/>' +   // nose, sidepods, engine cover
+      '<rect x="7.6" y="-4.6" width="1.2" height="9.2" rx=".4" fill="' + col + '" class="cb"/>' +   // front wing
+      '<rect x="-8.3" y="-3.3" width="1.6" height="6.6" rx=".4" fill="' + col + '" class="cb"/>' +   // rear wing
+      '<ellipse cx="0.4" cy="0" rx="1.6" ry="0.95" class="cc"/></g>';   // cockpit and halo
     let track = null, trackRaf = 0, trackPoll = 0;
     const q = (k, v) => k + encodeURIComponent(v);
     async function fetchLoc(key, a, b) {
@@ -2220,7 +2265,10 @@
     async function loadTrack() {
       const el = $("trackPanel");
       if (!el) return;
-      if (track) return drawTrack(el);
+      if (track?.loading) return;
+      // Reuse what's loaded while it's current; after a hiccup (common as a phone wakes up) try again instead of giving up.
+      if (track && !track.error && (track.live || Date.now() - (track.at || 0) < 15 * 60000)) return drawTrack(el);
+      if (track?.error && Date.now() - track.at < 20000) return drawTrack(el);
       track = { loading: true };
       try {
         const now = Date.now();
@@ -2248,16 +2296,57 @@
         const nums = Object.keys(cars).filter((n) => cars[n].length > 20);
         if (!nums.length) throw new Error("no data");
         const ref = nums.slice().sort((m, n) => (order[m] || 99) - (order[n] || 99))[0];
-        track = { s, live, a: a.getTime(), b: b.getTime(), cars, order, outline: cars[ref], drivers: Object.fromEntries(drivers.map((d) => [d.driver_number, d])) };
-      } catch { track = { error: true }; }
+        // Out of the session (DNF / parked in the garage): a car that barely moves while most of the field is racing.
+        const extent = (c) => Math.hypot(Math.max(...c.map((p) => p.x)) - Math.min(...c.map((p) => p.x)), Math.max(...c.map((p) => p.y)) - Math.min(...c.map((p) => p.y)));
+        const trackSize = extent(cars[ref]), still = nums.filter((n) => extent(cars[n]) < trackSize * 0.04);
+        const out = new Set(still.length <= nums.length / 2 ? still : []);   // everyone still = red flag or end of session, keep them
+        track = { s, live, out, at: Date.now(), a: a.getTime(), b: b.getTime(), cars, order, outline: cars[ref], drivers: Object.fromEntries(drivers.map((d) => [d.driver_number, d])) };
+      } catch { track = { error: true, at: Date.now() }; }
       const el2 = $("trackPanel");
       if (el2) drawTrack(el2);
+    }
+    // Timing tower under the map, in step with the cars: race = gap to the leader; practice/qualifying = best lap and
+    // gap to the fastest; PIT while a car is in the pit lane. Loaded once per session from OpenF1 (one request at a time).
+    async function loadTower(T) {
+      if (T.tower) return T.tower;
+      const key = T.s.session_key, race = /race|sprint/i.test(T.s.session_type || T.s.session_name || ""), tw = { race, pits: [], laps: {}, gaps: {} };
+      T.tower = tw;
+      try { tw.pits = (await getJSON(OF1 + "pit?session_key=" + key)) || []; } catch {}
+      if (race) {
+        const a = new Date(T.a - 120000), b = new Date(T.b);
+        try { ((await getJSON(OF1 + "intervals?session_key=" + key + "&" + q("date>", a.toISOString()) + "&" + q("date<", b.toISOString()))) || []).forEach((r) => (tw.gaps[r.driver_number] ||= []).push({ t: new Date(r.date).getTime(), g: r.gap_to_leader })); } catch {}
+        Object.values(tw.gaps).forEach((x) => x.sort((m, n) => m.t - n.t));
+      } else {
+        try { ((await getJSON(OF1 + "laps?session_key=" + key)) || []).forEach((l) => { if (l.lap_duration && l.date_start) (tw.laps[l.driver_number] ||= []).push({ end: new Date(l.date_start).getTime() + l.lap_duration * 1000, d: l.lap_duration }); }); } catch {}
+      }
+      tw.ready = true;
+      return tw;
+    }
+    const lapTxt = (s) => { const m = Math.floor(s / 60), r = s - m * 60; return (m ? m + ":" + (r < 10 ? "0" : "") : "") + r.toFixed(3); };
+    function towerHtml(T, t) {
+      const tw = T.tower; if (!tw?.ready) return "";
+      const inPit = (n) => tw.pits.some((p) => p.driver_number == n && p.date && t >= new Date(p.date).getTime() && t <= new Date(p.date).getTime() + (Number(p.pit_duration) || 24) * 1000);
+      let rows;
+      if (tw.race) {
+        const gapAt = (n) => { const g = tw.gaps[n]; if (!g) return null; let v = null; for (const x of g) { if (x.t > t) break; v = x.g; } return v; };
+        const gnum = (n) => { const g = gapAt(n); return T.out?.has(n) ? 1e9 : typeof g === "number" ? g : g == null ? (T.order[n] === 1 ? 0 : 5e8 + (T.order[n] || 99)) : 1e8 + (parseFloat(g) || 0) * 1e4; };   // leader, then by gap, lapped cars, then out
+        rows = Object.keys(T.cars).filter((n) => T.order[n] || gapAt(n) != null).sort((m, n) => gnum(m) - gnum(n)).map((n, i) => { const g = gapAt(n); return { n, pos: i + 1, txt: T.out?.has(n) ? "OUT" : i === 0 ? "Leader" : g == null ? "" : typeof g === "number" ? "+" + g.toFixed(3) : String(g) }; });
+      } else {
+        const best = (n) => Math.min(...(tw.laps[n] || []).filter((l) => l.end <= t).map((l) => l.d));
+        const list = Object.keys(T.cars).map((n) => ({ n, b: best(n) })).sort((m, n) => m.b - n.b);
+        const top = list[0]?.b;
+        rows = list.map((x, i) => ({ n: x.n, pos: i + 1, txt: isFinite(x.b) ? (i === 0 ? lapTxt(x.b) : "+" + (x.b - top).toFixed(3)) : "No time" }));
+      }
+      if (!rows.length) return "";
+      return '<div class="t-tower"><div class="tt-head"><span>' + (tw.race ? "Gap to leader" : "Best lap") + "</span></div>" + rows.slice(0, 20).map((r, i) =>
+        '<div class="tt-row"><b>' + (r.pos || T.order[r.n] || i + 1) + '</b><i style="background:#' + esc(T.drivers[r.n]?.team_colour || "8a93a5") + '"></i><span>' + esc(T.drivers[r.n]?.name_acronym || r.n) + "</span>" +
+        (inPit(r.n) ? '<em class="tt-pit">PIT</em>' : "") + "<small>" + esc(r.txt) + "</small></div>").join("") + "</div>";
     }
     function drawTrack(el) {
       const T = track;
       cancelAnimationFrame(trackRaf); clearInterval(trackPoll);
       if (!T || T.loading) return;
-      if (T.error) { el.innerHTML = '<div class="g-label">Track</div><div class="g-note">Car positions aren\'t available right now.</div>'; return; }
+      if (T.error) { el.innerHTML = '<div class="g-label">Track</div><div class="g-note">Car positions aren\'t available right now. Trying again…</div>'; setTimeout(() => { if ($("trackPanel") === el && track?.error) loadTrack(); }, 21000); return; }
       const W = 360, H = 250, pad = 22;
       const rx = Math.max(...T.outline.map((p) => p.x)) - Math.min(...T.outline.map((p) => p.x)), ry = Math.max(...T.outline.map((p) => p.y)) - Math.min(...T.outline.map((p) => p.y));
       const rot = ry > rx * 1.15, R = (p) => rot ? { x: p.y, y: -p.x } : p;
@@ -2267,22 +2356,24 @@
       const ox = (W - (maxX - minX) * k) / 2, oy = (H - (maxY - minY) * k) / 2;
       const sx = (x) => ox + (x - minX) * k, sy = (y) => H - (oy + (y - minY) * k);
       const d = T.outline.map((p0, i) => { const p = R(p0); return (i ? "L" : "M") + sx(p.x).toFixed(1) + " " + sy(p.y).toFixed(1); }).join("");
-      const nums = Object.keys(T.cars).sort((m, n) => (T.order[n] || 0) - (T.order[m] || 0));
+      const nums = Object.keys(T.cars).filter((n) => !T.out?.has(n)).sort((m, n) => (T.order[n] || 0) - (T.order[m] || 0));   // retired cars aren't drawn
       const ranked = nums.filter((n) => T.order[n]).sort((m, n) => T.order[m] - T.order[n]);
       const first = ranked[0], last = ranked[ranked.length - 1];
       const dname = (n) => T.drivers[n]?.name_acronym || n;
       let svg = '<svg class="track" viewBox="0 0 ' + W + " " + H + '"><path d="' + d + '" class="t-outer"/><path d="' + d + '" class="t-inner"/>';
       nums.forEach((n) => {
         const c = "#" + (T.drivers[n]?.team_colour || "8a93a5"), tag = n === first ? "P1" : n === last ? "P" + T.order[n] : "";
-        svg += '<g class="car' + (tag ? " key" : "") + '" data-n="' + n + '"><circle r="' + (tag ? 6.5 : 5) + '" fill="' + esc(c) + '"/>' + (tag ? '<text class="car-lbl" y="' + (n === first ? -11 : 19) + '">' + esc(tag + " " + dname(n)) + "</text>" : "") + "</g>";
+        svg += '<g class="car' + (tag ? " key" : "") + '" data-n="' + n + '"><g class="car-rot">' + carSvg(esc(c), tag ? 1.25 : 1.05) + '</g>' + (tag ? '<text class="car-lbl" y="' + (n === first ? -11 : 19) + '">' + esc(dname(n)) + "</text>" : "") + "</g>";
       });
       svg += "</svg>";
       const chip = (n) => '<span class="t-chip"><i style="background:#' + esc(T.drivers[n]?.team_colour || "8a93a5") + '"></i>P' + esc(T.order[n]) + " " + esc(dname(n)) + "</span>";
       el.innerHTML = '<div class="t-head"><div class="g-label" style="margin:0">Track</div><span class="' + (T.live ? "status live" : "t-replay") + '">' + (T.live ? "Live" : "Replay") + "</span></div>" +
         '<div class="g-note" style="margin:2px 0 6px">' + esc([T.s.circuit_short_name, T.s.session_name, T.live ? "" : new Date(T.s.date_start).toLocaleDateString([], { month: "short", day: "numeric" })].filter(Boolean).join(" · ")) + "</div>" + svg +
-        '<div class="t-order">' + ranked.slice(0, 3).map(chip).join("") + (ranked.length > 3 ? '<span class="muted">…</span>' + chip(last) : "") + "</div>";
+        '<div class="t-order">' + ranked.slice(0, 3).map(chip).join("") + (ranked.length > 3 ? '<span class="muted">…</span>' + chip(last) : "") + "</div>" + '<div data-tower></div>';
+      const towerEl = el.querySelector("[data-tower]"); let towerAt = 0;
+      loadTower(T).then(() => { towerAt = 0; }).catch(() => {});
       const groups = Object.fromEntries([...el.querySelectorAll(".car")].map((g) => [g.dataset.n, g]));
-      const pos = {}, lastLbl = groups[last]?.querySelector(".car-lbl");
+      const pos = {}, heading = {}, lastLbl = groups[last]?.querySelector(".car-lbl");
       const idx = {};
       const span = T.b - T.a, wall0 = performance.now();
       const frame = () => {
@@ -2296,8 +2387,11 @@
           const gx = sx(p.x + (q2.x - p.x) * f), gy = sy(p.y + (q2.y - p.y) * f);
           pos[n] = [gx, gy];
           groups[n].setAttribute("transform", "translate(" + gx.toFixed(1) + " " + gy.toFixed(1) + ")");
+          const hx = sx(q2.x) - sx(p.x), hy = sy(q2.y) - sy(p.y);   // nose points the way the car is going
+          if (hx * hx + hy * hy > 0.05) { const ang = Math.atan2(hy, hx) * 57.2958; if (Math.abs(ang - (heading[n] ?? 999)) > 1) { heading[n] = ang; groups[n].firstChild.setAttribute("transform", "rotate(" + ang.toFixed(0) + ")"); } }
         }
         // Hide the last-place label when that car is right next to the leader so the labels never overlap.
+        if (T.tower?.ready && performance.now() - towerAt > 1000 && !busyHands()) { towerAt = performance.now(); const h2 = towerHtml(T, t); if (h2) { towerEl.innerHTML = h2; el.querySelector(".t-order")?.remove(); } }
         if (lastLbl && pos[first] && pos[last]) lastLbl.style.opacity = Math.hypot(pos[first][0] - pos[last][0], pos[first][1] - pos[last][1]) < 60 ? "0" : "1";
         if (el.isConnected) trackRaf = requestAnimationFrame(frame);
       };
@@ -2336,7 +2430,26 @@
     }
     // Update the score list in place: when the same games are on screen, only cards whose content changed are
     // replaced, so scrolling, images and taps aren't disturbed every few seconds.
+    // Taps never get lost to a live refresh: while a finger (or mouse button) is down, and for a moment after, an update
+    // waits, so the row you tapped isn't swapped out between press and release.
+    let pressAt = 0, pressing = false, pendingPaint = null;
+    addEventListener("pointerdown", () => { pressing = true; pressAt = Date.now(); }, true);
+    const released = () => { pressing = false; setTimeout(() => { if (!pressing && pendingPaint) { const p = pendingPaint; pendingPaint = null; paint(...p); } }, 400); };
+    addEventListener("pointerup", released, true); addEventListener("pointercancel", released, true);
+    const busyHands = () => pressing && Date.now() - pressAt < 10000;   // only while a finger is actually down (taps you just made still update at once)
     function paint(main, html, key) {
+      if (busyHands() && main.childElementCount) { pendingPaint = [main, html, key]; return; }
+      paintNow(main, html, key);
+    }
+    // Rows you can slide sideways, kept where you left them when a page refreshes.
+    const SIDE_ROWS = ".hp-row, .dstrip, .cs-years, .cs-all, .seg.chips, .t-tower, .prof-sports";
+    const sideScroll = (root) => [...root.querySelectorAll(SIDE_ROWS)].map((e) => e.scrollLeft);
+    function paintNow(main, html, key) {
+      const keep = sideScroll(main);
+      paintInner(main, html, key);
+      [...main.querySelectorAll(SIDE_ROWS)].forEach((e, i) => { if (keep[i]) e.scrollLeft = keep[i]; });
+    }
+    function paintInner(main, html, key) {
       const tpl = document.createElement("template");
       tpl.innerHTML = html;
       const oldCards = [...main.querySelectorAll("[data-ev]")], newCards = [...tpl.content.querySelectorAll("[data-ev]")];
@@ -2437,7 +2550,7 @@
       const ext = e.target.closest("a[data-ext]");
       if (ext && TAURI?.opener) { e.preventDefault(); TAURI.opener.openUrl(ext.href).catch(() => window.open(ext.href, "_blank")); return; }
       const drv = e.target.closest("[data-driver]");
-      if (drv) { buzz(8); return openDriver(drv.dataset.driver); }
+      if (drv) return openDriver(drv.dataset.driver);
       const pl = e.target.closest("[data-player]");
       if (pl) { const [lg, id] = pl.dataset.player.split("|"); return openPlayer(lg, id); }
       const sd = e.target.closest("[data-standings]");
@@ -2465,6 +2578,7 @@
       const top = views[views.length - 1];
       if (Date.now() - lastPush < 500 || (top && v.key && top.key === v.key)) return false;
       lastPush = Date.now();
+      buzz(8);   // every page that opens gives the same single buzz
       views.push(v);
       history.pushState({ sheet: views.length }, "");
       const bg = sheetRoot.querySelector(".sheet-bg") || sheetRoot.appendChild(Object.assign(document.createElement("div"), { className: "sheet-bg" }));
@@ -5289,13 +5403,19 @@
     const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
     const daysAgo = (t) => Math.max(0, Math.floor((Date.now() - t) / 864e5));
 
-    function profPlayerTiles(list) { return '<div class="prof-tiles">' + list.map((p) => { const h = profHeadshot(p.lg, p.id); return '<button type="button" class="prof-tile" ' + (p.lg === "f1" ? 'data-driver="' + esc(p.id) + '"' : 'data-player="' + esc(p.lg + "|" + p.id) + '"') + '><span class="prof-face">' + (h ? '<img src="' + esc(h) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + "<i>" + esc((p.n || "?")[0]) + "</i></span><b>" + esc(p.n || "") + "</b><small>" + esc([p.t, p.p].filter(Boolean).join(" · ")) + "</small></button>"; }).join("") + "</div>"; }
-    // Favourite players: Current first, then Retired; best first in each (best season against an elite season for the position).
+    function profPlayerTiles(list) { return '<div class="prof-tiles">' + list.map((p) => { const h = profHeadshot(p.lg, p.id); return '<button type="button" class="prof-tile" ' + (p.lg === "f1" ? 'data-driver="' + esc(p.id) + '"' : 'data-player="' + esc(p.lg + "|" + p.id) + '"') + '><span class="prof-face">' + (h ? '<img src="' + esc(h) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + "<i>" + esc((p.n || "?")[0]) + "</i></span><b>" + esc(p.n || "") + "</b><small>" + esc(p.lg === "f1" ? p.t || "F1 driver" : [p.t, p.p].filter(Boolean).join(" · ")) + "</small></button>"; }).join("") + "</div>"; }
+    // Favourite players, by sport (NFL, College Football, NBA, MLB, F1): Current first, then Retired, best first in each
+    // (best season against an elite season for the position). Before the stats load, they're still grouped by sport.
     function favPlayersHtml(list, meta) {
-      if (!meta) return profPlayerTiles(list);
-      const by = (a, b) => (meta[b.lg + "|" + b.id]?.score || 0) - (meta[a.lg + "|" + a.id]?.score || 0);
-      const cur = list.filter((p) => meta[p.lg + "|" + p.id]?.active !== false).sort(by), old = list.filter((p) => meta[p.lg + "|" + p.id]?.active === false).sort(by);
-      return (cur.length ? '<div class="prof-sub">Current</div>' + profPlayerTiles(cur) : "") + (old.length ? '<div class="prof-sub">Retired</div>' + profPlayerTiles(old) : "");
+      const M = meta || {}, by = (a, b) => (M[b.lg + "|" + b.id]?.score || 0) - (M[a.lg + "|" + a.id]?.score || 0);
+      const lgs = ["nfl", "cfb", "nba", "mlb", "f1"].filter((lg) => list.some((p) => p.lg === lg));
+      return lgs.map((lg) => {
+        const mine = list.filter((p) => p.lg === lg), f1 = lg === "f1";
+        const cur = mine.filter((p) => M[p.lg + "|" + p.id]?.active !== false).sort(by), old = mine.filter((p) => M[p.lg + "|" + p.id]?.active === false).sort(by);
+        const head = lgs.length > 1 ? '<div class="prof-lg">' + (ICONS[lg] || "") + esc(SPORT_NAMES[lg] || lg) + "</div>" : "";
+        const sub = (txt, arr) => (arr.length ? (meta && old.length ? '<div class="prof-sub">' + txt + "</div>" : "") + profPlayerTiles(arr) : "");
+        return '<div class="prof-lgsec">' + head + sub(f1 ? "Current drivers" : "Current", cur) + sub(f1 ? "Retired drivers" : "Retired", old) + "</div>";
+      }).join("");
     }
     // Elite season for each main stat, so a QB, a point guard and a shortstop can be compared fairly.
     const PBENCH = { "Passing|YDS": 5000, "Rushing|YDS": 2000, "Receiving|YDS": 1800, YDS: 2000, PTS: 30, H: 220, W: 22, TOT: 150, SACK: 20, REC: 120 };
@@ -5329,10 +5449,10 @@
       if (out) { pmeta[k] = { ...out, at: Date.now() }; store.set("pmeta4", pmeta); }
       return out || { active: true, score: 0 };
     }
+    // Each player on their own clock: one slow one (an F1 career is a request per season) never holds up the rest.
     async function favMeta(list) {
-      const res = await Promise.race([Promise.all(list.map((p) => playerMeta(p).catch(() => null))), new Promise((r) => setTimeout(() => r(null), 8000))]);
-      if (!res) return null;
-      const meta = {}; list.forEach((p, i) => { if (res[i]) meta[p.lg + "|" + p.id] = res[i]; });
+      const meta = {};
+      await Promise.all(list.map((p) => Promise.race([playerMeta(p).then((m) => { if (m) meta[p.lg + "|" + p.id] = m; }).catch(() => {}), new Promise((r) => setTimeout(r, 9000))])));
       return meta;
     }
     function profileHtml(d) {
@@ -5817,18 +5937,18 @@
         if (e.pointerType === "mouse" && e.button !== 0) return;
         const b = e.target.closest?.(BAR);
         if (!b) return;
-        bar = b; id = e.pointerId; moved = false;
+        bar = b; id = e.pointerId; moved = false; bar.x0 = e.clientX; bar.y0 = e.clientY; bar.live = false;
         last = e.target.closest(ITEM);
         b.classList.add("scrubbing");
       });
       addEventListener("pointermove", (e) => {
         if (!bar || e.pointerId !== id) return;
+        if (!bar.live) { if (Math.abs(e.clientX - bar.x0) < 18 || Math.abs(e.clientY - bar.y0) > Math.abs(e.clientX - bar.x0)) return; bar.live = true; }   // a tap that wiggles a little is still a tap
         const el = document.elementFromPoint(e.clientX, Math.max(bar.getBoundingClientRect().top + 2, Math.min(e.clientY, bar.getBoundingClientRect().bottom - 2)));
         const item = el?.closest(ITEM);
         if (!item || !bar.contains(item) || item === last) return;
         last = item; moved = true;
-        item.click();
-        buzz(6);
+        item.click();   // switching tab buzzes once by itself
       });
       const end = (e) => {
         if (!bar || (e && e.pointerId !== id)) return;
@@ -5846,8 +5966,10 @@
       const SKIP = ".wpg, [data-wpg], [data-noswipe], .dstrip, .ls-wrap, .track, .court, .field, .gtabs, .tabs, .btabs, .seg, input, textarea, .search, .sres, .bars, .ga-modal, .chat-log, .feed-more";
       const GCATS = ["all", "plays", "stats", "players"];
       let st = null, swallow = false;
+      // Anything that scrolls sideways on its own (pick rows, tables, chip rows...) is moved by itself, never the page.
+      const slides = (t) => { for (let e = t; e && e !== document.body; e = e.parentElement) { if (e.scrollWidth > e.clientWidth + 2 && /auto|scroll/.test(getComputedStyle(e).overflowX)) return true; } return false; };
       const zone = (t) => {
-        if (!t.closest || t.closest(SKIP)) return null;
+        if (!t.closest || t.closest(SKIP) || slides(t)) return null;
         const sh = t.closest(".sheet");
         if (sh) return sh === views[views.length - 1]?.el && sh.querySelector(".gtabs") ? { kind: "game", sheet: sh } : null;
         if (views.length || !t.closest("main")) return null;
