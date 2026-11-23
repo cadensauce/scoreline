@@ -4204,7 +4204,7 @@
         s += tag(clampX(xL), CY - 50, /penalty/i.test(ty) ? "🚩 " + ((t.match(/PENALTY on [^,]+, ([^,(]+)/i) || [])[1] || "Penalty").trim() : ty || "Play", 0.2);
       }
       // The flag comes in once the play has finished (the play itself is drawn above).
-      if (flagName && !/penalty/i.test(ty)) {   // (a bare "Penalty" with no play to draw already shows just the flag) const fd = tEnd + 0.35; s += tag(clampX(xL), CY - 50, "🚩 " + flagName, fd); at(fd + 1.2); }
+      if (flagName && !/penalty/i.test(ty)) { const fd = tEnd + 0.35; s += tag(clampX(xL), CY - 50, "🚩 " + flagName, fd); at(fd + 1.2); }   // (a bare "Penalty" with no play to draw already shows just the flag)
       // Tacklers close in on the ball carrier as he is brought down (only players the data credits).
       if (carrier) {
         const head = Math.sign(carrier.ex - carrier.sx) || dir;
