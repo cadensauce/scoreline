@@ -159,17 +159,45 @@ function watchFriends() {
   unsubs.push(fb.onSnapshot(fb.query(col, fb.where("to", "==", user.uid)), (s) => apply("in", s)));
   unsubs.push(fb.onSnapshot(fb.query(col, fb.where("from", "==", user.uid)), (s) => apply("out", s)));
 }
+// Returns what happened, in words for the person ("Friend request sent to @x"). The @ is optional.
 async function addFriend(username) {
-  username = cleanName(username).replace(/^@/, "");
+  username = cleanName(username).replace(/^@+\s*/, "");
+  if (!username) throw new Error("Type a username first.");
+  if (!/^[a-z0-9_]{3,20}$/.test(username)) throw new Error("No account called @" + username + ". Usernames are 3–20 letters, numbers or _.");
   const u = await fb.getDoc(fb.doc(db, "usernames", username));
-  if (!u.exists()) throw new Error("No one has that username.");
+  if (!u.exists()) throw new Error("No account called @" + username + ".");
   const to = u.data().uid;
   if (to === user.uid) throw new Error("That's you!");
-  if (friendState.friends.includes(to)) throw new Error("You're already friends.");
-  const back = friendState.incoming.find((r) => r.from === to);
-  if (back) return fb.updateDoc(fb.doc(db, "requests", back.id), { status: "accepted" });
+  if (friendState.friends.includes(to)) throw new Error("You're already friends with @" + username + ".");
+  if (friendState.outgoing.some((r) => r.to === to)) throw new Error("You already sent @" + username + " a request.");
   names[to] = username;
+  const back = friendState.incoming.find((r) => r.from === to);
+  if (back) { await fb.updateDoc(fb.doc(db, "requests", back.id), { status: "accepted" }); return "You're now friends with @" + username; }
   await fb.setDoc(fb.doc(db, "requests", user.uid + "_" + to), { from: user.uid, to, status: "pending", at: fb.serverTimestamp() });
+  return "Friend request sent to @" + username;
+}
+// The last add-a-friend result stays on screen through refreshes of the list (for 8 seconds).
+let addNote = { text: "", ok: false, at: 0 };
+const addNoteHtml = () => (Date.now() - addNote.at < 8000 && addNote.text ? '<div class="acct-err' + (addNote.ok ? " ok" : "") + '" data-err role="status">' + esc(addNote.text) + "</div>" : '<div class="acct-err" data-err role="status"></div>');
+function showAddNote(f, text, ok) {
+  addNote = { text, ok, at: Date.now() };
+  const b = f.closest(".sheet, [data-social], [data-social-you], [data-people]")?.querySelector("[data-err]") || f.parentElement?.querySelector("[data-err]");
+  if (b) { b.textContent = text; b.classList.toggle("ok", ok); }
+}
+// People search: usernames starting with what you typed. Photos and names show only for friends
+// (profiles are friends-only); everyone else shows their @username.
+async function findPeople(q) {
+  q = cleanName(q).replace(/^@+\s*/, "").replace(/[^a-z0-9_]/g, "");
+  if (!q || !user) return [];
+  const r = await fb.getDocs(fb.query(fb.collection(db, "usernames"), fb.orderBy(fb.documentId()), fb.startAt(q), fb.endAt(q + ""), fb.limit(12)));
+  const out = r.docs.map((d) => ({ username: d.id, uid: d.data().uid }));
+  await Promise.all(out.map(async (p) => {
+    names[p.uid] = p.username;
+    p.rel = p.uid === user.uid ? "me" : friendState.friends.includes(p.uid) ? "friend" : friendState.outgoing.some((x) => x.to === p.uid) ? "sent" : friendState.incoming.some((x) => x.from === p.uid) ? "incoming" : "";
+    const c = p.rel === "me" ? myCard : p.rel === "friend" ? await friendCard(p.uid) : null;
+    p.avatar = c?.avatar || ""; p.name = c?.name || ""; p.deco = c?.deco || "";
+  }));
+  return out;
 }
 const reqId = (a, b) => a + "_" + b;
 async function removeFriend(uid) {
@@ -289,7 +317,7 @@ function refreshAccountSheet() {
       '<div class="g-label" style="margin-top:18px">Your profile</div><div class="opt"><span><b>Photo, bio, theme and favourites</b><small>' + ((myCard?.show || "friends") === "me" ? "Only you can see it" : "Your friends can see it") + '</small></span><span class="acct-acts"><button class="pill-btn" type="button" data-viewcard="' + esc(user.uid) + '">View</button><button class="pill-btn" type="button" data-editprofile>Edit</button></span></div>' +
       '<div class="g-label" style="margin-top:18px">Two-step sign-in</div><div data-2box><div class="opt"><span><b>' + (twoStepOn ? "On" : "Off") + '</b><small>' + (twoStepOn ? "New devices need a code we email you" : "Ask for an emailed code when you sign in on a new device") + '</small></span>' +
       (twoStepOn ? '<button class="pill-btn" type="button" data-2off>Turn off</button>' : '<button class="pill-btn" type="button" data-2on>Turn on</button>') + "</div></div>" +      (window.__TAURI__ ? "" : '<div class="signin-send"><button type="button" class="pill-btn" data-sendsignin>Send sign-in to the app</button><div data-signincode></div></div>') +
-      '<div class="g-label" style="margin-top:18px">Add a friend</div><form class="acct-add" data-addf><input placeholder="Username" maxlength="21" autocomplete="off"><button class="pill-btn" type="submit">Add</button></form><div class="acct-err" data-err></div>' +
+      '<div class="g-label" style="margin-top:18px">Add a friend</div><form class="acct-add" data-addf><input placeholder="Username (the @ is optional)" maxlength="21" autocomplete="off"><button class="pill-btn" type="submit">Add</button></form>' + addNoteHtml() +
       (F.incoming.length ? '<div class="g-label" style="margin-top:16px">Friend requests</div><div class="panel">' + F.incoming.map((r) => person(r.from, '<button class="pill-btn" type="button" data-accept="' + esc(r.id) + '">Accept</button><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '">✕</button>')).join("") + "</div>" : "") +
       '<div class="g-label" style="margin-top:16px">Friends</div><div class="panel">' + (F.friends.length ? F.friends.map((uid) => person(uid, '<button class="pill-btn" type="button" data-viewcard="' + esc(uid) + '">Profile</button><button class="pill-btn" type="button" data-chat="' + esc(uid) + '">Chat</button><button class="pill-btn" type="button" data-unfriend="' + esc(uid) + '" aria-label="Remove friend">✕</button>')).join("") : '<div class="g-note">No friends yet. Add someone by their username.</div>') + "</div>" +
       (F.outgoing.length ? '<div class="g-label" style="margin-top:16px">Sent</div><div class="panel">' + F.outgoing.map((r) => person(r.to, '<span class="muted">Pending</span><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '">✕</button>')).join("") + "</div>" : "") +
@@ -313,6 +341,11 @@ async function friendCard(uid) {
 /* ---------- Social tab: the same friends, requests and chats as the account sheet, in their own tab.
    Uses the existing friend requests (requests/{from_to}) and chats; nothing new is stored. */
 window.scorelineSocial = {
+  // People search (top bar). find: who matches; add: friend request by username (returns the words to show).
+  signedIn: () => !!user,
+  async find(q) { await startFirebase(); if (FIREBASE_CONFIG && fb) await Promise.race([authReady, new Promise((r) => setTimeout(r, 8000))]); return findPeople(q); },
+  add: (name) => addFriend(name),
+  avatar: (src, name, deco) => avatarHtml(src, name, "", deco),
   async html() {
     await startFirebase();
     if (FIREBASE_CONFIG && fb) await Promise.race([authReady, new Promise((r) => setTimeout(r, 8000))]);
@@ -323,7 +356,7 @@ window.scorelineSocial = {
     const me = cardWithPlain(myCard || {}), un = profile?.username || "";
     const person = (uid, sub, actions) => { const fc = cardCache[uid]?.c; return '<div class="opt soc-row"><span class="soc-who" data-viewcard="' + esc(uid) + '" role="button" tabindex="0">' + avatarHtml(fc?.avatar, names[uid], "", fc?.deco) + "<span><b>" + esc(fc?.name || "@" + (names[uid] || "…")) + roleTag(roleCache[uid]) + "</b><small>" + (fc?.name ? "@" + esc(names[uid] || "") + (sub ? " · " : "") : "") + (sub || "") + '</small></span></span><span class="acct-acts">' + actions + "</span></div>"; };
     return '<div class="soc-me bn-theme t-' + esc(me.theme || "plain") + bnCls(me.banner) + '"><span class="soc-who" data-viewcard="' + esc(user.uid) + '" role="button" tabindex="0">' + avatarHtml(me.avatar, un, "lg", me.deco) + "<span><b>" + esc(me.name || "@" + un) + roleTag(roleCache[user.uid]) + "</b><small>@" + esc(un) + " · " + F.friends.length + (F.friends.length === 1 ? " friend" : " friends") + '</small></span></span><button class="pill-btn" type="button" data-editprofile>Edit profile</button></div>' +
-      '<div class="section-title"><b>Add a friend</b></div><form class="acct-add" data-addf><input placeholder="Their username" maxlength="21" autocomplete="off" autocapitalize="none" spellcheck="false"><button class="pill-btn" type="submit">Add</button></form><div class="acct-err" data-err></div>' +
+      '<div class="section-title"><b>Add a friend</b></div><form class="acct-add" data-addf><input placeholder="Username (the @ is optional)" maxlength="21" autocomplete="off" autocapitalize="none" spellcheck="false"><button class="pill-btn" type="submit">Add</button></form>' + addNoteHtml() +
       (F.incoming.length ? '<div class="section-title"><b>Friend requests</b><span class="muted">' + F.incoming.length + "</span></div><div class=\"panel\">" + F.incoming.map((r) => person(r.from, "Wants to be friends", '<button class="pill-btn" type="button" data-accept="' + esc(r.id) + '">Accept</button><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '" aria-label="Decline">✕</button>')).join("") + "</div>" : "") +
       '<div class="section-title"><b>Friends</b><span class="muted">' + F.friends.length + '</span></div><div class="panel">' + (F.friends.length ? F.friends.slice().sort((a, b) => (names[a] || "").localeCompare(names[b] || "")).map((uid) => person(uid, "", '<button class="pill-btn" type="button" data-chat="' + esc(uid) + '">Message</button><button class="pill-btn" type="button" data-unfriend="' + esc(uid) + '" aria-label="Remove friend">✕</button>')).join("") : '<div class="g-note">No friends yet. Add someone by their username above.</div>') + "</div>" +
       (F.outgoing.length ? '<div class="section-title"><b>Sent requests</b></div><div class="panel">' + F.outgoing.map((r) => person(r.to, "Waiting for them to accept", '<button class="pill-btn" type="button" data-decline="' + esc(r.id) + '" aria-label="Cancel request">✕</button>')).join("") + "</div>" : "") +
@@ -557,7 +590,10 @@ document.addEventListener("submit", async (e) => {
   if (f.matches("[data-addf]")) {
     e.preventDefault();
     const input = f.querySelector("input"); errBox(f, "");
-    try { await addFriend(input.value); input.value = ""; toast("Friend request sent"); } catch (err) { errBox(f, niceErr(err)); }
+    const btn = f.querySelector("button[type=submit]"); if (btn) btn.disabled = true;
+    try { const msg = await addFriend(input.value); input.value = ""; showAddNote(f, msg, true); toast(msg); buzz(12); }
+    catch (err) { showAddNote(f, /permission|offline|network|unavailable/i.test(err?.code || err?.message || "") ? "That didn't go through. Check your connection and try again." : niceErr(err), false); }
+    finally { if (btn) btn.disabled = false; }
   }
 });
 document.addEventListener("click", async (e) => {
