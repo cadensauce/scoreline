@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795394259" />
+  <meta name="build" content="1795394525" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1211,6 +1211,7 @@
     .ldr-cat { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); margin: 12px 0 6px; }
     .headline-k { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
     .st-btn { margin-left: auto; }
+    .wpr-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; } .wp-now { border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); border-radius: 999px; padding: 6px 14px; font: 650 13px var(--display); flex: none; }
     .quiet-times { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; padding: 4px 2px 12px; } .quiet-times label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
     .quiet-times input { width: 100%; min-width: 0; box-sizing: border-box; font: 600 17px var(--display); color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-in); padding: 10px 12px; color-scheme: inherit; } .quiet-times input:focus { outline: none; border-color: var(--line-hi); }
     .hp-row, .dstrip, .cs-years, .cs-all, .seg.chips { overscroll-behavior-x: contain; }   /* sliding to the end of a row never pulls the page */
@@ -2709,12 +2710,20 @@
       const p = d.series[i];
       const when = i === d.series.length - 1 ? (d.final ? "Final" : "Now") : [perName(d.lg, p.per), p.clock].filter(Boolean).join(" ");
       const atEnd = i === d.series.length - 1 && d.final;
-      return "<b>" + esc(when) + "</b>" + (p.text && !atEnd ? '<small>' + esc(p.text.length > 110 ? p.text.slice(0, 107) + "…" : p.text) + "</small>" : "");
+      const back = i < d.series.length - 1 ? '<button type="button" class="wp-now" data-wpnow="' + esc(id) + '">' + (d.final ? "End" : "Now") + " ›</button>" : "";   // one tap back to the latest
+      return '<div class="wpr-top"><b>' + esc(when) + "</b>" + back + "</div>" + (p.text && !atEnd ? '<small>' + esc(p.text.length > 110 ? p.text.slice(0, 107) + "…" : p.text) + "</small>" : "");
     }
     function wpScrub(svg, clientX) {
       const id = svg.dataset.wpg, d = wpStore[id]; if (!d) return;
       const r = svg.getBoundingClientRect(), n = d.series.length;
-      const i = Math.max(0, Math.min(n - 1, Math.round(((clientX - r.left) / r.width) * (n - 1))));
+      wpSet(svg, Math.max(0, Math.min(n - 1, Math.round(((clientX - r.left) / r.width) * (n - 1)))));
+    }
+    // Show moment i on the graph (cursor, dot, the big numbers, the play). Remembers where you are, so live updates
+    // never yank you back to "Now" while you look at an earlier moment.
+    function wpSet(svg, i) {
+      const id = svg.dataset.wpg, d = wpStore[id]; if (!d) return;
+      const n = d.series.length; i = Math.max(0, Math.min(n - 1, i));
+      const sec0 = svg.closest("[data-wpsec]"); if (sec0) sec0.dataset.at = i < n - 1 ? String(i) : "";
       const x = (i / (n - 1)) * 320, y = (1 - d.series[i].home) * 120;
       svg.querySelector(".wpg-cur").setAttribute("x1", x); svg.querySelector(".wpg-cur").setAttribute("x2", x);
       const dot = svg.querySelector(".wpg-dot"); dot.setAttribute("cx", x); dot.setAttribute("cy", y);
@@ -2725,6 +2734,7 @@
     document.addEventListener("pointerdown", (e) => { const svg = e.target.closest?.("svg[data-wpg]"); if (!svg) return; svg.setPointerCapture?.(e.pointerId); svg.dataset.drag = "1"; wpScrub(svg, e.clientX); });
     document.addEventListener("pointermove", (e) => { const svg = e.target.closest?.("svg[data-wpg]"); if (svg && (svg.dataset.drag || e.pointerType === "mouse")) wpScrub(svg, e.clientX); });
     document.addEventListener("pointerup", (e) => { const svg = e.target.closest?.("svg[data-wpg]"); if (svg) delete svg.dataset.drag; });
+    document.addEventListener("click", (e) => { const b = e.target.closest("[data-wpnow]"); if (!b) return; const svg = b.closest("[data-wpsec]")?.querySelector("svg[data-wpg]"); if (svg) { buzz(6); wpSet(svg, 1e9); } });
     // Live games: refresh the win probability section every 15 s while the game page is open.
     function wpLive(v, lg, id) {
       clearInterval(v.wpTimer);
@@ -2736,9 +2746,19 @@
           const s = await getJSON(API + LEAGUES[lg].path + "/summary?event=" + id);
           const comp = s.header?.competitions?.[0] || {}, st = comp.status?.type?.state;
           const teams = (comp.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
-          const html = wpSectionHtml(s, teams, st, id, lg);
-          if (html) { const t = document.createElement("template"); t.innerHTML = html; sec.replaceWith(t.content.firstElementChild); }
-          const pl = v.el.querySelector("[data-plain]"); if (pl) { const t2 = document.createElement("template"); t2.innerHTML = plainLine(s, teams, st, lg); pl.replaceWith(t2.content.firstElementChild); }
+          // Only the win probability changes, in place (same boxes, same size): nothing else on the page moves.
+          const at = sec.dataset.at, html = wpSectionHtml(s, teams, st, id, lg);
+          if (html) {
+            const t = document.createElement("template"); t.innerHTML = html; const ns = t.content.firstElementChild;
+            const svg = sec.querySelector("svg[data-wpg]"), nsvg = ns.querySelector("svg[data-wpg]");
+            if (svg && nsvg) {
+              svg.innerHTML = nsvg.innerHTML;
+              if (at) wpSet(svg, +at);   // looking at an earlier moment: stay there
+              else { const nums = sec.querySelectorAll(".wp b"), nn = ns.querySelectorAll(".wp b"); nums.forEach((b, k) => { if (nn[k] && b.textContent !== nn[k].textContent) b.textContent = nn[k].textContent; }); const r = sec.querySelector("[data-wpread]"), nr = ns.querySelector("[data-wpread]"); if (r && nr && r.innerHTML !== nr.innerHTML) r.innerHTML = nr.innerHTML; }
+            } else if (!svg) sec.replaceWith(ns);   // first time there's a graph
+          }
+          const pl = v.el.querySelector("[data-plain]");
+          if (pl && !at) { const t2 = document.createElement("template"); t2.innerHTML = plainLine(s, teams, st, lg); const np = t2.content.firstElementChild; if (np && pl.innerHTML !== np.innerHTML) pl.innerHTML = np.innerHTML; }   // the "Giants lead by 14…" line, text only
           const pid = gamePoss(lg, id, s);   // keep the "has the ball" icon in the header current
           v.el.querySelectorAll(".g-head .g-team").forEach((b) => { b.querySelector(".poss")?.remove(); if (pid && b.dataset.team.split("|")[1] === pid) b.querySelector("b")?.insertAdjacentHTML("afterend", POSS_ICON(lg)); });
           if (st !== "in") clearInterval(v.wpTimer);
