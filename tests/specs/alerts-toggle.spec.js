@@ -31,6 +31,7 @@ const master = (page) => page.locator("#alertsMaster");
 async function openAlerts(page) {
   await page.goto("index.html");
   await page.locator('[data-tab="you"]:visible').first().click();
+  await page.locator("[data-open-notifs]").click();   // the alert switches live on You → Notifications
   await expect(master(page)).toBeVisible();
 }
 
