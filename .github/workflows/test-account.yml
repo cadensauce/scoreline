@@ -1,0 +1,31 @@
+# Makes the one fixed test account (@cadenbinglenut) for trying social features. Owner only:
+# only people with write access can start a workflow by hand, and the job also stops unless the owner started it.
+name: Test account
+
+on:
+  workflow_dispatch:
+    inputs:
+      photo:
+        description: "Profile photo as a small JPEG data URL (optional)"
+        required: false
+        default: ""
+
+jobs:
+  make:
+    if: github.actor == 'cadensauce' && github.triggering_actor == 'cadensauce'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install packages
+        working-directory: push
+        run: npm install --no-save --no-audit --no-fund firebase-admin@12.7.0
+      - name: Make the test account
+        working-directory: push
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+          PHOTO: ${{ inputs.photo }}
+        run: node test-account.mjs
