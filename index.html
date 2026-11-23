@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795410646" />
+  <meta name="build" content="1795411086" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -566,18 +566,21 @@
     .pc-search:focus-within { border-color: var(--muted); }
     .pc-search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; color: var(--text); font: inherit; font-size: 16px; }
     .pc-head { margin: 12px 2px 10px; font-size: 14px; color: var(--muted); } .pc-head b { color: var(--text); }
-    .pc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+    [data-people-res] { container-type: inline-size; }
+    .pc-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }   /* equal columns that fill the row: 4 on a wide page, 2 on a narrow one, 1 on phones */
+    @container (min-width: 460px) { .pc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @container (min-width: 880px) { .pc-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
     .pc-card { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); min-width: 0; }
     .pc-top { display: flex; align-items: center; gap: 14px; min-width: 0; cursor: pointer; }
     .pc-top .avatar { width: 64px; height: 64px; font-size: 26px; flex: none; }
     .pc-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-    .pc-txt b { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .pc-txt small { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pc-txt b { font-size: 16px; line-height: 1.25; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }   /* long names wrap instead of being cut */
+    .pc-txt small { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
     .pc-st:empty { display: none; }
     .pc-btn { height: 40px; border: 0; border-radius: 10px; background: var(--line); color: var(--text); font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
     .pc-btn.go { background: var(--text); color: var(--bg); }
     .pc-btn:disabled { opacity: .55; cursor: default; }
-    @media (max-width: 720px) { .pc-grid { grid-template-columns: 1fr; } }
+
     .p-head img.drv-photo { object-fit: cover; object-position: top; background: var(--panel-2); } .p-head small .flag { width: 16px; height: 11px; vertical-align: -1px; border-radius: 2px; }
     .drv-races { display: grid; gap: 5px; } .drv-race { display: grid; grid-template-columns: 44px 1fr 30px; align-items: center; gap: 10px; font-size: 12.5px; }
     .drv-race span { color: var(--muted); font-weight: 700; } .drv-race i { height: 8px; border-radius: 99px; background: var(--panel-3); overflow: hidden; } .drv-race em { display: block; height: 100%; border-radius: 99px; background: var(--text); }
