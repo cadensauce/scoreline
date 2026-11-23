@@ -4006,7 +4006,7 @@
       svg.querySelectorAll(".anim-h").forEach((x) => x.remove());   // helper paths from a previous run
       const mk = (d) => { const pe = document.createElementNS(NS, "path"); pe.setAttribute("d", d); pe.setAttribute("fill", "none"); pe.setAttribute("visibility", "hidden"); pe.setAttribute("class", "anim-h"); svg.appendChild(pe); return pe; };
       const movers = [...svg.querySelectorAll("[data-mv]")].map((el) => ({ el, ph: (A?.[+el.dataset.mv] || []).map((p) => { const pe = mk(p.d); return { ...p, pe, L: pe.getTotalLength() }; }) })).filter((m) => m.ph.length);
-      const lines = [...svg.querySelectorAll("[data-dr]")].map((el) => { const [b, u] = el.dataset.dr.split(",").map(Number); return { el, b, u }; });
+      const lines = [...svg.querySelectorAll("[data-dr]")].map((el) => { const [b, u] = el.dataset.dr.split(",").map(Number); return { el, b, u, mk: el.getAttribute("marker-end"), on: true }; });
       let end = 0;
       movers.forEach((m) => m.ph.forEach((p) => { end = Math.max(end, p.b + p.u); }));
       lines.forEach((l) => { end = Math.max(end, l.b + l.u); });
@@ -4016,7 +4016,12 @@
         const k = t < m.ph[0].b ? 0 : clamp01((t - p.b) / p.u), pt = p.pe.getPointAtLength(ease(k) * p.L);
         m.el.setAttribute("transform", "translate(" + pt.x.toFixed(1) + " " + pt.y.toFixed(1) + ")");
       };
-      const draw = (l, t) => { l.el.style.strokeDashoffset = String(1 - ease(clamp01((t - l.b) / l.u))); };
+      const draw = (l, t) => {
+        const k = clamp01((t - l.b) / l.u);
+        l.el.style.strokeDashoffset = String(1 - ease(k));
+        // The arrowhead only appears once the runner gets there (a marker isn't hidden by the line's drawing, so add it at the end).
+        if (l.mk) { const on = k >= 0.98; if (on !== l.on) { l.on = on; if (on) l.el.setAttribute("marker-end", l.mk); else l.el.removeAttribute("marker-end"); } }
+      };
       if (still) { movers.forEach((m) => place(m, 1e9)); lines.forEach((l) => draw(l, 1e9)); return; }
       movers.forEach((m) => place(m, 0)); lines.forEach((l) => draw(l, 0));
       const t0 = performance.now();
