@@ -28,7 +28,7 @@ async function setup(page, { stats = true } = {}) {
     window.scorelineSocial = { html: async () => '<div class="soc-me"><span class="soc-who" data-viewcard="me" role="button"><span><b>Caden</b></span></span><button class="pill-btn" type="button" data-editprofile>Edit profile</button></div><div class="panel"><div class="opt soc-row"><span class="soc-who" data-viewcard="pal" role="button"><span><b>@pal</b></span></span></div><div class="opt soc-row"><span class="soc-who" data-viewcard="ghost" role="button"><span><b>@ghost</b></span></span></div></div>' };
   }, { stats });
   await page.goto("index.html");
-  await page.locator('[data-tab="social"]:visible').first().click();
+  await page.locator('[data-tab="you"]:visible').first().click();
   return errors;
 }
 const sheet = (page) => page.locator(".sheet.show").last();

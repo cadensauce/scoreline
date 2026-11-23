@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795375595" />
+  <meta name="build" content="1795376020" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1211,6 +1211,8 @@
     .ldr-cat { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); margin: 12px 0 6px; }
     .headline-k { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
     .st-btn { margin-left: auto; }
+    .quiet-times { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 4px 2px 12px; } .quiet-times label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+    .quiet-times input { font: 600 17px var(--display); color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-in); padding: 10px 12px; color-scheme: inherit; } .quiet-times input:focus { outline: none; border-color: var(--line-hi); }
     .hp-row, .dstrip, .cs-years, .cs-all, .seg.chips { overscroll-behavior-x: contain; }   /* sliding to the end of a row never pulls the page */
     .car .cw { fill: #2b2b30; stroke: rgba(255, 255, 255, .5); stroke-width: .3; } .car .cs { stroke: rgba(255, 255, 255, .55); stroke-width: .3; } .car .cb { stroke: rgba(0, 0, 0, .55); stroke-width: .35; } .car .cc { fill: #0b0b0c; stroke: rgba(255, 255, 255, .55); stroke-width: .3; } .car.key .cb { stroke: #fff; stroke-width: .35; }
     .t-tower { margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 0 14px; font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -1448,7 +1450,7 @@
       if (e.target.closest("[data-ppclose]")) e.target.closest(".pp-wrap")?.remove();
     });
     const MOBILE_APP = !!window.__PREVIEW_APP || (IS_PHONE && (!!window.__TAURI__ || STANDALONE));
-    const navOrder = () => { const p = pins(); return ["home", ...p, ...(ALL_SPORTS.includes(state.tab) && !p.includes(state.tab) ? [state.tab] : []), "fantasy", "social", "you"]; };
+    const navOrder = () => { const p = pins(); return ["home", ...p, ...(ALL_SPORTS.includes(state.tab) && !p.includes(state.tab) ? [state.tab] : []), "fantasy", "you"]; };   // Social is part of You now (one less tab on phones)
     /* ---------- native-app feel (phone app only) ---------- */
     if (MOBILE_APP) {
       document.documentElement.classList.add("mobile-app");
@@ -2484,6 +2486,7 @@
       timer = setTimeout(() => (document.hidden ? schedule(live) : render()), live ? 10000 : 120000);   // game pages keep their own 5 s updates
     }
     function render(force = true) {   // force: fetch fresh data; tab switches pass false to use what's in memory
+      if (state.tab === "social") state.tab = "you";   // the old Social tab lives in You now
       if (document.activeElement?.matches?.("[data-search]")) { schedule(true); return; }
       clearTimeout(timer);
       store.set("tab", state.tab);
@@ -3008,7 +3011,7 @@
        redraw shows it straight away instead of blanking until its data comes back (that was the flicker). */
     // Also kept between visits, so the sections are there at once on the next load (fills then bring them up to date).
     const youCache = store.get("youCache", {}) || {};
-    const YOU_SECS = [["picks", "[data-picks-you]"], ["shop", "[data-shop-you]"], ["marks", "[data-marks-row]"], ["dev", "[data-dev-you]"]];
+    const YOU_SECS = [["picks", "[data-picks-you]"], ["shop", "[data-shop-you]"], ["marks", "[data-marks-row]"], ["dev", "[data-dev-you]"], ["social", "[data-social-you]"]];
     let youSkel = "";
     const youSet = (key, el, html) => {
       if (youCache[key] !== html) { youCache[key] = html; store.set("youCache", youCache); }
@@ -5039,7 +5042,10 @@
     // Modes cascade: always > playoffs (postseason) > champ (Super Bowl / Finals / World Series / title game) > off.
     const isChampionship = (ev) => /super bowl|nba finals|world series|national championship|cfp national|championship game/i.test([ev?.name, ev?.competitions?.[0]?.notes?.[0]?.headline].join(" "));
     const QUIET = [["off", "Off"], ["22-7", "10 PM–7 AM"], ["23-8", "11 PM–8 AM"], ["0-9", "12 AM–9 AM"]];
-    const quietNow = (p) => { const a = parseInt(p.quietFrom, 10), b = parseInt(p.quietTo, 10), h = new Date().getHours(); return !isNaN(a) && !isNaN(b) && a !== b && (a < b ? h >= a && h < b : h >= a || h < b); };
+    // Quiet hours, to the minute ("22:30"); older saves are whole hours ("22").
+    const qMins = (v) => { const m = /^(\d{1,2})(?::(\d{2}))?$/.exec(String(v ?? "").trim()); return m ? (+m[1] % 24) * 60 + +(m[2] || 0) : NaN; };
+    const qTime = (v, d) => { const n = qMins(v); return isNaN(n) ? d : String(Math.floor(n / 60)).padStart(2, "0") + ":" + String(n % 60).padStart(2, "0"); };
+    const quietNow = (p) => { const a = qMins(p.quietFrom), b = qMins(p.quietTo), d = new Date(), now = d.getHours() * 60 + d.getMinutes(); return !isNaN(a) && !isNaN(b) && a !== b && (a < b ? now >= a && now < b : now >= a || now < b); };
     const wants = (p, team, kind, ev) => { if (quietNow(p)) return false; const m =modeFor(p, team, kind); return m === "always" || (m === "playoffs" && ev?.season?.type === 3) || (m === "champ" && isChampionship(ev)); };
     const CHAMP_NAME = { nfl: "Super Bowl", nba: "Finals", mlb: "World Series", cfb: "Title game" };
     const LEAGUE_OF = { 28: "nfl", 23: "cfb", 46: "nba", 10: "mlb" };
@@ -5672,26 +5678,23 @@
     function renderAlerts() {   // the "You" tab: account, pinned sports, alerts (phones), about
       const favs = [...state.favs];
       const signedIn = $("accountBtn")?.classList.contains("on"), reqs = $("accountBtn")?.dataset.count || "";
+      // You = your profile, friends and messages (what was the Social tab), your picks and Shop, then settings.
+      // Notifications and developer tools each open their own page, so this page stays short.
       let h = '<div class="bar"><h1>You</h1></div>' +
-        '<div class="section-title"><b>Account</b></div><div class="panel nteams"><div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>' + (signedIn ? "Your account" : "Sign in") + "</b><small>" +
-        (signedIn ? (reqs ? reqs + " friend request" + (reqs === "1" ? "" : "s") : "Friends, chat and sync") : "Keep your teams and alerts on every device") + '</small></span><span class="chev">›</span></div></div>' +
+        '<div data-social-you>' + (youCache.social || (signedIn ? '<div class="skel" style="height:120px"></div>' : '<div class="panel nteams"><div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>Sign in</b><small>Keep your teams and alerts on every device, add friends and message them</small></span><span class="chev">›</span></div></div>')) + "</div>" +
         "<div data-picks-you></div><div data-shop-you></div>" +
         '<div class="section-title"><b>Sports in your bar</b></div><div class="pin-row">' + ALL_SPORTS.map((k) =>
           '<button type="button" class="pin ' + (pins().includes(k) ? "on" : "") + '" data-pin="' + k + '">' + esc(tabName(k)) + "</button>").join("") + "</div>" +
         '<div class="g-note">Pick up to ' + MAX_PINS + ". Home shows only these sports.</div>" +
-        '<div class="section-title"><b>Settings</b></div><div class="panel"><div class="set-row"><b>Theme</b><div class="seg theme-seg">' + [["system", "System"], ["dark", "Dark"], ["light", "Light"]].map(([k, l]) => '<button type="button" data-theme-pick="' + k + '" class="' + ((document.documentElement.dataset.theme || "dark") === k ? "active" : "") + '">' + l + "</button>").join("") + "</div></div>" +
+        '<div class="section-title"><b>Settings</b></div><div class="panel nteams">' +
+          (MOBILE_APP ? '<div class="opt nteam" role="button" tabindex="0" data-open-notifs><span><b>Notifications</b><small>' + esc(alertsOn ? "On" + (quietLabel() ? " · quiet " + quietLabel() : "") : "Off") + '</small></span><span class="chev">›</span></div>' : "") +
+          (signedIn ? '<div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>Account and security</b><small>Email, two-step sign-in, sign-in codes, log out' + (reqs ? " · " + reqs + " friend request" + (reqs === "1" ? "" : "s") : "") + '</small></span><span class="chev">›</span></div>' : "") +
+          '<div class="opt nteam" role="button" tabindex="0" data-open-dev hidden><span><b>Developer tools</b><small>Only shown to the Scoreline team</small></span><span class="chev">›</span></div>' +
+        "</div>" +
+        '<div class="panel" style="margin-top:10px"><div class="set-row"><b>Theme</b><div class="seg theme-seg">' + [["system", "System"], ["dark", "Dark"], ["light", "Light"]].map(([k, l]) => '<button type="button" data-theme-pick="' + k + '" class="' + ((document.documentElement.dataset.theme || "dark") === k ? "active" : "") + '">' + l + "</button>").join("") + "</div></div>" +
         '<button type="button" class="opt ' + (DUMMY ? "on" : "") + '" data-dummy><span><b>Dummy Mode</b><small>Explains terms, stats and rules as you go, for every sport. Tap anything with an ⓘ.</small></span><i class="switch"></i></button><button type="button" class="opt ' + (store.get("headlinesOn", true) ? "on" : "") + '" data-headlines-toggle><span><b>Headlines</b><small>The one big news story at the top of each sport</small></span><i class="switch"></i></button><button type="button" class="opt" data-tour><span><b>Replay the tour</b><small>The quick walkthrough new visitors see</small></span><span class="chev">›</span></button><div data-marks-row></div></div>';
-      if (MOBILE_APP) h += '<div class="section-title"><b>Alerts</b></div>' +
-        '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Only about the teams you follow</small></span><i class="switch"></i></button><button type="button" class="pill-btn test-btn" id="testNotify">Send test notification</button>' + (alertsOn ? '<div class="g-note" id="pushState">' + esc(pushStatus) + "</div>" : "") + "</div>" +
-        (() => { const p = alertPrefs(), cur = p.quietFrom != null && p.quietFrom !== "" ? p.quietFrom + "-" + p.quietTo : "off"; return '<div class="section-title"><b>Quiet hours</b></div><div class="panel"><div class="seg chips">' + QUIET.map(([k, l]) => '<button type="button" data-quiet="' + k + '" class="' + (k === cur ? "active" : "") + '">' + l + "</button>").join("") + '</div><div class="g-note">No alerts during these hours. Uses your phone\'s time.</div></div>'; })() +
-        '<div class="section-title"><b>Your teams</b></div><div class="panel nteams">' + (favs.length ? favs.map((k) =>
-          '<div class="opt nteam" role="button" tabindex="0" data-teamalerts="' + esc(k) + '"><span><b>' + esc(teamNames[k] || findName(k) || "Team") + "</b><small>" + esc(teamAlertSummary(k)) + '</small></span><span class="acct-acts"><button class="fav on" type="button" data-fav="' + esc(k) + '" aria-label="Unfollow">★</button><span class="chev">›</span></span></div>').join("") : '<div class="g-note">Follow a team from its team page to get alerts about it.</div>') + "</div>" +
-        '<div class="panel nteams" style="margin-top:10px"><div class="opt nteam" role="button" tabindex="0" data-teamalerts=""><span><b>Defaults for new teams</b><small>What a team starts with when you follow it</small></span><span class="chev">›</span></div></div>';
       h += '<div class="section-title"><b>About</b></div><div class="panel about"><div class="opt"><span><b>Version ' + esc(versionText()) + '</b><small id="appVer">Updated ' + esc(builtOn()) + '</small></span></div><button type="button" class="opt" data-terms><span><b>Terms of Service</b><small>Rules for Picks and Marks, and using Scoreline</small></span><span class="chev">›</span></button><details class="legal"><summary>Data sources and legal</summary>' + document.querySelector("footer").innerHTML + "</details></div>";
-      // Developer: Phone preview (owner only) and Dev tools (dev accounts; filled by fillDevYou) under one heading
-      if (IS_DEV && window.top === window) h += '<div class="section-title"><b>Developer</b></div><div class="panel"><button type="button" class="opt" data-phonepreview><span><b>Phone preview</b><small>See the site as the phone app, right here. Only shown on your account.</small></span><span class="chev">›</span></button></div>';
       if (TAURI?.app?.getVersion) TAURI.app.getVersion().then((v) => { const el = document.getElementById("appVer"); if (el) el.textContent = "Updated " + builtOn() + " · app " + v; }).catch(() => {});
-      h += "<div data-dev-you></div>";
       // Many things ask for a redraw (sign-in finishing, settings syncing, the 2-minute refresh). If the page would come out
       // the same, keep it as it is (no jump, typed text kept) and only let the sections below update themselves.
       const main = $("main");
@@ -5700,9 +5703,68 @@
         main.innerHTML = h;
         for (const [k, sel] of YOU_SECS) { const el = main.querySelector(sel); if (el && youCache[k]) el.innerHTML = youCache[k]; }   // last content, straight away
       }
-      fillPicksYou().catch(() => {}); fillShopYou().catch(() => {}); fillDevYou().catch(() => {}); fillMarksRow().catch(() => {}); syncMarks();
+      fillPicksYou().catch(() => {}); fillShopYou().catch(() => {}); fillSocialYou().catch(() => {}); showDevRow().catch(() => {}); fillMarksRow().catch(() => {}); syncMarks();
+      views.filter((x) => x.kind === "notifs" && x.el.isConnected).forEach((x) => { const b = x.el.querySelector(".sheet-body"), y = b.scrollTop; setBody(x, "Notifications", notifsHtml()); b.scrollTop = y; });   // keep the Notifications page in step
       stamp();
     }
+    // You: profile + friends + messages (from account.js), refreshed when friends or sign-in change.
+    async function fillSocialYou() {
+      const el = document.querySelector("[data-social-you]");
+      if (!el || !window.scorelineSocial) return;
+      const typed = el.querySelector("[data-addf] input")?.value || "", focused = document.activeElement?.closest?.("[data-addf]");
+      const html = await window.scorelineSocial.html().catch(() => "");
+      if (!html || !el.isConnected || youCache.social === html && el.innerHTML) return;
+      youSet("social", el, html);
+      const inp = el.querySelector("[data-addf] input");
+      if (inp && typed) { inp.value = typed; if (focused) inp.focus(); }   // keep what you were typing when a request comes in
+    }
+    window.addEventListener("scoreline-social", () => { if (state.tab === "you") fillSocialYou().catch(() => {}); });
+    window.addEventListener("scoreline-user", () => { if (state.tab === "you") fillSocialYou().catch(() => {}); });
+    // Developer tools: their own page, only for the owner and dev accounts.
+    async function showDevRow() {
+      const row = document.querySelector("[data-open-dev]");
+      if (!row) return;
+      const dev = IS_DEV || (window.scorelinePicks?.isDev ? await window.scorelinePicks.isDev().catch(() => false) : false);
+      row.hidden = !dev;
+    }
+    function openDev() {
+      const v = { kind: "dev", key: "dev" };
+      if (!pushView(v)) return;
+      setBody(v, "Developer tools", (IS_DEV && window.top === window ? '<div class="panel"><button type="button" class="opt" data-phonepreview><span><b>Phone preview</b><small>See the site as the phone app, right here. Only on your account.</small></span><span class="chev">›</span></button></div>' : "") + "<div data-dev-you></div>");
+      fillDevYou().catch(() => {});
+    }
+    // Notifications: their own page (phones), with quiet hours set to the minute.
+    const quietLabel = () => { const p = alertPrefs(); return isNaN(qMins(p.quietFrom)) || isNaN(qMins(p.quietTo)) ? "" : fmtClock(p.quietFrom) + "–" + fmtClock(p.quietTo); };
+    const fmtClock = (v) => { const n = qMins(v); return new Date(2000, 0, 1, Math.floor(n / 60), n % 60).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); };
+    function notifsHtml() {
+      const favs = [...state.favs], p = alertPrefs(), quietOn = !isNaN(qMins(p.quietFrom)) && !isNaN(qMins(p.quietTo));
+      return '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Only about the teams you follow</small></span><i class="switch"></i></button><button type="button" class="pill-btn test-btn" id="testNotify">Send test notification</button>' + (alertsOn ? '<div class="g-note" id="pushState">' + esc(pushStatus) + "</div>" : "") + "</div>" +
+        '<div class="section-title"><b>Quiet hours</b></div><div class="panel"><button type="button" class="opt ' + (quietOn ? "on" : "") + '" data-quiet-toggle><span><b>Quiet hours</b><small>No alerts between these times (your phone\'s time)</small></span><i class="switch"></i></button>' +
+        (quietOn ? '<div class="quiet-times"><label>From<input type="time" data-quiet-from value="' + esc(qTime(p.quietFrom, "22:00")) + '"></label><label>To<input type="time" data-quiet-to value="' + esc(qTime(p.quietTo, "07:00")) + '"></label></div>' : "") + "</div>" +
+        '<div class="section-title"><b>Your teams</b></div><div class="panel nteams">' + (favs.length ? favs.map((k) =>
+          '<div class="opt nteam" role="button" tabindex="0" data-teamalerts="' + esc(k) + '"><span><b>' + esc(teamNames[k] || findName(k) || "Team") + "</b><small>" + esc(teamAlertSummary(k)) + '</small></span><span class="acct-acts"><button class="fav on" type="button" data-fav="' + esc(k) + '" aria-label="Unfollow">★</button><span class="chev">›</span></span></div>').join("") : '<div class="g-note">Follow a team from its team page to get alerts about it.</div>') + "</div>" +
+        '<div class="panel nteams" style="margin-top:10px"><div class="opt nteam" role="button" tabindex="0" data-teamalerts=""><span><b>Defaults for new teams</b><small>What a team starts with when you follow it</small></span><span class="chev">›</span></div></div>';
+    }
+    function openNotifs() {
+      const v = { kind: "notifs", key: "notifs" };
+      if (!pushView(v)) return;
+      setBody(v, "Notifications", notifsHtml());
+    }
+    const saveQuiet = (from, to) => {
+      const raw = store.get("alertPrefs", {});
+      if (from == null) { delete raw.quietFrom; delete raw.quietTo; } else { raw.quietFrom = from; raw.quietTo = to; }
+      store.set("alertPrefs", raw); window.scorelineSettingsChanged?.(); if (alertsOn) pushSync();
+    };
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("[data-open-notifs]")) return openNotifs();
+      if (e.target.closest("[data-open-dev]")) return openDev();
+      if (e.target.closest("[data-quiet-toggle]")) { const p = alertPrefs(), on = !isNaN(qMins(p.quietFrom)) && !isNaN(qMins(p.quietTo)); saveQuiet(on ? null : "22:00", on ? null : "07:00"); buzz(6); renderAlerts(); }
+    });
+    document.addEventListener("change", (e) => {
+      const f = e.target.closest?.("[data-quiet-from], [data-quiet-to]"); if (!f) return;
+      const box = f.closest(".quiet-times"), a = box.querySelector("[data-quiet-from]").value, b = box.querySelector("[data-quiet-to]").value;
+      if (/^\d\d:\d\d$/.test(a) && /^\d\d:\d\d$/.test(b)) { saveQuiet(a, b); renderAlerts(); }
+    });
     // Version shown in You → About. One source: <meta name="version"> (major.minor) + <meta name="build"> (when this page was published).
     const versionText = () => (document.querySelector("meta[name=version]")?.content || "2.0");
     const builtOn = () => { const b = Number(document.querySelector("meta[name=build]")?.content); return b ? new Date(b * 1000).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "recently"; };
