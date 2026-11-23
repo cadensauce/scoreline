@@ -30,6 +30,46 @@ let authDone; const authReady = new Promise((r) => { authDone = r; });
 let friendState = { incoming: [], outgoing: [], friends: [] };
 const names = {};     // uid -> username cache
 
+/* ---------- several accounts on one device (like TikTok) ----------
+   Each account is its own Firebase app ("slot") with its own saved sign-in, so switching needs no password:
+   remember which slot is active, clear this device's copy of the last account's teams/alerts, and reload.
+   The list (username + photo only) is kept on this device; logging out removes that account from it. */
+const MAX_ACCTS = 5;
+const SLOT = (() => { const s = store.get("acctSlot", "main"); return /^[a-z0-9]{1,12}$/.test(s) ? s : "main"; })();
+const savedAccts = () => (store.get("accounts", []) || []).filter((a) => a && /^[a-z0-9]{1,12}$/.test(a.slot) && a.username);
+function rememberAcct() {
+  if (!user || !profile?.username) return;
+  const av = String(myCard?.avatar || ""), list = savedAccts().filter((a) => a.slot !== SLOT && a.uid !== user.uid);
+  list.unshift({ slot: SLOT, uid: user.uid, username: profile.username, avatar: av.length < 70000 ? av : "", deco: myCard?.deco || "" });
+  store.set("accounts", list.slice(0, MAX_ACCTS));
+}
+const forgetSlot = (slot) => store.set("accounts", savedAccts().filter((a) => a.slot !== slot));
+function switchTo(slot) {
+  store.set("acctSlot", slot);
+  // This device's copy of the old account's ★ teams, alert settings and You page: the next account loads its own.
+  store.set("favs", []); store.set("favNames", {}); store.set("alertPrefs", {}); store.set("youCache", {});
+  location.reload();
+}
+function addAccount() {
+  const used = new Set([SLOT, ...savedAccts().map((a) => a.slot)]);
+  if (used.size > MAX_ACCTS) return toast("You can keep up to " + MAX_ACCTS + " accounts here. Log out of one first.");
+  let n = 2; while (used.has("a" + n)) n++;
+  switchTo("a" + n);
+}
+function acctListHtml() {
+  const list = savedAccts();
+  return '<div class="panel">' + list.map((a) => '<button type="button" class="opt soc-row acct-pick" data-acct-slot="' + esc(a.slot) + '">' +
+      '<span class="soc-who">' + avatarHtml(a.avatar, a.username, "", a.deco) + "<span><b>@" + esc(a.username) + "</b>" + (a.slot === SLOT && user ? "<small>Using now</small>" : "") + "</span></span>" +
+      (a.slot === SLOT && user ? '<span class="acct-check-on" aria-label="Current account">✓</span>' : '<span class="chev">›</span>') + "</button>").join("") +
+    (list.length < MAX_ACCTS ? '<button type="button" class="opt soc-row acct-pick" data-acct-add><span class="soc-who"><span class="avatar acct-plus">+</span><span><b>Add account</b><small>Sign in or create another account</small></span></span></button>' : "") +
+    "</div>";
+}
+function openSwitcher() {
+  const v = { kind: "accounts", key: "accounts" };
+  if (!pushView(v)) return;
+  setBody(v, "Switch account", acctListHtml() + '<div class="g-note">Accounts stay signed in on this device. Switching reloads Scoreline with that account.</div>');
+}
+
 async function boot() {
   if (!FIREBASE_CONFIG) return;
   const [app, a, f] = await Promise.all([
@@ -38,7 +78,7 @@ async function boot() {
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`),
   ]);
   fb = { ...app, ...a, ...f };
-  const appInst = fb.initializeApp(FIREBASE_CONFIG);
+  const appInst = SLOT === "main" ? fb.initializeApp(FIREBASE_CONFIG) : fb.initializeApp(FIREBASE_CONFIG, "acct-" + SLOT);   // each account slot keeps its own sign-in
   // App Check: proves requests come from the real Scoreline site (invisible reCAPTCHA Enterprise score, no puzzles).
   // Set up before the other services so their requests carry it. If it can't load (blocked), everything still works.
   if (location.hostname === "cadensauce.github.io") try {
@@ -72,9 +112,11 @@ async function onUser(u) {
     profile = p.exists() ? p.data() : null;
     if (profile) names[u.uid] = profile.username;
     myCard = (await fb.getDoc(fb.doc(db, "cards", u.uid)).catch(() => null))?.data() || { avatar: "", bio: "", show: "friends" };
+    rememberAcct();
     await startSync();
     watchFriends();
   }
+  if (!u) forgetSlot(SLOT);   // this slot has no one signed in: not in the switch list
   syncButton();
   refreshAccountSheet();
   authDone();
@@ -308,7 +350,7 @@ function refreshAccountSheet() {
       '<div class="acct-foot"><button type="button" class="acct-link" data-otpresend>Send a new code</button><button type="button" class="acct-link" data-logout>Log out</button></div>';  } else if (!profile) {
     h = '<div class="g-label">Pick a username</div><p class="g-note">This is the only thing other people will see. 3–20 letters, numbers or _.</p>' +
       '<form class="acct-add acct-unf" data-uname><input maxlength="20" placeholder="e.g. niners_fan" autocomplete="off"><button class="pill-btn" type="submit">Save</button>' + TOS_CHECK + '</form><div class="acct-err" data-err></div>' +
-      '<div class="acct-foot"><button type="button" class="acct-link" data-logout>Log out</button></div>';
+      '<div class="acct-foot"><button type="button" class="acct-link" data-acct-switch>Switch account</button><button type="button" class="acct-link" data-logout>Log out</button></div>';
   } else {
     const F = friendState;
     const person = (uid, actions) => '<div class="opt"><span><b>@' + esc(names[uid] || "…") + "</b></span><span class=\"acct-acts\">" + actions + "</span></div>";
@@ -349,13 +391,13 @@ window.scorelineSocial = {
   async html() {
     await startFirebase();
     if (FIREBASE_CONFIG && fb) await Promise.race([authReady, new Promise((r) => setTimeout(r, 8000))]);
-    if (!user || pending2) return '<div class="panel"><b>Friends and messages</b><p class="muted">Sign in to add friends, see requests and message your friends.</p><button type="button" class="pill-btn tos-go" data-social-signin>Sign in</button></div>';
+    if (!user || pending2) return '<div class="panel"><b>Friends and messages</b><p class="muted">Sign in to add friends, see requests and message your friends.</p><button type="button" class="pill-btn tos-go" data-social-signin>Sign in</button></div>' + (user && pending2 || !savedAccts().length ? "" : '<div class="section-title"><b>Your accounts</b></div>' + acctListHtml());
     const F = friendState;
     await Promise.all([...F.friends, ...F.incoming.map((r) => r.from), ...F.outgoing.map((r) => r.to)].map(nameOf));
     await Promise.all([...F.friends.map(friendCard), ...F.friends.map(roleOf), roleOf(user.uid)]);
     const me = cardWithPlain(myCard || {}), un = profile?.username || "";
     const person = (uid, sub, actions) => { const fc = cardCache[uid]?.c; return '<div class="opt soc-row"><span class="soc-who" data-viewcard="' + esc(uid) + '" role="button" tabindex="0">' + avatarHtml(fc?.avatar, names[uid], "", fc?.deco) + "<span><b>" + esc(fc?.name || "@" + (names[uid] || "…")) + roleTag(roleCache[uid]) + "</b><small>" + (fc?.name ? "@" + esc(names[uid] || "") + (sub ? " · " : "") : "") + (sub || "") + '</small></span></span><span class="acct-acts">' + actions + "</span></div>"; };
-    return '<div class="soc-me bn-theme t-' + esc(me.theme || "plain") + bnCls(me.banner) + '"><span class="soc-who" data-viewcard="' + esc(user.uid) + '" role="button" tabindex="0">' + avatarHtml(me.avatar, un, "lg", me.deco) + "<span><b>" + esc(me.name || "@" + un) + roleTag(roleCache[user.uid]) + "</b><small>@" + esc(un) + " · " + F.friends.length + (F.friends.length === 1 ? " friend" : " friends") + '</small></span></span><button class="pill-btn" type="button" data-editprofile>Edit profile</button></div>' +
+    return '<div class="soc-me bn-theme t-' + esc(me.theme || "plain") + bnCls(me.banner) + '"><span class="soc-who" data-viewcard="' + esc(user.uid) + '" role="button" tabindex="0">' + avatarHtml(me.avatar, un, "lg", me.deco) + "<span><b>" + esc(me.name || "@" + un) + roleTag(roleCache[user.uid]) + "</b><small>@" + esc(un) + " · " + F.friends.length + (F.friends.length === 1 ? " friend" : " friends") + '</small></span></span><span class="soc-me-acts"><button class="pill-btn acct-sw" type="button" data-acct-switch aria-label="Switch account" title="Switch account"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4 3 8l4 4M3 8h13M17 20l4-4-4-4M21 16H8"/></svg></button><button class="pill-btn" type="button" data-editprofile>Edit profile</button></span></div>' +
       '<div class="section-title"><b>Add a friend</b></div><form class="acct-add" data-addf><input placeholder="Username (the @ is optional)" maxlength="21" autocomplete="off" autocapitalize="none" spellcheck="false"><button class="pill-btn" type="submit">Add</button></form>' + addNoteHtml() +
       (F.incoming.length ? '<div class="section-title"><b>Friend requests</b><span class="muted">' + F.incoming.length + "</span></div><div class=\"panel\">" + F.incoming.map((r) => person(r.from, "Wants to be friends", '<button class="pill-btn" type="button" data-accept="' + esc(r.id) + '">Accept</button><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '" aria-label="Decline">✕</button>')).join("") + "</div>" : "") +
       '<div class="section-title"><b>Friends</b><span class="muted">' + F.friends.length + '</span></div><div class="panel">' + (F.friends.length ? F.friends.slice().sort((a, b) => (names[a] || "").localeCompare(names[b] || "")).map((uid) => person(uid, "", '<button class="pill-btn" type="button" data-chat="' + esc(uid) + '">Message</button><button class="pill-btn" type="button" data-unfriend="' + esc(uid) + '" aria-label="Remove friend">✕</button>')).join("") : '<div class="g-note">No friends yet. Add someone by their username above.</div>') + "</div>" +
@@ -622,7 +664,16 @@ document.addEventListener("click", async (e) => {
     }
     return;
   }
-  if (t.closest("[data-logout]")) { await fb.signOut(auth); toast("Logged out"); return; }
+  if (t.closest("[data-logout]")) {
+    const others = savedAccts().filter((a) => a.slot !== SLOT);
+    forgetSlot(SLOT); await fb.signOut(auth); toast("Logged out");
+    if (others.length) switchTo(others[0].slot);   // like TikTok: carry on in your other account
+    return;
+  }
+  const sw = t.closest("[data-acct-slot]");
+  if (sw) { if (sw.dataset.acctSlot !== SLOT) { buzz(12); switchTo(sw.dataset.acctSlot); } return; }
+  if (t.closest("[data-acct-add]")) { buzz(12); return addAccount(); }
+  if (t.closest("[data-acct-switch]")) return openSwitcher();
   if (t.closest("[data-forgot]")) {
     const email = t.closest("form")?.querySelector('[name="email"]')?.value.trim();
     if (!email) return errBox(t, "Type your email above first.");
