@@ -31,6 +31,7 @@ const master = (page) => page.locator("#alertsMaster");
 async function openAlerts(page) {
   await page.goto("index.html");
   await page.locator('[data-tab="you"]:visible').first().click();
+  await page.locator("[data-open-notifs]").click();   // the alert switches live on You → Notifications
   await expect(master(page)).toBeVisible();
 }
 
@@ -53,6 +54,7 @@ test("turning alerts off really turns them off, and the switch shows it", async 
   const before = calls.length;
   await page.reload();
   await page.locator('[data-tab="you"]:visible').first().click();
+  await page.locator("[data-open-notifs]").click();   // the alert switches live on You → Notifications
   await expect(master(page)).not.toHaveClass(/\bon\b/);
   await page.waitForTimeout(1500);
   expect(calls.slice(before).some((c) => c.method === "PATCH")).toBe(false);
@@ -67,6 +69,7 @@ test("alerts that are on stay on after a reload, under the same device id", asyn
 
   await page.reload();
   await page.locator('[data-tab="you"]:visible').first().click();
+  await page.locator("[data-open-notifs]").click();   // the alert switches live on You → Notifications
   await expect(master(page)).toHaveClass(/\bon\b/);
   await expect.poll(() => calls.filter((c) => c.method === "PATCH" && c.id === id).length).toBeGreaterThan(1);
 });

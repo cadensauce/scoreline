@@ -45,7 +45,7 @@ for (const [size, viewport] of Object.entries(SIZES)) {
     await page.reload();
     await page.locator("#main [data-ev]").first().waitFor({ state: "attached", timeout: 30000 }).catch(() => {});
     await page.waitForTimeout(1500);
-    await page.locator('[data-tab="home"]:visible').first().click().catch(() => {});
+    await page.locator('[data-tab="home"]:visible').first().click({ timeout: 10000 }).catch(() => {});
     await page.waitForTimeout(1500);
     await shot("light-home");
     const lcard = page.locator("#main [data-ev]").first();

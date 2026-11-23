@@ -127,13 +127,13 @@ test("season league: create, start the draft, draft in turns, then standings and
   expect(errors).toEqual([]);
 });
 
-test("social tab: friends with Message and Profile; signed out asks to sign in", async ({ page }) => {
+test("you tab: friends with Message and Profile (Social is part of You); signed out asks to sign in", async ({ page }) => {
   const errors = await setup(page);
-  await tab(page, "social");
+  await tab(page, "you");
   await expect(page.locator("#main [data-addf]")).toBeVisible();
   await expect(page.locator('#main [data-chat="pal"]')).toBeVisible();
   await page.evaluate(() => { window.__fake.who.signedIn = false; });
-  await tab(page, "home"); await tab(page, "social");
+  await tab(page, "home"); await tab(page, "you");
   await expect(main(page)).toContainText("Sign in to add friends");
   expect(errors).toEqual([]);
 });
@@ -147,6 +147,6 @@ test("fantasy and social fit a 320 px phone with no sideways scroll", async ({ p
   await page.locator('[data-fx-mode="free"]').click(); await page.locator('[data-fx-fmt="w"]').click(); await page.locator('[data-fx-lg="nfl"]').click();
   await page.locator('[data-fx-cid="nfl_w_x"]').click(); await page.locator('[data-fx-slot="qb"]').click(); await page.waitForTimeout(600);
   expect(await wide()).toBe(false);
-  await tab(page, "social"); await page.waitForTimeout(900);
+  await tab(page, "you"); await page.waitForTimeout(900);
   expect(await wide()).toBe(false);
 });

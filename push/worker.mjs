@@ -168,13 +168,15 @@ async function loadSubs() {
 const DEFAULTS = { start: "always", score: "always", halftime: "playoffs", second: "off", close: "playoffs", final: "always", trades: "always", injuries: "always", bignews: "always" };
 const asMode = (v) => (v === true ? "always" : v === false ? "off" : v);
 const isChampionship = (ev) => /super bowl|nba finals|world series|national championship|cfp national|championship game/i.test([ev?.name, ev?.competitions?.[0]?.notes?.[0]?.headline].join(" "));
-// Quiet hours: no alerts between quietFrom and quietTo (whole hours, 0-23) in the phone's own time zone.
+// Quiet hours: no alerts between quietFrom and quietTo in the phone's own time zone. Times are "HH:MM" (set to the
+// minute in the app); older saves are whole hours ("22").
+const mins = (v) => { const m = /^(\d{1,2})(?::(\d{2}))?$/.exec(String(v ?? "").trim()); return m ? (+m[1] % 24) * 60 + +(m[2] || 0) : NaN; };
 function quietNow(prefs) {
-  const a = parseInt(prefs.quietFrom, 10), b = parseInt(prefs.quietTo, 10);
+  const a = mins(prefs.quietFrom), b = mins(prefs.quietTo);
   if (isNaN(a) || isNaN(b) || a === b) return false;
-  let h;
-  try { h = parseInt(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: prefs.tz || "America/New_York" }).format(new Date()), 10) % 24; } catch { return false; }
-  return a < b ? h >= a && h < b : h >= a || h < b;
+  let now;
+  try { const [h, m] = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "numeric", hourCycle: "h23", timeZone: prefs.tz || "America/New_York" }).format(new Date()).split(":").map(Number); now = (h % 24) * 60 + m; } catch { return false; }
+  return a < b ? now >= a && now < b : now >= a || now < b;
 }
 function wants(prefs, team, kind, ev) {
   if (quietNow(prefs)) return false;
