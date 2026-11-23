@@ -9,6 +9,18 @@ if (!sa.project_id) throw new Error("FIREBASE_SA is missing");
 admin.initializeApp({ credential: admin.credential.cert(sa) });
 const db = admin.firestore();
 
+// ACTION=delete removes the test account and everything it has (frees the username for a real sign-up).
+if (process.env.ACTION === "delete") {
+  const name = await db.doc("usernames/" + USERNAME).get();
+  if (name.exists && name.data().uid === UID) await db.doc("usernames/" + USERNAME).delete();   // only if it's still the test account's
+  const reqs = await Promise.all([db.collection("requests").where("from", "==", UID).get(), db.collection("requests").where("to", "==", UID).get()]);
+  await Promise.all(reqs.flatMap((s) => s.docs.map((d) => d.ref.delete())));
+  await Promise.all(["profiles", "ages", "cards", "users", "roles", "pstats"].map((c) => db.doc(c + "/" + UID).delete()));
+  await admin.auth().deleteUser(UID).catch(() => {});
+  console.log("Test account deleted: @" + USERNAME + " is free (" + reqs.reduce((n, s) => n + s.size, 0) + " friend requests removed)");
+  process.exit(0);
+}
+
 const photo = String(process.env.PHOTO || "");
 if (photo && (!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(photo) || photo.length > 60000)) throw new Error("PHOTO must be a JPEG data URL under 60 KB");
 
