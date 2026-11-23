@@ -5,6 +5,10 @@ name: Test account
 on:
   workflow_dispatch:
     inputs:
+      action:
+        description: "make or delete"
+        required: false
+        default: "make"
       photo:
         description: "Profile photo as a small JPEG data URL (optional)"
         required: false
@@ -28,4 +32,5 @@ jobs:
         env:
           FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
           PHOTO: ${{ inputs.photo }}
+          ACTION: ${{ inputs.action }}
         run: node test-account.mjs
