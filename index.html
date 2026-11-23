@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795407965" />
+  <meta name="build" content="1795408788" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1753,7 +1753,7 @@
     function stripHtml(key) {
       const sel = ymd(dateAt(dayOff[key] || 0));
       let days = [...(gameDays[key] || [])].sort();
-      if (!days.includes(sel)) days = [...days, sel].sort();
+      if (!days.length) days = [sel];   // only days with games get a chip (the selected day always has games once they're known)
       const i = days.indexOf(sel);
       days = days.slice(Math.max(0, i - 5), i + 9);
       return '<div class="dstrip" data-dstrip>' + days.map((s) => {
@@ -1780,21 +1780,25 @@
       const L = LEAGUES[key];
       if (viewOf(key) === "day") {
         await ensureGameDays(key);
-        if (dayOff[key] == null) {
-          dayOff[key] = 0;
-          const gd = gameDays[key];
-          if (gd?.size && !gd.has(ymd(dateAt(0)))) { const t = ymd(dateAt(0)), all = [...gd].sort(), nx = all.find((s) => s > t) || all[all.length - 1]; dayOff[key] = offOf(nx); }
+        if (dayOff[key] == null) dayOff[key] = 0;
+        // A day with no games never shows: go to the next game day (or the last one if the season is over).
+        const toGameDay = () => { const gd = gameDays[key]; if (gd?.size && !gd.has(ymd(dateAt(dayOff[key])))) { const t = ymd(dateAt(0)), all = [...gd].sort(); dayOff[key] = offOf(all.find((s) => s >= t) || all[all.length - 1]); } };
+        for (let tries = 0; ; tries++) {
+          toGameDay();
+          // Football: ESPN's single-day feed misses weekday games, so load that day's week and keep only that day.
+          const want = ymd(dateAt(dayOff[key])), wk = L.paging === "week" && weekOf[key]?.[want];
+          let out;
+          if (wk) {
+            const d = await getJSON(API + L.path + "/scoreboard?" + (L.extra || "").replace(/^&/, "") + "&week=" + wk.n + "&seasontype=" + wk.st);
+            const events = (d.events || []).filter((e) => ymd(new Date(e.date)) === want);
+            cache[key] = { ...d, events }; out = { events };
+          } else {
+            const data = await getJSON(dayUrl(key, dateAt(dayOff[key])));
+            noteGameDays(key, data); cache[key] = data; out = { events: data.events || [] };
+          }
+          // Listed as a game day but nothing there (moved or cancelled): drop it and try the next one.
+          if (out.events.length || tries >= 2 || !(gameDays[key]?.size > 1) || !gameDays[key].delete(want)) return out;
         }
-        // Football: ESPN's single-day feed misses weekday games, so load that day's week and keep only that day.
-        const want = ymd(dateAt(dayOff[key])), wk = L.paging === "week" && weekOf[key]?.[want];
-        if (wk) {
-          const d = await getJSON(API + L.path + "/scoreboard?" + (L.extra || "").replace(/^&/, "") + "&week=" + wk.n + "&seasontype=" + wk.st);
-          const events = (d.events || []).filter((e) => ymd(new Date(e.date)) === want);
-          cache[key] = { ...d, events }; return { events };
-        }
-        const data = await getJSON(dayUrl(key, dateAt(dayOff[key])));
-        noteGameDays(key, data); cache[key] = data;
-        return { events: data.events || [] };
       }
       if (L.paging === "week") { const data = await loadLeague(key); noteGameDays(key, data); return { events: data.events || [], grouped: true, week: data.week?.number || 0 }; }
       const days = weekRange(key);
