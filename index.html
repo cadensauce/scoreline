@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795394525" />
+  <meta name="build" content="1795389318" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -613,7 +613,7 @@
     .k-x { fill: none; stroke: #ff5a5a; stroke-width: 3.5; stroke-linecap: round; animation: fadein .3s both; } .k-ok { fill: none; stroke: #4cd486; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; animation: fadein .3s both; }
     .fh .f-s1 { fill: #2e6b46; } .fh .f-s2 { fill: #2a6441; } .fh .f-yl { stroke: rgba(255,255,255,.28); } .fh .f-yl.ten { stroke: rgba(255,255,255,.55); stroke-width: 1.5; } .fh .f-yl.goal { stroke: #fff; stroke-width: 2.5; }
     .fh .f-hash { stroke: rgba(255,255,255,.4); } .fh .f-num { font-size: 24px; fill: rgba(255,255,255,.55); }
-    .fh .f-ez { font-size: 30px; letter-spacing: 6px; } .f-post { stroke: #ffd84d; stroke-width: 5; stroke-linecap: round; }
+    .fh .f-ez { font-size: 30px; letter-spacing: 6px; } .f-post { stroke: #ffd84d; stroke-width: 3.5; stroke-linecap: round; } .f-upr { fill: #ffd84d; stroke: #8a6a00; stroke-width: 1; } .f-gneck { stroke: #e6bf2e; stroke-width: 3; stroke-linecap: round; } .f-gbase { fill: #f2f2f2; stroke: rgba(0,0,0,.35); stroke-width: .8; }
     .fh .f-los { stroke: #4c8dff; stroke-width: 3; } .fh .f-1st { stroke: #ffd400; stroke-width: 3; }
     .fh .f-throw { stroke: #fff; stroke-width: 2.6; stroke-dasharray: 1.5 7; stroke-linecap: round; } .fh .f-run { stroke: #fff; stroke-width: 4.5; }
     .fh .f-ball { fill: #c9773a; stroke: #fff; stroke-width: 1.5; } .f-land { fill: rgba(255,255,255,.18); stroke: #fff !important; stroke-width: 2.5 !important; } .f-landc { fill: #fff; }
@@ -2585,6 +2585,7 @@
       buzz(8);   // every page that opens gives the same single buzz
       views.push(v);
       history.pushState({ sheet: views.length }, "");
+      if (v.mark) markPage(...v.mark);   // game / player / team / driver: in the address, so a refresh comes back here
       const bg = sheetRoot.querySelector(".sheet-bg") || sheetRoot.appendChild(Object.assign(document.createElement("div"), { className: "sheet-bg" }));
       v.el = document.createElement("section");
       v.el.className = "sheet k-" + (v.kind || "page") + (store.get("sheetsWide", false) && innerWidth > 720 ? " wide" : "");   // full screen is remembered for every page
@@ -2604,6 +2605,16 @@
     // Closing goes "back" (so the phone's back button and swipe work the same way). If the back step doesn't arrive
     // (some app web views drop it), the page is closed directly so the X always works.
     function closeTop() { const n = views.length; if (!n) return; history.back(); setTimeout(() => { if (views.length === n) popView(); }, 350); }
+    // The open game / player / team / driver goes in the address (#g=nfl-401873069), so a refresh comes back to it.
+    // Each page's address lives in its own history entry, so going back restores the one before.
+    function markPage(k, lg, id) { try { history.replaceState(history.state, "", location.pathname + location.search + "#" + k + "=" + lg + "-" + id); } catch {} }
+    function reopenFromAddress() {
+      const m = /^#([gptd])=([a-z0-9]+)-([0-9A-Za-z]+)$/.exec(location.hash || "");
+      try { history.replaceState(null, "", location.pathname + location.search); } catch {}   // start clean; opening the page adds its entry again
+      if (!m || (m[2] !== "f1" && !LEAGUES[m[2]])) return;
+      const [, k, lg, id] = m;
+      setTimeout(() => { if (k === "g") openGame(lg, id); else if (k === "p") openPlayer(lg, id); else if (k === "t") openTeam(lg, id); else if (k === "d") openDriver(id); }, 300);
+    }
     function closeSheets() { const n = views.length; if (!n) return; history.go(-n); setTimeout(() => { while (views.length) popView(); }, 400); }
     addEventListener("popstate", () => { while (views.length > (history.state?.sheet || 0)) popView(); });
     const setBody = (v, title, html) => { v.el.querySelector(".sheet-title").textContent = title; v.el.querySelector(".sheet-body").innerHTML = html; };   // the data/affiliation note lives in the footer and You → About, not on every page
@@ -3723,16 +3734,26 @@
       const url = "https://sports.core.api.espn.com/v2/sports/" + sport + "/leagues/" + league + "/events/" + id + "/competitions/" + id + "/plays?limit=500";
       const sec = () => v.el.querySelector("[data-field]");
       let data;
+      // The live situation (who has the ball, timeouts left) and the real game clock come from the same fast feed as the plays.
+      const coreC = "https://sports.core.api.espn.com/v2/sports/" + sport + "/leagues/" + league + "/events/" + id + "/competitions/" + id;
+      const sitP = getJSON(coreC + "/situation").catch(() => null), statP = getJSON(coreC + "/status").catch(() => null);
       try { data = await getJSON(url); } catch { if (sec()) sec().innerHTML = '<div class="g-label">Plays</div><div class="g-note">Play-by-play isn\'t available for this game.</div>'; return; }
       if (!v.el.isConnected || !sec()) return;
       const away = teams[0], home = teams[1];
       const plays = (data.items || []).filter((p) => p.start && p.end && p.start.yardsToEndzone != null && !/timeout|end of|end period|two-minute|coin toss/i.test(p.type?.text || ""));
       if (!plays.length) { sec().innerHTML = '<div class="g-label">Plays</div><div class="g-note">' + (state === "pre" ? "Plays will show here once the game starts." : "No plays yet.") + "</div>"; return; }
-      const drives = [];
+      const [sit, stat] = await Promise.all([sitP, statP]);
+      // Drives: the team is the one with the ball (a drive that starts with a kickoff belongs to the receiving team, not
+      // the kicker). When the live feed keeps adding a new possession's plays to the old drive (it lags), they're split off.
+      const drives = [], ids = [String(away.team?.id), String(home.team?.id)], otherOf = (t) => ids.find((x) => x !== t);
+      const kickoff = (p) => /kickoff/i.test(p.type?.text || ""), changes = (p) => p && (p.scoringPlay || p.isTurnover || /punt|interception|fumble|safety|kickoff|field goal|downs/i.test((p.type?.text || "") + " " + (p.text || "")));
       plays.forEach((p) => {
-        const d = refId(p.drive, "drives") || "x";
+        const d = refId(p.drive, "drives") || "x", st = refId(p.start.team, "teams") || refId(p.team, "teams");
         let cur = drives[drives.length - 1];
-        if (!cur || cur.id !== d) { cur = { id: d, team: refId(p.start.team, "teams") || refId(p.team, "teams"), plays: [] }; drives.push(cur); }
+        const off = kickoff(p) ? otherOf(st) : st;   // who the play belongs to (a kickoff starts the receiving team's drive)
+        if (!cur || cur.id !== d || (cur.team && off && off !== cur.team && !kickoff(p) && changes(cur.plays[cur.plays.length - 1]))) { cur = { id: cur && cur.id === d ? d + "b" : d, team: off, plays: [] }; drives.push(cur); }
+        else if (!cur.team) cur.team = off;
+        p.__off = kickoff(p) ? st : cur.team;   // which way the play is drawn: the drive team's attack (kickoffs from the kicker)
         cur.plays.push(p);
       });
       const prev = v.field;
@@ -3770,26 +3791,34 @@
         else if (/replay official reviewed|play was reviewed|under review/i.test(tx)) stops.push({ ...base, kind: "review", label: "Replay review" + (/REVERSED/.test(tx) ? " · reversed" : /UPHELD|STANDS/i.test(tx) ? " · upheld" : "") });
       });
       const perHalf = 3;
-      const timeouts = curPer > 4 ? null : { [away.team?.id]: Math.max(0, perHalf - (tos[away.team?.id] || 0)), [home.team?.id]: Math.max(0, perHalf - (tos[home.team?.id] || 0)) };
+      const live = stat?.type?.state ? stat.type.state === "in" : state === "in" && !ended;
+      // Timeouts left: straight from the live situation when there is one (counting the log missed some).
+      const timeouts = sit && sit.homeTimeouts != null && live ? { [away.team?.id]: Math.max(0, +sit.awayTimeouts), [home.team?.id]: Math.max(0, +sit.homeTimeouts) }
+        : curPer > 4 ? null : { [away.team?.id]: Math.max(0, perHalf - (tos[away.team?.id] || 0)), [home.team?.id]: Math.max(0, perHalf - (tos[home.team?.id] || 0)) };
       const lastReal = plays[plays.length - 1];
       v.field = { feedAll: prev?.feedAll, drives, h2, stops, timeouts, period: curPer, clock: lastP?.clock?.displayValue, down: lastReal?.end?.shortDownDistanceText || lastReal?.end?.downDistanceText || "",
-        poss: (() => { const sp = (cache[lg]?.events || []).find((e) => e.id === String(id))?.competitions?.[0]?.situation?.possession; if (sp && state === "in") return String(sp); const dt = drives[drives.length - 1]?.team, flip = lastReal && (lastReal.scoringPlay || lastReal.isTurnover || /punt|interception|safety/i.test(lastReal.type?.text || "")); const other = [away, home].map((t) => String(t.team?.id)).find((x) => x !== dt); return flip ? other : dt; })(), di: follow ? drives.length - 1 : prev.di, pi: follow ? null : prev.pi, away, home, lg, id, teams, state, seen, fresh, live: state === "in" && !ended, updated: Date.now() };
+        poss: (() => { const sp = live ? refId(sit?.team, "teams") : null; if (sp) return String(sp);   // who has the ball right now (live situation) const dt = drives[drives.length - 1]?.team, flip = lastReal && (lastReal.scoringPlay || lastReal.isTurnover || /punt|interception|safety/i.test(lastReal.type?.text || "")); const other = [away, home].map((t) => String(t.team?.id)).find((x) => x !== dt); return flip ? other : dt; })(), di: follow ? drives.length - 1 : prev.di, pi: follow ? null : prev.pi, away, home, lg, id, teams, state, seen, fresh, live, status: stat, updated: Date.now() };
       // Live refresh (every 5 s): only touch the field when a new play came in and you're on the latest play
       // (then it animates the new one). Otherwise leave the picture alone, so a play that's animating, or an
       // older play you stepped back to, isn't cut short or replaced. The play list still updates.
       if (!prev) drawField(v, false);
       else if (fresh.size && follow) drawField(v, false);
       else { const fs = v.el.querySelector("[data-feedsec]"); if (fs) fs.innerHTML = playFeed(v, v.field); }
-      if (v.field.live) liveHeader(v, last);
+      liveHeader(v, last, stat);   // also after the final whistle, so the header never keeps an old clock
       clearInterval(v.fieldTimer);
       if (v.field.live) v.fieldTimer = setInterval(() => { if (!v.el.isConnected) return clearInterval(v.fieldTimer); if (document.hidden || v.fieldBusy) return; v.fieldBusy = true; setTimeout(() => { v.fieldBusy = false; }, 15000); loadField(v, lg, id, teams, state); }, 5000);
     }
     // Keep the score and clock at the top of the game sheet in step with the newest play.
-    function liveHeader(v, p) {
+    function liveHeader(v, p, stat) {
       const sc = v.el.querySelector(".g-score");
       if (sc && p.awayScore != null) sc.innerHTML = esc(p.awayScore) + "<i>–</i>" + esc(p.homeScore);
       const st = v.el.querySelector(".g-mid .status");
-      if (st && p.period?.number) st.textContent = (p.period.number > 4 ? "OT" : "Q" + p.period.number) + " · " + (p.clock?.displayValue || "");
+      if (!st) return;
+      // The real game clock (not the time of the last play): "Q4 · 4:44", "Halftime", "Final".
+      const T = stat?.type;
+      if (T?.state === "post") { st.textContent = T.shortDetail || "Final"; st.classList.remove("live"); return; }
+      if (T?.state === "in" && stat.period) { st.textContent = /half/i.test(T.detail || "") ? "Halftime" : (stat.period > 4 ? "OT" : "Q" + stat.period) + " · " + (stat.displayClock || ""); return; }
+      if (p.period?.number) st.textContent = (p.period.number > 4 ? "OT" : "Q" + p.period.number) + " · " + (p.clock?.displayValue || "");
     }
     // Football game pages update plays from another feed, so refresh their flags line every 30 seconds.
     setInterval(() => views.forEach(async (v) => {
@@ -4010,7 +4039,7 @@
     // After a punt, kickoff or turnover the end spot is measured for the other team, so flip it back.
     const endYtez = (p) => { const a = refId(p.start?.team, "teams"), b = refId(p.end?.team, "teams"); return a && b && a !== b ? 100 - p.end.yardsToEndzone : p.end.yardsToEndzone; };
     function playGeom(p, F) {
-      const team = refId(p.start.team, "teams") || refId(p.team, "teams");
+      const team = p.__off || refId(p.start.team, "teams") || refId(p.team, "teams");   // the drive team (the feed's own play team is sometimes the other side)
       const right = team === String(F.away.team?.id);
       const pos = (ytez) => right ? 100 - ytez : ytez;
       const x0 = pos(p.start.yardsToEndzone), x1 = pos(endYtez(p));
@@ -4086,7 +4115,13 @@
       for (let y = 0; y <= 100; y += 5) s += '<line x1="' + X(y) + '" x2="' + X(y) + '" y1="0" y2="' + H + '" class="f-yl' + (y % 10 ? "" : " ten") + (y === 0 || y === 100 ? " goal" : "") + '"/>';
       { let hd = ""; for (let y = 1; y < 100; y++) if (y % 5) [7, H * 0.4, H * 0.6, H - 7].forEach((hy) => { hd += "M" + X(y).toFixed(1) + " " + (hy - 4) + "v8"; }); s += '<path d="' + hd + '" class="f-hash"/>'; }   // all hash marks as one shape (lighter to draw)
       for (let y = 10; y < 100; y += 10) { const n = Math.min(y, 100 - y); s += '<text x="' + X(y) + '" y="36" class="f-num">' + n + '</text><text x="' + X(y) + '" y="' + (H - 36) + '" class="f-num" transform="rotate(180 ' + X(y) + " " + (H - 36) + ')">' + n + "</text>"; }
-      [4, W - 4].forEach((gx) => { s += '<line x1="' + gx + '" x2="' + gx + '" y1="' + (CY - 20) + '" y2="' + (CY + 20) + '" class="f-post"/>'; });
+      // Goalposts seen from above, like the real thing: a padded base post at the back, the gooseneck reaching in, the
+      // crossbar across, and an upright at each end of it.
+      [[10, -1], [W - 10, 1]].forEach(([gx, out]) => {
+        const bx = gx + out * 8;
+        s += '<g class="f-gp"><line x1="' + bx + '" x2="' + gx + '" y1="' + CY + '" y2="' + CY + '" class="f-gneck"/><rect x="' + (bx - 3) + '" y="' + (CY - 3) + '" width="6" height="6" rx="1.5" class="f-gbase"/>' +
+          '<line x1="' + gx + '" x2="' + gx + '" y1="' + (CY - 19) + '" y2="' + (CY + 19) + '" class="f-post"/><circle cx="' + gx + '" cy="' + (CY - 19) + '" r="3.4" class="f-upr"/><circle cx="' + gx + '" cy="' + (CY + 19) + '" r="3.4" class="f-upr"/></g>';
+      });
       s += '<rect width="' + W + '" height="' + H + '" fill="url(#fglow)" pointer-events="none"/>';
       if (!P || !G) return finish(s, [X(50)]);
       s += '<g class="play">';   // everything below is the play; the loop replays just this group
@@ -4165,7 +4200,7 @@
       };
 
       if (isFG) {
-        const hx = xL - dir * 7 * S, gx = dir === 1 ? W - 4 : 4;
+        const hx = xL - dir * 7 * S, gx = dir === 1 ? W - 10 : 10;   // the crossbar
         const blocked = /blocked/i.test(t), miss = blocked || /no good|missed|wide|short/i.test(t);
         const wl = /wide left|left upright/i.test(t) ? -1 : /wide right|right upright/i.test(t) ? 1 : 0;
         const ex = blocked ? hx + dir * 4 * S : /\bshort\b/i.test(t) ? gx - dir * EZ * 1.3 : gx, ey = blocked ? CY : CY + wl * (/upright/i.test(t) ? 20 : 40) * dir;
@@ -4473,7 +4508,7 @@
       return f1Cars[id];
     }
     async function openDriver(id) {
-      const v = { kind: "driver", key: "driver|" + id };
+      const v = { kind: "driver", key: "driver|" + id, mark: ["d", "f1", id] };
       if (!pushView(v)) return;
       const [bio, st, sb, ov] = await Promise.all([
         getJSON("https://site.web.api.espn.com/apis/common/v3/sports/racing/f1/athletes/" + id).catch(() => null),
@@ -4614,7 +4649,7 @@
       const strip = box.querySelector(".cs-years"); if (strip) strip.scrollLeft = sx;
     });
     async function openPlayer(lg, id) {
-      const v = { kind: "player", key: "player|" + lg + "|" + id };
+      const v = { kind: "player", key: "player|" + lg + "|" + id, mark: ["p", lg, id] };
       if (!pushView(v)) return; v.el.dataset.lg = lg;
       const base = "https://site.web.api.espn.com/apis/common/v3/sports/" + LEAGUES[lg].path + "/athletes/" + id;
       const [info, ov, cs] = await Promise.all([getJSON(base).catch(() => null), getJSON(base + "/overview").catch(() => null), getJSON(base + "/stats").catch(() => null)]);
@@ -4759,7 +4794,7 @@
     }
 
     async function openGame(lg, id) {
-      const v = { kind: "game", key: "game|" + id };
+      const v = { kind: "game", key: "game|" + id, mark: ["g", lg, id] };
       if (!pushView(v)) return; v.el.dataset.lg = lg;
       let s;
       try { s = await getJSON(API + LEAGUES[lg].path + "/summary?event=" + id); }
@@ -4952,7 +4987,7 @@
     }
 
     async function openTeam(lg, id, seg) {
-      const v = { kind: "team", lg, id, seg: seg || "schedule", key: "team|" + lg + "|" + id };
+      const v = { kind: "team", lg, id, seg: seg || "schedule", key: "team|" + lg + "|" + id, mark: ["t", lg, id] };
       if (!pushView(v)) return; v.el.dataset.lg = lg;
       const base = API + LEAGUES[lg].path + "/teams/" + id;
       const [sc, ro] = await Promise.all([getJSON(base + "/schedule").catch(() => null), getJSON(base + "/roster").catch(() => null)]);
@@ -6433,6 +6468,7 @@
     if (state.filter === "close") window.addEventListener("load", () => window.ScorelineWP && Promise.all(["nfl", "cfb", "nba"].map((x) => window.ScorelineWP.ready(x).catch(() => {}))).then(() => render(false)));
     if (![...ALL_SPORTS, "home", "you"].includes(state.tab)) state.tab = "home";
     Promise.all([Promise.resolve(render()).catch(() => {}), new Promise((r) => setTimeout(r, 900))]).finally(hideSplash);
+    reopenFromAddress();   // refreshed on a game / player / team / driver: open it again
   </script>
   <script src="models/wp.js" defer></script>
   <script type="module" src="account.js"></script>
