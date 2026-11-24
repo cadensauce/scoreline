@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795552962" />
+  <meta name="build" content="1795553168" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -547,6 +547,10 @@
     .dev-form input { flex: 1 1 140px; min-width: 0; height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; outline: none; }
     .dev-form input[type="number"] { flex: 0 1 110px; } .dev-form input:focus { border-color: var(--muted); } .dev-form .pill-btn { flex: none; }
     .dev-form select { flex: 0 1 140px; height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; }
+    .va-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .va-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 9999; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 24px); padding: 8px 8px 8px 14px; border-radius: 999px; background: var(--text); color: var(--bg); font-size: 13px; box-shadow: 0 6px 24px rgba(0,0,0,.35); white-space: nowrap; }
+    .va-bar span { overflow: hidden; text-overflow: ellipsis; } .va-bar button { flex: none; height: 30px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--bg); color: var(--text); font: inherit; font-weight: 800; cursor: pointer; }
+    @media (min-width: 721px) { .va-bar { bottom: 20px; } }
     .rep-row > span { display: flex; flex-direction: column; gap: 3px; min-width: 0; } .rep-row small { color: var(--muted); font-size: 12px; } .rep-text { color: var(--text) !important; font-style: italic; overflow-wrap: anywhere; }
     .shop-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; } .shop-row { display: flex; align-items: center; justify-content: space-between; } .shop-row .title-tag { margin-left: 0; }
     .pill-btn.sm { padding: 5px 10px; font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; } .pill-btn.sm:disabled { opacity: .45; }
@@ -1499,6 +1503,7 @@
     window.scorelineDevCheck = async (email) => {
       let ok = false;
       try { if (email) { const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(email.trim().toLowerCase())); ok = [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("") === DEV_HASH; } } catch {}
+      if (ok && store.get("viewAs", "")) ok = false;   // viewing the site as another role: no owner-only tools
       if (ok !== IS_DEV) { IS_DEV = ok; if (state.tab === "you") renderAlerts(); }
     };
     document.addEventListener("click", (e) => {
@@ -5885,6 +5890,8 @@
           '<form class="dev-form" data-role-form><input name="who" placeholder="Username" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="21" required>' +
           '<select name="role" aria-label="Role">' + Object.keys(ROLE_HELP).map((k) => '<option value="' + k + '">' + ROLE_NAMES[k] + "</option>").join("") + '</select><button type="submit" class="pill-btn">Give</button></form>' +
           '<div class="g-note">' + Object.keys(ROLE_HELP).map((k) => "<b>" + ROLE_NAMES[k] + ":</b> " + esc(ROLE_HELP[k])).join("<br>") + "<br>Only you can give or take away roles. Giving Marks stays yours only.</div></div>" +
+          '<div class="section-title"><b>View site as</b></div><div class="panel dev-panel"><div class="va-btns">' + [["user", "User"], ["tester", "Beta Tester"], ["mod", "Mod"], ["dev", "Dev"]].map(([k, n]) => '<button type="button" class="pill-btn" data-view-as="' + k + '">' + n + "</button>").join("") +
+          "</div><div class=\"g-note\">See Scoreline the way that role does, like Discord's View Server As Role. It only changes what you see; your real permissions stay the same. A bar at the top lets you stop.</div></div>" +
           '<div class="section-title"><b>People with roles</b><span class="muted">' + list.length + '</span></div><div class="panel">' +
           (list.length ? list.map((x) => '<div class="opt soc-row"><span class="soc-who" data-viewcard="' + esc(x.uid) + '" role="button" tabindex="0"><span><b>@' + esc(x.username || "…") + roleTag(x.role) + "</b></span></span>" +
             (x.role === "owner" ? '<span class="muted">You</span>' : '<button type="button" class="pill-btn" data-role-remove="' + esc(x.uid) + '" data-role-name="' + esc(x.username || "") + '">Remove</button>') + "</div>").join("") : '<p class="muted people-hint">No one yet.</p>') + "</div>";
@@ -5906,7 +5913,17 @@
       try { const who = await window.scorelineRoles.give(f.who.value, f.role.value); buzz(12); toast("@" + who + " is now " + ROLE_NAMES[f.role.value]); const v = views.find((x) => x.key === "dev"); if (v) fillStaff(v); }
       catch (err) { toast(err?.message || "Couldn't give that role."); btn.disabled = false; }
     });
+    // View site as a role: a bar across the top while it's on, with Stop.
+    (() => {
+      const va = store.get("viewAs", ""); if (!ROLE_NAMES[va] && va !== "user") return;
+      const bar = document.createElement("div"); bar.className = "va-bar"; bar.setAttribute("role", "status");
+      bar.innerHTML = "<span>Viewing as <b>" + esc(va === "user" ? "User" : ROLE_NAMES[va]) + "</b> · only you see this</span><button type=\"button\" data-view-stop>Stop</button>";
+      document.body.prepend(bar); document.documentElement.classList.add("viewing-as");
+    })();
     document.addEventListener("click", async (e) => {
+      const va = e.target.closest("[data-view-as]");
+      if (va) { buzz(8); const ok = await window.scorelineViewAs?.set(va.dataset.viewAs); if (!ok) toast("Only the Owner can do that."); return; }
+      if (e.target.closest("[data-view-stop]")) { store.set("viewAs", ""); return location.reload(); }
       const b = e.target.closest("[data-role-remove]"); if (!b) return;
       if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Remove?"; setTimeout(() => { if (b.isConnected) { delete b.dataset.sure; b.textContent = "Remove"; } }, 3000); return; }
       b.disabled = true;

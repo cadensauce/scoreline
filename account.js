@@ -692,10 +692,19 @@ function refreshAccountSheet() {
 }
 const errBox = (el, msg) => { const b = el.closest(".sheet, [data-social]")?.querySelector("[data-err]"); if (b) b.textContent = msg; };
 const roleCache = {};   // roles/{uid}: the Owner badge, set only by the worker
-async function roleOf(uid) {
+async function realRoleOf(uid) {
   if (uid in roleCache) return roleCache[uid];
   const r = await fb.getDoc(fb.doc(db, "roles", uid)).then((d) => d.data()?.role || "").catch(() => "");
   return (roleCache[uid] = /^[a-z]{1,20}$/.test(r) ? r : "");
+}
+// "View site as" (Owner only, like Discord's View Server As Role): your own role shows as the one you picked,
+// so the page shows what that role sees. It only changes what you see; the rules still use your real role.
+const VIEW_AS = ["user", "tester", "mod", "dev"];
+const viewingAs = () => { const v = store.get("viewAs", ""); return VIEW_AS.includes(v) ? v : ""; };
+async function roleOf(uid) {
+  const r = await realRoleOf(uid);
+  if (user && uid === user.uid && r === "owner" && viewingAs()) return viewingAs() === "user" ? "" : viewingAs();
+  return r;
 }
 const cardCache = {};   // friends' profiles for the Social list, kept for 5 minutes
 async function friendCard(uid) {
@@ -1098,7 +1107,7 @@ window.scorelinePicks = {
   },
   // Dev tools: the Owner, Devs and Mods. Giving Marks: only accounts listed in devs/ (set by the Owner in the console).
   async isDev() { if (!user) return false; if (["owner", "dev", "mod"].includes(await roleOf(user.uid))) return true; return this.canGive(); },
-  async canGive() { const n = pickReady() && profile?.username; if (!n) return false; const d = await fb.getDoc(fb.doc(db, "devs", n)).catch(() => null); return !!d?.exists(); },
+  async canGive() { if (viewingAs()) return false; const n = pickReady() && profile?.username; if (!n) return false; const d = await fb.getDoc(fb.doc(db, "devs", n)).catch(() => null); return !!d?.exists(); },
   async grant(username, amount) {
     const name = cleanName(username).replace(/^@/, "");
     const u = name ? await fb.getDoc(fb.doc(db, "usernames", name)) : null;
@@ -1185,6 +1194,7 @@ if ("requestIdleCallback" in window) requestIdleCallback(startFirebase, { timeou
    The Owner (set by the worker) gives or takes away the other roles from Dev tools. Each role shows as a tag on
    profiles. Mods (and the Owner) can read reports. The rules enforce all of this; the page only shows the buttons. */
 const GIVABLE = ["dev", "mod", "tester"];
+window.scorelineViewAs = { get: viewingAs, async set(r) { if (r && (!user || (await realRoleOf(user.uid)) !== "owner")) return false; store.set("viewAs", VIEW_AS.includes(r) ? r : ""); location.reload(); return true; } };
 window.scorelineRoles = {
   async mine() {
     await startFirebase();
