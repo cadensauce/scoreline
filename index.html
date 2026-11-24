@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795553168" />
+  <meta name="build" content="1795553181" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -263,7 +263,8 @@
     .wpg-cur { stroke: var(--muted); stroke-width: 1; vector-effect: non-scaling-stroke; }
     .wpg-dot { fill: var(--text); }
     .wpg-t, .wpg-b { position: absolute; left: 0; font-size: 11px; font-weight: 700; color: var(--muted); pointer-events: none; }
-    .wpg-t { top: 0; } .wpg-b { bottom: 0; }
+    .wpg-t { top: 2px; } .wpg-b { bottom: 2px; } .wpg-t, .wpg-b { left: 4px; font-size: 10.5px; text-shadow: 0 0 4px var(--bg); }
+    .wpg-50 { position: absolute; right: 4px; top: 50%; transform: translateY(-115%); font-size: 10px; font-weight: 700; color: var(--muted); pointer-events: none; text-shadow: 0 0 4px var(--bg); }
     .wpg-read { min-height: 38px; font-size: 13px; color: var(--muted); }
     .wpg-read b { color: var(--text); font-weight: 700; }
     .wpg-read small { display: block; font-size: 12px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -351,6 +352,11 @@
     .pick-sec:empty { display: none; } .pick-row { display: flex; gap: 10px; } .pick-msg { font-size: 14px; line-height: 1.45; margin-bottom: 10px; }
     .pick-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 8px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); color: var(--text); transition: border-color var(--t-fast), background var(--t-fast); }
     .pick-btn b { font-size: 16px; } .pick-btn small { font-size: 11.5px; color: var(--muted); } .pick-btn.on { border-color: var(--text); background: var(--panel-2); } .pick-btn:disabled { opacity: .55; }
+    /* Your pick: a check mark in the corner and a stronger outline, so it is obvious who you picked */
+    .pick-btn { position: relative; } .pick-btn.on { border-width: 2px; padding: 11px 7px; }
+    .pick-btn.on::after { content: "✓"; position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius: 99px; background: var(--text); color: var(--bg); font-size: 12px; font-weight: 900; line-height: 20px; text-align: center; box-shadow: 0 0 0 2px var(--bg); }
+    .pick-btn.on::before { content: "Your pick"; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); padding: 0 6px; border-radius: 99px; background: var(--bg); color: var(--text); font-size: 9.5px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
+    .hp-card .pick-btn.on { padding: 7px 3px; } .hp-card .pick-btn.on::before { display: none; }
     .pick-line { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 14px; padding: 6px 0; } .pick-line .good { color: var(--good, #3fb950); } .pick-line .bad { color: var(--bad, #ff6b6b); }
     .age-row { display: flex; gap: 8px; flex-wrap: wrap; } .age-row select { padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; }
     .hl-row { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; scrollbar-width: none; } .hl-row::-webkit-scrollbar { display: none; }
@@ -369,6 +375,7 @@
     .f-ez { fill: #fff; font: 700 24px var(--display); letter-spacing: 4px; opacity: .85; text-anchor: middle; dominant-baseline: middle; text-transform: uppercase; }
     .f-los { stroke: #5b9dff; stroke-width: 2.5; }
     .f-1st { stroke: var(--gold); stroke-width: 2.5; }
+    .f-tag { font: 700 11px system-ui, sans-serif; paint-order: stroke; stroke: rgba(0,0,0,.6); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; } .t-los { fill: #9cc2ff; } .t-1st { fill: #ffd400; }
     .f-throw { fill: none; stroke: rgba(255,255,255,.75); stroke-width: 1.8; stroke-dasharray: 4 5; }
     .f-run { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; }
     .f-ball { fill: #fff; stroke: #fff; stroke-width: 1; }
@@ -1460,7 +1467,6 @@
       </div>
       <nav class="tabs" id="tabs" aria-label="Sports"></nav>
       <div class="top-right">
-        <button class="fs-btn" id="fsBtn" type="button" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
         <button class="fs-btn people-btn" id="peopleBtn" type="button" aria-label="Find people" title="Find people"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c.9-3.4 3.2-5.2 6-5.2 1.3 0 2.5.4 3.5 1.1"/><circle cx="17" cy="15.5" r="3"/><path d="m19.2 17.7 2.3 2.3"/></svg></button>
         <button class="fs-btn people-btn chat-btn" id="chatBtn" type="button" aria-label="Chats" title="Chats"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z"/></svg></button>
         <button class="marks-chip" id="marksChip" type="button" hidden></button>
@@ -2726,7 +2732,7 @@
       (s.drives?.current?.plays || []).forEach(add);
       return wp.map((w) => {
         const p = plays.get(String(w.playId));
-        return { home: Math.min(1, Math.max(0, +w.homeWinPercentage || 0)), per: p?.period?.number || 0, clock: p?.clock?.displayValue || "", text: p?.text || p?.type?.text || "" };
+        return { id: String(w.playId ?? ""), home: Math.min(1, Math.max(0, +w.homeWinPercentage || 0)), per: p?.period?.number || 0, clock: p?.clock?.displayValue || "", text: p?.text || p?.type?.text || "" };
       });
     }
     const perName = (lg, n) => !n ? "" : lg === "nba" ? (n > 4 ? "OT" + (n > 5 ? n - 4 : "") : "Q" + n) : lg === "mlb" ? "Inn " + n : lg === "cfb" || lg === "nfl" ? (n > 4 ? "OT" : "Q" + n) : "P" + n;
@@ -2789,14 +2795,14 @@
       let marks = "";
       series.forEach((p, i) => { if (i && p.per && p.per !== series[i - 1].per && X(i) > 30) marks += '<line x1="' + X(i).toFixed(1) + '" x2="' + X(i).toFixed(1) + '" y1="0" y2="' + H + '" class="wpg-per"/><text x="' + (X(i) + 3).toFixed(1) + '" y="' + (H - 4) + '" class="wpg-pl">' + esc(perName(lg, p.per)) + "</text>"; });
       h += '<div class="wpg-read" data-wpread>' + wpReadText(id, n - 1) + "</div>" +
-        '<div class="wpg"><span class="wpg-t">' + esc(home.team?.abbreviation) + '</span><span class="wpg-b">' + esc(away.team?.abbreviation) + "</span>" +
+        '<div class="wpg"><span class="wpg-t">▲ ' + esc(home.team?.abbreviation) + ' more likely to win</span><span class="wpg-b">▼ ' + esc(away.team?.abbreviation) + ' more likely to win</span><span class="wpg-50">50–50</span>' +
         '<svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" data-wpg="' + esc(id) + '" role="img" aria-label="Win probability over the game. Drag to see earlier moments.">' +
         '<line x1="0" x2="' + W + '" y1="' + H / 2 + '" y2="' + H / 2 + '" class="wpg-mid"/>' + marks +
         '<clipPath id="wpt' + esc(id) + '"><rect width="' + W + '" height="' + H / 2 + '"/></clipPath><clipPath id="wpb' + esc(id) + '"><rect y="' + H / 2 + '" width="' + W + '" height="' + H / 2 + '"/></clipPath>' +
         '<path d="' + area + '" fill="' + esc(wpCol(home)) + '" class="wpg-fill" clip-path="url(#wpt' + esc(id) + ')"/><path d="' + area + '" fill="' + esc(wpCol(away)) + '" class="wpg-fill" clip-path="url(#wpb' + esc(id) + ')"/><path d="' + line + '" class="wpg-line"/>' +
         series.map((p, i) => /touchdown|field goal is good|safety|home run|homers/i.test(p.text || "") && !/nullified|no good/i.test(p.text) ? '<line class="wpg-score" x1="' + X(i).toFixed(1) + '" x2="' + X(i).toFixed(1) + '" y1="' + (Y(p.home) - 6).toFixed(1) + '" y2="' + (Y(p.home) + 6).toFixed(1) + '"/>' : "").join("") +
         '<line class="wpg-cur" x1="' + W + '" x2="' + W + '" y1="0" y2="' + H + '"/><circle class="wpg-dot" r="3.5" cx="' + W + '" cy="' + Y(series[n - 1].home).toFixed(1) + '"/></svg></div>' +
-        '<div class="g-note">' + esc(now.src) + "</div></div>";
+        '<div class="g-note">Drag across the graph to see any moment. Ticks mark scores. ' + esc(now.src) + ".</div></div>";
       return h;
     }
     function wpReadText(id, i) {
@@ -2804,7 +2810,7 @@
       const p = d.series[i];
       const when = i === d.series.length - 1 ? (d.final ? "Final" : "Now") : [perName(d.lg, p.per), p.clock].filter(Boolean).join(" ");
       const atEnd = i === d.series.length - 1 && d.final;
-      const back = i < d.series.length - 1 ? '<button type="button" class="wp-now" data-wpnow="' + esc(id) + '">' + (d.final ? "End" : "Now") + " ›</button>" : "";   // one tap back to the latest
+      const back = i < d.series.length - 1 ? '<button type="button" class="wp-now" data-wpnow="' + esc(id) + '">' + (d.final ? "Reset" : "Now") + " ›</button>" : "";   // one tap back to the latest
       return '<div class="wpr-top"><b>' + esc(when) + "</b>" + back + "</div>" + (p.text && !atEnd ? '<small>' + esc(p.text.length > 110 ? p.text.slice(0, 107) + "…" : p.text) + "</small>" : "");
     }
     function wpScrub(svg, clientX) {
@@ -4226,6 +4232,10 @@
       const clampX = (x) => Math.max(70, Math.min(W - 70, x));
       s += '<line x1="' + xL + '" x2="' + xL + '" y1="0" y2="' + H + '" class="f-los"/>';
       if (dist && dist < t0 && !/kickoff|extra point|field goal|punt/i.test(ty)) s += '<line x1="' + X(pos(t0 - dist)) + '" x2="' + X(pos(t0 - dist)) + '" y1="0" y2="' + H + '" class="f-1st"/>';
+      // Name the lines right on the field (blue = where the play starts, yellow = the 1st-down line).
+      const fTag = (x, txt, cls, y) => { const end = x > W - 130; return '<text x="' + (end ? x - 5 : x + 5) + '" y="' + y + '" text-anchor="' + (end ? "end" : "start") + '" class="f-tag ' + cls + '">' + txt + "</text>"; };
+      s += fTag(xL, "Line of scrimmage", "t-los", 15);
+      if (dist && dist < t0 && !/kickoff|extra point|field goal|punt/i.test(ty)) { const x1 = X(pos(t0 - dist)); s += fTag(x1, "1st down", "t-1st", Math.abs(x1 - xL) < 120 ? 31 : 15); }
       const side = /\bleft\b/i.test(t) ? -1 : /\bright\b/i.test(t) ? 1 : 0;
       const lane = (k) => CY + side * k * dir;
       const ath = (type) => { const r = (P.participants || []).find((x) => x.type === type)?.athlete?.$ref; return r ? athCache[r] : null; };
@@ -4452,6 +4462,9 @@
       const col = (t) => "#" + (t?.team?.color || "8a93a5");
       const ab = (t) => esc(t?.team?.abbreviation || "");
       const pi = F.pi ?? D.plays.length - 1, P = D.plays[pi];
+      // Win probability follows the play on the field: step back 3 plays and it shows the chances 3 plays ago.
+      { const wsvg = v.el.querySelector("svg[data-wpg]"), wd = wsvg && wpStore[wsvg.dataset.wpg];
+        if (wd && P) { const k = F.pi == null && F.di === F.drives.length - 1 ? wd.series.length - 1 : wd.series.findIndex((p) => p.id === String(P.id)); if (k >= 0) wpSet(wsvg, k); } }
       const G = P ? playGeom(P, F) : null;
       // Load the players' names and numbers first so the animation plays once, complete (no redraw halfway through).
       const needRefs = (P?.participants || []).map((x) => x.athlete?.$ref).filter((r) => r && !(r in athCache));
