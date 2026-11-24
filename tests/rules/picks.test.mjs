@@ -141,6 +141,7 @@ test("messages: server time only, no extra fields", async () => {
     const db = c.firestore();
     await setDoc(doc(db, "requests/teen_other"), { from: "teen", to: "other", status: "accepted" });
     await setDoc(doc(db, "chats/other_teen"), { members: ["other", "teen"], updatedAt: Timestamp.now() });
+    await setDoc(doc(db, "chatOk/teen"), { at: Timestamp.now() });   // agreed to the chat rules
   });
   await assertSucceeds(setDoc(doc(as("teen"), "chats/other_teen/messages/m1"), { from: "teen", text: "hi", at: serverTimestamp() }));
   await assertFails(setDoc(doc(as("teen"), "chats/other_teen/messages/m2"), { from: "teen", text: "hi", at: Timestamp.fromMillis(Date.now() - 864e5) }));

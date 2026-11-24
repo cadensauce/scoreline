@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795550437" />
+  <meta name="build" content="1795550753" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -927,7 +927,7 @@
     .chat-form input { flex: 1; min-width: 0; border-radius: 99px; }
     /* Chats: list, chat page, shares, safety notes (like Instagram) */
     #chatBtn { position: relative; }
-    @media (max-width: 410px) { header .brand { font-size: 0; gap: 0; } }   /* narrow phones: just the logo mark, so People and Chats fit beside it */
+    @media (max-width: 480px) { header .brand { font-size: 0; gap: 0; } }   /* phones: just the logo mark, so People and Chats fit beside it */
     #chatBtn[data-count]:not([data-count=""])::after { content: attr(data-count); position: absolute; top: -4px; right: -4px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 99px; background: var(--live); color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
     .chat-list-acts, .soc-links { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 6px; }
     .soc-links .pill-btn b { margin-left: 4px; } .soc-dot { background: var(--live); color: #fff; border-radius: 99px; padding: 0 6px; font-size: 11px; }
