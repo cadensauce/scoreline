@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795411086" />
+  <meta name="build" content="1795550753" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -925,6 +925,36 @@
     .msg small { display: block; font-size: 10.5px; color: var(--muted); margin: 3px 8px 0; } .msg.me small { text-align: right; }
     .chat-form { display: flex; gap: 8px; padding: 10px 0 calc(12px + env(safe-area-inset-bottom)); position: sticky; bottom: 0; background: var(--bg); }
     .chat-form input { flex: 1; min-width: 0; border-radius: 99px; }
+    /* Chats: list, chat page, shares, safety notes (like Instagram) */
+    #chatBtn { position: relative; }
+    @media (max-width: 480px) { header .brand { font-size: 0; gap: 0; } }   /* phones: just the logo mark, so People and Chats fit beside it */
+    #chatBtn[data-count]:not([data-count=""])::after { content: attr(data-count); position: absolute; top: -4px; right: -4px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 99px; background: var(--live); color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
+    .chat-list-acts, .soc-links { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 6px; }
+    .soc-links .pill-btn b { margin-left: 4px; } .soc-dot { background: var(--live); color: #fff; border-radius: 99px; padding: 0 6px; font-size: 11px; }
+    .chat-row { width: 100%; text-align: left; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; }
+    .chat-row + .chat-row { border-top: 1px solid var(--line); }
+    .chat-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 52vw; }
+    .chat-row.unread b, .chat-row.unread small { color: var(--text); font-weight: 800; }
+    .chat-row.unread .chat-when::after { content: ""; display: inline-block; width: 8px; height: 8px; margin-left: 6px; border-radius: 99px; background: var(--live); vertical-align: middle; }
+    .chat-when { flex: none; font-size: 11.5px; color: var(--muted); }
+    .chat-gpic { background: var(--line) !important; color: var(--text); font-weight: 800; }
+    .chat-acts { display: flex; gap: 6px; flex-wrap: wrap; padding: 2px 0 8px; border-bottom: 1px solid var(--line); }
+    .chat-act { height: 30px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+    .chat-safe { margin: 8px auto 4px; max-width: 420px; text-align: center; font-size: 11.5px; color: var(--muted); }
+    .chat-day { align-self: center; margin: 8px 0 2px; font-size: 11px; font-weight: 700; color: var(--muted); }
+    .msg-who { font-size: 11px; color: var(--muted); margin: 6px 0 -2px 10px; }
+    .msg p { overflow-wrap: anywhere; }
+    .chat-link { display: inline; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; overflow-wrap: anywhere; }
+    .chat-share { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 200px; max-width: 280px; padding: 10px 12px; margin-bottom: 2px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+    .chat-share b { display: block; font-size: 14px; } .chat-share small { display: block; color: var(--muted); font-size: 11.5px; }
+    .chat-share .cs-ic { font-size: 22px; flex: none; }
+    .chat-share-prev { margin: 4px 0 12px; }
+    .chat-rules ul { padding-left: 18px; line-height: 1.5; } .chat-rules li { margin: 6px 0; }
+    .chat-rules-btns { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+    .chat-pick { display: flex; align-items: center; gap: 10px; }
+    .pc-find { width: 100%; margin-bottom: 4px; cursor: pointer; font: inherit; text-align: left; }
+    .fx-share { margin-top: 8px; }
+    .acct-input { width: 100%; box-sizing: border-box; height: 44px; padding: 0 14px; margin: 4px 0 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text); font: inherit; font-size: 16px; }
     .ldr-ph { width: 46px; height: 46px; border-radius: 50%; background: var(--panel-2); flex: none; }
     .ldr img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; background: var(--panel-2); flex: none; }
     .inj-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -1426,6 +1456,7 @@
       <div class="top-right">
         <button class="fs-btn" id="fsBtn" type="button" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
         <button class="fs-btn people-btn" id="peopleBtn" type="button" aria-label="Find people" title="Find people"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c.9-3.4 3.2-5.2 6-5.2 1.3 0 2.5.4 3.5 1.1"/><circle cx="17" cy="15.5" r="3"/><path d="m19.2 17.7 2.3 2.3"/></svg></button>
+        <button class="fs-btn people-btn chat-btn" id="chatBtn" type="button" aria-label="Chats" title="Chats"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z"/></svg></button>
         <button class="marks-chip" id="marksChip" type="button" hidden></button>
         <button class="pill-btn getapp-btn" id="getAppBtn" type="button" aria-label="Get the app" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Get the app</span></button>
         <button class="refresh" id="accountBtn" type="button" aria-label="Account" title="Account"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></button>
@@ -2634,7 +2665,7 @@
       const bg = sheetRoot.querySelector(".sheet-bg") || sheetRoot.appendChild(Object.assign(document.createElement("div"), { className: "sheet-bg" }));
       v.el = document.createElement("section");
       v.el.className = "sheet k-" + (v.kind || "page") + (store.get("sheetsWide", false) && innerWidth > 720 ? " wide" : "");   // full screen is remembered for every page
-      v.el.innerHTML = '<div class="sheet-bar"><button type="button" class="sheet-btn" data-back aria-label="Back">' + (views.length > 1 ? "‹" : "✕") + '</button><div class="sheet-title"></div>' + ('<button type="button" class="sheet-btn sheet-wide" data-wide aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>') + '</div><div class="sheet-body"><div class="skel" style="height:90px"></div><div class="skel" style="height:220px;margin-top:10px"></div></div>';
+      v.el.innerHTML = '<div class="sheet-bar"><button type="button" class="sheet-btn" data-back aria-label="Back">' + (views.length > 1 ? "‹" : "✕") + '</button><div class="sheet-title"></div>' + (v.mark ? '<button type="button" class="sheet-btn" data-sheetshare aria-label="Share in a chat" title="Share in a chat"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>' : "") + ('<button type="button" class="sheet-btn sheet-wide" data-wide aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>') + '</div><div class="sheet-body"><div class="skel" style="height:90px"></div><div class="skel" style="height:220px;margin-top:10px"></div></div>';
       sheetRoot.appendChild(v.el);
       document.body.classList.add("sheet-open");
       requestAnimationFrame(() => { bg.classList.add("show"); v.el.classList.add("show"); });
@@ -5427,7 +5458,7 @@
       }
       const L = FX.L;
       if (!L) { box.innerHTML = fxCrumb("Leagues", "lid") + skeleton(2); return; }
-      const owner = L.owner === me, head = fxCrumb("Leagues", "lid") + '<div class="fx-head"><b>' + esc(L.name) + "</b><small>" + esc(tabName(L.lg)) + " · " + (L.mode === "marks" ? "Marks league" : "Free league") + " · " + L.members.length + " teams</small></div>";
+      const owner = L.owner === me, head = fxCrumb("Leagues", "lid") + '<div class="fx-head"><b>' + esc(L.name) + "</b><small>" + esc(tabName(L.lg)) + " · " + (L.mode === "marks" ? "Marks league" : "Free league") + " · " + L.members.length + " teams</small><button type=\"button\" class=\"pill-btn fx-share\" data-share-league>Share in chat</button></div>";
       if (L.status === "forming") {
         const friends = owner ? await LG.friendsList() : [];
         if (!box.isConnected || FX.L !== L) return;
@@ -5836,6 +5867,32 @@
       setBody(v, "Developer tools", (IS_DEV && window.top === window ? '<div class="panel"><button type="button" class="opt" data-phonepreview><span><b>Phone preview</b><small>See the site as the phone app, right here. Only on your account.</small></span><span class="chev">›</span></button></div>' : "") + "<div data-dev-you></div>");
       fillDevYou().catch(() => {});
     }
+    // Chats (top bar, with an unread count), sharing into chats, and opening what someone shared. Chat itself is in account.js.
+    const KIND_OF_MARK = { g: "game", p: "player", t: "team", d: "driver" };
+    window.addEventListener("scoreline-chats", (e) => { const b = $("chatBtn"); if (b) b.dataset.count = e.detail?.unread ? String(Math.min(e.detail.unread, 99)) : ""; });
+    window.scorelineOpenShared = (s) => {
+      if (s.k === "game" && LEAGUES[s.lg]) return openGame(s.lg, s.id);
+      if (s.k === "player" && LEAGUES[s.lg]) return openPlayer(s.lg, s.id);
+      if (s.k === "team" && LEAGUES[s.lg]) return openTeam(s.lg, s.id);
+      if (s.k === "driver") return openDriver(s.id);
+      if (s.k === "fantasy") {   // open the league in the Fantasy tab (you see it if you were invited or are in it)
+        closeSheets(); FX.mode = s.lg === "marks" ? "marks" : "free"; FX.fmt = "s"; lgOpen(s.id);
+        if (state.tab !== "fantasy") { state.tab = "fantasy"; swapIn(1); } window.scrollTo({ top: 0 }); return render();
+      }
+    };
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("#chatBtn") || e.target.closest("[data-open-chats]")) return window.scorelineChat ? window.scorelineChat.openList() : toast("Chats are still loading. Try again in a second.");
+      const sh = e.target.closest("[data-sheetshare]");
+      if (sh) {
+        const v = views.find((x) => x.el === sh.closest(".sheet")), m = v?.mark; if (!m) return;
+        const title = (v.el.querySelector(".sheet-title")?.textContent || "").trim().slice(0, 80);
+        return window.scorelineChat?.share({ k: KIND_OF_MARK[m[0]], lg: m[1], id: String(m[2]).slice(0, 40), t: title || "Scoreline", s: (m[1] === "f1" ? "F1" : LEAGUES[m[1]]?.name || "").slice(0, 80) });
+      }
+      if (e.target.closest("[data-share-league]") && FX.L) {
+        const L = FX.L;
+        return window.scorelineChat?.share({ k: "fantasy", lg: L.mode === "marks" ? "marks" : "free", id: String(L.id).slice(0, 40), t: String(L.name || "Fantasy league").slice(0, 80), s: (tabName(L.lg) + " · " + (L.mode === "marks" ? "Marks league" : "Free league")).slice(0, 80) });
+      }
+    });
     // Find people (top bar): search usernames as you type (similar names too), open a profile, or send a request.
     // Results are small cards like Roblox's: photo, name, @username, a status line and one button.
     const PEOPLE_HINT = '<p class="muted people-hint">Type a username. The @ is optional.</p>';
