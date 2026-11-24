@@ -692,10 +692,19 @@ function refreshAccountSheet() {
 }
 const errBox = (el, msg) => { const b = el.closest(".sheet, [data-social]")?.querySelector("[data-err]"); if (b) b.textContent = msg; };
 const roleCache = {};   // roles/{uid}: the Owner badge, set only by the worker
-async function roleOf(uid) {
+async function realRoleOf(uid) {
   if (uid in roleCache) return roleCache[uid];
   const r = await fb.getDoc(fb.doc(db, "roles", uid)).then((d) => d.data()?.role || "").catch(() => "");
   return (roleCache[uid] = /^[a-z]{1,20}$/.test(r) ? r : "");
+}
+// "View site as" (Owner only, like Discord's View Server As Role): your own role shows as the one you picked,
+// so the page shows what that role sees. It only changes what you see; the rules still use your real role.
+const VIEW_AS = ["user", "tester", "mod", "dev"];
+const viewingAs = () => { const v = store.get("viewAs", ""); return VIEW_AS.includes(v) ? v : ""; };
+async function roleOf(uid) {
+  const r = await realRoleOf(uid);
+  if (user && uid === user.uid && r === "owner" && viewingAs()) return viewingAs() === "user" ? "" : viewingAs();
+  return r;
 }
 const cardCache = {};   // friends' profiles for the Social list, kept for 5 minutes
 async function friendCard(uid) {
@@ -1096,7 +1105,9 @@ window.scorelinePicks = {
     }
     await fb.deleteDoc(fb.doc(db, "ages", user.uid));
   },
-  async isDev() { const n = pickReady() && profile?.username; if (!n) return false; const d = await fb.getDoc(fb.doc(db, "devs", n)).catch(() => null); return !!d?.exists(); },
+  // Dev tools: the Owner, Devs and Mods. Giving Marks: only accounts listed in devs/ (set by the Owner in the console).
+  async isDev() { if (!user) return false; if (["owner", "dev", "mod"].includes(await roleOf(user.uid))) return true; return this.canGive(); },
+  async canGive() { if (viewingAs()) return false; const n = pickReady() && profile?.username; if (!n) return false; const d = await fb.getDoc(fb.doc(db, "devs", n)).catch(() => null); return !!d?.exists(); },
   async grant(username, amount) {
     const name = cleanName(username).replace(/^@/, "");
     const u = name ? await fb.getDoc(fb.doc(db, "usernames", name)) : null;
@@ -1178,3 +1189,49 @@ window.scorelineFantasy = {
 let booting = null;
 function startFirebase() { return (booting ||= boot().catch(() => {})); }
 if ("requestIdleCallback" in window) requestIdleCallback(startFirebase, { timeout: 2500 }); else setTimeout(startFirebase, 1500);
+
+/* ---------- roles: Owner > Dev / Mod / Beta Tester ----------
+   The Owner (set by the worker) gives or takes away the other roles from Dev tools. Each role shows as a tag on
+   profiles. Mods (and the Owner) can read reports. The rules enforce all of this; the page only shows the buttons. */
+const GIVABLE = ["dev", "mod", "tester"];
+window.scorelineViewAs = { get: viewingAs, async set(r) { if (r && (!user || (await realRoleOf(user.uid)) !== "owner")) return false; store.set("viewAs", VIEW_AS.includes(r) ? r : ""); location.reload(); return true; } };
+window.scorelineRoles = {
+  async mine() {
+    await startFirebase();
+    if (FIREBASE_CONFIG && fb) await Promise.race([authReady, new Promise((r) => setTimeout(r, 8000))]);
+    if (!user) return "";
+    delete roleCache[user.uid];
+    return roleOf(user.uid);
+  },
+  async list() {
+    const r = await fb.getDocs(fb.collection(db, "roles"));
+    const rows = r.docs.map((d) => ({ uid: d.id, role: String(d.data().role || "") })).filter((x) => /^[a-z]{1,20}$/.test(x.role));
+    await Promise.all(rows.map((x) => nameOf(x.uid)));
+    rows.forEach((x) => { roleCache[x.uid] = x.role; });
+    return rows.map((x) => ({ ...x, username: names[x.uid] })).sort((a, b) => (a.role === "owner" ? -1 : b.role === "owner" ? 1 : a.role.localeCompare(b.role) || a.username.localeCompare(b.username)));
+  },
+  async give(username, role) {
+    const name = cleanName(username).replace(/^@+\s*/, "");
+    if (!GIVABLE.includes(role)) throw new Error("Pick a role.");
+    if (!/^[a-z0-9_]{3,20}$/.test(name)) throw new Error("No account called @" + name + ".");
+    const u = await fb.getDoc(fb.doc(db, "usernames", name));
+    if (!u.exists()) throw new Error("No account called @" + name + ".");
+    const uid = u.data().uid;
+    if (uid === user.uid) throw new Error("You can't change your own role.");
+    if ((await roleOf(uid)) === "owner") throw new Error("@" + name + " is an Owner.");
+    try { await fb.setDoc(fb.doc(db, "roles", uid), { role, by: user.uid, at: fb.serverTimestamp() }); }
+    catch { throw new Error("Only the Owner can give roles."); }
+    roleCache[uid] = role; names[uid] = name;
+    return name;
+  },
+  async remove(uid) {
+    try { await fb.deleteDoc(fb.doc(db, "roles", uid)); } catch { throw new Error("Only the Owner can take roles away."); }
+    roleCache[uid] = "";
+  },
+  async reports() {
+    const r = await fb.getDocs(fb.query(fb.collection(db, "reports"), fb.orderBy("at", "desc"), fb.limit(50)));
+    const rows = r.docs.map((d) => ({ id: d.id, ...d.data() }));
+    await Promise.all(rows.flatMap((x) => [x.from, x.about]).filter(Boolean).map(nameOf));
+    return rows.map((x) => ({ ...x, fromName: names[x.from], aboutName: names[x.about], when: x.at?.toMillis ? x.at.toMillis() : 0 }));
+  },
+};
