@@ -64,10 +64,19 @@ service cloud.firestore {
       allow delete: if member() && me() == uid;
     }
 
-    // Roles (the Owner badge). Set only by the worker from a list in its code; nobody can give themselves one.
+    // Roles (tags + permissions). The Owner is set only by the worker from a list in its code. Only the Owner can give
+    // or take away the other roles (Dev, Mod, Beta Tester), never their own and never another Owner's.
+    function roleOf(uid) { return exists(/databases/$(database)/documents/roles/$(uid)) ? get(/databases/$(database)/documents/roles/$(uid)).data.role : ''; }
+    function isOwner() { return roleOf(me()) == 'owner'; }
+    function isMod() { return roleOf(me()) in ['owner', 'mod']; }
     match /roles/{uid} {
-      allow get: if member();
-      allow write: if false;
+      allow read: if member();
+      allow create, update: if member() && isOwner() && uid != me()
+        && (resource == null || resource.data.role != 'owner')
+        && request.resource.data.keys().hasOnly(['role', 'by', 'at'])
+        && request.resource.data.role in ['dev', 'mod', 'tester']
+        && request.resource.data.by == me() && request.resource.data.at == request.time;
+      allow delete: if member() && isOwner() && uid != me() && resource.data.role != 'owner';
     }
 
     // Profile stats (Picks record, Fantasy, leagues, friends). Only the worker writes them, so nobody can fake theirs.
@@ -525,7 +534,8 @@ service cloud.firestore {
         && (!('chat' in request.resource.data) || (request.resource.data.chat is string && request.resource.data.chat.size() <= 64))
         && (!('text' in request.resource.data) || (request.resource.data.text is string && request.resource.data.text.size() <= 500))
         && request.resource.data.at == request.time;
-      allow read, update, delete: if false;
+      allow read: if member() && isMod();   // the Owner and Mods review reports in Dev tools
+      allow update, delete: if false;
     }
   }
 }

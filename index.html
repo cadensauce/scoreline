@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795550753" />
+  <meta name="build" content="1795552962" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -546,6 +546,8 @@
     .dev-form { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
     .dev-form input { flex: 1 1 140px; min-width: 0; height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; outline: none; }
     .dev-form input[type="number"] { flex: 0 1 110px; } .dev-form input:focus { border-color: var(--muted); } .dev-form .pill-btn { flex: none; }
+    .dev-form select { flex: 0 1 140px; height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; }
+    .rep-row > span { display: flex; flex-direction: column; gap: 3px; min-width: 0; } .rep-row small { color: var(--muted); font-size: 12px; } .rep-text { color: var(--text) !important; font-style: italic; overflow-wrap: anywhere; }
     .shop-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; } .shop-row { display: flex; align-items: center; justify-content: space-between; } .shop-row .title-tag { margin-left: 0; }
     .pill-btn.sm { padding: 5px 10px; font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; } .pill-btn.sm:disabled { opacity: .45; }
     /* Banners (unlocked in the Shop). Text on them stays readable: dark gradients with light text. */
@@ -3147,8 +3149,9 @@
     const SHOP_NAMES = { t_rookie: "Rookie", t_sharp: "Sharp", t_upset: "Upset Hunter", t_clutch: "Clutch", t_filmroom: "Film Room", t_hof: "Hall of Famer", t_goat: "GOAT" };
     const bnCls = (b) => (/^b_[a-z]+$/.test(b || "") ? " bn " + b : "");
     // Roles: badges only the worker can give (roles/{uid}); "owner" = the person who runs Scoreline.
-    const ROLE_NAMES = { owner: "Owner" };
-    const roleTag = (r) => (ROLE_NAMES[r] ? '<span class="role-tag"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 12H5z"/></svg>' + ROLE_NAMES[r] + "</span>" : "");
+    const ROLE_NAMES = { owner: "Owner", dev: "Dev", mod: "Mod", tester: "Beta Tester" };
+    const ROLE_ICON = { owner: "M3 7l4.5 4L12 4l4.5 7L21 7l-2 12H5z", dev: "M8 7l-5 5 5 5M16 7l5 5-5 5", mod: "M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z", tester: "M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3" };
+    const roleTag = (r) => (ROLE_NAMES[r] ? '<span class="role-tag r-' + r + '"><svg viewBox="0 0 24 24" width="12" height="12" ' + (r === "owner" ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"') + ' aria-hidden="true"><path d="' + ROLE_ICON[r] + '"/></svg>' + ROLE_NAMES[r] + "</span>" : "");
     const titleTag = (t) => (SHOP_NAMES[t] ? '<span class="title-tag">' + esc(SHOP_NAMES[t]) + "</span>" : "");
     async function fillShopYou() {
       const el = document.querySelector("[data-shop-you]"), P = window.scorelinePicks;
@@ -3191,7 +3194,7 @@
     async function fillDevYou() {
       const el = document.querySelector("[data-dev-you]"), P = window.scorelinePicks;
       if (!el) return;
-      const dev = P?.isDev ? await P.isDev().catch(() => false) : false;
+      const dev = P?.canGive ? await P.canGive().catch(() => false) : false;   // Give Marks: only accounts the Owner listed in devs/
       // The owner's account (IS_DEV) also sees it before the Firebase dev entry exists, with the exact ID to add.
       if (!dev && !IS_DEV) { youSet("dev", el, ""); return; }
       if (el.querySelector("[data-dev-form]") && el.dataset.ok === String(dev)) return;   // keep what's typed
@@ -5865,8 +5868,51 @@
       const v = { kind: "dev", key: "dev" };
       if (!pushView(v)) return;
       setBody(v, "Developer tools", (IS_DEV && window.top === window ? '<div class="panel"><button type="button" class="opt" data-phonepreview><span><b>Phone preview</b><small>See the site as the phone app, right here. Only on your account.</small></span><span class="chev">›</span></button></div>' : "") + "<div data-dev-you></div>");
-      fillDevYou().catch(() => {});
+      v.el.querySelector(".sheet-body")?.insertAdjacentHTML("beforeend", '<div data-staff></div>');
+      fillDevYou().catch(() => {}); fillStaff(v).catch(() => {});
     }
+    // Permissions (Owner only): give someone Dev, Mod or Beta Tester, or take it away. Reports (Owner + Mods).
+    const ROLE_HELP = { dev: "Dev tag and Dev tools (testing).", mod: "Mod tag, and can read reports in Dev tools.", tester: "Beta Tester tag on their profile." };
+    async function fillStaff(v) {
+      const box = v.el.querySelector("[data-staff]"), R = window.scorelineRoles;
+      if (!box || !R) return;
+      const me = await R.mine().catch(() => "");
+      if (!box.isConnected) return;
+      let html = "";
+      if (me === "owner") {
+        const list = await R.list().catch(() => []);
+        html += '<div class="section-title"><b>Permissions</b></div><div class="panel dev-panel">' +
+          '<form class="dev-form" data-role-form><input name="who" placeholder="Username" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="21" required>' +
+          '<select name="role" aria-label="Role">' + Object.keys(ROLE_HELP).map((k) => '<option value="' + k + '">' + ROLE_NAMES[k] + "</option>").join("") + '</select><button type="submit" class="pill-btn">Give</button></form>' +
+          '<div class="g-note">' + Object.keys(ROLE_HELP).map((k) => "<b>" + ROLE_NAMES[k] + ":</b> " + esc(ROLE_HELP[k])).join("<br>") + "<br>Only you can give or take away roles. Giving Marks stays yours only.</div></div>" +
+          '<div class="section-title"><b>People with roles</b><span class="muted">' + list.length + '</span></div><div class="panel">' +
+          (list.length ? list.map((x) => '<div class="opt soc-row"><span class="soc-who" data-viewcard="' + esc(x.uid) + '" role="button" tabindex="0"><span><b>@' + esc(x.username || "…") + roleTag(x.role) + "</b></span></span>" +
+            (x.role === "owner" ? '<span class="muted">You</span>' : '<button type="button" class="pill-btn" data-role-remove="' + esc(x.uid) + '" data-role-name="' + esc(x.username || "") + '">Remove</button>') + "</div>").join("") : '<p class="muted people-hint">No one yet.</p>') + "</div>";
+      }
+      if (me === "owner" || me === "mod") {
+        const reps = await R.reports().catch(() => null);
+        const REASON = { bullying: "Bullying or harassment", inappropriate: "Inappropriate content", spam: "Spam or scam", danger: "Someone may be in danger", other: "Something else" };
+        html += '<div class="section-title"><b>Reports</b><span class="muted">' + (reps ? reps.length : "") + '</span></div><div class="panel">' +
+          (!reps ? '<p class="muted people-hint">Couldn\'t load reports.</p>' : !reps.length ? '<p class="muted people-hint">No reports. 🎉</p>' :
+            reps.map((x) => '<div class="opt rep-row"><span><b>' + esc(REASON[x.reason] || x.reason) + '</b><small>@' + esc(x.fromName || "…") + " reported <button type=\"button\" class=\"link-btn\" data-viewcard=\"" + esc(x.about) + "\">@" + esc(x.aboutName || "…") + "</button> · " + esc(x.when ? new Date(x.when).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "") + "</small>" +
+              (x.text ? '<small class="rep-text">“' + esc(x.text) + "”</small>" : "") + "</span></div>").join("")) + "</div>";
+      }
+      if (box.isConnected) box.innerHTML = html;
+    }
+    document.addEventListener("submit", async (e) => {
+      const f = e.target.closest("[data-role-form]"); if (!f) return;
+      e.preventDefault();
+      const btn = f.querySelector("button"); btn.disabled = true;
+      try { const who = await window.scorelineRoles.give(f.who.value, f.role.value); buzz(12); toast("@" + who + " is now " + ROLE_NAMES[f.role.value]); const v = views.find((x) => x.key === "dev"); if (v) fillStaff(v); }
+      catch (err) { toast(err?.message || "Couldn't give that role."); btn.disabled = false; }
+    });
+    document.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-role-remove]"); if (!b) return;
+      if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Remove?"; setTimeout(() => { if (b.isConnected) { delete b.dataset.sure; b.textContent = "Remove"; } }, 3000); return; }
+      b.disabled = true;
+      try { await window.scorelineRoles.remove(b.dataset.roleRemove); toast("Took the role from @" + (b.dataset.roleName || "them")); const v = views.find((x) => x.key === "dev"); if (v) fillStaff(v); }
+      catch (err) { toast(err?.message || "Couldn't remove that role."); b.disabled = false; }
+    });
     // Chats (top bar, with an unread count), sharing into chats, and opening what someone shared. Chat itself is in account.js.
     const KIND_OF_MARK = { g: "game", p: "player", t: "team", d: "driver" };
     window.addEventListener("scoreline-chats", (e) => { const b = $("chatBtn"); if (b) b.dataset.count = e.detail?.unread ? String(Math.min(e.detail.unread, 99)) : ""; });
