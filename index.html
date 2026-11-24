@@ -927,6 +927,7 @@
     .chat-form input { flex: 1; min-width: 0; border-radius: 99px; }
     /* Chats: list, chat page, shares, safety notes (like Instagram) */
     #chatBtn { position: relative; }
+    @media (max-width: 410px) { header .brand { font-size: 0; gap: 0; } }   /* narrow phones: just the logo mark, so People and Chats fit beside it */
     #chatBtn[data-count]:not([data-count=""])::after { content: attr(data-count); position: absolute; top: -4px; right: -4px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 99px; background: var(--live); color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
     .chat-list-acts, .soc-links { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 6px; }
     .soc-links .pill-btn b { margin-left: 4px; } .soc-dot { background: var(--live); color: #fff; border-radius: 99px; padding: 0 6px; font-size: 11px; }
