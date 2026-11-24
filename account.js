@@ -97,6 +97,7 @@ async function onUser(u) {
   window.scorelineDevCheck?.(u?.email || "");   // developer tools (phone preview) for the owner's account only
   user = u; profile = null;
   friendState = { incoming: [], outgoing: [], friends: [] };
+  chatState = { chats: [], invites: [] }; chatOk = null; blocked = new Set(); emitChats();
   pending2 = false; twoStepOn = false; otpUnsub?.(); otpUnsub = null;
   if (u) {
     // Two-step sign-in: with it on, this device needs the emailed code before it can use the account.
@@ -115,6 +116,7 @@ async function onUser(u) {
     rememberAcct();
     await startSync();
     watchFriends();
+    watchChats();
   }
   if (!u) forgetSlot(SLOT);   // this slot has no one signed in: not in the switch list
   syncButton();
@@ -255,42 +257,354 @@ async function removeFriend(uid) {
   await Promise.all([fb.deleteDoc(fb.doc(db, "requests", reqId(user.uid, uid))).catch(() => {}), fb.deleteDoc(fb.doc(db, "requests", reqId(uid, user.uid))).catch(() => {})]);
 }
 
-/* ---------- chat ---------- */
+/* ---------- chat (like Instagram / Discord) ----------
+   Direct chats between friends (id "a_b") and group chats ("g_...", up to 10 people; invites are accepted or declined).
+   A message is text and/or a shared game, player, team, F1 driver or Fantasy league. Before your first message you
+   agree to the chat rules (chatOk/{uid}). Every chat has Block and Report; links always ask before opening. */
 const chatId = (a, b) => [a, b].sort().join("_");
-async function openChat(uid) {
-  const id = chatId(user.uid, uid);
-  const ref = fb.doc(db, "chats", id);
+let chatState = { chats: [], invites: [] };
+let chatOk = null;                       // agreed to the chat rules? (null = not checked yet)
+let blocked = new Set();                 // people I blocked
+const tms = (t) => (t?.toMillis ? t.toMillis() : 0);
+const readMap = () => store.get("chatRead", {}) || {};
+const okInvite = (c) => friendState.friends.includes(c.owner);   // only invites from friends show; others are ignored
+const unreadOf = (c) => !!c.last && c.last.from !== user?.uid && !blocked.has(c.last.from) && tms(c.last.at) > (readMap()[c.id] || 0);
+function markRead(id) { const m = readMap(); m[id] = Date.now(); store.set("chatRead", m); emitChats(); }
+function emitChats() {
+  const n = user ? chatState.chats.filter(unreadOf).length + chatState.invites.filter(okInvite).length : 0;
+  window.dispatchEvent(new CustomEvent("scoreline-chats", { detail: { unread: n } }));
+}
+function watchChats() {
+  const col = fb.collection(db, "chats");
+  unsubs.push(fb.onSnapshot(fb.query(col, fb.where("members", "array-contains", user.uid)), (s) => {
+    chatState.chats = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => tms(b.updatedAt) - tms(a.updatedAt));
+    emitChats(); refreshChats();
+  }, () => {}));
+  unsubs.push(fb.onSnapshot(fb.query(col, fb.where("invited", "array-contains", user.uid)), (s) => {
+    chatState.invites = s.docs.map((d) => ({ id: d.id, ...d.data() }));
+    emitChats(); refreshChats();
+  }, () => {}));
+  unsubs.push(fb.onSnapshot(fb.collection(db, "blocks", user.uid, "people"), (s) => {
+    blocked = new Set(s.docs.map((d) => d.id)); emitChats(); refreshChats();
+  }, () => {}));
+}
+const other = (c) => c.members.find((m) => m !== user.uid) || user.uid;
+async function chatName(c) { return c.group ? c.name : "@" + (await nameOf(other(c))); }
+async function chatPic(c) {
+  if (c.group) return '<div class="avatar chat-gpic">' + esc((c.name || "G").trim()[0].toUpperCase()) + "</div>";
+  const o = other(c), fc = await friendCard(o);
+  return avatarHtml(fc?.avatar, names[o], "", fc?.deco);
+}
+const SHARE_LABEL = { game: "Game", player: "Player", team: "Team", driver: "F1 driver", fantasy: "Fantasy league" };
+const SHARE_ICON = { game: "🏟️", player: "👤", team: "🛡️", driver: "🏎️", fantasy: "🏆" };
+const ago = (ms) => { if (!ms) return ""; const d = new Date(ms), now = new Date(); return d.toDateString() === now.toDateString() ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : d.toLocaleDateString([], { month: "short", day: "numeric" }); };
+
+/* the chat rules: agreed once, before your first message */
+async function ensureChatOk() {
+  if (!user) { toast("Sign in to chat with friends."); return false; }
+  if (chatOk === null) chatOk = !!(await fb.getDoc(fb.doc(db, "chatOk", user.uid)).catch(() => null))?.exists();
+  if (chatOk) return true;
+  return new Promise((done) => {
+    const v = { kind: "chatrules", key: "chatrules" };
+    if (!pushView(v)) return done(false);
+    setBody(v, "Chat rules", '<div class="chat-rules"><p><b>Before you chat, please read these.</b> They keep Scoreline friendly and safe.</p><ul>' +
+      "<li><b>Be kind.</b> No bullying, threats, hate or harassment.</li>" +
+      "<li><b>Keep it clean.</b> No adult, violent or gross content.</li>" +
+      "<li><b>Keep yourself private.</b> Never share your address, school, phone number, passwords or where you'll be.</li>" +
+      "<li><b>Links and files from other people aren't checked by Scoreline</b> and aren't Scoreline's responsibility. Only open them from people you trust. Never type a password on a site you reached from a chat.</li>" +
+      "<li><b>No spam or scams.</b> Don't ask for money, gift cards or accounts.</li>" +
+      "<li><b>Uncomfortable? Block or report.</b> Every chat has Block and Report. Reports go to the Scoreline team.</li>" +
+      "<li>Reported messages can be read by the Scoreline team to keep people safe. Breaking these rules can lose you chat or your account.</li></ul>" +
+      '<div class="chat-rules-btns"><button type="button" class="pill-btn tos-go" data-chatrules-ok>I agree</button><button type="button" class="pill-btn" data-chatrules-no>Not now</button></div></div>');
+    v.el.querySelector("[data-chatrules-ok]").addEventListener("click", async (e) => {
+      e.target.disabled = true;
+      try { await fb.setDoc(fb.doc(db, "chatOk", user.uid), { at: fb.serverTimestamp() }); chatOk = true; buzz(12); closeTop(); setTimeout(() => done(true), 550); }
+      catch { e.target.disabled = false; toast("Couldn't save that. Check your connection and try again."); }
+    });
+    v.el.querySelector("[data-chatrules-no]").addEventListener("click", () => { closeTop(); done(false); });
+  });
+}
+
+/* Chats list */
+let listView = null;
+function openChats() {
+  if (!user) return toast("Sign in to chat with friends.");
+  const v = { kind: "chats", key: "chats" };
+  if (!pushView(v)) return;
+  listView = v;
+  setBody(v, "Chats", '<div class="chat-list-acts"><button type="button" class="pill-btn" data-newgroup>New group</button><button type="button" class="pill-btn" data-open-friends>Friends</button></div><div data-chatlist><div class="skel" style="height:70px"></div></div>');
+  refreshChats();
+}
+async function refreshChats() {
+  const box = listView?.el?.isConnected && listView.el.querySelector("[data-chatlist]");
+  if (!box || !user) return;
+  const inv = chatState.invites.filter(okInvite), list = chatState.chats.filter((c) => c.group || !blocked.has(other(c)));
+  await Promise.all([...list.flatMap((c) => c.members), ...inv.map((c) => c.owner), ...list.map((c) => c.last?.from).filter(Boolean)].map(nameOf));
+  const rows = await Promise.all(list.map(async (c) => {
+    const l = c.last, who = !l ? "" : l.from === user.uid ? "You: " : c.group ? "@" + (names[l.from] || "…") + ": " : "";
+    return '<button type="button" class="opt soc-row chat-row' + (unreadOf(c) ? " unread" : "") + '" data-openchat="' + esc(c.id) + '"><span class="soc-who">' + (await chatPic(c)) +
+      "<span><b>" + esc(await chatName(c)) + "</b><small>" + (l ? esc(who + l.text) : c.group ? c.members.length + " people" : "Say hi 👋") + '</small></span></span><span class="chat-when">' + esc(ago(tms(l?.at || c.updatedAt))) + "</span></button>";
+  }));
+  if (!box.isConnected) return;
+  box.innerHTML = (inv.length ? '<div class="section-title"><b>Group invites</b></div><div class="panel">' + inv.map((c) => '<div class="opt soc-row"><span class="soc-who"><div class="avatar chat-gpic">' + esc((c.name || "G")[0].toUpperCase()) + '</div><span><b>' + esc(c.name) + "</b><small>@" + esc(names[c.owner] || "…") + " invited you · " + c.members.length + (c.members.length === 1 ? " person" : " people") + '</small></span></span><span class="acct-acts"><button class="pill-btn tos-go" type="button" data-ginv-yes="' + esc(c.id) + '">Join</button><button class="pill-btn" type="button" data-ginv-no="' + esc(c.id) + '" aria-label="Decline">✕</button></span></div>').join("") + "</div>" : "") +
+    '<div class="section-title"><b>Messages</b></div>' + (rows.length ? '<div class="panel">' + rows.join("") + "</div>" : '<div class="panel"><p class="muted people-hint">No chats yet. Open Friends and tap Chat, or start a group.</p></div>');
+}
+
+/* one chat */
+async function openChat(uid) {   // a direct chat with a friend
+  if (!(await ensureChatOk())) return;
+  const id = chatId(user.uid, uid), ref = fb.doc(db, "chats", id);
   const ex = await fb.getDoc(ref).catch(() => null);
-  if (!ex?.exists()) await fb.setDoc(ref, { members: [user.uid, uid].sort(), updatedAt: fb.serverTimestamp() });
-  const v = { kind: "chat" };
-  v.key = "chat|" + uid; if (!pushView(v)) return;
-  const name = await nameOf(uid);
-  setBody(v, "@" + name, '<div class="chat-log" data-chatlog></div><form class="chat-form" data-chatform><input maxlength="500" placeholder="Message @' + esc(name) + '" autocomplete="off"><button class="pill-btn" type="submit">Send</button></form>');
+  if (!ex?.exists()) {
+    try { await fb.setDoc(ref, { members: [user.uid, uid].sort(), updatedAt: fb.serverTimestamp() }); }
+    catch { return toast("You can only message friends."); }
+  }
+  return openChatId(id, true);
+}
+async function openChatId(id, agreed) {
+  if (!agreed && !(await ensureChatOk())) return;
+  let c = chatState.chats.find((x) => x.id === id);
+  if (!c) { const d = await fb.getDoc(fb.doc(db, "chats", id)).catch(() => null); c = d?.exists() ? { id, ...d.data() } : null; }
+  if (!c || !c.members.includes(user.uid)) return toast("That chat isn't available.");
+  const v = { kind: "chat", key: "chat|" + id };
+  if (!pushView(v)) return;
+  await Promise.all(c.members.map(nameOf));
+  const acts = c.group
+    ? '<button type="button" class="chat-act" data-gmembers="' + esc(id) + '">' + c.members.length + ' people</button><button type="button" class="chat-act" data-greport="' + esc(id) + '">Report</button><button type="button" class="chat-act" data-gleave="' + esc(id) + '">Leave</button>'
+    : '<button type="button" class="chat-act" data-viewcard="' + esc(other(c)) + '">Profile</button><button type="button" class="chat-act" data-block="' + esc(other(c)) + '">Block</button><button type="button" class="chat-act" data-report="' + esc(other(c)) + '" data-report-chat="' + esc(id) + '">Report</button>';
+  setBody(v, await chatName(c), '<div class="chat-acts">' + acts + '</div><div class="chat-log" data-chatlog></div>' +
+    '<form class="chat-form" data-chatform><input maxlength="500" placeholder="Message…" autocomplete="off" aria-label="Message"><button class="pill-btn" type="submit">Send</button></form>');
   v.el.querySelector(".src-note")?.remove();
   v.el.classList.add("chat-sheet");
+  v.chat = c; v.msgs = [];
   const log = v.el.querySelector("[data-chatlog]");
   const q = fb.query(fb.collection(db, "chats", id, "messages"), fb.orderBy("at", "asc"), fb.limitToLast(150));
   const stop = fb.onSnapshot(q, (s) => {
     if (!v.el.isConnected) return stop();
-    log.innerHTML = s.docs.map((d) => {
-      const m = d.data(), mine = m.from === user.uid;
-      const when = m.at?.toDate ? m.at.toDate().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
-      return '<div class="msg' + (mine ? " me" : "") + '"><p>' + esc(m.text) + "</p><small>" + esc(when) + "</small></div>";
-    }).join("") || '<div class="g-note" style="text-align:center;margin-top:30px">Say hi 👋</div>';
-    log.scrollTop = log.scrollHeight;
-  });
+    v.msgs = s.docs.map((d) => d.data());
+    const nearEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+    let prev = "", day = "";
+    log.innerHTML = '<div class="chat-safe">🔒 Only open links and files from people you trust. Uncomfortable? Use Block or Report above.</div>' + (v.msgs.map((m) => {
+      if (blocked.has(m.from)) return "";
+      const mine = m.from === user.uid, at = tms(m.at) || Date.now(), dk = new Date(at).toDateString();
+      const sep = dk !== day ? '<div class="chat-day">' + esc(new Date(at).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })) + "</div>" : "";
+      day = dk;
+      const who = c.group && !mine && m.from !== prev ? '<div class="msg-who">@' + esc(names[m.from] || "…") + "</div>" : "";
+      prev = m.from;
+      return sep + who + '<div class="msg' + (mine ? " me" : "") + '">' + (m.share ? shareCard(m.share) : "") + (m.text ? "<p>" + linkify(m.text) + "</p>" : "") +
+        "<small>" + esc(new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })) + "</small></div>";
+    }).join("") || '<div class="g-note" style="text-align:center;margin-top:30px">Say hi 👋</div>');
+    if (nearEnd || !v.seen) log.scrollTop = log.scrollHeight;
+    v.seen = true; markRead(id);
+  }, () => { log.innerHTML = '<div class="g-note">Couldn\'t load this chat.</div>'; });
   v.el.querySelector("[data-chatform]").addEventListener("submit", async (e) => {
     e.preventDefault();
     const input = e.target.querySelector("input"), text = input.value.trim();
     if (!text) return;
-    input.value = "";
-    buzz();
-    try {
-      await fb.addDoc(fb.collection(db, "chats", id, "messages"), { from: user.uid, text, at: fb.serverTimestamp() });
-      fb.updateDoc(ref, { updatedAt: fb.serverTimestamp() }).catch(() => {});
-    } catch { toast("Message didn't send."); input.value = text; }
+    input.value = ""; buzz();
+    try { await sendMsg(c, { text }); } catch { toast("Message didn't send. You can only message friends who haven't blocked you."); input.value = text; }
   });
 }
+async function sendMsg(c, { text = "", share = null }) {
+  await fb.addDoc(fb.collection(db, "chats", c.id, "messages"), { from: user.uid, text, at: fb.serverTimestamp(), ...(share ? { share } : {}) });
+  const preview = share ? "Shared a " + SHARE_LABEL[share.k].toLowerCase() + ": " + share.t : text;
+  fb.updateDoc(fb.doc(db, "chats", c.id), { updatedAt: fb.serverTimestamp(), last: { from: user.uid, text: preview.slice(0, 120), at: fb.serverTimestamp() } }).catch(() => {});
+}
+// Links become buttons that ask before leaving Scoreline. Only http(s) links.
+function linkify(text) {
+  return String(text).split(/((?:https?:\/\/|www\.)[^\s<>"]+)/i).map((part, i) => {
+    if (i % 2 === 0) return esc(part);
+    const url = /^www\./i.test(part) ? "https://" + part : part;
+    return '<button type="button" class="chat-link" data-chatlink="' + esc(url) + '">' + esc(part) + "</button>";
+  }).join("");
+}
+function shareCard(s) {
+  return '<button type="button" class="chat-share" data-shareopen="' + esc(JSON.stringify({ k: s.k, lg: s.lg || "", id: s.id })) + '"><span class="cs-ic" aria-hidden="true">' + (SHARE_ICON[s.k] || "•") + "</span><span><b>" + esc(s.t || SHARE_LABEL[s.k]) + "</b><small>" + esc(SHARE_LABEL[s.k] || "") + (s.s ? " · " + esc(s.s) : "") + "</small></span></button>";
+}
+function openLinkAsk(url) {
+  let host = ""; try { host = new URL(url).hostname; } catch { return toast("That link doesn't look right."); }
+  const v = { kind: "leave", key: "leave" };
+  if (!pushView(v)) return;
+  setBody(v, "Leaving Scoreline", '<div class="chat-rules"><p>This link goes to <b>' + esc(host) + "</b>, outside Scoreline.</p><p class=\"muted\">Scoreline doesn't check links people send, and isn't responsible for them. Only open it if you trust the person who sent it, and never type your password on a site you reached from a chat.</p>" +
+    '<div class="chat-rules-btns"><button type="button" class="pill-btn tos-go" data-link-go>Open link</button><button type="button" class="pill-btn" data-link-no>Cancel</button></div></div>');
+  v.el.querySelector("[data-link-go]").addEventListener("click", () => { window.open(url, "_blank", "noopener,noreferrer"); closeTop(); });
+  v.el.querySelector("[data-link-no]").addEventListener("click", () => closeTop());
+}
+
+/* groups */
+const randId = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"[b % 62]).join("");
+async function friendPicker(skip) {
+  const list = friendState.friends.filter((f) => !skip.includes(f) && !blocked.has(f));
+  await Promise.all(list.map(nameOf));
+  return list.length ? '<div class="panel">' + list.sort((a, b) => names[a].localeCompare(names[b])).map((f) => '<label class="opt acct-check chat-pick"><input type="checkbox" data-gpick="' + esc(f) + '"> @' + esc(names[f]) + "</label>").join("") + "</div>" : '<div class="panel"><p class="muted people-hint">No more friends to add. Add friends first.</p></div>';
+}
+async function openNewGroup() {
+  if (!(await ensureChatOk())) return;
+  const v = { kind: "newgroup", key: "newgroup" };
+  if (!pushView(v)) return;
+  setBody(v, "New group", '<form data-gform><input class="acct-input" data-gname maxlength="40" placeholder="Group name" required aria-label="Group name">' +
+    '<div class="section-title"><b>Invite friends</b><span class="muted">up to 9</span></div>' + (await friendPicker([])) +
+    '<div class="acct-err" data-err role="status"></div><button type="submit" class="pill-btn tos-go">Create group</button><p class="g-note">Friends you invite choose whether to join.</p></form>');
+  v.el.querySelector("[data-gform]").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = v.el.querySelector("[data-gname]").value.trim(), invited = [...v.el.querySelectorAll("[data-gpick]:checked")].map((x) => x.dataset.gpick), err = v.el.querySelector("[data-err]");
+    if (!name) return (err.textContent = "Give the group a name.");
+    if (!invited.length) return (err.textContent = "Pick at least one friend.");
+    if (invited.length > 9) return (err.textContent = "Groups are up to 10 people, so pick 9 friends at most.");
+    const id = "g_" + randId();
+    try { await fb.setDoc(fb.doc(db, "chats", id), { group: true, name, owner: user.uid, members: [user.uid], invited, updatedAt: fb.serverTimestamp() }); }
+    catch { return (err.textContent = "Couldn't make the group. Try again."); }
+    buzz(12); toast("Group made. Invites sent."); closeTop(); setTimeout(() => openChatId(id, true), 550);
+  });
+}
+async function openMembers(id) {
+  const c = chatState.chats.find((x) => x.id === id); if (!c) return;
+  const v = { kind: "gmembers", key: "gmembers" };
+  if (!pushView(v)) return;
+  const own = c.owner === user.uid, inv = c.invited || [];
+  await Promise.all([...c.members, ...inv].map(nameOf));
+  const row = (u, sub, act) => '<div class="opt soc-row"><span class="soc-who" data-viewcard="' + esc(u) + '" role="button" tabindex="0">' + avatarHtml("", names[u]) + "<span><b>@" + esc(names[u]) + "</b><small>" + sub + '</small></span></span><span class="acct-acts">' + act + "</span></div>";
+  setBody(v, c.name, (own ? '<form class="acct-add" data-grename><input maxlength="40" value="' + esc(c.name) + '" aria-label="Group name"><button class="pill-btn" type="submit">Rename</button></form>' : "") +
+    '<div class="section-title"><b>Members</b><span class="muted">' + c.members.length + "</span></div><div class=\"panel\">" +
+    c.members.map((u) => row(u, u === c.owner ? "Owner" : u === user.uid ? "You" : "Member", own && u !== user.uid ? '<button class="pill-btn" type="button" data-gremove="' + esc(u) + '">Remove</button>' : "")).join("") +
+    inv.map((u) => row(u, "Invited", "")).join("") + "</div>" +
+    (own && c.members.length + inv.length < 10 ? '<div class="section-title"><b>Invite more</b></div>' + (await friendPicker([...c.members, ...inv])) + '<button type="button" class="pill-btn tos-go" data-ginvite>Send invites</button>' : ""));
+  const ref = fb.doc(db, "chats", id);
+  v.el.querySelector("[data-grename]")?.addEventListener("submit", async (e) => { e.preventDefault(); const n = e.target.querySelector("input").value.trim(); if (!n) return; try { await fb.updateDoc(ref, { name: n.slice(0, 40), updatedAt: fb.serverTimestamp() }); toast("Renamed"); } catch { toast("Couldn't rename."); } });
+  v.el.querySelector("[data-ginvite]")?.addEventListener("click", async () => {
+    const add = [...v.el.querySelectorAll("[data-gpick]:checked")].map((x) => x.dataset.gpick);
+    if (!add.length) return toast("Pick a friend to invite.");
+    if (c.members.length + inv.length + add.length > 10) return toast("Groups are up to 10 people.");
+    try { await fb.updateDoc(ref, { invited: [...inv, ...add], updatedAt: fb.serverTimestamp() }); toast("Invites sent"); closeTop(); } catch { toast("Couldn't send invites."); }
+  });
+  v.el.querySelectorAll("[data-gremove]").forEach((b) => b.addEventListener("click", async () => {
+    try { await fb.updateDoc(ref, { members: c.members.filter((m) => m !== b.dataset.gremove), updatedAt: fb.serverTimestamp() }); toast("Removed"); closeTop(); } catch { toast("Couldn't remove them."); }
+  }));
+}
+
+/* block + report */
+function confirmSheet(title, html, yes, onYes) {
+  const v = { kind: "confirm", key: "confirm" };
+  if (!pushView(v)) return;
+  setBody(v, title, '<div class="chat-rules">' + html + '<div class="chat-rules-btns"><button type="button" class="pill-btn tos-go" data-yes>' + esc(yes) + '</button><button type="button" class="pill-btn" data-no>Cancel</button></div></div>');
+  v.el.querySelector("[data-yes]").addEventListener("click", async (e) => { e.target.disabled = true; await onYes(); });
+  v.el.querySelector("[data-no]").addEventListener("click", () => closeTop());
+}
+async function blockUser(uid) {
+  const n = await nameOf(uid);
+  confirmSheet("Block @" + n, "<p>@" + esc(n) + " won't be able to message you, you'll stop being friends, and you won't see their messages in groups.</p><p class=\"muted\">They aren't told. You can unblock them in Friends.</p>", "Block", async () => {
+    try { await fb.setDoc(fb.doc(db, "blocks", user.uid, "people", uid), { at: fb.serverTimestamp() }); await removeFriend(uid); buzz(12); toast("Blocked @" + n); closeSheets(); }
+    catch { toast("Couldn't block. Try again."); }
+  });
+}
+const REASONS = [["bullying", "Bullying or harassment"], ["inappropriate", "Inappropriate or adult content"], ["spam", "Spam or a scam"], ["danger", "Someone may be in danger"], ["other", "Something else"]];
+async function reportUser(uid, chat) {
+  const n = await nameOf(uid);
+  const v = { kind: "report", key: "report" };
+  if (!pushView(v)) return;
+  setBody(v, "Report @" + n, '<p class="muted" style="margin:0 2px 10px">What\'s wrong? Your report goes to the Scoreline team with their latest message in this chat. They aren\'t told who reported them.</p><div class="panel">' +
+    REASONS.map(([k, t]) => '<button type="button" class="opt" data-reason="' + k + '"><span><b>' + t + '</b></span><span class="chev">›</span></button>').join("") + '</div><p class="g-note">If someone is in danger right now, tell a trusted adult or call your local emergency number.</p>');
+  v.el.querySelectorAll("[data-reason]").forEach((b) => b.addEventListener("click", async () => {
+    const msgs = views.find((x) => x.chat?.id === chat)?.msgs || [], lastFrom = [...msgs].reverse().find((m) => m.from === uid);
+    try {
+      await fb.addDoc(fb.collection(db, "reports"), { from: user.uid, about: uid, reason: b.dataset.reason, at: fb.serverTimestamp(), ...(chat ? { chat } : {}), ...(lastFrom ? { text: String(lastFrom.text || lastFrom.share?.t || "").slice(0, 500) } : {}) });
+      buzz(12); toast("Report sent. Thank you."); closeTop();
+      setTimeout(() => { if (!blocked.has(uid)) blockUser(uid); }, 550);   // offer to block straight after
+    } catch { toast("Couldn't send the report. Try again."); }
+  }));
+}
+async function reportInGroup(id) {
+  const c = chatState.chats.find((x) => x.id === id); if (!c) return;
+  const v = { kind: "reportpick", key: "reportpick" };
+  if (!pushView(v)) return;
+  const others = c.members.filter((m) => m !== user.uid);
+  await Promise.all(others.map(nameOf));
+  setBody(v, "Report someone", '<div class="panel">' + others.map((u) => '<button type="button" class="opt" data-rpick="' + esc(u) + '"><span><b>@' + esc(names[u]) + '</b></span><span class="chev">›</span></button>').join("") + "</div>");
+  v.el.querySelectorAll("[data-rpick]").forEach((b) => b.addEventListener("click", () => { closeTop(); setTimeout(() => reportUser(b.dataset.rpick, id), 550); }));
+}
+
+/* share into a chat */
+async function shareTo(s) {
+  if (!user) return toast("Sign in to share with friends.");
+  if (!(await ensureChatOk())) return;
+  const v = { kind: "shareto", key: "shareto" };
+  if (!pushView(v)) return;
+  const chats = chatState.chats.filter((c) => c.group || !blocked.has(other(c))), withChat = new Set(chats.filter((c) => !c.group).map(other));
+  const fr = friendState.friends.filter((f) => !withChat.has(f) && !blocked.has(f));
+  await Promise.all([...chats.flatMap((c) => c.members), ...fr].map(nameOf));
+  const rows = await Promise.all(chats.slice(0, 20).map(async (c) => '<button type="button" class="opt soc-row" data-sendshare="' + esc(c.id) + '"><span class="soc-who">' + (await chatPic(c)) + "<span><b>" + esc(await chatName(c)) + '</b></span></span><span class="pill-btn">Send</span></button>'));
+  setBody(v, "Share", '<div class="chat-share-prev">' + shareCard(s) + "</div>" +
+    (rows.length + fr.length ? '<div class="panel">' + rows.join("") + fr.map((f) => '<button type="button" class="opt soc-row" data-sendshare-to="' + esc(f) + '"><span class="soc-who">' + avatarHtml("", names[f]) + "<span><b>@" + esc(names[f]) + '</b></span></span><span class="pill-btn">Send</span></button>').join("") + "</div>"
+      : '<div class="panel"><p class="muted people-hint">Add friends to share with them.</p></div>'));
+  const send = async (b, cid) => {
+    b.disabled = true;
+    try {
+      let c = chatState.chats.find((x) => x.id === cid);
+      if (!c) { const d = await fb.getDoc(fb.doc(db, "chats", cid)); c = { id: cid, ...d.data() }; }
+      await sendMsg(c, { share: s }); buzz(12);
+      b.querySelector(".pill-btn").textContent = "Sent"; toast("Sent to " + (await chatName(c)));
+    } catch { b.disabled = false; toast("Couldn't send it. Try again."); }
+  };
+  v.el.querySelectorAll("[data-sendshare]").forEach((b) => b.addEventListener("click", () => send(b, b.dataset.sendshare)));
+  v.el.querySelectorAll("[data-sendshare-to]").forEach((b) => b.addEventListener("click", async () => {
+    const f = b.dataset.sendshareTo, id = chatId(user.uid, f), ref = fb.doc(db, "chats", id);
+    if (!(await fb.getDoc(ref).catch(() => null))?.exists()) { try { await fb.setDoc(ref, { members: [user.uid, f].sort(), updatedAt: fb.serverTimestamp() }); } catch { return toast("You can only message friends."); } }
+    send(b, id);
+  }));
+}
+
+/* Friends page: everyone you're friends with, requests, and who you blocked */
+let friendsView = null;
+function openFriends() {
+  if (!user) return toast("Sign in to see your friends.");
+  const v = { kind: "friends", key: "friends" };
+  if (!pushView(v)) return;
+  friendsView = v;
+  setBody(v, "Friends", '<div data-friendsbox><div class="skel" style="height:120px"></div></div>');
+  drawFriends();
+}
+async function drawFriends() {
+  const box = friendsView?.el?.isConnected && friendsView.el.querySelector("[data-friendsbox]");
+  if (!box || !user) return;
+  const F = friendState, bl = [...blocked];
+  await Promise.all([...F.friends, ...F.incoming.map((r) => r.from), ...F.outgoing.map((r) => r.to), ...bl].map(nameOf));
+  await Promise.all(F.friends.map(friendCard));
+  const card = (uid) => { const fc = cardCache[uid]?.c; return '<div class="pc-card"><div class="pc-top" data-viewcard="' + esc(uid) + '" role="button" tabindex="0">' + avatarHtml(fc?.avatar, names[uid], "", fc?.deco) +
+    '<div class="pc-txt"><b>' + esc(fc?.name || names[uid]) + "</b><small>@" + esc(names[uid]) + '</small><small class="pc-st">You are friends</small></div></div><button class="pc-btn go" type="button" data-chat="' + esc(uid) + '">Chat</button></div>'; };
+  if (!box.isConnected) return;
+  box.innerHTML = '<button type="button" class="pc-search pc-find" data-open-people><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Find people</span></button>' +
+    (F.incoming.length ? '<div class="section-title"><b>Friend requests</b><span class="muted">' + F.incoming.length + '</span></div><div class="panel">' + F.incoming.map((r) => '<div class="opt soc-row"><span class="soc-who" data-viewcard="' + esc(r.from) + '" role="button" tabindex="0">' + avatarHtml("", names[r.from]) + "<span><b>@" + esc(names[r.from]) + '</b><small>Wants to be friends</small></span></span><span class="acct-acts"><button class="pill-btn tos-go" type="button" data-accept="' + esc(r.id) + '">Accept</button><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '" aria-label="Decline">✕</button></span></div>').join("") + "</div>" : "") +
+    '<div class="section-title"><b>Your friends</b><span class="muted">' + F.friends.length + "</span></div>" +
+    (F.friends.length ? '<div data-people-res><div class="pc-grid">' + F.friends.slice().sort((a, b) => (names[a] || "").localeCompare(names[b] || "")).map(card).join("") + "</div></div>" : '<div class="panel"><p class="muted people-hint">No friends yet. Tap Find people to add someone.</p></div>') +
+    (F.outgoing.length ? '<div class="section-title"><b>Sent requests</b></div><div class="panel">' + F.outgoing.map((r) => '<div class="opt soc-row"><span class="soc-who">' + avatarHtml("", names[r.to]) + "<span><b>@" + esc(names[r.to]) + '</b><small>Waiting for them to accept</small></span></span><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '" aria-label="Cancel request">✕</button></div>').join("") + "</div>" : "") +
+    (bl.length ? '<div class="section-title"><b>Blocked</b></div><div class="panel">' + bl.map((u) => '<div class="opt soc-row"><span class="soc-who">' + avatarHtml("", names[u]) + "<span><b>@" + esc(names[u]) + '</b></span></span><button class="pill-btn" type="button" data-unblock="' + esc(u) + '">Unblock</button></div>').join("") + "</div>" : "");
+}
+window.addEventListener("scoreline-social", () => drawFriends().catch(() => {}));
+
+window.scorelineChat = {
+  openList: openChats, openFriends, share: shareTo, open: openChatId,
+  unread: () => (user ? chatState.chats.filter(unreadOf).length + chatState.invites.filter(okInvite).length : 0),
+};
+document.addEventListener("click", async (e) => {
+  const t = e.target;
+  const oc = t.closest("[data-openchat]"); if (oc) return openChatId(oc.dataset.openchat);
+  if (t.closest("[data-newgroup]")) return openNewGroup();
+  if (t.closest("[data-open-friends]")) return openFriends();
+  if (t.closest("[data-open-people]")) return document.getElementById("peopleBtn")?.click();
+  const gy = t.closest("[data-ginv-yes]");
+  if (gy) { gy.disabled = true; const c = chatState.invites.find((x) => x.id === gy.dataset.ginvYes); if (!c) return; try { await fb.updateDoc(fb.doc(db, "chats", c.id), { invited: fb.arrayRemove(user.uid), members: fb.arrayUnion(user.uid), updatedAt: fb.serverTimestamp() }); buzz(12); toast("Joined " + c.name); } catch { gy.disabled = false; toast(c.members.length >= 10 ? "That group is full." : "Couldn't join. Try again."); } return; }
+  const gn = t.closest("[data-ginv-no]");
+  if (gn) { gn.disabled = true; return fb.updateDoc(fb.doc(db, "chats", gn.dataset.ginvNo), { invited: fb.arrayRemove(user.uid), updatedAt: fb.serverTimestamp() }).catch(() => { gn.disabled = false; }); }
+  const gm = t.closest("[data-gmembers]"); if (gm) return openMembers(gm.dataset.gmembers);
+  const gr = t.closest("[data-greport]"); if (gr) return reportInGroup(gr.dataset.greport);
+  const gl = t.closest("[data-gleave]");
+  if (gl) { const c = chatState.chats.find((x) => x.id === gl.dataset.gleave); if (!c) return; return confirmSheet("Leave " + c.name, "<p>You'll stop getting messages from this group. Someone would have to invite you again to rejoin.</p>", "Leave group", async () => { try { await fb.updateDoc(fb.doc(db, "chats", c.id), { members: fb.arrayRemove(user.uid), updatedAt: fb.serverTimestamp() }); toast("You left " + c.name); closeSheets(); } catch { toast("Couldn't leave. Try again."); } }); }
+  const bk = t.closest("[data-block]"); if (bk) return blockUser(bk.dataset.block);
+  const rp = t.closest("[data-report]"); if (rp) return reportUser(rp.dataset.report, rp.dataset.reportChat || "");
+  const ub = t.closest("[data-unblock]"); if (ub) { ub.disabled = true; return fb.deleteDoc(fb.doc(db, "blocks", user.uid, "people", ub.dataset.unblock)).then(() => toast("Unblocked")).catch(() => { ub.disabled = false; }); }
+  const lk = t.closest("[data-chatlink]"); if (lk) return openLinkAsk(lk.dataset.chatlink);
+  const so = t.closest("[data-shareopen]"); if (so) { let s; try { s = JSON.parse(so.dataset.shareopen); } catch { return; } return window.scorelineOpenShared?.(s); }
+});
 
 /* ---------- trust + privacy ---------- */
 // Anyone can make an account (agreeing to the Terms). Ticking "13 or older" also turns on the 13+ features (Marks). Saved once.
@@ -407,6 +721,7 @@ window.scorelineSocial = {
     const me = cardWithPlain(myCard || {}), un = profile?.username || "";
     const person = (uid, sub, actions) => { const fc = cardCache[uid]?.c; return '<div class="opt soc-row"><span class="soc-who" data-viewcard="' + esc(uid) + '" role="button" tabindex="0">' + avatarHtml(fc?.avatar, names[uid], "", fc?.deco) + "<span><b>" + esc(fc?.name || "@" + (names[uid] || "…")) + roleTag(roleCache[uid]) + "</b><small>" + (fc?.name ? "@" + esc(names[uid] || "") + (sub ? " · " : "") : "") + (sub || "") + '</small></span></span><span class="acct-acts">' + actions + "</span></div>"; };
     return '<div class="soc-me bn-theme t-' + esc(me.theme || "plain") + bnCls(me.banner) + '"><span class="soc-who" data-viewcard="' + esc(user.uid) + '" role="button" tabindex="0">' + avatarHtml(me.avatar, un, "lg", me.deco) + "<span><b>" + esc(me.name || "@" + un) + roleTag(roleCache[user.uid]) + "</b><small>@" + esc(un) + " · " + F.friends.length + (F.friends.length === 1 ? " friend" : " friends") + '</small></span></span><span class="soc-me-acts"><button class="pill-btn acct-sw" type="button" data-acct-switch aria-label="Switch account" title="Switch account"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4 3 8l4 4M3 8h13M17 20l4-4-4-4M21 16H8"/></svg></button><button class="pill-btn" type="button" data-editprofile>Edit profile</button></span></div>' +
+      '<div class="soc-links"><button type="button" class="pill-btn" data-open-friends>Friends <b>' + F.friends.length + '</b></button><button type="button" class="pill-btn" data-open-chats>Chats' + (window.scorelineChat?.unread() ? ' <b class="soc-dot">' + window.scorelineChat.unread() + "</b>" : "") + "</button></div>" +
       '<div class="section-title"><b>Add a friend</b></div><form class="acct-add" data-addf><input placeholder="Username (the @ is optional)" maxlength="21" autocomplete="off" autocapitalize="none" spellcheck="false"><button class="pill-btn" type="submit">Add</button></form>' + addNoteHtml() +
       (F.incoming.length ? '<div class="section-title"><b>Friend requests</b><span class="muted">' + F.incoming.length + "</span></div><div class=\"panel\">" + F.incoming.map((r) => person(r.from, "Wants to be friends", '<button class="pill-btn" type="button" data-accept="' + esc(r.id) + '">Accept</button><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '" aria-label="Decline">✕</button>')).join("") + "</div>" : "") +
       '<div class="section-title"><b>Friends</b><span class="muted">' + F.friends.length + '</span></div><div class="panel">' + (F.friends.length ? F.friends.slice().sort((a, b) => (names[a] || "").localeCompare(names[b] || "")).map((uid) => person(uid, "", '<button class="pill-btn" type="button" data-chat="' + esc(uid) + '">Message</button><button class="pill-btn" type="button" data-unfriend="' + esc(uid) + '" aria-label="Remove friend">✕</button>')).join("") : '<div class="g-note">No friends yet. Add someone by their username above.</div>') + "</div>" +

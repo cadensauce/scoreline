@@ -432,27 +432,100 @@ service cloud.firestore {
         && existsAfter(/databases/$(database)/documents/inventory/$(uid)/items/$(request.resource.data.refId));
       allow update, delete: if false;
     }
-    // Chats: only between friends, only members can read or write.
+    // Chats. Direct chats (id "a_b", the two uids sorted): only between friends.
+    // Group chats (id "g_..."): the owner invites people; each invited person accepts or declines, so nobody is put in
+    // a group without saying yes. Only members read messages. Sending needs the chat rules agreed (chatOk/{uid});
+    // in a direct chat you must still be friends and not blocked by the other person.
+    function lastOk(d) {
+      return !('last' in d) || (d.last is map && d.last.keys().hasOnly(['from', 'text', 'at']) && d.last.from == me()
+        && d.last.text is string && d.last.text.size() <= 120 && d.last.at == request.time);
+    }
+    function groupName(n) { return n is string && n.size() >= 1 && n.size() <= 40; }
+    function isGroup(d) { return d.get('group', false) == true; }
     match /chats/{chatId} {
-      allow read: if member() && me() in resource.data.members;
-      allow create: if member() && me() in request.resource.data.members
+      allow read: if member() && (me() in resource.data.members || me() in resource.data.get('invited', []));
+      allow create: if member() && !chatId.matches('^g_.*')
+        && me() in request.resource.data.members
         && request.resource.data.members.size() == 2
         && chatId == request.resource.data.members[0] + '_' + request.resource.data.members[1]
         && friends(request.resource.data.members[0], request.resource.data.members[1])
-        && request.resource.data.keys().hasOnly(['members', 'updatedAt']);
+        && request.resource.data.keys().hasOnly(['members', 'updatedAt', 'last']) && lastOk(request.resource.data);
+      allow create: if member() && chatId.matches('^g_[A-Za-z0-9]{8,32}$')
+        && request.resource.data.keys().hasOnly(['members', 'updatedAt', 'name', 'owner', 'invited', 'last', 'group'])
+        && request.resource.data.group == true && request.resource.data.owner == me()
+        && request.resource.data.members == [me()]
+        && request.resource.data.invited is list && request.resource.data.invited.size() >= 1 && request.resource.data.invited.size() <= 9
+        && !(me() in request.resource.data.invited)
+        && groupName(request.resource.data.name) && lastOk(request.resource.data);
+      // Any member: the latest-message preview and time (sending). Nothing else changes.
       allow update: if member() && me() in resource.data.members
-        && request.resource.data.members == resource.data.members
-        && request.resource.data.keys().hasOnly(['members', 'updatedAt']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updatedAt', 'last']) && lastOk(request.resource.data);
+      // Leave a group.
+      allow update: if member() && isGroup(resource.data) && me() in resource.data.members
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'updatedAt'])
+        && request.resource.data.members.toSet() == resource.data.members.toSet().difference([me()].toSet());
+      // Accept (join) or decline a group invite.
+      allow update: if member() && isGroup(resource.data) && me() in resource.data.get('invited', [])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'invited', 'updatedAt'])
+        && request.resource.data.invited.toSet() == resource.data.invited.toSet().difference([me()].toSet())
+        && (request.resource.data.members == resource.data.members
+            || request.resource.data.members.toSet() == resource.data.members.toSet().union([me()].toSet()))
+        && request.resource.data.members.size() <= 10;
+      // Owner: rename, invite more people, remove people (never add them directly).
+      allow update: if member() && isGroup(resource.data) && resource.data.owner == me() && me() in resource.data.members
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'invited', 'members', 'updatedAt'])
+        && groupName(request.resource.data.name)
+        && me() in request.resource.data.members
+        && resource.data.members.toSet().hasAll(request.resource.data.members.toSet())
+        && request.resource.data.invited is list && request.resource.data.invited.size() <= 9
+        && request.resource.data.members.size() + request.resource.data.invited.size() <= 10;
 
       match /messages/{msg} {
-        allow read: if member() && me() in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+        function chat() { return get(/databases/$(database)/documents/chats/$(chatId)).data; }
+        function other() { return chat().members[0] == me() ? chat().members[1] : chat().members[0]; }
+        function shareOk(s) {
+          return s is map && s.keys().hasOnly(['k', 'lg', 'id', 't', 's'])
+            && s.k in ['game', 'player', 'team', 'driver', 'fantasy']
+            && s.id is string && s.id.size() >= 1 && s.id.size() <= 40
+            && s.t is string && s.t.size() <= 80
+            && (!('lg' in s) || (s.lg is string && s.lg.size() <= 10))
+            && (!('s' in s) || (s.s is string && s.s.size() <= 80));
+        }
+        allow read: if member() && me() in chat().members;
         allow create: if member() && request.resource.data.from == me()
-          && me() in get(/databases/$(database)/documents/chats/$(chatId)).data.members
-          && request.resource.data.text is string
-          && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 500
-          && request.resource.data.keys().hasOnly(['from', 'text', 'at']) && request.resource.data.at == request.time;   // server time, no backdating
+          && me() in chat().members
+          && exists(/databases/$(database)/documents/chatOk/$(me()))
+          && request.resource.data.keys().hasOnly(['from', 'text', 'at', 'share'])
+          && request.resource.data.text is string && request.resource.data.text.size() <= 500
+          && (request.resource.data.text.size() > 0 || 'share' in request.resource.data)
+          && (!('share' in request.resource.data) || shareOk(request.resource.data.share))
+          && request.resource.data.at == request.time
+          && (isGroup(chat()) || (friends(chat().members[0], chat().members[1])
+              && !exists(/databases/$(database)/documents/blocks/$(other())/people/$(me()))));
         allow delete: if member() && resource.data.from == me();
       }
+    }
+    // Agreed to the chat rules (once). Needed before sending messages.
+    match /chatOk/{uid} {
+      allow get, delete: if member() && me() == uid;
+      allow create: if member() && me() == uid && request.resource.data.keys().hasOnly(['at']) && request.resource.data.at == request.time;
+    }
+    // People you blocked. Only you see your list; they can't message you in a direct chat.
+    match /blocks/{uid}/people/{other} {
+      allow read, delete: if member() && me() == uid;
+      allow create: if member() && me() == uid && other != uid
+        && request.resource.data.keys().hasOnly(['at']) && request.resource.data.at == request.time;
+    }
+    // Reports: anyone signed in can send one; nobody can read them in the app (the owner reviews them).
+    match /reports/{id} {
+      allow create: if member() && request.resource.data.from == me()
+        && request.resource.data.keys().hasOnly(['from', 'about', 'chat', 'text', 'reason', 'at'])
+        && request.resource.data.about is string && request.resource.data.about.size() <= 128 && request.resource.data.about != me()
+        && request.resource.data.reason in ['bullying', 'inappropriate', 'spam', 'danger', 'other']
+        && (!('chat' in request.resource.data) || (request.resource.data.chat is string && request.resource.data.chat.size() <= 64))
+        && (!('text' in request.resource.data) || (request.resource.data.text is string && request.resource.data.text.size() <= 500))
+        && request.resource.data.at == request.time;
+      allow read, update, delete: if false;
     }
   }
 }
