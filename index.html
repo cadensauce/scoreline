@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795553181" />
+  <meta name="build" content="1795568641" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -555,6 +555,7 @@
     .dev-form input[type="number"] { flex: 0 1 110px; } .dev-form input:focus { border-color: var(--muted); } .dev-form .pill-btn { flex: none; }
     .dev-form select { flex: 0 1 140px; height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; }
     .va-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    #main.you-wait > :not(.bar) { opacity: 0; } #main > * { transition: opacity .18s ease; }   /* You page: sections appear together */
     .va-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 9999; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 24px); padding: 8px 8px 8px 14px; border-radius: 999px; background: var(--text); color: var(--bg); font-size: 13px; box-shadow: 0 6px 24px rgba(0,0,0,.35); white-space: nowrap; }
     .va-bar span { overflow: hidden; text-overflow: ellipsis; } .va-bar button { flex: none; height: 30px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--bg); color: var(--text); font: inherit; font-weight: 800; cursor: pointer; }
     @media (min-width: 721px) { .va-bar { bottom: 20px; } }
@@ -2536,9 +2537,40 @@
     // Rows you can slide sideways, kept where you left them when a page refreshes.
     const SIDE_ROWS = ".hp-row, .dstrip, .cs-years, .cs-all, .seg.chips, .t-tower, .prof-sports";
     const sideScroll = (root) => [...root.querySelectorAll(SIDE_ROWS)].map((e) => e.scrollLeft);
+    // Keep your place: before a redraw, remember what you just tapped (or the first thing at the top of the screen) and
+    // where it sat; after the redraw, and while sections fill in for a moment, scroll so it's back in the same spot.
+    // Without this, a redraw (a toggle, sign-in finishing, scores refreshing) moves everything under your finger.
+    const PLACE_SEL = "[data-ev], .section-title, .g-label, .opt, .g-sec, .panel, .bar, .pick-row, .hp-card, .prof-head";
+    const placeKey = (el) => { const d = [...el.attributes].filter((a) => a.name.startsWith("data-") && !/^data-(sure|count|at)$/.test(a.name)).map((a) => a.name + "=" + a.value).join(",");
+      return el.tagName + "|" + (el.classList[0] || "") + "|" + (d || (el.textContent || "").trim().slice(0, 48)); };
+    let lastTap = null, place = null;
+    document.addEventListener("pointerdown", (e) => { const el = e.target.closest?.(PLACE_SEL); if (el && el.closest("#main")) lastTap = { el, at: Date.now() }; }, true);
+    function markPlace(root) {
+      place = null;
+      if (!root || window.scrollY < 30) return;
+      const topLine = (document.querySelector("header")?.getBoundingClientRect().bottom || 0) + 4;
+      let el = lastTap && Date.now() - lastTap.at < 4000 && lastTap.el.isConnected && root.contains(lastTap.el) ? lastTap.el : null;
+      if (el) { const r = el.getBoundingClientRect(); if (r.bottom < topLine || r.top > innerHeight) el = null; }
+      const onScreen = (x) => { const r = x.getBoundingClientRect(); return r.top >= topLine - 2 && r.height > 0 && r.top < innerHeight && !/sticky|fixed/.test(getComputedStyle(x).position); };
+      if (!el) el = [...root.querySelectorAll("[data-ev]")].find(onScreen) || [...root.querySelectorAll(PLACE_SEL)].find(onScreen);   // a game card first: it never changes
+      if (el) { place = { root, key: placeKey(el), top: el.getBoundingClientRect().top, at: Date.now() }; placeWatch.observe(root); }
+    }
+    // Things that load in a moment later (headlines, the day strip, a section) can move the page again: keep correcting
+    // for 2.5 s, and stop the moment you scroll yourself.
+    const placeWatch = new ResizeObserver(() => { if (place && Date.now() - place.at < 2500) restorePlace(); else placeWatch.disconnect(); });
+    ["wheel", "touchmove", "keydown"].forEach((t) => addEventListener(t, () => { if (place) { place = null; placeWatch.disconnect(); } }, { passive: true }));
+    function restorePlace() {
+      if (!place || Date.now() - place.at > 2500 || !place.root.isConnected) return;
+      const el = [...place.root.querySelectorAll(PLACE_SEL)].find((x) => placeKey(x) === place.key);
+      if (!el) return;
+      const d = el.getBoundingClientRect().top - place.top;
+      if (Math.abs(d) > 1) window.scrollBy({ top: d, behavior: "instant" });
+    }
     function paintNow(main, html, key) {
       const keep = sideScroll(main);
+      markPlace(main);
       paintInner(main, html, key);
+      restorePlace();
       [...main.querySelectorAll(SIDE_ROWS)].forEach((e, i) => { if (keep[i]) e.scrollLeft = keep[i]; });
     }
     function paintInner(main, html, key) {
@@ -3138,7 +3170,10 @@
     let youSkel = "";
     const youSet = (key, el, html) => {
       if (youCache[key] !== html) { youCache[key] = html; store.set("youCache", youCache); }
-      if (el.isConnected && el.innerHTML !== html) el.innerHTML = html;
+      if (el.isConnected && el.innerHTML !== html) {
+        if (!place || Date.now() - place.at > 2500) markPlace($("main"));   // a section filling in later: keep what's on screen still
+        el.innerHTML = html; restorePlace();
+      }
     };
     async function fillMarksRow() {
       const el = document.querySelector("[data-marks-row]"), P = window.scorelinePicks;
@@ -5853,12 +5888,19 @@
       // Many things ask for a redraw (sign-in finishing, settings syncing, the 2-minute refresh). If the page would come out
       // the same, keep it as it is (no jump, typed text kept) and only let the sections below update themselves.
       const main = $("main");
-      if (h !== youSkel || !main.querySelector("[data-picks-you]")) {
+      const fresh = !main.querySelector("[data-picks-you]");   // arriving on the page (not a redraw while you're on it)
+      if (h !== youSkel || fresh) {
         youSkel = h;
+        markPlace(main);
         main.innerHTML = h;
         for (const [k, sel] of YOU_SECS) { const el = main.querySelector(sel); if (el && youCache[k]) el.innerHTML = youCache[k]; }   // last content, straight away
+        restorePlace();
       }
-      fillPicksYou().catch(() => {}); fillShopYou().catch(() => {}); fillSocialYou().catch(() => {}); showDevRow().catch(() => {}); fillMarksRow().catch(() => {}); syncMarks();
+      // Everything appears at once: on arrival the sections stay hidden until they've all loaded (2 s at most).
+      if (fresh) main.classList.add("you-wait");
+      const fills = [fillPicksYou(), fillShopYou(), fillSocialYou(), showDevRow(), fillMarksRow()].map((p) => Promise.resolve(p).catch(() => {}));
+      syncMarks();
+      if (fresh) Promise.race([Promise.allSettled(fills), new Promise((r) => setTimeout(r, 2000))]).then(() => { main.classList.remove("you-wait"); restorePlace(); });
       views.filter((x) => x.kind === "notifs" && x.el.isConnected).forEach((x) => { const b = x.el.querySelector(".sheet-body"), y = b.scrollTop; setBody(x, "Notifications", notifsHtml()); b.scrollTop = y; });   // keep the Notifications page in step
       stamp();
     }
@@ -5936,7 +5978,8 @@
     document.addEventListener("click", async (e) => {
       const va = e.target.closest("[data-view-as]");
       if (va) { buzz(8); const ok = await window.scorelineViewAs?.set(va.dataset.viewAs); if (!ok) toast("Only the Owner can do that."); return; }
-      if (e.target.closest("[data-view-stop]")) { store.set("viewAs", ""); return location.reload(); }
+      if (e.target.closest("[data-view-stop]")) { store.set("viewAs", ""); store.set("afterReload", "dev");   // Stop takes you back to Dev tools
+        return location.reload(); }
       const b = e.target.closest("[data-role-remove]"); if (!b) return;
       if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Remove?"; setTimeout(() => { if (b.isConnected) { delete b.dataset.sure; b.textContent = "Remove"; } }, 3000); return; }
       b.disabled = true;
@@ -6696,6 +6739,7 @@
     if (![...ALL_SPORTS, "home", "you"].includes(state.tab)) state.tab = "home";
     Promise.all([Promise.resolve(render()).catch(() => {}), new Promise((r) => setTimeout(r, 900))]).finally(hideSplash);
     reopenFromAddress();   // refreshed on a game / player / team / driver: open it again
+    if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
   <script type="module" src="account.js"></script>
