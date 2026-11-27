@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795817889" />
+  <meta name="build" content="1795818978" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -383,7 +383,7 @@
     .f-ez { fill: #fff; font: 700 24px var(--display); letter-spacing: 4px; opacity: .85; text-anchor: middle; dominant-baseline: middle; text-transform: uppercase; }
     .f-los { stroke: #5b9dff; stroke-width: 2.5; }
     .f-1st { stroke: var(--gold); stroke-width: 2.5; }
-    .f-tag { font: 700 11px system-ui, sans-serif; paint-order: stroke; stroke: rgba(0,0,0,.6); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; } .t-los { fill: #9cc2ff; } .t-1st { fill: #ffd400; }
+    .f-tag { pointer-events: none; } .f-tag text { font: 800 10.5px system-ui, sans-serif; } .t-los rect { fill: #3b7dff; } .t-los text { fill: #fff; } .t-1st rect { fill: #ffd400; } .t-1st text { fill: #1a1a00; }
     .f-throw { fill: none; stroke: rgba(255,255,255,.75); stroke-width: 1.8; stroke-dasharray: 4 5; }
     .f-run { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; }
     .f-ball { fill: #fff; stroke: #fff; stroke-width: 1; }
@@ -584,6 +584,35 @@
     .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; text-align: center; } .cal-grid i { font-style: normal; font-size: 11.5px; color: var(--muted); padding: 4px 0; }
     .cal-d { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 52px; border: 0; border-radius: 12px; background: none; color: var(--muted); font: inherit; cursor: pointer; } .cal-d b { font-size: 17px; font-weight: 500; } .cal-d small { font-size: 10.5px; }
     .cal-d.has { color: var(--text); } .cal-d.has b { font-weight: 800; } .cal-d:disabled { opacity: .4; cursor: default; } .cal-d.today b { color: var(--live); } .cal-d.on { background: var(--text); color: var(--bg); } .cal-d.on b { color: var(--bg); }
+    /* Ideas */
+    .idea-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; } .idea-form textarea { width: 100%; box-sizing: border-box; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text); font: inherit; font-size: 15px; resize: vertical; }
+    .idea-opts { display: flex; flex-direction: column; gap: 4px; } .idea-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; } .idea-row .muted { font-size: 12px; }
+    .idea { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); margin-bottom: 10px; } .idea p { margin: 0 0 10px; font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
+    .idea-st { display: inline-block; margin-bottom: 6px; padding: 2px 9px; border-radius: 999px; background: var(--line); font-size: 11.5px; font-weight: 800; }
+    .idea-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; } .idea-votes { display: flex; gap: 6px; }
+    .idea-mod { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); } .idea-mod select { height: 32px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; padding: 0 10px; }
+    /* Win probability: labels sit above and below the chart, never on the line */
+    .wpg { display: flex; flex-direction: column; } .wpg svg { order: 1; } .wpg-t, .wpg-b { position: static !important; text-shadow: none !important; padding: 0 2px; } .wpg-t { order: 0; margin-bottom: 4px; } .wpg-b { order: 2; margin-top: 4px; } .wpg-50 { display: none; }
+    /* Team badges: letters centred and even */
+    .tbadge { display: inline-flex !important; align-items: center; justify-content: center; line-height: 1 !important; font-family: var(--display, inherit); font-variant-numeric: tabular-nums; letter-spacing: .04em !important; padding-top: 1px !important; text-transform: uppercase; }
+    /* Custom picker */
+    .pick-btn2 { display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; flex: 1 1 150px; min-width: 0; height: 42px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line-hi, var(--line)); background: var(--panel); color: var(--text); font: inherit; font-weight: 800; cursor: pointer; } .pick-btn2 span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .pick-btn2 i { font-style: normal; color: var(--muted); }
+    .pick-list .pick-opt { width: 100%; text-align: left; background: none; border: 0; color: inherit; font: inherit; font-size: 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; } .pick-list .pick-opt + .pick-opt { border-top: 1px solid var(--line); }
+    .pick-opt.on { font-weight: 800; } .pick-tick { font-weight: 900; font-size: 18px; } .pick-group { padding: 12px 16px 4px; font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    /* Playoff bracket */
+    .br-col { display: flex; flex-direction: column; gap: 10px; }
+    .br-game { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--text); font: inherit; text-align: left; cursor: pointer; } .br-game small { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .br-team { display: flex; align-items: center; gap: 10px; font-size: 16px; } .br-team b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .br-team.lost { opacity: .55; }
+    .br-seed { width: 16px; text-align: right; color: var(--muted); font-size: 13px; font-weight: 700; } .br-score { font-weight: 800; font-variant-numeric: tabular-nums; } .br-score i { font-style: normal; font-size: 11px; }
+    .br-game.bye { flex-direction: row; align-items: center; flex-wrap: wrap; } .br-game.bye .br-team { flex: 1; } .br-bye { font-weight: 800; color: var(--muted); } .br-game.bye small { flex-basis: 100%; }
+    .br-note { margin: 4px 2px 0; }
+    .f-about { margin: 6px 0 0; font-size: 12px; color: var(--muted); } .f-about summary { cursor: pointer; text-align: center; list-style: none; padding: 4px; } .f-about summary::-webkit-details-marker { display: none; } .f-about[open] summary { margin-bottom: 4px; }
+    /* Team schedule: week numbers and W/L predictions */
+    .wk { font-weight: 800; color: var(--text); margin-right: 2px; } .tpred-t { font-size: 11.5px; }
+    .tpred { display: inline-flex; gap: 4px; } .tpred button { width: 30px; height: 28px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); font: inherit; font-weight: 800; font-size: 13px; cursor: pointer; } .tpred button.on.w { background: var(--good, #1f7a4d); border-color: transparent; color: #fff; } .tpred button.on.l { background: var(--bad, #b4232f); border-color: transparent; color: #fff; }
+    .tpred-sum { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 8px 0 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); font-size: 14px; }
+    .br-pick { width: 100%; padding: 6px 4px; border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; } .br-pick:hover { background: var(--panel-2, var(--line)); } .br-pick.won { background: color-mix(in srgb, var(--text) 12%, transparent); font-weight: 800; } .br-pick.lost { opacity: .45; }
+    .br-team.tbd b { color: var(--muted); font-weight: 500; font-size: 14px; } .br-champ { margin: 14px 0 6px; padding: 14px 16px; border-radius: 16px; background: var(--text); color: var(--bg); text-align: center; font-size: 16px; } .br-reset { display: block; margin: 12px auto 0; }
     /* Reactions */
     .bz-react { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; min-height: 30px; }
     .rx { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2, var(--panel)); color: var(--text); font: inherit; font-size: 14px; cursor: pointer; }
@@ -2145,7 +2174,7 @@
       const sBtn = paged ? '<button type="button" class="icon-btn' + (open ? " on" : "") + '" data-searchtoggle aria-label="Search ' + esc(L.short || L.name) + ' teams"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>' : "";
       const hBtn = key !== "f1" ? '<button type="button" class="icon-btn' + (HEAT ? " on" : "") + '" data-heat aria-label="' + (HEAT ? "Show as list" : "Show as heat map") + '" title="' + (HEAT ? "List" : "Heat map") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2" opacity=".55"/><rect x="3" y="13" width="8" height="8" rx="2" opacity=".3"/><rect x="13" y="13" width="8" height="8" rx="2" opacity=".75"/></svg></button>' : "";
       return '<div class="bar"><h1>' + esc(title) + "</h1>" + hBtn + sBtn + "</div>" + headlineHtml(key) + (open ? search : "") +
-        '<div class="bar-row">' + liveBtn + (paged ? '<button type="button" class="icon-btn st-btn" data-standings="' + key + '" aria-label="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '" title="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button><button type="button" class="icon-btn" data-leaders="' + key + '" aria-label="Stat leaders" title="Stat leaders">🏆</button>' : "") + "</div>" + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
+        '<div class="bar-row">' + liveBtn + (paged ? '<button type="button" class="icon-btn st-btn" data-standings="' + key + '" aria-label="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '" title="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button><button type="button" class="icon-btn" data-leaders="' + key + '" aria-label="Stat leaders" title="Stat leaders">🏆</button>' + (key !== "cfb" ? '<button type="button" class="icon-btn" data-bracket="' + key + '" aria-label="Playoff bracket" title="Playoff bracket"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h5v4H3M3 15h5v4H3M8 7h3v10H8M11 12h4M15 10h6v4h-6"/></svg></button>' : "") + '' : "") + "</div>" + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
         (HEAT ? '<div class="heat-key"><span>One-sided</span><i></i><span>Close game</span></div>' : "") + (HEAT ? dm("<b>Reading the heat map.</b> Each tile is one game. The brighter the tile, the closer the game is to a coin flip (from win probability), so the most exciting games stand out. Upcoming games use the pre-game odds; finished games are dimmed. The ball icon shows who has it.") : "");
     }
 
@@ -3877,10 +3906,13 @@
       return '<div class="g-label" style="margin-top:18px">Play-by-play</div><div class="feed">' + html + "</div>" + (total > 12 && !v.feedAll ? '<button type="button" class="pill-btn feed-more" data-sfeedall>Show all ' + total + " plays</button>" : "");
     }
     function renderSportFeed(v, calm) { const fs = v.el.querySelector("[data-feedsec]"); if (fs) { fs.innerHTML = sportFeed(v); fs.classList.toggle("calm-sec", !!calm); } }
+    // A little emoji for big basketball and baseball moments in the play cards.
+    const HEAD_EMOJI = [[/^Grand slam/, "💣💣 "], [/^Home run/, "💣 "], [/^Strikeout/i, "🔥 "], [/^Triple/, "🏃 "], [/^Double play/i, "✌️ "], [/^3-pointer/, "🎯 "], [/^Dunk/, "💥 "], [/^Block/, "🧱 "], [/^Steal/, "🕵️ "], [/^Missed/, ""]];
+    const headEmoji = (h) => { const m = HEAD_EMOJI.find(([re]) => re.test(h || "")); return (m ? m[1] : "") + (h || ""); };
     function feedRow(o) {
       const head = headshot(o.lg, o.pid), logo = o.tm?.team?.logos?.[0]?.href || o.tm?.team?.logo;
       return '<div class="pf' + (o.scoring ? " scoring" : "") + '"><div class="pf-pic">' + (head ? '<img src="' + esc(head) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + (logo ? '<img class="pf-tm" src="' + esc(logo) + '" alt="">' : "") + "</div>" +
-        '<div class="pf-body"><div class="pf-top">' + o.top + '</div><div class="pf-h">' + esc(o.head) + "</div>" + (o.main ? '<div class="pf-p">' + o.main + "</div>" : "") + '<div class="pf-s">' + o.sub + "</div>" +
+        '<div class="pf-body"><div class="pf-top">' + o.top + '</div><div class="pf-h">' + esc(headEmoji(o.head)) + "</div>" + (o.main ? '<div class="pf-p">' + o.main + "</div>" : "") + '<div class="pf-s">' + o.sub + "</div>" +
         (o.tags.length ? '<div class="pf-tags">' + o.tags.map(([c, l]) => '<span class="' + c + '">' + esc(l) + "</span>").join("") + "</div>" : "") +
         '</div><div class="pf-g ' + (o.good ? "pos" : "") + '">' + esc(o.badge) + "</div></div>";
     }
@@ -4137,7 +4169,11 @@
     const athId = (ref) => (String(ref || "").match(/athletes\/(\d+)/) || [])[1];
     const headshot = (lg, id) => id ? "https://a.espncdn.com/i/headshots/" + (lg === "cfb" ? "college-football" : lg) + "/players/full/" + id + ".png" : "";
     const ago = (iso) => { const m = Math.round((Date.now() - new Date(iso)) / 60000); return !iso || isNaN(m) || m < 0 ? "" : m < 1 ? "now" : m < 60 ? m + "m" : m < 1440 ? Math.round(m / 60) + "h" : ""; };
-    function playHeadline(p) {
+    // The headline for a play, with a bit of personality (emoji), shown in the play list and on the field.
+    function playHeadline(p) { const h = playHeadline0(p), t = p.text || "", g = Number(p.statYardage) || 0;
+      const e = /disqualif|ejected/i.test(t) ? "🚫 " : /^Touchdown/.test(h) ? "🙌 " : /^Interception/.test(h) ? "😱 " : /^Fumble/.test(h) ? "👀 " : /^Sack/.test(h) ? "💥 " : /^Field goal good|^Extra point good/.test(h) ? "✅ " : /missed/.test(h) ? "❌ " : /^Penalty/.test(h) ? "🚩 " : g >= 40 ? "🚀 " : g >= 20 ? "🔥 " : "";
+      return e + (/disqualif|ejected/i.test(t) && !/^Touchdown/.test(h) ? "Ejection" + (h === "Penalty" ? "" : " · " + h) : h); }
+    function playHeadline0(p) {
       const ty = p.type?.text || "", t = p.text || "", g = Number(p.statYardage) || 0;
       if (/touchdown/i.test(t) && !/no good|nullified/i.test(t)) return "Touchdown! " + (/pass|reception/i.test(ty) ? g + "-yd catch" : /rush/i.test(ty) ? g + "-yd run" : "");
       if (/field goal/i.test(ty)) return /good/i.test(t) && !/no good/i.test(t) ? "Field goal good" : "Field goal missed";
@@ -4359,9 +4395,12 @@
       s += '<line x1="' + xL + '" x2="' + xL + '" y1="0" y2="' + H + '" class="f-los"/>';
       if (dist && dist < t0 && !/kickoff|extra point|field goal|punt/i.test(ty)) s += '<line x1="' + X(pos(t0 - dist)) + '" x2="' + X(pos(t0 - dist)) + '" y1="0" y2="' + H + '" class="f-1st"/>';
       // Name the lines right on the field (blue = where the play starts, yellow = the 1st-down line).
-      const fTag = (x, txt, cls, y) => { const end = x > W - 130; return '<text x="' + (end ? x - 5 : x + 5) + '" y="' + y + '" text-anchor="' + (end ? "end" : "start") + '" class="f-tag ' + cls + '">' + txt + "</text>"; };
-      s += fTag(xL, "Line of scrimmage", "t-los", 15);
-      if (dist && dist < t0 && !/kickoff|extra point|field goal|punt/i.test(ty)) { const x1 = X(pos(t0 - dist)); s += fTag(x1, "1st down", "t-1st", Math.abs(x1 - xL) < 120 ? 31 : 15); }
+      // Solid chips at the very top edge (above the yard numbers), each on its own side of its line so they never overlap.
+      const fTag = (x, txt, cls, side) => { const w = txt.length * 6.3 + 14, left = side < 0 ? x - w - 3 : x + 3, cx = Math.max(2, Math.min(W - w - 2, left));
+        return '<g class="f-tag ' + cls + '"><rect x="' + cx + '" y="3" width="' + w + '" height="17" rx="8.5"/><text x="' + (cx + w / 2) + '" y="12" text-anchor="middle" dominant-baseline="central">' + txt + "</text></g>"; };
+      const x1st = dist && dist < t0 && !/kickoff|extra point|field goal|punt/i.test(ty) ? X(pos(t0 - dist)) : null, ahead = x1st != null && x1st > xL ? 1 : -1;
+      s += fTag(xL, "Line of scrimmage", "t-los", x1st == null ? (xL > W / 2 ? -1 : 1) : -ahead);
+      if (x1st != null) s += fTag(x1st, "1st down", "t-1st", ahead);
       const side = /\bleft\b/i.test(t) ? -1 : /\bright\b/i.test(t) ? 1 : 0;
       const lane = (k) => CY + side * k * dir;
       const ath = (type) => { const r = (P.participants || []).find((x) => x.type === type)?.athlete?.$ref; return r ? athCache[r] : null; };
@@ -4372,7 +4411,8 @@
       // Small = defender (number only).
       const mark = (x, y, c, a, fb, delay, up, from, route, small) => {
         xs.push(x);
-        const name = small ? "" : [a?.short || fb || "", a?.pos].filter(Boolean).join(" · "), r = small ? 12 : 16, ly = up ? -32 : 36;
+        // Defenders (small) are named too when the data says who (e.g. "F. Warner · Tackle"), so it's clear who made the stop.
+        const name = small ? (a?.short ? a.short + (fb ? " · " + fb : "") : "") : [a?.short || fb || "", a?.pos].filter(Boolean).join(" · "), r = small ? 12 : 16, ly = up ? -32 : 36;
         const body = (small ? '<polygon points="0,-15 13,9 -13,9" fill="' + c + '"/>' : '<circle cx="0" cy="0" r="' + r + '" fill="' + c + '"/>') + '<text x="0" y="' + (small ? 2 : 0) + '" class="f-jn' + (small ? " s" : "") + '">' + esc(a?.jersey || "") + "</text>" +
           (name ? '<rect x="-60" y="' + (ly - 15) + '" width="120" height="25" rx="12.5" class="f-pill"/><text x="0" data-cx="0" data-rel="1" data-ax="' + x + '" y="' + (ly + 3) + '" class="f-lbl">' + esc(name) + "</text>" : "");
         let ph = null;
@@ -4452,7 +4492,7 @@
         s += '<path d="' + rt.d + '" class="f-route draw gone" pathLength="1" data-dr="0.1,1.25" style="animation:fadeout .45s 1.5s forwards"/>';
         s += fly(arc(qbX, CY, cxp, ly, 60), 0.75, 0.6) + land(cxp, ly, 1.35);
         if (yac) s += run(yp, 1.35, rd);
-        s += mark(qbX, CY, oc, { jersey: ath("passer")?.jersey }, "", 0.05, false, { x: xL - dir * S, y: CY, begin: 0.1, dur: 0.6 });
+        s += mark(qbX, CY, oc, ath("passer") ? { ...ath("passer"), pos: "QB" } : { pos: "QB" }, nm(/([A-Z][a-z]?\.[\w'-]+) pass/) || "", 0.05, true, { x: xL - dir * S, y: CY, begin: 0.1, dur: 0.6 });   // the QB, named, label above
         // Route to the catch point, wait for the ball, then the run after the catch.
         s += mark(yac ? xE : cxp, yac ? ey2 : ly, oc, ath("receiver"), nm(/ to ([A-Z][a-z]?\.[\w'-]+)/), 0.1, (yac ? ey2 : ly) < CY, null,
           { phases: [{ d: rt.d, b: 0.1, u: 1.25 }].concat(yac ? [{ d: yp, b: 1.35, u: rd }] : []) });
@@ -4470,7 +4510,7 @@
         const bx = pick ? tx : tx + dir * 16, by = pick ? ly : ly + (ly < CY ? -16 : 16);   // where the ball ended up, next to the receiver
         s += pick ? land(tx, ly, 1.35) : '<text x="' + bx + '" y="' + (by + 8) + '" class="f-x" style="animation-delay:1.35s">✕</text>';
         // result is shown in the card below
-        s += mark(qbX, CY, oc, { jersey: ath("passer")?.jersey }, "", 0.05, false, { x: xL - dir * S, y: CY, begin: 0.1, dur: 0.6 });
+        s += mark(qbX, CY, oc, ath("passer") ? { ...ath("passer"), pos: "QB" } : { pos: "QB" }, nm(/([A-Z][a-z]?\.[\w'-]+) pass/) || "", 0.05, true, { x: xL - dir * S, y: CY, begin: 0.1, dur: 0.6 });   // the QB, named, label above
         const tgt = ath("target") || ath("receiver"), tn = nm(/ (?:to|for) ([A-Z][a-z]?\.[\w'-]+)/);
         if (tgt || tn) s += mark(tx, ly, oc, tgt, tn, 0.1, ly < CY, null, { d: rt.d, begin: 0.1, dur: 1.25 });
         const pd = ath("passDefender");
@@ -4610,7 +4650,7 @@
       let html = (F.h2 ? '<div class="h2"><span>2nd half</span><b>' + (F.h2.team.team?.logos?.[0]?.href ? '<img src="' + esc(F.h2.team.team.logos[0].href) + '" alt="">' : "") + esc(F.h2.team.team?.displayName || ab(F.h2.team)) + "</b><small>" + (F.h2.actual ? "received the 2nd-half kickoff" : "gets the ball first") + "</small></div>" : "") + scoreBug(F) + sitLine(F) + '<div data-c="plays"><div class="g-label f-title">Plays' + (F.live ? '<span class="live-pill">Live</span><small data-ago>just now</small>' : "") + '</div><div class="f-nav"><button type="button" class="sheet-btn" data-step="-1" aria-label="Previous play" ' + (F.di || pi ? "" : "disabled") + '>‹</button><div><b>Play ' + (pi + 1) + " of " + D.plays.length + "</b><small>" + ab(dteam) + " drive " + (F.di + 1) + " of " + F.drives.length + " · " + esc(last?.type?.text || "") + "</small></div>" +
         '<button type="button" class="sheet-btn" data-step="1" aria-label="Next play" ' + (F.di < F.drives.length - 1 || pi < D.plays.length - 1 ? "" : "disabled") + ">›</button></div>" + '<div class="fwrap">' + svg + '<button type="button" class="f-replay" data-freplay aria-label="Replay this play">↻ Replay</button>' + (F.di < F.drives.length - 1 || (F.pi != null && F.pi < D.plays.length - 1) ? '<button type="button" class="f-replay f-cur" data-fcurrent aria-label="Go to the latest play">Current ›</button>' : "") + "</div>" +
         dm("<b>Reading the field.</b> The offense moves toward the end zone it's attacking. Blue line: where the play started. Yellow line: where they need to reach for a new set of 4 downs. Dotted arc: the ball in the air; solid line: a player running with it; triangles: defenders. Use the arrows to step through plays.") +
-        '<div class="f-key"><span><i class="k-los"></i>' + tm(F.lg, "Scrimmage") + '</span><span><i class="k-1st"></i>' + tm(F.lg, "1st down") + '</span><span><i class="k-air"></i>' + tm(F.lg, "In the air") + '</span><span><i class="k-run"></i>' + tm(F.lg, "Run") + '</span><span>▲ Defense</span></div><div class="f-src"><b>From the play data:</b> line of scrimmage, 1st-down line, where the ball started and ended, yards gained and the players named. <b>Estimated:</b> routes, run paths and where players stood.</div><div class="f-disc">Play Viewer visualizations are reconstructed from available game data and may not perfectly represent the actual play. Player positioning, movement, and routes may differ from what occurred on the field.</div>';
+        '<div class="f-key"><span><i class="k-los"></i>' + tm(F.lg, "Scrimmage") + '</span><span><i class="k-1st"></i>' + tm(F.lg, "1st down") + '</span><span><i class="k-air"></i>' + tm(F.lg, "In the air") + '</span><span><i class="k-run"></i>' + tm(F.lg, "Run") + '</span><span>▲ Defense</span></div><details class="f-about"><summary>ⓘ About this view</summary><div class="f-src"><b>From the play data:</b> line of scrimmage, 1st-down line, where the ball started and ended, yards gained and the players named. <b>Estimated:</b> routes, run paths and where players stood.</div><div class="f-disc">Play Viewer visualizations are reconstructed from available game data and may not perfectly represent the actual play. Player positioning, movement, and routes may differ from what occurred on the field.</div></details>';
       if (P) {
         const g = G, t = P.text || "", ty = P.type?.text || "";
         const refOf = (type) => (P.participants || []).find((x) => x.type === type)?.athlete?.$ref;
@@ -5307,14 +5347,20 @@
       h += '<div class="seg"><button type="button" data-tseg="schedule" class="' + (v.seg === "schedule" ? "active" : "") + '">Schedule</button><button type="button" data-tseg="roster" class="' + (v.seg === "roster" ? "active" : "") + '">Roster</button><button type="button" data-tseg="injuries" class="' + (v.seg === "injuries" ? "active" : "") + '">Injuries</button></div>';
       if (v.seg === "schedule") {
         const evs = v.sc?.events || [];
+        // 🔮 Predict the record: tap W or L on games still to play; the total updates. Saved on this device.
+        const pkey = "pred:" + v.lg + ":" + v.id + ":" + (v.sc?.season?.year || ""), pred = store.get(pkey, {}) || {};
+        let w = 0, l = 0, pw = 0, pl = 0, left = 0;
+        const sideOf = (ev) => { const c = ev.competitions?.[0] || {}, me = (c.competitors || []).find((x) => x.team?.id === String(v.id) || x.id === String(v.id)); return { c, me, opp: (c.competitors || []).find((x) => x !== me) }; };
+        evs.forEach((ev) => { const { c, me } = sideOf(ev); if (c.status?.type?.state === "post") { if (me?.winner) w++; else if (me?.winner === false) l++; } else { left++; if (pred[ev.id] === "W") pw++; else if (pred[ev.id] === "L") pl++; } });
+        if (evs.length) h += '<div class="tpred-sum"><span>Record <b>' + w + "–" + l + "</b></span>" + (left ? '<span>🔮 Your prediction <b>' + (w + pw) + "–" + (l + pl) + "</b>" + (left - pw - pl ? ' <small class="muted">(' + (left - pw - pl) + " left to pick)</small>" : "") + "</span>" : "") + "</div>";
         h += evs.length ? '<div class="list">' + evs.map((ev) => {
-          const c = ev.competitions?.[0] || {};
-          const me = (c.competitors || []).find((x) => x.team?.id === String(v.id) || x.id === String(v.id));
-          const opp = (c.competitors || []).find((x) => x !== me);
+          const { c, me, opp } = sideOf(ev);
           const done = c.status?.type?.state === "post";
           const sc = (x) => x?.score?.displayValue ?? x?.score ?? "";
-          const res = done ? '<span class="res ' + (me?.winner ? "w" : "l") + '">' + (me?.winner ? "W" : "L") + "</span> " + esc(sc(me)) + "–" + esc(sc(opp)) : esc(c.status?.type?.state === "in" ? "Live" : fmtTime(ev.date));
-          return '<div class="row" data-ev="' + esc(ev.id) + '" data-lg="' + v.lg + '"><span class="muted">' + esc(fmtDay(ev.date)) + "</span><span>" + (me?.homeAway === "home" ? "vs " : "@ ") +
+          const res = done ? '<span class="res ' + (me?.winner ? "w" : "l") + '">' + (me?.winner ? "W" : "L") + "</span> " + esc(sc(me)) + "–" + esc(sc(opp))
+            : c.status?.type?.state === "in" ? "Live" : '<span class="tpred">' + ["W", "L"].map((k) => '<button type="button" class="' + (pred[ev.id] === k ? "on " + k.toLowerCase() : "") + '" data-tpred="' + esc(pkey) + "|" + esc(ev.id) + "|" + k + '" aria-label="Predict ' + (k === "W" ? "a win" : "a loss") + '">' + k + "</button>").join("") + "</span>";
+          const wk = (v.lg === "nfl" || v.lg === "cfb") && ev.week?.number ? '<b class="wk">W' + ev.week.number + "</b> " : "";
+          return '<div class="row" data-ev="' + esc(ev.id) + '" data-lg="' + v.lg + '"><span class="muted">' + wk + esc(fmtDay(ev.date)) + (done ? "" : '<small class="tpred-t"> · ' + esc(fmtTime(ev.date)) + "</small>") + "</span><span>" + (me?.homeAway === "home" ? "vs " : "@ ") +
             (opp?.team?.logos?.[0]?.href ? '<img src="' + esc(opp.team.logos[0].href) + '" alt="" loading="lazy">' : "") + esc(opp?.team?.abbreviation || opp?.team?.displayName || "") + "</span><span>" + res + "</span></div>";
         }).join("") + "</div>" : '<div class="empty">No schedule available.</div>';
       } else if (v.seg === "injuries") {
@@ -6015,6 +6061,7 @@
         '<div class="g-note">Pick up to ' + MAX_PINS + ". Home shows only these sports.</div>" +
         '<div class="section-title"><b>Settings</b></div><div class="panel nteams">' +
           (MOBILE_APP ? '<div class="opt nteam" role="button" tabindex="0" data-open-notifs><span><b>Notifications</b><small>' + esc(alertsOn ? "On" + (quietLabel() ? " · quiet " + quietLabel() : "") : "Off") + '</small></span><span class="chev">›</span></div>' : "") +
+          '<div class="opt nteam" role="button" tabindex="0" data-open-ideas><span><b>Ideas 💡</b><small>Suggest features and vote on what gets built next</small></span><span class="chev">›</span></div>' +
           '<div class="opt nteam" role="button" tabindex="0" data-open-custom><span><b>Customize</b><small>Choose what shows on game pages, and text size</small></span><span class="chev">›</span></div>' +
           (signedIn ? '<div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>Account and security</b><small>Email, two-step sign-in, sign-in codes, log out' + (reqs ? " · " + reqs + " friend request" + (reqs === "1" ? "" : "s") : "") + '</small></span><span class="chev">›</span></div>' : "") +
           '<div class="opt nteam" role="button" tabindex="0" data-open-dev hidden><span><b>Developer tools</b><small>Only shown to the Scoreline team</small></span><span class="chev">›</span></div>' +
@@ -6097,6 +6144,12 @@
           [["on", "✅ Normal"], ["readonly", "⏸️ Read-only"], ["offline", "🛠️ Offline"]].map(([k, n]) => '<button type="button" class="pill-btn' + (st.mode === k ? " tos-go" : "") + '" data-site-mode="' + k + '">' + n + "</button>").join("") +
           '</div><input class="acct-input" data-site-msg maxlength="200" placeholder="Message people see (optional)" value="' + esc(st.msg || "") + '">' +
           '<div class="g-note"><b>Read-only:</b> everything shows, but new chat messages, friend requests and reactions are paused (the database blocks them too). <b>Offline:</b> everyone sees a "taking a short break" page. Nothing is ever deleted. You can always switch back here.</div></div>';
+      }
+      if (me === "owner" || me === "mod" || me === "dev") {
+        const sug = await window.scorelineIdeas?.suggestions().catch(() => null);
+        html += '<div class="section-title"><b>Private suggestions 🔒</b><span class="muted">' + (sug ? sug.length : "") + '</span></div><div class="panel">' +
+          (!sug ? '<p class="muted people-hint">Couldn\'t load suggestions.</p>' : !sug.length ? '<p class="muted people-hint">None yet.</p>' :
+            sug.map((x) => '<div class="opt rep-row"><span><b>' + esc(x.text) + "</b><small>" + (x.name ? "@" + esc(x.name) : "Anonymous") + " · " + esc(tms(x.at) ? new Date(tms(x.at)).toLocaleDateString([], { month: "short", day: "numeric" }) : "") + "</small></span></div>").join("")) + "</div>";
       }
       if (me === "owner" || me === "mod") {
         const reps = await R.reports().catch(() => null);
@@ -6345,6 +6398,23 @@
       homeBuzzHtml = h; if (el.innerHTML !== h) el.innerHTML = h;
       window.scorelineReact?.fill(el);
     }
+    /* ---------- Custom picker (instead of the phone's plain dropdown): a list with a ✓ on the current choice ---------- */
+    // opts: [{ v, l, group? }]. Resolves with the picked value, or null if closed.
+    function choose(title, opts, cur) {
+      return new Promise((done) => {
+        const v = { kind: "picker", key: "picker" };
+        if (!pushView(v)) return done(null);
+        let last = "";
+        setBody(v, title, '<div class="panel pick-list">' + opts.map((o) => {
+          const head = o.group && o.group !== last ? '<div class="pick-group">' + esc(o.group) + "</div>" : ""; last = o.group || last;
+          return head + '<button type="button" class="opt pick-opt' + (String(o.v) === String(cur) ? " on" : "") + '" data-pick-v="' + esc(o.v) + '"><span>' + esc(o.l) + "</span>" + (String(o.v) === String(cur) ? '<span class="pick-tick" aria-label="Selected">✓</span>' : "") + "</button>";
+        }).join("") + "</div>");
+        v.el.querySelector(".pick-opt.on")?.scrollIntoView({ block: "center" });
+        v.el.addEventListener("click", (e) => { const b = e.target.closest("[data-pick-v]"); if (!b) return; buzz(8); done(b.dataset.pickV); closeTop(); });
+        const watch = setInterval(() => { if (!v.el.isConnected) { clearInterval(watch); done(null); } }, 400);
+      });
+    }
+    const pickBtn = (attr, label) => '<button type="button" class="pick-btn2" ' + attr + '><span>' + esc(label) + '</span><i aria-hidden="true">▾</i></button>';
     /* ---------- Stat leaders: top 10 for any stat, this season or past seasons and playoffs (every sport) ---------- */
     const LDR = {};   // lg -> { season, type, cat }
     // The number to show: ESPN sometimes gives a whole stat line ("179-567, 42 HR, ..."); then use the value itself.
@@ -6383,9 +6453,10 @@
       const seasons = []; for (let y = cur; y > cur - 10; y--) seasons.push(y);
       const opt = (val, txt, on) => '<option value="' + esc(val) + '"' + (on ? " selected" : "") + ">" + esc(txt) + "</option>";
       const medal = ["🥇", "🥈", "🥉"];
-      box.innerHTML = '<div class="ldr-pick"><select data-ldr-season aria-label="Season">' +
-        seasons.flatMap((y) => [opt(y + "|2", seasonName(lg, y) + " season", sel === y && o.type === 2), opt(y + "|3", seasonName(lg, y) + " playoffs", sel === y && o.type === 3)]).join("") + "</select>" +
-        '<select data-ldr-cat aria-label="Stat">' + cats.map((c) => opt(c.name, c.displayName, c === cat)).join("") + "</select></div>" +
+      v.ldrSeasons = seasons.flatMap((y) => [{ v: y + "|2", l: seasonName(lg, y) + " season", group: seasonName(lg, y) }, { v: y + "|3", l: seasonName(lg, y) + " playoffs", group: seasonName(lg, y) }]);
+      v.ldrCats = cats.map((c) => ({ v: c.name, l: c.displayName }));
+      v.ldrCur = { season: sel + "|" + o.type, cat: cat?.name || "" };
+      box.innerHTML = '<div class="ldr-pick">' + pickBtn("data-ldr-season-pick", seasonName(lg, sel) + (o.type === 3 ? " playoffs" : " season")) + pickBtn("data-ldr-cat-pick", cat?.displayName || "Stat") + "</div>" +
         dm("<b>Stat leaders.</b> The top players in one stat. Per-game stats (like points per game) only count players who've played enough games. Playoffs only count playoff games.") +
         (!cat?.leaders?.length ? '<div class="panel"><p class="muted people-hint">No leaders for this yet. Not available.</p></div>' :
           '<div class="panel ldr-list">' + cat.leaders.slice(0, 10).map((l, i) => '<button type="button" class="opt ldr-row' + (i < 3 ? " top" : "") + '" data-player="' + lg + "|" + esc(l.athlete?.id || "") + '">' +
@@ -6399,7 +6470,16 @@
       if (s.matches("[data-ldr-season]")) { const [y, t] = s.value.split("|"); o.season = +y; o.type = +t; } else o.cat = s.value;
       buzz(8); drawLeaders(v, lg);
     });
-    document.addEventListener("click", (e) => { const b = e.target.closest("[data-leaders]"); if (b) openLeaders(b.dataset.leaders); });
+    document.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-leaders]"); if (b) return openLeaders(b.dataset.leaders);
+      const p = e.target.closest("[data-ldr-season-pick], [data-ldr-cat-pick]"); if (!p) return;
+      const v = views.find((x) => x.el === p.closest(".sheet")); if (!v) return;
+      const lg = v.el.dataset.lg, o = (LDR[lg] ||= { season: 0, type: 2, cat: "" }), isSeason = p.matches("[data-ldr-season-pick]");
+      const pick = await choose(isSeason ? "Season" : "Stat", isSeason ? v.ldrSeasons : v.ldrCats, isSeason ? v.ldrCur.season : v.ldrCur.cat);
+      if (pick == null) return;
+      if (isSeason) { const [y, t] = pick.split("|"); o.season = +y; o.type = +t; } else o.cat = pick;
+      drawLeaders(v, lg);
+    });
 
     /* ---------- Calendar: pick any day from a month view (days with games are bold; football shows the week) ---------- */
     let calMonth = null;
@@ -6429,6 +6509,212 @@
       const dd = e.target.closest("[data-cal-day]");
       if (dd) { const v = views.find((x) => x.el === dd.closest(".sheet")); if (!v) return; const key = v.el.dataset.lg; dayOff[key] = offOf(dd.dataset.calDay); buzz(8); closeTop(); state.tab = key; setTimeout(() => render(), 380); }
     });
+    /* ---------- Ideas 💡: post ideas, vote 👍/👎 (once each), see what's planned. Private option goes only to the team. ---------- */
+    const IDEA_STATUS = { open: "", planned: "🛠️ Planned", done: "✅ Done", no: "🚫 Not doing" };
+    let ideaSort = "top", ideaRows = [], ideaMine = new Set(), ideaRole = "";
+    async function openIdeas() {
+      const v = { kind: "ideas", key: "ideas" };
+      if (!pushView(v)) return;
+      const I = window.scorelineIdeas;
+      if (!I || !(await I.ready().catch(() => false))) return setBody(v, "Ideas 💡", '<div class="panel"><b>Ideas</b><p class="muted">Sign in to share ideas and vote on them.</p><button type="button" class="pill-btn" data-social-signin>Sign in</button></div>');
+      setBody(v, "Ideas 💡", '<form class="idea-form" data-idea-form><textarea data-idea-text maxlength="300" rows="3" placeholder="What should Scoreline add or fix? 💭" aria-label="Your idea"></textarea>' +
+        '<div class="idea-opts"><label class="acct-check"><input type="checkbox" data-idea-anon> Post without my name</label><label class="acct-check"><input type="checkbox" data-idea-priv> 🔒 Only the Scoreline team can see it</label></div>' +
+        '<div class="idea-row"><span class="muted" data-idea-count>0 / 300</span><button type="submit" class="pill-btn tos-go">Post idea</button></div></form>' +
+        dm("<b>Ideas.</b> Post an idea and vote 👍 or 👎 on others (one vote each; tap again to take it back). The most-wanted ideas rise to the top. 🛠️ Planned means it's being worked on. Tick 🔒 to send it privately to the Scoreline team instead.") +
+        '<div class="bz-chips seg chips">' + [["top", "🔥 Top"], ["new", "🆕 New"], ["planned", "🛠️ Planned"], ["done", "✅ Done"]].map(([k, n]) => '<button type="button" class="' + (ideaSort === k ? "on" : "") + '" data-idea-sort="' + k + '">' + n + "</button>").join("") + "</div>" +
+        '<div data-ideas><div class="skel" style="height:90px"></div></div>');
+      await loadIdeas(v);
+    }
+    async function loadIdeas(v) {
+      const I = window.scorelineIdeas;
+      try { [ideaRows, ideaRole] = await Promise.all([I.list(), I.role()]); ideaMine = new Set(await I.mineIds(ideaRows.map((x) => x.id)).catch(() => [])); }
+      catch { const b = v.el.querySelector("[data-ideas]"); if (b) b.innerHTML = '<div class="panel"><p class="muted people-hint">Couldn\'t load ideas. Try again soon.</p></div>'; return; }
+      drawIdeas(v);
+    }
+    function drawIdeas(v) {
+      const box = v.el.querySelector("[data-ideas]"); if (!box) return;
+      const mod = ideaRole === "owner" || ideaRole === "mod";
+      let rows = ideaRows.slice();
+      if (ideaSort === "top") rows = rows.filter((x) => x.status === "open" || x.status === "planned").sort((a, b) => (b.up - b.down) - (a.up - a.down) || tms(b.at) - tms(a.at));
+      else if (ideaSort === "new") rows = rows.filter((x) => x.status !== "no");
+      else rows = rows.filter((x) => x.status === ideaSort);
+      box.innerHTML = rows.length ? rows.map((x) => '<div class="idea" data-idea="' + esc(x.id) + '">' +
+        (IDEA_STATUS[x.status] ? '<span class="idea-st">' + IDEA_STATUS[x.status] + "</span>" : "") +
+        "<p>" + esc(x.text) + "</p>" +
+        '<div class="idea-foot"><small class="muted">' + (x.name ? "@" + esc(x.name) : "Anonymous") + " · " + esc(tms(x.at) ? bzAgo(tms(x.at)) + " ago" : "just now") + "</small>" +
+        '<span class="idea-votes"><button type="button" class="rx' + (x.mine === 1 ? " on" : "") + '" data-idea-vote="1" aria-label="Upvote">👍 <b>' + (x.up || 0) + '</b></button><button type="button" class="rx' + (x.mine === -1 ? " on" : "") + '" data-idea-vote="-1" aria-label="Downvote">👎 <b>' + (x.down || 0) + "</b></button></span></div>" +
+        (mod || ideaMine.has(x.id) ? '<div class="idea-mod">' + (mod ? '<select data-idea-status aria-label="Status">' + Object.entries({ open: "Open", planned: "🛠️ Planned", done: "✅ Done", no: "🚫 Not doing" }).map(([k, n]) => '<option value="' + k + '"' + (x.status === k ? " selected" : "") + ">" + n + "</option>").join("") + "</select>" + (x.name ? "" : '<button type="button" class="link-btn" data-idea-who>Who wrote this?</button>') : "") +
+          '<button type="button" class="link-btn" data-idea-del>Delete</button></div>' : "") + "</div>").join("")
+        : '<div class="panel"><p class="muted people-hint">' + (ideaSort === "top" || ideaSort === "new" ? "No ideas yet. Be the first! 💡" : "Nothing here yet.") + "</p></div>";
+    }
+    const tms = (t) => (t?.toMillis ? t.toMillis() : t?.seconds ? t.seconds * 1000 : 0);
+    document.addEventListener("input", (e) => { if (e.target.matches?.("[data-idea-text]")) { const c = e.target.closest("form").querySelector("[data-idea-count]"); if (c) c.textContent = e.target.value.length + " / 300"; } });
+    document.addEventListener("submit", async (e) => {
+      const f = e.target.closest?.("[data-idea-form]"); if (!f) return;
+      e.preventDefault();
+      const text = f.querySelector("[data-idea-text]").value.trim(), priv = f.querySelector("[data-idea-priv]").checked, anon = f.querySelector("[data-idea-anon]").checked;
+      if (text.length < 3) return toast("Write a little more first 🙂");
+      const b = f.querySelector("button[type=submit]"); b.disabled = true;
+      try { await window.scorelineIdeas.post(text, { anon, priv }); buzz(12); toast(priv ? "Sent privately to the Scoreline team 🔒" : "Idea posted 💡"); f.reset(); f.querySelector("[data-idea-count]").textContent = "0 / 300"; if (!priv) { const v = views.find((x) => x.key === "ideas"); if (v) { ideaSort = "new"; v.el.querySelectorAll("[data-idea-sort]").forEach((x) => x.classList.toggle("on", x.dataset.ideaSort === "new")); loadIdeas(v); } } }
+      catch { toast(window.SITE_MODE === "readonly" ? "Posting is paused right now." : "Couldn't post that. Try again."); }
+      b.disabled = false;
+    });
+    document.addEventListener("click", async (e) => {
+      if (e.target.closest("[data-open-ideas]")) return openIdeas();
+      const v = views.find((x) => x.key === "ideas");
+      const s = e.target.closest("[data-idea-sort]");
+      if (s && v) { ideaSort = s.dataset.ideaSort; s.parentElement.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === s)); buzz(6); return drawIdeas(v); }
+      const card = e.target.closest("[data-idea]"); if (!card || !v) return;
+      const id = card.dataset.idea, row = ideaRows.find((x) => x.id === id); if (!row) return;
+      const vb = e.target.closest("[data-idea-vote]");
+      if (vb) { vb.disabled = true; try { Object.assign(row, await window.scorelineIdeas.vote(id, Number(vb.dataset.ideaVote))); buzz(8); drawIdeas(v); } catch { vb.disabled = false; toast("Couldn't vote. Try again."); } return; }
+      if (e.target.closest("[data-idea-who]")) { const n = await window.scorelineIdeas.author(id).catch(() => ""); return toast(n ? "Written by @" + n + " (only staff can see this)" : "Not available"); }
+      const del = e.target.closest("[data-idea-del]");
+      if (del) { if (!del.dataset.sure) { del.dataset.sure = "1"; del.textContent = "Delete? Tap again"; return; } try { await window.scorelineIdeas.remove(id); ideaRows = ideaRows.filter((x) => x.id !== id); drawIdeas(v); toast("Deleted"); } catch { toast("Couldn't delete."); } }
+    });
+    document.addEventListener("change", async (e) => {
+      const s = e.target.closest?.("[data-idea-status]"); if (!s) return;
+      const id = s.closest("[data-idea]")?.dataset.idea, row = ideaRows.find((x) => x.id === id); if (!row) return;
+      try { await window.scorelineIdeas.setStatus(id, s.value); row.status = s.value; buzz(8); toast("Marked " + (IDEA_STATUS[s.value] || "open")); } catch { toast("Only the Owner and Mods can do that."); }
+    });
+    /* ---------- Playoff bracket 🏆: real playoff games by round (NFL), or "if the season ended today" from the standings ----------
+       Seeds come from the standings of that season. Winners get an arrow. Before the playoffs: the projected matchups. */
+    const BR_ROUNDS = { nfl: [[1, "Wild Card"], [2, "Divisional"], [3, "Conf. Championships"], [5, "Super Bowl"]] };
+    const BR = { season: 0, round: 1 };
+    async function brSeeds(lg, season) {
+      const [sp, l] = LEAGUES[lg].path.split("/");
+      const d = await getJSON("https://site.api.espn.com/apis/v2/sports/" + sp + "/" + l + "/standings" + (season ? "?season=" + season : ""));
+      const confs = (d.children || []).map((c) => {
+        const entries = []; const walk = (n) => { (n.standings?.entries || []).forEach((e) => entries.push(e)); (n.children || []).forEach(walk); }; walk(c);
+        const seed = (e) => Number((e.stats || []).find((s) => s.name === "playoffSeed")?.value) || 99;
+        return { name: c.abbreviation || c.name, teams: entries.map((e) => ({ id: String(e.team?.id), seed: seed(e), team: e.team })).filter((t) => t.seed < 99).sort((a, b) => a.seed - b.seed) };
+      });
+      return confs;
+    }
+    function brCard(g, seedOf) {
+      const c = g.competitions?.[0] || {}, t = (c.competitors || []).slice().sort((a, b) => (seedOf(a.team?.id) || 99) - (seedOf(b.team?.id) || 99)), st = g.status?.type || {};
+      const row = (x) => { const won = st.completed && x.winner; return '<div class="br-team' + (st.completed && !x.winner ? " lost" : "") + '"><span class="br-seed">' + (seedOf(x.team?.id) || "") + "</span>" + teamBadge(x.team) + '<b>' + esc(x.team?.shortDisplayName || x.team?.displayName || "") + "</b>" + (st.state !== "pre" ? '<span class="br-score">' + esc(x.score ?? "") + (won ? ' <i aria-label="Winner">◀</i>' : "") + "</span>" : "") + "</div>"; };
+      return '<button type="button" class="br-game" data-ev="' + esc(g.id) + '" data-lg="' + esc(g.__lg || "nfl") + '"><small>' + esc(st.state === "pre" ? fmtDay(g.date) + " · " + fmtTime(g.date) : st.shortDetail || "") + "</small>" + t.map(row).join("") + "</button>";
+    }
+    function brProjected(conf, size, lg) {
+      const T = conf.teams, s = (n) => T.find((x) => x.seed === n), byes = lg === "nfl" ? 1 : lg === "mlb" ? 2 : 0;
+      const row = (x) => x ? '<div class="br-team"><span class="br-seed">' + x.seed + "</span>" + teamBadge(x.team) + "<b>" + esc(x.team?.shortDisplayName || x.team?.displayName || "") + "</b></div>" : "";
+      let out = "";
+      for (let i = 1; i <= byes; i++) if (s(i)) out += '<div class="br-game bye">' + row(s(i)) + '<span class="br-bye">BYE</span><small>Plays the lowest seed left</small></div>';
+      const n = size, firstPair = byes + 1;
+      for (let a = firstPair, b = n; a < b; a++, b--) if (s(a) && s(b)) out += '<div class="br-game">' + row(s(a)) + row(s(b)) + "</div>";
+      return out;
+    }
+    /* ---------- 🔮 My bracket: tap who wins each matchup; winners move on to the final. Saved on this device. ---------- */
+    const FINAL_NAME = { nfl: "Super Bowl", nba: "NBA Finals", mlb: "World Series" };
+    const ROUND_NAMES = { nfl: ["Wild Card", "Divisional", "Conference final"], nba: ["First round", "Conf. semifinals", "Conf. finals"], mlb: ["Wild Card", "Division series", "Championship series"] };
+    const myPicksKey = (lg, season) => "bracketPicks:" + lg + ":" + season;
+    // Matchups per round for one conference, given the winners picked so far (seed numbers).
+    function brPlan(lg, w) {   // w(round, index) -> winning seed or undefined
+      if (lg === "nfl") {
+        const r1 = [[2, 7], [3, 6], [4, 5]], won1 = r1.map((_, i) => w(0, i));
+        const r2 = won1.every(Boolean) ? (() => { const rest = won1.slice().sort((a, b) => a - b), low = rest[2]; return [[1, low], [rest[0], rest[1]]]; })() : [[1, undefined], [undefined, undefined]];
+        return [r1, r2, [[w(1, 0), w(1, 1)]]];
+      }
+      if (lg === "mlb") { const r1 = [[3, 6], [4, 5]]; return [r1, [[1, w(0, 1)], [2, w(0, 0)]], [[w(1, 0), w(1, 1)]]]; }
+      const r1 = [[1, 8], [4, 5], [3, 6], [2, 7]];   // NBA (seeds 7 and 8 as they stand: the play-in decides them)
+      return [r1, [[w(0, 0), w(0, 1)], [w(0, 2), w(0, 3)]], [[w(1, 0), w(1, 1)]]];
+    }
+    function myBracketHtml(lg, season, confs) {
+      const picks = store.get(myPicksKey(lg, season), {}) || {};
+      const name = (c, seed) => { const t = c.teams.find((x) => x.seed === seed); return t ? t : null; };
+      const champs = [];
+      const confHtml = confs.filter((c) => c.teams.length).slice(0, 2).map((c, ci) => {
+        const w = (r, i) => picks[c.name + "|" + r + "|" + i];
+        const plan = brPlan(lg, w);
+        champs[ci] = { c, seed: w(2, 0) };
+        return '<div class="section-title"><b>' + esc(c.name) + "</b></div>" + plan.map((round, r) => '<div class="g-label">' + esc(ROUND_NAMES[lg][r]) + "</div><div class=\"br-col\">" + round.map(([a, b], i) => {
+          const pick = w(r, i), row = (seed) => { const t = seed && name(c, seed); return t ? '<button type="button" class="br-team br-pick' + (pick === seed ? " won" : pick ? " lost" : "") + '" data-brp="' + esc(c.name) + "|" + r + "|" + i + "|" + seed + '"><span class="br-seed">' + seed + "</span>" + teamBadge(t.team) + "<b>" + esc(t.team?.shortDisplayName || t.team?.displayName || "") + "</b>" + (pick === seed ? '<span class="pick-tick">✓</span>' : "") + "</button>" : '<div class="br-team tbd"><span class="br-seed"></span><b>Pick the game before</b></div>'; };
+          return '<div class="br-game">' + row(a) + row(b) + "</div>";
+        }).join("") + "</div>").join("");
+      }).join("");
+      const fin = picks["final"], [A, B] = champs;
+      const finRow = (x) => { const t = x?.seed && x.c.teams.find((y) => y.seed === x.seed); return t ? '<button type="button" class="br-team br-pick' + (fin === x.c.name ? " won" : fin ? " lost" : "") + '" data-brp="final|' + esc(x.c.name) + '"><span class="br-seed">' + t.seed + "</span>" + teamBadge(t.team) + "<b>" + esc(t.team?.shortDisplayName || "") + "</b>" + (fin === x.c.name ? '<span class="pick-tick">🏆</span>' : "") + "</button>" : '<div class="br-team tbd"><span class="br-seed"></span><b>' + esc(x?.c?.name || "") + " champion</b></div>"; };
+      const champ = fin && [A, B].find((x) => x?.c.name === fin), champT = champ && champ.c.teams.find((y) => y.seed === champ.seed);
+      return '<p class="g-note br-note">Tap who you think wins each game. Winners move on. Saved on this device.</p>' + confHtml +
+        '<div class="section-title"><b>' + esc(FINAL_NAME[lg]) + ' 🏆</b></div><div class="br-col"><div class="br-game">' + finRow(A) + finRow(B) + "</div></div>" +
+        (champT ? '<div class="br-champ">🎉 Your champion: <b>' + esc(champT.team?.displayName || "") + "</b></div>" : "") +
+        '<button type="button" class="link-btn br-reset" data-brp-reset>Start over</button>';
+    }
+    document.addEventListener("click", (e) => {
+      const p = e.target.closest("[data-brp]"), rs = e.target.closest("[data-brp-reset]");
+      if (!p && !rs) return;
+      const v = views.find((x) => x.el === (p || rs).closest(".sheet")); if (!v) return;
+      const lg = v.el.dataset.lg, key = myPicksKey(lg, v.brSeason), picks = store.get(key, {}) || {};
+      if (rs) { store.set(key, {}); buzz(8); return drawBracket(v, lg); }
+      const parts = p.dataset.brp.split("|");
+      if (parts[0] === "final") picks.final = parts[1];
+      else {
+        const [conf, r, i, seed] = parts, k = conf + "|" + r + "|" + i;
+        picks[k] = Number(seed);
+        // Changing an early pick clears the later picks that depended on it.
+        Object.keys(picks).forEach((x) => { const [c2, r2] = x.split("|"); if (c2 === conf && Number(r2) > Number(r)) delete picks[x]; });
+        delete picks.final;
+      }
+      store.set(key, picks); buzz(8); drawBracket(v, lg);
+    });
+    async function openBracket(lg) {
+      const v = { kind: "bracket", key: "bracket|" + lg };
+      if (!pushView(v)) return; v.el.dataset.lg = lg;
+      setBody(v, "Playoff bracket 🏆", '<div data-br><div class="skel" style="height:300px"></div></div>');
+      drawBracket(v, lg);
+    }
+    async function drawBracket(v, lg) {
+      const box = v.el.querySelector("[data-br]"); if (!box) return;
+      const now = new Date(), cur = lg === "nba" ? (now.getMonth() >= 8 ? now.getFullYear() + 1 : now.getFullYear()) : now.getMonth() < 2 ? now.getFullYear() - 1 : now.getFullYear();
+      const season = BR.season || cur, rounds = BR_ROUNDS[lg];
+      let games = [], confs = [];
+      try {
+        confs = await brSeeds(lg, season);
+        if (rounds) games = (await getJSON(API + LEAGUES[lg].path + "/scoreboard?seasontype=3&week=" + BR.round + "&dates=" + season).catch(() => ({}))).events || [];
+        // Placeholder games ("TBD" teams) aren't real matchups yet: show the projected bracket instead.
+        games = games.filter((g) => (g.competitions?.[0]?.competitors || []).every((x) => x.team?.id && !/TBD|winner|loser/i.test(x.team?.displayName || "")));
+      } catch { box.innerHTML = '<div class="error">Couldn\'t load the bracket.</div>'; return; }
+      if (!box.isConnected) return;
+      const seedOf = (id) => confs.flatMap((c) => c.teams).find((t) => t.id === String(id))?.seed;
+      const size = { nfl: 7, nba: 10, mlb: 6, cfb: 0 }[lg] ?? 0;
+      v.brSeasons = Array.from({ length: 8 }, (_, i) => cur - i).map((y) => ({ v: y, l: seasonName(lg, y) }));
+      let html = '<div class="ldr-pick">' + pickBtn("data-br-season", seasonName(lg, season)) + "</div>";
+      v.brSeason = season;
+      const canPredict = !!FINAL_NAME[lg] && confs.filter((c) => c.teams.length).length >= 2;
+      if (canPredict) html += '<div class="bz-chips seg chips">' + [["real", "Results"], ["mine", "🔮 My bracket"]].map(([k, n]) => '<button type="button" class="' + ((BR.mode || "real") === k ? "on" : "") + '" data-br-mode="' + k + '">' + n + "</button>").join("") + "</div>";
+      if (canPredict && BR.mode === "mine") { box.innerHTML = html + myBracketHtml(lg, season, confs); return; }
+      if (rounds) html += '<div class="bz-chips seg chips">' + rounds.map(([w, n]) => '<button type="button" class="' + (BR.round === w ? "on" : "") + '" data-br-round="' + w + '">' + esc(n) + "</button>").join("") + "</div>";
+      if (games.length) {
+        const byConf = {}; games.forEach((g) => { const h = g.competitions?.[0]?.notes?.[0]?.headline || ""; const k = (confs.find((c) => h.startsWith(c.name))?.name) || (BR.round === 5 ? "Super Bowl" : "Games"); (byConf[k] ||= []).push(g); });
+        const byeCard = (k) => { const t = confs.find((c) => c.name === k)?.teams.find((x) => x.seed === 1); return lg === "nfl" && BR.round === 1 && t ? '<div class="br-game bye"><div class="br-team"><span class="br-seed">1</span>' + teamBadge(t.team) + "<b>" + esc(t.team?.shortDisplayName || t.team?.displayName || "") + '</b></div><span class="br-bye">BYE</span><small>Plays the lowest seed left</small></div>' : ""; };
+        html += Object.entries(byConf).sort(([a], [b]) => a.localeCompare(b)).map(([k, gs]) => '<div class="section-title"><b>' + esc(k) + '</b></div><div class="br-col">' + byeCard(k) + gs.sort((a, b) => Math.min(...(a.competitions?.[0]?.competitors || []).map((x) => seedOf(x.team?.id) || 99)) - Math.min(...(b.competitions?.[0]?.competitors || []).map((x) => seedOf(x.team?.id) || 99))).map((g) => brCard(g, seedOf)).join("") + "</div>").join("");
+      } else if (size && confs.some((c) => c.teams.length)) {
+        html += '<p class="g-note br-note">' + (season === cur ? "🔮 If the season ended today" : "Seeds from the final standings") + (lg === "nba" ? ". Seeds 7–10 go to the play-in." : "") + "</p>" +
+          confs.map((c) => '<div class="section-title"><b>' + esc(c.name) + '</b></div><div class="br-col">' + brProjected(c, lg === "nba" ? 6 : size, lg) + (lg === "nba" ? '<div class="g-label">Play-in</div>' + brProjected({ teams: c.teams.filter((t) => t.seed >= 7 && t.seed <= 10).map((t) => ({ ...t })) }, 10, "playin") : "") + "</div>").join("");
+      } else html += '<div class="panel"><p class="muted people-hint">Bracket not available for this one.</p></div>';
+      html += dm("<b>Reading the bracket.</b> The number by each team is its <b>seed</b>: its rank among the playoff teams (1 is best). <b>BYE</b> means the top seed skips the first round. Winners move on; the ◀ marks who won. Before the playoffs, this shows who'd play if the season ended today.");
+      box.innerHTML = html;
+    }
+    document.addEventListener("click", async (e) => {
+      const o = e.target.closest("[data-bracket]"); if (o) { BR.season = 0; BR.round = 1; return openBracket(o.dataset.bracket); }
+      const r = e.target.closest("[data-br-round]"), s = e.target.closest("[data-br-season]"), md = e.target.closest("[data-br-mode]");
+      if (md) { const v = views.find((x) => x.el === md.closest(".sheet")); if (v) { BR.mode = md.dataset.brMode; buzz(6); drawBracket(v, v.el.dataset.lg); } return; }
+      if (!r && !s) return;
+      const v = views.find((x) => x.el === (r || s).closest(".sheet")); if (!v) return;
+      if (r) { BR.round = Number(r.dataset.brRound); buzz(6); return drawBracket(v, v.el.dataset.lg); }
+      const pick = await choose("Season", v.brSeasons, BR.season || v.brSeasons[0].v); if (pick == null) return;
+      BR.season = Number(pick); drawBracket(v, v.el.dataset.lg);
+    });
+    // Team schedule: W / L prediction buttons (they don't open the game).
+    document.addEventListener("click", (e) => {
+      const b = e.target.closest?.("[data-tpred]"); if (!b) return;
+      e.stopImmediatePropagation(); e.preventDefault();
+      const [key, gid, k] = b.dataset.tpred.split("|"), pred = store.get(key, {}) || {};
+      if (pred[gid] === k) delete pred[gid]; else pred[gid] = k;
+      store.set(key, pred); buzz(8);
+      const v = views.find((x) => x.el === b.closest(".sheet")); if (v) { const y = v.el.querySelector(".sheet-body")?.scrollTop; drawTeam(v); const bd = v.el.querySelector(".sheet-body"); if (bd && y != null) bd.scrollTop = y; }
+    }, true);
     // Find people (top bar): search usernames as you type (similar names too), open a profile, or send a request.
     // Results are small cards like Roblox's: photo, name, @username, a status line and one button.
     const PEOPLE_HINT = '<p class="muted people-hint">Type a username. The @ is optional.</p>';

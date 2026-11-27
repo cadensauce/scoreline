@@ -1311,3 +1311,43 @@ window.scorelineSite = {
   },
   async isOwner() { if (!user) return false; delete roleCache[user.uid]; return (await realRoleOf(user.uid)) === "owner"; },
 };
+
+/* ---------- Ideas board (public, upvotes) + private suggestions to the team ---------- */
+window.scorelineIdeas = {
+  async ready() { await startFirebase(); if (FIREBASE_CONFIG && fb) await Promise.race([authReady, new Promise((r) => setTimeout(r, 8000))]); return !!user; },
+  async list() {
+    const r = await fb.getDocs(fb.query(fb.collection(db, "ideas"), fb.orderBy("at", "desc"), fb.limit(100)));
+    const rows = r.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const mine = await Promise.all(rows.map((x) => fb.getDoc(fb.doc(db, "ideas", x.id, "votes", user.uid)).then((d) => (d.exists() ? d.data().v : 0)).catch(() => 0)));
+    rows.forEach((x, i) => { x.mine = mine[i]; });
+    return rows;
+  },
+  async post(text, { anon, priv, lg }) {
+    const name = anon ? "" : profile?.username || "";
+    if (priv) return fb.addDoc(fb.collection(db, "suggestions"), { text, name, at: fb.serverTimestamp() });
+    const ref = fb.doc(fb.collection(db, "ideas")), b = fb.writeBatch(db);
+    b.set(ref, { text, name, at: fb.serverTimestamp(), status: "open", up: 0, down: 0, lg: lg || "" });
+    b.set(fb.doc(db, "ideaAuthors", ref.id), { uid: user.uid });
+    await b.commit();
+    return ref.id;
+  },
+  async vote(id, v) {
+    const ref = fb.doc(db, "ideas", id), mineRef = fb.doc(db, "ideas", id, "votes", user.uid);
+    let out;
+    await fb.runTransaction(db, async (tx) => {
+      const [d, m] = [await tx.get(ref), await tx.get(mineRef)];
+      const had = m.exists() ? m.data().v : 0, now = had === v ? 0 : v, x = d.data();
+      const up = x.up + (now === 1 ? 1 : 0) - (had === 1 ? 1 : 0), down = x.down + (now === -1 ? 1 : 0) - (had === -1 ? 1 : 0);
+      tx.update(ref, { up, down });
+      if (now) tx.set(mineRef, { v: now }); else tx.delete(mineRef);
+      out = { up, down, mine: now };
+    });
+    return out;
+  },
+  setStatus: (id, status) => fb.updateDoc(fb.doc(db, "ideas", id), { status }),
+  async remove(id) { const b = fb.writeBatch(db); b.delete(fb.doc(db, "ideas", id)); b.delete(fb.doc(db, "ideaAuthors", id)); await b.commit(); },
+  async author(id) { const d = await fb.getDoc(fb.doc(db, "ideaAuthors", id)).catch(() => null); return d?.exists() ? nameOf(d.data().uid) : ""; },
+  async mineIds(ids) { return (await Promise.all(ids.map((id) => fb.getDoc(fb.doc(db, "ideaAuthors", id)).then((d) => (d.exists() && d.data().uid === user.uid ? id : "")).catch(() => "")))).filter(Boolean); },
+  async suggestions() { const r = await fb.getDocs(fb.query(fb.collection(db, "suggestions"), fb.orderBy("at", "desc"), fb.limit(50))); return r.docs.map((d) => ({ id: d.id, ...d.data() })); },
+  role: async () => (user ? roleOf(user.uid) : ""),
+};

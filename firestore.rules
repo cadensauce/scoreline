@@ -552,6 +552,55 @@ service cloud.firestore {
           && countsOk(get(/databases/$(database)/documents/reactions/$(item)).data, getAfter(/databases/$(database)/documents/reactions/$(item)).data, resource.data.e, '');
       }
     }
+    // Ideas board: anyone signed in posts an idea (with their username or anonymous) and votes 👍/👎 once per idea.
+    // Who wrote an idea is kept in ideaAuthors/{id}, which only the Owner and Mods can read, so "anonymous" stays
+    // anonymous to everyone else. Vote counts move only by your own vote (same idea as reactions).
+    function votesOk(before, after, had, now) {
+      return had != now && after.diff(before).affectedKeys().hasOnly(['up', 'down'])
+        && after.up == before.up + (now == 1 ? 1 : 0) - (had == 1 ? 1 : 0)
+        && after.down == before.down + (now == -1 ? 1 : 0) - (had == -1 ? 1 : 0);
+    }
+    function voteBefore(id) { return exists(/databases/$(database)/documents/ideas/$(id)/votes/$(request.auth.uid)) ? get(/databases/$(database)/documents/ideas/$(id)/votes/$(request.auth.uid)).data.v : 0; }
+    function voteAfter(id) { return existsAfter(/databases/$(database)/documents/ideas/$(id)/votes/$(request.auth.uid)) ? getAfter(/databases/$(database)/documents/ideas/$(id)/votes/$(request.auth.uid)).data.v : 0; }
+    match /ideas/{id} {
+      allow read: if member();
+      allow create: if member() && siteOpen()
+        && request.resource.data.keys().hasOnly(['text', 'name', 'at', 'status', 'up', 'down', 'lg'])
+        && request.resource.data.text is string && request.resource.data.text.size() >= 3 && request.resource.data.text.size() <= 300
+        && (request.resource.data.name == '' || request.resource.data.name == get(/databases/$(database)/documents/profiles/$(me())).data.username)
+        && request.resource.data.status == 'open' && request.resource.data.up == 0 && request.resource.data.down == 0
+        && request.resource.data.lg is string && request.resource.data.lg.size() <= 10
+        && request.resource.data.at == request.time
+        && getAfter(/databases/$(database)/documents/ideaAuthors/$(id)).data.uid == me();
+      // Voting.
+      allow update: if member() && siteOpen() && votesOk(resource.data, request.resource.data, voteBefore(id), voteAfter(id));
+      // Owner and Mods set the status (open / planned / done / not doing).
+      allow update: if member() && isMod() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['open', 'planned', 'done', 'no'];
+      // The author, the Owner or a Mod can delete it.
+      allow delete: if member() && (isMod() || get(/databases/$(database)/documents/ideaAuthors/$(id)).data.uid == me());
+      match /votes/{uid} {
+        allow get: if member() && me() == uid;
+        allow create, update: if member() && siteOpen() && me() == uid && request.resource.data.keys().hasOnly(['v']) && request.resource.data.v in [1, -1]
+          && votesOk(get(/databases/$(database)/documents/ideas/$(id)).data, getAfter(/databases/$(database)/documents/ideas/$(id)).data, voteBefore(id), request.resource.data.v);
+        allow delete: if member() && me() == uid
+          && votesOk(get(/databases/$(database)/documents/ideas/$(id)).data, getAfter(/databases/$(database)/documents/ideas/$(id)).data, resource.data.v, 0);
+      }
+    }
+    match /ideaAuthors/{id} {
+      allow get: if member() && (isMod() || resource.data.uid == me());
+      allow create: if member() && request.resource.data.keys().hasOnly(['uid']) && request.resource.data.uid == me()
+        && existsAfter(/databases/$(database)/documents/ideas/$(id));
+      allow delete: if member() && (isMod() || resource.data.uid == me());
+    }
+    // Private suggestions (only the Scoreline team reads them): named or anonymous.
+    match /suggestions/{id} {
+      allow create: if member() && request.resource.data.keys().hasOnly(['text', 'name', 'at'])
+        && request.resource.data.text is string && request.resource.data.text.size() >= 3 && request.resource.data.text.size() <= 500
+        && (request.resource.data.name == '' || request.resource.data.name == get(/databases/$(database)/documents/profiles/$(me())).data.username)
+        && request.resource.data.at == request.time;
+      allow read, delete: if member() && roleOf(me()) in ['owner', 'dev', 'mod'];
+    }
     // Agreed to the chat rules (once). Needed before sending messages.
     match /chatOk/{uid} {
       allow get, delete: if member() && me() == uid;
