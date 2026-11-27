@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795816708" />
+  <meta name="build" content="1795816822" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -163,6 +163,7 @@
     .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; font-size: 12px; color: var(--muted); }
     .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 8px; } .card-tags span { padding: 2px 9px; border-radius: 999px; background: var(--panel-2, var(--line)); color: var(--text); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
     .fe { font-style: normal; } @media (max-width: 400px) { .fe { display: none; } }   /* filter emojis: only where there is room */
+    .flt-sep { align-self: center; padding: 0 3px; color: var(--muted); font-style: normal; opacity: .6; user-select: none; }
     .venue-card { padding: 14px 16px !important; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
     .p-college { color: var(--text) !important; font-weight: 700; }
     .vc-top { display: flex; align-items: center; gap: 12px; padding-bottom: 10px; margin-bottom: 4px; border-bottom: 1px solid var(--line); } .vc-ic { font-size: 22px; } .vc-top b { display: block; font-size: 15px; } .vc-top small { color: var(--muted); font-size: 12.5px; }
@@ -1603,7 +1604,7 @@
     let state = {
       tab: store.get("tab", "home"),
       favs: new Set(cleanFavs(store.get("favs", []))),
-      filter: store.get("filter", "all"),
+      filters: new Set((() => { const f = store.get("filters", null); if (Array.isArray(f)) return f; const old = store.get("filter", "all"); return old && old !== "all" ? [old] : []; })().filter((k) => ["live", "close", "fav"].includes(k))),
       offset: { nfl: 0, cfb: 0, nba: 0, mlb: 0 },
       f1Table: "drivers",
     };
@@ -1767,9 +1768,17 @@
       if (state === "post") { const t = teamsOf(ev), g = Math.abs(Number(t[0]?.score) - Number(t[1]?.score)); if (isNaN(g)) return ""; return g <= ({ mlb: 1, nfl: 3, cfb: 3, nba: 3 }[key] ?? 1) ? "😮‍💨 Down to the wire" : ""; }
       return "";
     }
+    // Filters you can combine: Live, Closest (sorts) and ★ My teams. All = none on.
+    const fl = (k) => state.filters.has(k), noFilters = () => !state.filters.size;
+    const filterPills = () => '<button type="button" data-filter="all" class="' + (noFilters() ? "active" : "") + '">All</button><i class="flt-sep" aria-hidden="true">|</i>' +
+      [["live", "<i class=fe>🔴 </i>Live"], ["close", "<i class=fe>🔥 </i>Closest"], ["fav", "⭐"]].map(([k, l]) => '<button type="button" data-filter="' + k + '" class="' + (fl(k) ? "active" : "") + '" aria-pressed="' + fl(k) + '"' + (k === "fav" ? ' aria-label="My teams" title="My teams"' : "") + ">" + l + "</button>").join("");
     function applyFilter(evs, key) {
-      if (state.filter === "close") return evs.slice().sort((a, b) => closeness(a, key || leagueOf(a)) - closeness(b, key || leagueOf(b)));
-      return state.filter === "live" ? evs.filter(isLive) : state.filter === "fav" ? evs.filter(hasFav) : evs;
+      let r = evs;
+      if (fl("fav")) r = r.filter(hasFav);
+      if (fl("live")) r = r.filter(isLive);
+      if (fl("close")) r = r.slice().sort((a, b) => closeness(a, key || leagueOf(a)) - closeness(b, key || leagueOf(b)));
+      return r;
+
     }
     const leagueOf = (ev) => ev.__lg || "";
     // Closest Games: lower = closer. Live games first (closest to 50/50 by win probability, else by score gap),
@@ -2034,8 +2043,8 @@
       shownWeek[key] = res.week || 0;
       const events = applyFilter(sortEvents(res.events), key);
       const when = viewOf(key) === "day" ? (dayOff[key] === 0 ? "today" : "on " + dateAt(dayOff[key]).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })) : weekLabel(key).toLowerCase();
-      const body = !events.length ? '<div class="empty">' + (state.filter === "live" ? "No live games right now." : state.filter === "fav" ? "None of your ★ teams play " + esc(when) + "." : "No games " + esc(when) + ".") + "</div>"
-        : res.grouped && state.filter !== "close" ? groupByDay(events, key) : state.filter !== "close" && viewOf(key) === "day" ? (() => { let i = 0; return slotsHtml(events, key, () => i++); })() : '<div class="grid">' + events.map((e, i) => gameCard(e, key, i)).join("") + "</div>";
+      const body = !events.length ? '<div class="empty">' + (fl("live") && fl("fav") ? "None of your ★ teams are live right now." : fl("live") ? "No live games right now." : fl("fav") ? "None of your ★ teams play " + esc(when) + "." : "No games " + esc(when) + ".") + "</div>"
+        : res.grouped && !fl("close") ? groupByDay(events, key) : !fl("close") && viewOf(key) === "day" ? (() => { let i = 0; return slotsHtml(events, key, () => i++); })() : '<div class="grid">' + events.map((e, i) => gameCard(e, key, i)).join("") + "</div>";
       paint(main, barHtml(L.name, key) + body, key);
       centerChip(main.querySelector(".dchip.on"), true);   // glide, never jump (a tap may already be sliding it)
       if (searchQ[key]) applySearch(key);
@@ -2090,7 +2099,7 @@
       const paged = !!L?.paging, day = paged && viewOf(key) === "day";
       const toggle = paged ? '<div class="seg chips vt">' + [["week", "Week"], ["day", "Day"]].map(([k, l]) => '<button type="button" data-view="' + k + '" class="' + (viewOf(key) === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
       const pager = paged && !day ? '<div class="pager"><button class="pill-btn" type="button" data-page="-1" aria-label="Previous">‹</button><span class="label">' + esc(weekLabel(key)) + '</span><button class="pill-btn" type="button" data-page="1" aria-label="Next">›</button></div>' : "";
-      const liveBtn = key === "f1" ? '<button type="button" class="pill-btn f1-follow ' + (state.favs.has("f1") ? "on" : "") + '" data-fav="f1" aria-label="Follow Formula 1"><span class="fo">★ Following F1</span><span class="fn">☆ Follow F1</span></button>' : key !== "f1" ? '<div class="seg chips">' + [["all", "All"], ["fav", "<i class=fe>⭐ </i>My teams"], ["live", "<i class=fe>🔴 </i>Live"], ["close", "<i class=fe>🔥 </i>Closest"]].map(([k, l]) => '<button type="button" data-filter="' + k + '" class="' + (state.filter === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
+      const liveBtn = key === "f1" ? '<button type="button" class="pill-btn f1-follow ' + (state.favs.has("f1") ? "on" : "") + '" data-fav="f1" aria-label="Follow Formula 1"><span class="fo">★ Following F1</span><span class="fn">☆ Follow F1</span></button>' : key !== "f1" ? '<div class="seg chips flt">' + filterPills() + "</div>" : "";
       const search = paged ? '<div class="search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" data-search placeholder="Search ' + esc(L.short || L.name) + ' teams" autocomplete="off" value="' + esc(searchQ[key] || "") + '"><div class="sres" data-sres></div></div>' : "";
       // One title row (with a search icon), one row of filters + Week/Day, then the week or day picker.
       const open = paged && (searchOpen[key] || searchQ[key]);
@@ -2188,7 +2197,7 @@
       const liveEvs = [];
       keys.forEach((k, i) => { if (results[i].status === "fulfilled") (results[i].value.events || []).filter(isLive).forEach((e) => { liveEvs.push([e, k]); liveIds.add(e.id); }); });
       liveEvs.sort((a, b) => hasFav(b[0]) - hasFav(a[0]));
-      if (liveEvs.length && state.filter !== "fav") {
+      if (liveEvs.length && !fl("fav")) {
         anyLive = true;
         html += '<div class="section-title live-title"><span class="ldot"></span><b>Live now</b><span class="muted">' + liveEvs.length + " game" + (liveEvs.length > 1 ? "s" : "") + '</span></div><div class="grid">' + liveEvs.map(([e, k], i) => gameCard(e, k, i, true)).join("") + "</div>";
       }
@@ -2197,11 +2206,11 @@
         if (results[i].status !== "fulfilled") return;
         (results[i].value.events || []).forEach((e) => { if (hasFav(e) && !liveIds.has(e.id)) favEvents.push([e, k]); });
       });
-      if (favEvents.length && state.filter !== "fav") {
+      if (favEvents.length && !fl("fav")) {
         html += '<div class="section-title"><b>★ Your teams</b></div><div class="grid">' + favEvents.map(([e, k], i) => gameCard(e, k, i, true)).join("") + "</div>";
       }
-      if (state.filter === "all") html += playersHomeHtml(keys, results, f1);
-      if (f1?.events?.[0] && state.filter === "all") html += f1Mini(f1.events[0]);
+      if (noFilters()) html += playersHomeHtml(keys, results, f1);
+      if (f1?.events?.[0] && noFilters()) html += f1Mini(f1.events[0]);
       keys.forEach((k, i) => {
         const L = LEAGUES[k];
         if (results[i].status !== "fulfilled") { html += '<div class="section-title"><b>' + esc(L.name) + '</b></div><div class="error">Couldn\'t load ' + esc(L.name) + ".</div>"; return; }
@@ -2209,7 +2218,7 @@
         evs = applyFilter(evs, k);
         if (evs.some(isLive)) anyLive = true;
         // Games already shown above (Live now, Your teams) aren't repeated in the sport lists.
-        if (state.filter !== "fav") evs = evs.filter((e) => !liveIds.has(e.id) && !favEvents.some(([x]) => x.id === e.id));
+        if (!fl("fav")) evs = evs.filter((e) => !liveIds.has(e.id) && !favEvents.some(([x]) => x.id === e.id));
         // Today's games first, then upcoming, then finished.
         const t = ymd(new Date()), rank = (e) => { const d0 = ymd(new Date(e.date)); return isLive(e) ? 0 : d0 === t ? 1 : e.status?.type?.state === "pre" ? 2 : 3; };
         evs = evs.slice().sort((a, b) => rank(a) - rank(b) || (rank(a) === 3 ? new Date(b.date) - new Date(a.date) : new Date(a.date) - new Date(b.date)));
@@ -2694,7 +2703,14 @@
         return Promise.resolve(HEAT && W ? Promise.all(["nfl", "cfb", "nba"].map((x) => W.ready(x).catch(() => {}))) : 0).then(() => render(true));
       }
       const flt = e.target.closest("[data-filter]");
-      if (flt) { state.filter = flt.dataset.filter; store.set("filter", state.filter); if (state.filter === "close" && window.ScorelineWP) Promise.all(["nfl", "cfb", "nba"].map((x) => window.ScorelineWP.ready(x).catch(() => {}))).then(() => render(false)); $("main").querySelectorAll("[data-filter]").forEach((b) => b.classList.toggle("active", b === flt)); return softSwap(); }
+      if (flt) {
+        const k = flt.dataset.filter;
+        if (k === "all") state.filters.clear(); else if (state.filters.has(k)) state.filters.delete(k); else state.filters.add(k);
+        store.set("filters", [...state.filters]); buzz(8);
+        $("main").querySelectorAll(".flt").forEach((row) => { row.innerHTML = filterPills(); });
+        if (k === "close" && fl("close") && window.ScorelineWP) Promise.all(["nfl", "cfb", "nba"].map((x) => window.ScorelineWP.ready(x).catch(() => {}))).then(() => render(false));
+        return softSwap();
+      }
       const f1t = e.target.closest("[data-f1t]");
       if (f1t) { state.f1Table = f1t.dataset.f1t; return render(); }
       const ap = e.target.closest("[data-ap]");
@@ -6814,7 +6830,7 @@
     checkForAppUpdate();
 
     if (state.tab === "you") state.tab = "you";
-    if (state.filter === "close") window.addEventListener("load", () => window.ScorelineWP && Promise.all(["nfl", "cfb", "nba"].map((x) => window.ScorelineWP.ready(x).catch(() => {}))).then(() => render(false)));
+    if (fl("close")) window.addEventListener("load", () => window.ScorelineWP && Promise.all(["nfl", "cfb", "nba"].map((x) => window.ScorelineWP.ready(x).catch(() => {}))).then(() => render(false)));
     if (![...ALL_SPORTS, "home", "you"].includes(state.tab)) state.tab = "home";
     Promise.all([Promise.resolve(render()).catch(() => {}), new Promise((r) => setTimeout(r, 900))]).finally(hideSplash);
     reopenFromAddress();   // refreshed on a game / player / team / driver: open it again
