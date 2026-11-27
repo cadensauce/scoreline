@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795816822" />
+  <meta name="build" content="1795816423" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -481,8 +481,8 @@
     .btab { transition: color var(--t-fast); }
     .mobile-app .card:active, .mobile-app .f-row:active, .mobile-app .row:active, .mobile-app button.ldr:active { background: var(--panel-2); }
     #splash { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; transition: opacity .35s ease; }
-    #splash svg { animation: splashIn .45s var(--ease) both; }
-    #splash b { font-family: var(--display); font-size: 30px; font-weight: 650; letter-spacing: -.01em; animation: splashIn .45s .06s var(--ease) both; }
+    #splash svg { animation: none; }   /* no entrance animation: it takes over from the phone's own launch logo without a flicker */
+    #splash b { font-family: var(--display); font-size: 30px; font-weight: 650; letter-spacing: -.01em; }
     #splash.out { opacity: 0; pointer-events: none; }
     html.mobile-app, html.mobile-app body { scrollbar-width: none; } html.mobile-app ::-webkit-scrollbar { display: none; }
     @keyframes splashIn { from { opacity: 0; transform: translateY(6px); } }
@@ -563,6 +563,22 @@
     .dev-form input[type="number"] { flex: 0 1 110px; } .dev-form input:focus { border-color: var(--muted); } .dev-form .pill-btn { flex: none; }
     .dev-form select { flex: 0 1 140px; height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; }
     .va-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    /* Customize: parts you turned off are hidden */
+    html.h-wp [data-wpsec], html.h-plays [data-field], html.h-plays [data-feedsec], html.h-plays [data-chart],
+    html.h-players .sheet [data-c="players"], html.h-tstats .sheet [data-c="stats"]:not([data-wpsec]),
+    html.h-pred .sheet .pred, html.h-pred .sheet .pick-sec, html.h-venue .venue-card, html.h-venue .sheet [data-wx], html.h-tags .card-tags { display: none !important; }
+    /* Text size (Customize) */
+    html[data-ts="l"] #main, html[data-ts="l"] .sheet-root { zoom: 1.12; }
+    html[data-ts="xl"] #main, html[data-ts="xl"] .sheet-root { zoom: 1.25; }
+    .ts-seg { display: flex; gap: 6px; flex-wrap: wrap; } .ts-seg button { flex: 1; min-width: 90px; height: 38px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-weight: 700; cursor: pointer; } .ts-seg button.on { background: var(--text); color: var(--bg); }
+    /* Live ticker along the bottom */
+    .ticker { position: fixed; z-index: 60; left: 50%; transform: translateX(-50%); bottom: 16px; display: flex; align-items: center; gap: 10px; width: min(560px, calc(100vw - 24px)); padding: 9px 14px; border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(14px); color: var(--text); font: inherit; font-size: 13px; text-align: left; cursor: pointer; box-shadow: 0 6px 24px rgba(0,0,0,.3); }
+    .ticker[hidden] { display: none; }
+    .tk-live { flex: none; padding: 2px 7px; border-radius: 99px; background: var(--live); color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
+    .tk-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ticker.tk-in .tk-t { animation: tkIn .35s var(--ease) both; } @keyframes tkIn { from { opacity: 0; transform: translateY(6px); } }
+    @media (max-width: 720px) { .ticker { bottom: calc(80px + env(safe-area-inset-bottom)); } html.has-ticker footer { padding-bottom: calc(140px + env(safe-area-inset-bottom)); } }
+    html.sheet-open .ticker { display: none; }
     #main.you-wait > :not(.bar) { opacity: 0; } #main > * { transition: opacity .18s ease; }   /* You page: sections appear together */
     .va-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 9999; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 24px); padding: 8px 8px 8px 14px; border-radius: 999px; background: var(--text); color: var(--bg); font-size: 13px; box-shadow: 0 6px 24px rgba(0,0,0,.35); white-space: nowrap; }
     .va-bar span { overflow: hidden; text-overflow: ellipsis; } .va-bar button { flex: none; height: 30px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--bg); color: var(--text); font: inherit; font-weight: 800; cursor: pointer; }
@@ -5971,6 +5987,7 @@
         '<div class="g-note">Pick up to ' + MAX_PINS + ". Home shows only these sports.</div>" +
         '<div class="section-title"><b>Settings</b></div><div class="panel nteams">' +
           (MOBILE_APP ? '<div class="opt nteam" role="button" tabindex="0" data-open-notifs><span><b>Notifications</b><small>' + esc(alertsOn ? "On" + (quietLabel() ? " · quiet " + quietLabel() : "") : "Off") + '</small></span><span class="chev">›</span></div>' : "") +
+          '<div class="opt nteam" role="button" tabindex="0" data-open-custom><span><b>Customize</b><small>Choose what shows on game pages, the live ticker and text size</small></span><span class="chev">›</span></div>' +
           (signedIn ? '<div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>Account and security</b><small>Email, two-step sign-in, sign-in codes, log out' + (reqs ? " · " + reqs + " friend request" + (reqs === "1" ? "" : "s") : "") + '</small></span><span class="chev">›</span></div>' : "") +
           '<div class="opt nteam" role="button" tabindex="0" data-open-dev hidden><span><b>Developer tools</b><small>Only shown to the Scoreline team</small></span><span class="chev">›</span></div>' +
         "</div>" +
@@ -6107,6 +6124,64 @@
         return window.scorelineChat?.share({ k: "fantasy", lg: L.mode === "marks" ? "marks" : "free", id: String(L.id).slice(0, 40), t: String(L.name || "Fantasy league").slice(0, 80), s: (tabName(L.lg) + " · " + (L.mode === "marks" ? "Marks league" : "Free league")).slice(0, 80) });
       }
     });
+    /* ---------- Customize: show only what you want (game page parts, the live ticker, emojis) + text size ---------- */
+    const CUSTOM = [
+      ["wp", "Win probability", "The chart and live chances"],
+      ["plays", "Plays", "The play-by-play and the field / court / diamond"],
+      ["players", "Player stats", "Box scores and leaders"],
+      ["tstats", "Team stats", "Team totals and comparisons"],
+      ["pred", "Predictions and picks", "Who's favored and your pick"],
+      ["venue", "Stadium and weather", "Crowd, surface, weather, TV"],
+      ["tags", "Fun labels", "🔥 Nail-biter, 🦃 Thanksgiving game and the like"],
+      ["ticker", "Live ticker", "The latest plays from live games, along the bottom"],
+    ];
+    const hidden = () => store.get("hide", {}) || {};
+    const applyCustom = () => { const h = hidden(); CUSTOM.forEach(([k]) => document.documentElement.classList.toggle("h-" + k, !!h[k])); document.documentElement.dataset.ts = store.get("textSize", "m"); };
+    applyCustom();
+    const TEXT_SIZES = [["m", "Normal"], ["l", "Large"], ["xl", "Extra large"]];
+    function customHtml() {
+      const h = hidden(), ts = store.get("textSize", "m");
+      return '<div class="section-title"><b>Text size</b></div><div class="panel"><div class="seg chips ts-seg">' + TEXT_SIZES.map(([k, n]) => '<button type="button" class="' + (ts === k ? "on" : "") + '" data-ts="' + k + '">' + n + "</button>").join("") + "</div><p class=\"g-note\" style=\"margin:8px 2px 0\">Makes scores, plays and cards easier to read.</p></div>" +
+        '<div class="section-title"><b>Show</b></div><div class="panel">' + CUSTOM.map(([k, n, d]) => '<button type="button" class="opt ' + (h[k] ? "" : "on") + '" data-custom="' + k + '"><span><b>' + esc(n) + "</b><small>" + esc(d) + '</small></span><i class="switch"></i></button>').join("") + "</div>" +
+        '<p class="g-note">Turned off parts are just hidden. Scores always show.</p>';
+    }
+    function openCustom() { const v = { kind: "custom", key: "custom" }; if (!pushView(v)) return; setBody(v, "Customize", customHtml()); }
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("[data-open-custom]")) return openCustom();
+      const c = e.target.closest("[data-custom]");
+      if (c) { const h = hidden(); h[c.dataset.custom] = !h[c.dataset.custom]; store.set("hide", h); applyCustom(); c.classList.toggle("on", !h[c.dataset.custom]); buzz(8); if (c.dataset.custom === "ticker") tickTicker(); return; }
+      const t = e.target.closest("[data-ts]");
+      if (t && t.closest(".ts-seg")) { store.set("textSize", t.dataset.ts); applyCustom(); t.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === t)); buzz(8); }
+    });
+    /* ---------- Live ticker: the latest play from live games, along the bottom (tap to open the game) ---------- */
+    let tickerItems = [], tickerI = 0, tickerAt = 0;
+    const tickerEl = document.createElement("button");
+    tickerEl.type = "button"; tickerEl.className = "ticker"; tickerEl.hidden = true; tickerEl.setAttribute("aria-live", "polite");
+    document.body.appendChild(tickerEl);
+    const SPORT_EMOJI = { nfl: "🏈", cfb: "🏈", nba: "🏀", mlb: "⚾" };
+    async function loadTicker() {
+      const lgs = pins().filter((k) => LEAGUES[k] && k !== "f1");
+      const all = await Promise.all(lgs.map((k) => getJSON(API + LEAGUES[k].path + "/scoreboard" + (LEAGUES[k].extra ? "?" + LEAGUES[k].extra.replace(/^&/, "") : "")).then((d) => (d.events || []).map((e) => ({ e, k }))).catch(() => [])));
+      tickerItems = all.flat().filter(({ e }) => e.status?.type?.state === "in").map(({ e, k }) => {
+        const c = e.competitions?.[0] || {}, t = (c.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
+        const last = c.situation?.lastPlay?.text || "";
+        const score = (t[0]?.team?.abbreviation || "") + " " + (t[0]?.score ?? "") + "–" + (t[1]?.score ?? "") + " " + (t[1]?.team?.abbreviation || "");
+        return { k, id: e.id, text: (SPORT_EMOJI[k] || "") + " " + score + " · " + (e.status?.type?.shortDetail || "") + (last ? " · " + last : "") };
+      });
+      tickerAt = Date.now();
+    }
+    async function tickTicker() {
+      const off = hidden().ticker || document.hidden;
+      if (!off && Date.now() - tickerAt > 30000) await loadTicker().catch(() => {});
+      if (off || !tickerItems.length) { tickerEl.hidden = true; document.documentElement.classList.remove("has-ticker"); return; }
+      const it = tickerItems[tickerI++ % tickerItems.length];
+      tickerEl.dataset.lg = it.k; tickerEl.dataset.id = it.id;
+      tickerEl.innerHTML = '<span class="tk-live">LIVE</span><span class="tk-t">' + esc(it.text) + "</span>";
+      tickerEl.hidden = false; document.documentElement.classList.add("has-ticker");
+      tickerEl.classList.remove("tk-in"); void tickerEl.offsetWidth; tickerEl.classList.add("tk-in");
+    }
+    tickerEl.addEventListener("click", () => { if (tickerEl.dataset.id) openGame(tickerEl.dataset.lg, tickerEl.dataset.id); });
+    setInterval(tickTicker, 7000); setTimeout(tickTicker, 2500);
     // Find people (top bar): search usernames as you type (similar names too), open a profile, or send a request.
     // Results are small cards like Roblox's: photo, name, @username, a status line and one button.
     const PEOPLE_HINT = '<p class="muted people-hint">Type a username. The @ is optional.</p>';
