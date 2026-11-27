@@ -514,6 +514,35 @@ service cloud.firestore {
         allow delete: if member() && resource.data.from == me();
       }
     }
+    // Reactions (🔥 😂 😮 😭 🐐 👀) on plays, news and moves. reactions/{item} holds the counts anyone can see;
+    // reactions/{item}/by/{uid} is your one reaction. Both change together in one write, and the rules check the counts
+    // move by exactly your change, so nobody can fake them or react twice.
+    function rk() { return ['fire', 'lol', 'wow', 'cry', 'goat', 'eyes']; }
+    function cnt(d, k) { return d.get('c', {}).get(k, 0); }
+    function oneMove(before, after, had, now, k) {
+      return cnt(after, k) == cnt(before, k) + (k == now ? 1 : 0) - (k == had ? 1 : 0);
+    }
+    function countsOk(before, after, had, now) {
+      return had != now && after.keys().hasOnly(['c']) && after.c.keys().hasOnly(rk())
+        && oneMove(before, after, had, now, 'fire') && oneMove(before, after, had, now, 'lol') && oneMove(before, after, had, now, 'wow')
+        && oneMove(before, after, had, now, 'cry') && oneMove(before, after, had, now, 'goat') && oneMove(before, after, had, now, 'eyes');
+    }
+    function mineBefore(item) { return exists(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)) ? get(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)).data.e : ''; }
+    function mineAfter(item) { return existsAfter(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)) ? getAfter(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)).data.e : ''; }
+    match /reactions/{item} {
+      allow get: if true;   // just counts, no names
+      allow create, update: if member() && item.matches('^[A-Za-z0-9_.-]{1,120}$')
+        && countsOk(resource == null ? {} : resource.data, request.resource.data, mineBefore(item), mineAfter(item));
+      match /by/{uid} {
+        allow get: if member() && me() == uid;
+        allow create, update: if member() && me() == uid && request.resource.data.keys().hasOnly(['e']) && request.resource.data.e in rk()
+          && existsAfter(/databases/$(database)/documents/reactions/$(item))
+          && countsOk(exists(/databases/$(database)/documents/reactions/$(item)) ? get(/databases/$(database)/documents/reactions/$(item)).data : {},
+                      getAfter(/databases/$(database)/documents/reactions/$(item)).data, mineBefore(item), request.resource.data.e);
+        allow delete: if member() && me() == uid
+          && countsOk(get(/databases/$(database)/documents/reactions/$(item)).data, getAfter(/databases/$(database)/documents/reactions/$(item)).data, resource.data.e, '');
+      }
+    }
     // Agreed to the chat rules (once). Needed before sending messages.
     match /chatOk/{uid} {
       allow get, delete: if member() && me() == uid;

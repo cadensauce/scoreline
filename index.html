@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795816822" />
+  <meta name="build" content="1795817292" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -481,8 +481,8 @@
     .btab { transition: color var(--t-fast); }
     .mobile-app .card:active, .mobile-app .f-row:active, .mobile-app .row:active, .mobile-app button.ldr:active { background: var(--panel-2); }
     #splash { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; transition: opacity .35s ease; }
-    #splash svg { animation: splashIn .45s var(--ease) both; }
-    #splash b { font-family: var(--display); font-size: 30px; font-weight: 650; letter-spacing: -.01em; animation: splashIn .45s .06s var(--ease) both; }
+    #splash svg { animation: none; }   /* no entrance animation: it takes over from the phone's own launch logo without a flicker */
+    #splash b { font-family: var(--display); font-size: 30px; font-weight: 650; letter-spacing: -.01em; }
     #splash.out { opacity: 0; pointer-events: none; }
     html.mobile-app, html.mobile-app body { scrollbar-width: none; } html.mobile-app ::-webkit-scrollbar { display: none; }
     @keyframes splashIn { from { opacity: 0; transform: translateY(6px); } }
@@ -563,6 +563,39 @@
     .dev-form input[type="number"] { flex: 0 1 110px; } .dev-form input:focus { border-color: var(--muted); } .dev-form .pill-btn { flex: none; }
     .dev-form select { flex: 0 1 140px; height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; }
     .va-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    /* Customize: parts you turned off are hidden */
+    html.h-wp [data-wpsec], html.h-plays [data-field], html.h-plays [data-feedsec], html.h-plays [data-chart],
+    html.h-players .sheet [data-c="players"], html.h-tstats .sheet [data-c="stats"]:not([data-wpsec]),
+    html.h-pred .sheet .pred, html.h-pred .sheet .pick-sec, html.h-venue .venue-card, html.h-venue .sheet [data-wx], html.h-tags .card-tags { display: none !important; }
+    /* Text size (Customize) */
+    html[data-ts="l"] #main, html[data-ts="l"] .sheet-root { zoom: 1.12; }
+    html[data-ts="xl"] #main, html[data-ts="xl"] .sheet-root { zoom: 1.25; }
+    .ts-seg { display: flex; gap: 6px; flex-wrap: wrap; } .ts-seg button { flex: 1; min-width: 90px; height: 38px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-weight: 700; cursor: pointer; } .ts-seg button.on { background: var(--text); color: var(--bg); }
+    /* Reactions */
+    .bz-react { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; min-height: 30px; }
+    .rx { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2, var(--panel)); color: var(--text); font: inherit; font-size: 14px; cursor: pointer; }
+    .rx b { font-size: 12.5px; } .rx.on { border-color: var(--text); background: color-mix(in srgb, var(--text) 14%, var(--panel)); }
+    .rx.add { color: var(--muted); } .rx.add i { font-style: normal; font-weight: 800; font-size: 12px; } .rx.pick { padding: 0 8px; font-size: 17px; animation: tkIn .2s var(--ease) both; }
+    .rx-total { font-size: 12px; color: var(--muted); margin-left: 4px; }
+    .f-react { justify-content: center; margin: 8px 0 4px; }
+    /* The Buzz */
+    .bz-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 10px; } .bz-chips button { flex: none; height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; } .bz-chips button.on { background: var(--text); color: var(--bg); }
+    .bz-item { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); margin-bottom: 10px; }
+    .bz-top { display: flex; gap: 12px; } .bz-e { font-size: 24px; line-height: 1.1; flex: none; } .bz-txt { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    .bz-txt b { font-size: 15.5px; line-height: 1.3; overflow-wrap: anywhere; } .bz-txt small { color: var(--muted); font-size: 12.5px; line-height: 1.4; overflow-wrap: anywhere; } .bz-meta a { color: var(--text); }
+    .bz-move { display: flex; align-items: center; gap: 8px; } .bz-move i { font-style: normal; color: var(--muted); }
+    .tbadge { display: inline-grid; place-items: center; min-width: 38px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--tc, #555); color: #fff; font-size: 11.5px; font-weight: 800; letter-spacing: .02em; box-shadow: inset 0 0 0 2px rgba(255,255,255,.18); }
+    .tbadge.fa { background: var(--line); color: var(--text); } .tbadge.q { background: var(--line); color: var(--muted); }
+    .bz-home .bz-item:nth-child(n+3) { display: none; } @media (min-width: 721px) { .bz-home { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } .bz-home .bz-item { margin: 0; } .bz-home .bz-item:nth-child(n+3) { display: block; } }
+    .kd-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 0 12px; } .kd { flex: none; display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); } .kd b { font-size: 13px; } .kd small { color: var(--muted); font-size: 12px; } .kd.soon { border-color: var(--live); } .kd.past { opacity: .75; }
+    /* Live ticker along the bottom */
+    .ticker { position: fixed; z-index: 60; left: 50%; transform: translateX(-50%); bottom: 16px; display: flex; align-items: center; gap: 10px; width: min(560px, calc(100vw - 24px)); padding: 9px 14px; border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(14px); color: var(--text); font: inherit; font-size: 13px; text-align: left; cursor: pointer; box-shadow: 0 6px 24px rgba(0,0,0,.3); }
+    .ticker[hidden] { display: none; }
+    .tk-live { flex: none; padding: 2px 7px; border-radius: 99px; background: var(--live); color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
+    .tk-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ticker.tk-in .tk-t { animation: tkIn .35s var(--ease) both; } @keyframes tkIn { from { opacity: 0; transform: translateY(6px); } }
+    @media (max-width: 720px) { .ticker { bottom: calc(80px + env(safe-area-inset-bottom)); } html.has-ticker footer { padding-bottom: calc(140px + env(safe-area-inset-bottom)); } }
+    html.sheet-open .ticker { display: none; }
     #main.you-wait > :not(.bar) { opacity: 0; } #main > * { transition: opacity .18s ease; }   /* You page: sections appear together */
     .va-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 9999; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 24px); padding: 8px 8px 8px 14px; border-radius: 999px; background: var(--text); color: var(--bg); font-size: 13px; box-shadow: 0 6px 24px rgba(0,0,0,.35); white-space: nowrap; }
     .va-bar span { overflow: hidden; text-overflow: ellipsis; } .va-bar button { flex: none; height: 30px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--bg); color: var(--text); font: inherit; font-weight: 800; cursor: pointer; }
@@ -2210,6 +2243,7 @@
         html += '<div class="section-title"><b>★ Your teams</b></div><div class="grid">' + favEvents.map(([e, k], i) => gameCard(e, k, i, true)).join("") + "</div>";
       }
       if (noFilters()) html += playersHomeHtml(keys, results, f1);
+      if (noFilters()) html += '<div data-home-buzz>' + homeBuzzHtml + "</div>";   // The Buzz: newest news and moves
       if (f1?.events?.[0] && noFilters()) html += f1Mini(f1.events[0]);
       keys.forEach((k, i) => {
         const L = LEAGUES[k];
@@ -2229,6 +2263,7 @@
       });
       html += "</div>";
       paint(main, html, "home");
+      if (noFilters()) homeBuzz(main.querySelector("[data-home-buzz]")).catch(() => {});
       if (Date.now() - hpAt > 60_000) fillHomePicks().catch(() => {});
       renderTabs();
       stamp();
@@ -4623,7 +4658,9 @@
         }).reverse().join("") + "</div>";
       }
       html += '</div><div data-c="plays" class="sum-hide">' + stopsHtml(F) + '</div>';
+      if (P?.id && /^\d+$/.test(String(P.id))) html = html.replace('<div class="f-detail">', '<div class="bz-react f-react" data-react-id="p' + P.id + '"></div><div class="f-detail">');   // react to this play
       sec.innerHTML = html;
+      window.scorelineReact?.fill(sec);
       runFieldAnim(sec.querySelector("svg.field"), v.anim, !!still);
       // Fit each name tag to its real text width and centre it over the player (estimates drift with font metrics).
       sec.querySelectorAll(".f-lbl").forEach((t) => { try { const tw = t.getComputedTextLength(); if (!tw) return; const w = tw + 14, VW = +t.ownerSVGElement?.dataset.fw || t.ownerSVGElement?.viewBox?.baseVal?.width || 0, cx = +t.dataset.cx; const sv = t.ownerSVGElement, v0 = sv?.dataset.vx0 != null ? +sv.dataset.vx0 : 0, v1 = sv?.dataset.vx1 != null ? +sv.dataset.vx1 : VW, keep = (p) => Math.max(v0 + w / 2 + 4, Math.min(v1 - w / 2 - 4, p)); const lx = t.dataset.rel ? (t.dataset.ax ? keep(+t.dataset.ax) - +t.dataset.ax : cx) : VW ? keep(cx) : cx; t.setAttribute("x", lx); const r = t.previousElementSibling; if (r) { r.setAttribute("x", lx - w / 2); r.setAttribute("width", w); } } catch {} });
@@ -5971,6 +6008,7 @@
         '<div class="g-note">Pick up to ' + MAX_PINS + ". Home shows only these sports.</div>" +
         '<div class="section-title"><b>Settings</b></div><div class="panel nteams">' +
           (MOBILE_APP ? '<div class="opt nteam" role="button" tabindex="0" data-open-notifs><span><b>Notifications</b><small>' + esc(alertsOn ? "On" + (quietLabel() ? " · quiet " + quietLabel() : "") : "Off") + '</small></span><span class="chev">›</span></div>' : "") +
+          '<div class="opt nteam" role="button" tabindex="0" data-open-custom><span><b>Customize</b><small>Choose what shows on game pages, the live ticker and text size</small></span><span class="chev">›</span></div>' +
           (signedIn ? '<div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>Account and security</b><small>Email, two-step sign-in, sign-in codes, log out' + (reqs ? " · " + reqs + " friend request" + (reqs === "1" ? "" : "s") : "") + '</small></span><span class="chev">›</span></div>' : "") +
           '<div class="opt nteam" role="button" tabindex="0" data-open-dev hidden><span><b>Developer tools</b><small>Only shown to the Scoreline team</small></span><span class="chev">›</span></div>' +
         "</div>" +
@@ -6107,6 +6145,199 @@
         return window.scorelineChat?.share({ k: "fantasy", lg: L.mode === "marks" ? "marks" : "free", id: String(L.id).slice(0, 40), t: String(L.name || "Fantasy league").slice(0, 80), s: (tabName(L.lg) + " · " + (L.mode === "marks" ? "Marks league" : "Free league")).slice(0, 80) });
       }
     });
+    /* ---------- Customize: show only what you want (game page parts, the live ticker, emojis) + text size ---------- */
+    const CUSTOM = [
+      ["wp", "Win probability", "The chart and live chances"],
+      ["plays", "Plays", "The play-by-play and the field / court / diamond"],
+      ["players", "Player stats", "Box scores and leaders"],
+      ["tstats", "Team stats", "Team totals and comparisons"],
+      ["pred", "Predictions and picks", "Who's favored and your pick"],
+      ["venue", "Stadium and weather", "Crowd, surface, weather, TV"],
+      ["tags", "Fun labels", "🔥 Nail-biter, 🦃 Thanksgiving game and the like"],
+      ["ticker", "Live ticker", "The latest plays from live games, along the bottom"],
+    ];
+    const hidden = () => store.get("hide", {}) || {};
+    const applyCustom = () => { const h = hidden(); CUSTOM.forEach(([k]) => document.documentElement.classList.toggle("h-" + k, !!h[k])); document.documentElement.dataset.ts = store.get("textSize", "m"); };
+    applyCustom();
+    const TEXT_SIZES = [["m", "Normal"], ["l", "Large"], ["xl", "Extra large"]];
+    function customHtml() {
+      const h = hidden(), ts = store.get("textSize", "m");
+      return '<div class="section-title"><b>Text size</b></div><div class="panel"><div class="seg chips ts-seg">' + TEXT_SIZES.map(([k, n]) => '<button type="button" class="' + (ts === k ? "on" : "") + '" data-ts="' + k + '">' + n + "</button>").join("") + "</div><p class=\"g-note\" style=\"margin:8px 2px 0\">Makes scores, plays and cards easier to read.</p></div>" +
+        '<div class="section-title"><b>Show</b></div><div class="panel">' + CUSTOM.map(([k, n, d]) => '<button type="button" class="opt ' + (h[k] ? "" : "on") + '" data-custom="' + k + '"><span><b>' + esc(n) + "</b><small>" + esc(d) + '</small></span><i class="switch"></i></button>').join("") + "</div>" +
+        '<p class="g-note">Turned off parts are just hidden. Scores always show.</p>';
+    }
+    function openCustom() { const v = { kind: "custom", key: "custom" }; if (!pushView(v)) return; setBody(v, "Customize", customHtml()); }
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("[data-open-custom]")) return openCustom();
+      const c = e.target.closest("[data-custom]");
+      if (c) { const h = hidden(); h[c.dataset.custom] = !h[c.dataset.custom]; store.set("hide", h); applyCustom(); c.classList.toggle("on", !h[c.dataset.custom]); buzz(8); if (c.dataset.custom === "ticker") tickTicker(); return; }
+      const t = e.target.closest("[data-ts]");
+      if (t && t.closest(".ts-seg")) { store.set("textSize", t.dataset.ts); applyCustom(); t.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === t)); buzz(8); }
+    });
+    /* ---------- Live ticker: the latest play from live games, along the bottom (tap to open the game) ---------- */
+    let tickerItems = [], tickerI = 0, tickerAt = 0;
+    const tickerEl = document.createElement("button");
+    tickerEl.type = "button"; tickerEl.className = "ticker"; tickerEl.hidden = true; tickerEl.setAttribute("aria-live", "polite");
+    document.body.appendChild(tickerEl);
+    const SPORT_EMOJI = { nfl: "🏈", cfb: "🏈", nba: "🏀", mlb: "⚾" };
+    async function loadTicker() {
+      const lgs = pins().filter((k) => LEAGUES[k] && k !== "f1");
+      const all = await Promise.all(lgs.map((k) => getJSON(API + LEAGUES[k].path + "/scoreboard" + (LEAGUES[k].extra ? "?" + LEAGUES[k].extra.replace(/^&/, "") : "")).then((d) => (d.events || []).map((e) => ({ e, k }))).catch(() => [])));
+      tickerItems = all.flat().filter(({ e }) => e.status?.type?.state === "in").map(({ e, k }) => {
+        const c = e.competitions?.[0] || {}, t = (c.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
+        // Tidy the play text: no clock stamps or jersey numbers, first sentence only, short.
+        let last = String(c.situation?.lastPlay?.text || "").replace(/^\(\s*\d{1,2}:\d{2}\s*-?\s*\d?\w*\s*\)\s*/, "").replace(/#\d+\s*/g, "").replace(/\s*\([^)]*\)/g, "").trim();
+        last = last.split(/(?<=[a-z0-9])\.\s/)[0];
+        if (last.length > 90) last = last.slice(0, 88).replace(/\s+\S*$/, "") + "…";
+        const score = (t[0]?.team?.abbreviation || "") + " " + (t[0]?.score ?? "") + "–" + (t[1]?.score ?? "") + " " + (t[1]?.team?.abbreviation || "");
+        return { k, id: e.id, text: (SPORT_EMOJI[k] || "") + " " + score + " · " + (e.status?.type?.shortDetail || "") + (last ? " · " + last : "") };
+      });
+      tickerAt = Date.now();
+    }
+    async function tickTicker() {
+      const off = hidden().ticker || document.hidden;
+      if (!off && Date.now() - tickerAt > 30000) await loadTicker().catch(() => {});
+      if (off || !tickerItems.length) { tickerEl.hidden = true; document.documentElement.classList.remove("has-ticker"); return; }
+      const it = tickerItems[tickerI++ % tickerItems.length];
+      tickerEl.dataset.lg = it.k; tickerEl.dataset.id = it.id;
+      tickerEl.innerHTML = '<span class="tk-live">LIVE</span><span class="tk-t">' + esc(it.text) + "</span>";
+      tickerEl.hidden = false; document.documentElement.classList.add("has-ticker");
+      tickerEl.classList.remove("tk-in"); void tickerEl.offsetWidth; tickerEl.classList.add("tk-in");
+    }
+    tickerEl.addEventListener("click", () => { if (tickerEl.dataset.id) openGame(tickerEl.dataset.lg, tickerEl.dataset.id); });
+    setInterval(tickTicker, 7000); setTimeout(tickTicker, 2500);
+    /* ---------- The Buzz: news + moves (cuts, signings, trades, call-ups, injured list) with a bit of personality ----------
+       News headlines and move lists come from ESPN's public feeds; titles get an emoji by what happened. No news photos
+       (they belong to the photographers); teams show as colour badges, not logos. Every story links to its source. */
+    const BUZZ_LGS = ["nfl", "nba", "mlb", "cfb"];
+    const POS = "(?:QB|RB|FB|WR|TE|OL|OT|OG|G|C|T|DL|DE|DT|NT|LB|OLB|ILB|MLB|DB|CB|S|SS|FS|K|P|LS|KR|PR|LHP|RHP|P|1B|2B|3B|SS|OF|LF|CF|RF|DH|INF|UTIL|PG|SG|SF|PF|F|G-F|F-C|C-F|ATH)";
+    const teamBadge = (t) => t ? '<span class="tbadge" style="--tc:#' + esc(t.color || "555") + '">' + esc(t.abbreviation || "?") + "</span>" : "";
+    const FA = '<span class="tbadge fa" title="Free agent">FA</span>';
+    const LBL = (t, title) => '<span class="tbadge fa" title="' + title + '">' + t + "</span>";
+    const PS = LBL("PS", "Practice squad"), IR = LBL("IR", "Injured list"), WV = LBL("Waivers", "Waivers"), MIN = LBL("Minors", "Minor leagues"), SUS = LBL("Suspended", "Suspended"), TRD = LBL("Trade", "Trade");
+    // One move sentence → { emoji, title, from, to }. "Team" is the team that made the move.
+    function readMove(sentence, team) {
+      const T = team?.name || team?.displayName || "team", ab = teamBadge(team);
+      const nm = (sentence.match(new RegExp("^(?:[A-Z][a-z]+(?: [a-z]+){0,3})\\s+(?:" + POS + "\\s+)?([A-Z][\\w.'’-]+(?:\\s(?:[A-Z][\\w.'’-]+|III|II|IV|Jr\\.?|Sr\\.?)){1,3})")) || [])[1] || "";
+      const who = nm || "a player", s = sentence;
+      if (/^Waived/i.test(s)) return { e: "✂️", title: "The " + T + " waive " + who, from: ab, to: FA };
+      if (/^Released/i.test(s)) return { e: "✂️", title: who + " gets cut by the " + T + (/practice squad/i.test(s) ? "" : " 👀"), from: ab, to: FA };
+      if (/^Traded/i.test(s)) return { e: "🔄", title: "The " + T + " trade " + who + " 👀", from: ab, to: TRD };
+      if (/^Acquired/i.test(s)) return { e: "🔄", title: "The " + T + " land " + who + " in a trade", from: TRD, to: ab };
+      if (/^Claimed/i.test(s)) return { e: "🧲", title: "The " + T + " scoop up " + who + " off waivers", from: WV, to: ab };
+      if (/^Re-?signed|^Extended/i.test(s)) return { e: "🔁", title: who + " is staying with the " + T + " 🤝", from: ab, to: ab };
+      if (/^(Signed|Agreed to terms)/i.test(s) && /practice squad/i.test(s) && /\bto\b.*practice squad/i.test(s)) return { e: "✍️", title: "The " + T + " add " + who + " to the practice squad", from: FA, to: ab };
+      if (/^(Signed|Agreed to terms)/i.test(s) && /from the practice squad/i.test(s)) return { e: "⬆️", title: who + " gets promoted to the " + T + " roster 🎉", from: PS, to: ab };
+      if (/^(Signed|Agreed to terms)/i.test(s)) return { e: "✍️", title: "The " + T + " sign " + who + " 💰", from: FA, to: ab };
+      if (/^(Elevated|Recalled|Called up|Selected the contract)/i.test(s)) return { e: "⬆️", title: who + " gets the call-up (" + T + ")", from: /practice squad/i.test(s) ? PS : MIN, to: ab };
+      if (/^(Optioned|Assigned|Sent|Outrighted)/i.test(s)) return { e: "⬇️", title: who + " sent down by the " + T, from: ab, to: MIN };
+      if (/^Placed/i.test(s) && /suspend/i.test(s)) return { e: "⛔", title: who + " is suspended (" + T + ")", from: ab, to: SUS };
+      if (/^Placed/i.test(s)) return { e: "🩹", title: who + " heads to the injured list (" + T + ")", from: ab, to: IR };
+      if (/^(Activated|Reinstated)/i.test(s)) return { e: "💪", title: who + " is back for the " + T + "!", from: /injur|physically/i.test(s) ? IR : "", to: ab };
+      if (/^Designated/i.test(s) && /return/i.test(s)) return { e: "🔜", title: who + " is close to returning for the " + T, from: IR, to: ab };
+      if (/^Designated/i.test(s)) return { e: "📋", title: "The " + T + " designate " + who + " for assignment", from: ab, to: "" };
+      if (/^(Fired|Dismissed|Relieved)/i.test(s)) return { e: "🔥", title: "The " + T + " part ways with " + who + " 👀", from: ab, to: "" };
+      if (/^(Hired|Named)/i.test(s)) return { e: "🤝", title: "The " + T + " hire " + who, from: "", to: ab };
+      if (/^Retired|announced (his|their) retirement/i.test(s)) return { e: "👋", title: who + " retires. Thanks for the memories!", from: ab, to: "" };
+      return { e: "📝", title: T + ": " + s.replace(/\.$/, ""), from: "", to: "" };
+    }
+    // A move description can hold several sentences and several players ("Elevated A and B from ..."): one item each.
+    function splitMoves(desc) {
+      return String(desc || "").split(/(?<=[a-z\)])\.\s+(?=[A-Z])/).map((x) => x.trim().replace(/\.$/, "")).filter(Boolean).flatMap((s) => {
+        const m = s.match(new RegExp("^([A-Z][a-z]+(?: [a-z]+){0,3})\\s+(" + POS + "\\s+[^,]+?)\\s+and\\s+(" + POS + "\\s+.+)$"));
+        if (!m) return [s];
+        const rest = m[3].match(new RegExp("^(" + POS + "\\s+[A-Z][\\w.'’-]+(?:\\s(?:[A-Z][\\w.'’-]+|III|II|IV|Jr\\.?|Sr\\.?)){1,3})(.*)$"));
+        return rest ? [m[1] + " " + m[2] + rest[2], m[1] + " " + rest[1] + rest[2]] : [s];
+      });
+    }
+    const NEWS_EMOJI = [[/injur|out vs|ruled out|questionable|doubtful|\bIR\b|torn|sprain|concussion|hamstring|\bsore\b|knee|ankle|shoulder|illness|surgery|\bACL\b|\bMCL\b|groin|calf|spasms/i, "🩹"], [/trade|traded|deal\b/i, "🔄"], [/fired|dismiss|part ways/i, "🔥"],
+      [/suspend|banned/i, "⛔"], [/sign|contract|extension|\$\d/i, "💰"], [/record|career-high|historic|first ever/i, "📈"], [/rank|power rankings/i, "📊"], [/highlight|best plays|watch/i, "🎬"],
+      [/draft|mock/i, "🎯"], [/return|back in|cleared/i, "💪"], [/coach/i, "🧢"], [/playoff|clinch|eliminat/i, "🏆"]];
+    const newsEmoji = (h) => (NEWS_EMOJI.find(([re]) => re.test(h)) || [0, "📰"])[1];
+    const spicy = (h) => /fired|benched|suspend|traded|cut|released|feud|comments|fined|ejected|controvers/i.test(h);
+    const bzAgo = (ms) => { const s = Math.max(1, (Date.now() - ms) / 1000); return s < 3600 ? Math.round(s / 60) + "m" : s < 86400 ? Math.round(s / 3600) + "h" : Math.round(s / 86400) + "d"; };
+    const buzzCache = {};
+    async function loadBuzz(lg) {
+      if (buzzCache[lg] && Date.now() - buzzCache[lg].at < 120000) return buzzCache[lg].items;
+      const path = LEAGUES[lg].path;
+      const [news, moves] = await Promise.all([
+        getJSON(API + path + "/news?limit=25").catch(() => null),
+        getJSON(API + path + "/transactions?limit=40").catch(() => null),
+      ]);
+      const items = [];
+      (news?.articles || []).forEach((a) => {
+        const h = a.headline || ""; if (!h) return;
+        const link = a.links?.web?.href || a.links?.mobile?.href || "";
+        items.push({ kind: "news", lg, id: "n" + a.id, at: Date.parse(a.published || a.lastModified) || 0, e: newsEmoji(h), title: h + (spicy(h) ? " 👀" : ""), sub: a.description || "", link });
+      });
+      (moves?.transactions || []).forEach((t, i) => splitMoves(t.description).forEach((s, k) => {
+        const m = readMove(s, t.team);
+        items.push({ kind: "move", lg, id: "m" + lg + (Date.parse(t.date) || 0) + "_" + (t.team?.id || "") + "_" + k + "_" + i, at: Date.parse(t.date) || 0, e: m.e, title: m.title, sub: s + ".", from: m.from, to: m.to });
+      }));
+      buzzCache[lg] = { at: Date.now(), items };
+      return items;
+    }
+    const buzzRow = (x) => '<div class="bz-item">' +
+      '<div class="bz-top"><span class="bz-e" aria-hidden="true">' + x.e + '</span><span class="bz-txt"><b>' + esc(x.title) + "</b>" +
+      (x.kind === "move" && x.from && x.to ? '<span class="bz-move">' + x.from + '<i aria-hidden="true">→</i>' + x.to + "</span>" : "") +
+      '<small>' + esc(x.sub) + "</small>" +
+      '<small class="bz-meta">' + esc((LEAGUES[x.lg]?.short || x.lg.toUpperCase()) + " · " + bzAgo(x.at) + " ago") + (x.link ? ' · <a href="' + esc(x.link) + '" target="_blank" rel="noopener nofollow">Read more ↗</a>' : "") + "</small></span></div>" +
+      '<div class="bz-react" data-react-id="' + esc(x.id) + '"></div></div>';
+    // Key dates (official league calendars; update each season). Unknown ones say so instead of guessing.
+    const KEY_DATES = [
+      { lg: "nfl", what: "NFL trade deadline", at: "2026-11-10T21:00:00Z" },   // NFL.com 2026-27 important dates: Nov 10, 4 p.m. ET
+      { lg: "nba", what: "NBA trade deadline", at: "2027-02-11T20:00:00Z" },   // NBA 2026-27 key dates: Feb 11, 3 p.m. ET
+      { lg: "mlb", what: "MLB trade deadline", at: null },                     // 2027 date not announced yet
+    ];
+    function keyDatesHtml() {
+      const now = Date.now(), day = 864e5;
+      return '<div class="kd-row">' + KEY_DATES.map((k) => {
+        if (!k.at) return '<span class="kd"><b>📅 ' + esc(k.what) + "</b><small>Not set yet</small></span>";
+        const t = Date.parse(k.at), left = Math.ceil((t - now) / day), when = new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+        return '<span class="kd' + (left < 0 ? " past" : left <= 7 ? " soon" : "") + '"><b>' + (left < 0 ? "✅ " : left <= 7 ? "⏰ " : "📅 ") + esc(k.what) + "</b><small>" +
+          esc(left < 0 ? "Passed " + when + ". No more trades this season." : left === 0 ? "Today, " + new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + " 👀" : when + " · " + left + (left === 1 ? " day" : " days") + " left") + "</small></span>";
+      }).join("") + "</div>";
+    }
+    let buzzKind = "all", buzzLg = "all";
+    async function drawBuzz(v) {
+      const box = v.el.querySelector("[data-buzz]"); if (!box) return;
+      const lgs = buzzLg === "all" ? BUZZ_LGS.filter((k) => pins().includes(k) || k === "nfl") : [buzzLg];
+      const all = (await Promise.all(lgs.map((k) => loadBuzz(k).catch(() => [])))).flat().filter((x) => buzzKind === "all" || x.kind === buzzKind).sort((a, b) => b.at - a.at).slice(0, 80);
+      if (!box.isConnected) return;
+      box.innerHTML = all.length ? all.map(buzzRow).join("") : '<div class="panel"><p class="muted people-hint">Nothing new right now. Check back soon 👀</p></div>';
+      window.scorelineReact?.fill(box);
+    }
+    function openBuzz(kind) {
+      buzzKind = kind || "all";
+      const v = { kind: "buzz", key: "buzz" };
+      if (!pushView(v)) return;
+      const chip = (attr, k, n, on) => '<button type="button" class="' + (on ? "on" : "") + '" ' + attr + '="' + k + '">' + n + "</button>";
+      setBody(v, "The Buzz 🐝", '<div class="bz-chips seg chips">' + [["all", "Everything"], ["news", "📰 News"], ["move", "🔄 Moves"]].map(([k, n]) => chip("data-bzk", k, n, buzzKind === k)).join("") + "</div>" +
+        '<div class="bz-chips seg chips">' + [["all", "All sports"], ...BUZZ_LGS.map((k) => [k, LEAGUES[k].short || k.toUpperCase()])].map(([k, n]) => chip("data-bzl", k, n, buzzLg === k)).join("") + "</div>" +
+        keyDatesHtml() + dm("<b>Reading The Buzz.</b> News and roster moves from around the league. <b>FA</b> means free agent (not on a team). <b>Waived</b> or <b>released</b> means cut. <b>Practice squad</b> is the NFL's backup group that trains with the team. <b>Injured list / reserve</b> means out hurt for a while. <b>Called up</b> means moved onto the main roster. The <b>trade deadline</b> is the last day teams can trade players for the rest of the season.") +
+        '<div data-buzz><div class="skel" style="height:90px"></div><div class="skel" style="height:90px"></div></div><p class="g-note">News and moves from ESPN\'s public feeds. Tap Read more for the full story.</p>');
+      drawBuzz(v);
+    }
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("[data-open-buzz]")) return openBuzz(e.target.closest("[data-open-buzz]").dataset.openBuzz);
+      const k = e.target.closest("[data-bzk]"), l = e.target.closest("[data-bzl]");
+      if (!k && !l) return;
+      if (k) buzzKind = k.dataset.bzk; if (l) buzzLg = l.dataset.bzl;
+      const v = views.find((x) => x.key === "buzz"); if (!v) return;
+      (k || l).parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === (k || l)));
+      buzz(8); drawBuzz(v);
+    });
+    // Home: the newest few, with a way into the full feed.
+    var homeBuzzHtml = "";   // var: Home can draw before this line runs
+    async function homeBuzz(el) {
+      if (!el) return;
+      const lgs = BUZZ_LGS.filter((k) => pins().includes(k) || k === "nfl");
+      const all = (await Promise.all(lgs.map((k) => loadBuzz(k).catch(() => [])))).flat().sort((a, b) => b.at - a.at).slice(0, 4);
+      if (!el.isConnected || !all.length) return;
+      const h = '<div class="section-title"><b>The Buzz 🐝</b><button class="see-all" type="button" data-open-buzz="all">See all ›</button></div><div class="bz-home">' + all.map(buzzRow).join("") + "</div>";
+      homeBuzzHtml = h; if (el.innerHTML !== h) el.innerHTML = h;
+      window.scorelineReact?.fill(el);
+    }
     // Find people (top bar): search usernames as you type (similar names too), open a profile, or send a request.
     // Results are small cards like Roblox's: photo, name, @username, a status line and one button.
     const PEOPLE_HINT = '<p class="muted people-hint">Type a username. The @ is optional.</p>';
