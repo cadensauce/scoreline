@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795817101" />
+  <meta name="build" content="1795817155" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -580,6 +580,7 @@
     .tbadge { display: inline-grid; place-items: center; min-width: 38px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--tc, #555); color: #fff; font-size: 11.5px; font-weight: 800; letter-spacing: .02em; box-shadow: inset 0 0 0 2px rgba(255,255,255,.18); }
     .tbadge.fa { background: var(--line); color: var(--text); } .tbadge.q { background: var(--line); color: var(--muted); }
     .bz-home .bz-item:nth-child(n+3) { display: none; } @media (min-width: 721px) { .bz-home { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } .bz-home .bz-item { margin: 0; } .bz-home .bz-item:nth-child(n+3) { display: block; } }
+    .kd-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 0 12px; } .kd { flex: none; display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); } .kd b { font-size: 13px; } .kd small { color: var(--muted); font-size: 12px; } .kd.soon { border-color: var(--live); } .kd.past { opacity: .75; }
     /* Live ticker along the bottom */
     .ticker { position: fixed; z-index: 60; left: 50%; transform: translateX(-50%); bottom: 16px; display: flex; align-items: center; gap: 10px; width: min(560px, calc(100vw - 24px)); padding: 9px 14px; border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(14px); color: var(--text); font: inherit; font-size: 13px; text-align: left; cursor: pointer; box-shadow: 0 6px 24px rgba(0,0,0,.3); }
     .ticker[hidden] { display: none; }
@@ -6273,6 +6274,21 @@
       '<small>' + esc(x.sub) + "</small>" +
       '<small class="bz-meta">' + esc((LEAGUES[x.lg]?.short || x.lg.toUpperCase()) + " · " + bzAgo(x.at) + " ago") + (x.link ? ' · <a href="' + esc(x.link) + '" target="_blank" rel="noopener nofollow">Read more ↗</a>' : "") + "</small></span></div>" +
       '<div class="bz-react" data-react-id="' + esc(x.id) + '"></div></div>';
+    // Key dates (official league calendars; update each season). Unknown ones say so instead of guessing.
+    const KEY_DATES = [
+      { lg: "nfl", what: "NFL trade deadline", at: "2026-11-10T21:00:00Z" },   // NFL.com 2026-27 important dates: Nov 10, 4 p.m. ET
+      { lg: "nba", what: "NBA trade deadline", at: "2027-02-11T20:00:00Z" },   // NBA 2026-27 key dates: Feb 11, 3 p.m. ET
+      { lg: "mlb", what: "MLB trade deadline", at: null },                     // 2027 date not announced yet
+    ];
+    function keyDatesHtml() {
+      const now = Date.now(), day = 864e5;
+      return '<div class="kd-row">' + KEY_DATES.map((k) => {
+        if (!k.at) return '<span class="kd"><b>📅 ' + esc(k.what) + "</b><small>Not set yet</small></span>";
+        const t = Date.parse(k.at), left = Math.ceil((t - now) / day), when = new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+        return '<span class="kd' + (left < 0 ? " past" : left <= 7 ? " soon" : "") + '"><b>' + (left < 0 ? "✅ " : left <= 7 ? "⏰ " : "📅 ") + esc(k.what) + "</b><small>" +
+          esc(left < 0 ? "Passed " + when + ". No more trades this season." : left === 0 ? "Today, " + new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + " 👀" : when + " · " + left + (left === 1 ? " day" : " days") + " left") + "</small></span>";
+      }).join("") + "</div>";
+    }
     let buzzKind = "all", buzzLg = "all";
     async function drawBuzz(v) {
       const box = v.el.querySelector("[data-buzz]"); if (!box) return;
@@ -6289,7 +6305,7 @@
       const chip = (attr, k, n, on) => '<button type="button" class="' + (on ? "on" : "") + '" ' + attr + '="' + k + '">' + n + "</button>";
       setBody(v, "The Buzz 🐝", '<div class="bz-chips seg chips">' + [["all", "Everything"], ["news", "📰 News"], ["move", "🔄 Moves"]].map(([k, n]) => chip("data-bzk", k, n, buzzKind === k)).join("") + "</div>" +
         '<div class="bz-chips seg chips">' + [["all", "All sports"], ...BUZZ_LGS.map((k) => [k, LEAGUES[k].short || k.toUpperCase()])].map(([k, n]) => chip("data-bzl", k, n, buzzLg === k)).join("") + "</div>" +
-        dm("<b>Reading The Buzz.</b> News and roster moves from around the league. <b>FA</b> means free agent (not on a team). <b>Waived</b> or <b>released</b> means cut. <b>Practice squad</b> is the NFL's backup group that trains with the team. <b>Injured list / reserve</b> means out hurt for a while. <b>Called up</b> means moved onto the main roster. The <b>trade deadline</b> is the last day teams can trade players for the rest of the season.") +
+        keyDatesHtml() + dm("<b>Reading The Buzz.</b> News and roster moves from around the league. <b>FA</b> means free agent (not on a team). <b>Waived</b> or <b>released</b> means cut. <b>Practice squad</b> is the NFL's backup group that trains with the team. <b>Injured list / reserve</b> means out hurt for a while. <b>Called up</b> means moved onto the main roster. The <b>trade deadline</b> is the last day teams can trade players for the rest of the season.") +
         '<div data-buzz><div class="skel" style="height:90px"></div><div class="skel" style="height:90px"></div></div><p class="g-note">News and moves from ESPN\'s public feeds. Tap Read more for the full story.</p>');
       drawBuzz(v);
     }
