@@ -1295,3 +1295,19 @@ document.addEventListener("click", (e) => {
   if (e.target.closest("[data-rx-add]")) { el.classList.add("open"); rxDraw(el); return; }
   const b = e.target.closest("[data-rx]"); if (b) rxToggle(el, b.dataset.rx);
 });
+
+/* ---------- site switch (owner only): normal, read-only or offline ---------- */
+window.scorelineSite = {
+  async status() {
+    await startFirebase();
+    if (!fb || !db) return { mode: "on" };
+    const d = await fb.getDoc(fb.doc(db, "public", "site")).catch(() => null);
+    return d?.exists() ? d.data() : { mode: "on" };
+  },
+  async set(mode, msg) {
+    if (!user) throw new Error("Sign in first.");
+    try { await fb.setDoc(fb.doc(db, "public", "site"), { mode, msg: String(msg || "").slice(0, 200), at: fb.serverTimestamp(), by: user.uid }); }
+    catch { throw new Error("Only the Owner can change this."); }
+  },
+  async isOwner() { if (!user) return false; delete roleCache[user.uid]; return (await realRoleOf(user.uid)) === "owner"; },
+};

@@ -51,3 +51,15 @@ test("the owner and mods can read reports; others can't", async () => {
   await assertFails(getDocs(collection(as("joe"), "reports")));
   await assertFails(deleteDoc(doc(as("boss"), "reports/r1")));
 });
+
+test("site switch: only the owner can change it; everyone can read it", async () => {
+  await assertSucceeds(setDoc(doc(as("boss"), "public/site"), { mode: "readonly", msg: "brb", at: serverTimestamp(), by: "boss" }));
+  await assertFails(setDoc(doc(as("modi"), "public/site"), { mode: "on", msg: "", at: serverTimestamp(), by: "modi" }));
+  await assertSucceeds(getDoc(doc(env.unauthenticatedContext().firestore(), "public/site")));
+  await assertFails(setDoc(doc(as("boss"), "public/site"), { mode: "nuke", msg: "", at: serverTimestamp(), by: "boss" }));
+});
+test("read-only pauses friend requests but reports still work", async () => {
+  await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "public/site"), { mode: "readonly", msg: "", at: Timestamp.now(), by: "boss" }));
+  await assertFails(setDoc(doc(as("joe"), "requests/joe_ann"), { from: "joe", to: "ann", status: "pending", at: serverTimestamp() }));
+  await assertSucceeds(setDoc(doc(as("joe"), "reports/r2"), { from: "joe", about: "bad", reason: "spam", at: serverTimestamp() }));
+});

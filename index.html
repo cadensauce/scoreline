@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795817736" />
+  <meta name="build" content="1795817833" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -563,6 +563,8 @@
     .dev-form input[type="number"] { flex: 0 1 110px; } .dev-form input:focus { border-color: var(--muted); } .dev-form .pill-btn { flex: none; }
     .dev-form select { flex: 0 1 140px; height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; }
     .va-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .site-bar { position: sticky; top: 0; z-index: 70; padding: 8px 14px; background: var(--text); color: var(--bg); font-size: 13px; font-weight: 700; text-align: center; }
+    .site-off { position: fixed; inset: 0; z-index: 99998; display: grid; place-items: center; padding: 24px; background: var(--bg); color: var(--text); text-align: center; } .site-off-e { font-size: 54px; margin-bottom: 8px; } .site-off b { font-size: 22px; } .site-off p { color: var(--muted); max-width: 360px; margin: 10px auto 0; }
     /* Customize: parts you turned off are hidden */
     html.h-wp [data-wpsec], html.h-plays [data-field], html.h-plays [data-feedsec], html.h-plays [data-chart],
     html.h-players .sheet [data-c="players"], html.h-tstats .sheet [data-c="stats"]:not([data-wpsec]),
@@ -5021,7 +5023,7 @@
         (vn.fullName ? '<div class="vc-top"><span class="vc-ic" aria-hidden="true">🏟️</span><span><b>' + esc(vn.fullName) + "</b>" + (where ? "<small>" + esc(where) + "</small>" : "") + "</span></div>" : "") +
         (state !== "pre" && gi.attendance ? row("Attendance", Number(gi.attendance).toLocaleString()) : "") +
         (surface ? row("Surface", esc(surface)) : "") +
-        (outdoor && state === "post" && vn.id ? '<div class="vc-row"><span>Weather</span><b data-vwx>…</b></div>' : "") +
+        (outdoor && state === "post" && vn.id ? '<div class="vc-row"><span>Weather <small class="vc-src">(Open-Meteo)</small></span><b data-vwx>…</b></div>' : "") +
         (tv ? row("On TV", esc(tv)) : "") + "</div>";
     }
     // What the weather was at a finished game (Open-Meteo history; indoor stadiums say so).
@@ -6096,6 +6098,13 @@
           (list.length ? list.map((x) => '<div class="opt soc-row"><span class="soc-who" data-viewcard="' + esc(x.uid) + '" role="button" tabindex="0"><span><b>@' + esc(x.username || "…") + roleTag(x.role) + "</b></span></span>" +
             (x.role === "owner" ? '<span class="muted">You</span>' : '<button type="button" class="pill-btn" data-role-remove="' + esc(x.uid) + '" data-role-name="' + esc(x.username || "") + '">Remove</button>') + "</div>").join("") : '<p class="muted people-hint">No one yet.</p>') + "</div>";
       }
+      if (me === "owner") {
+        const st = await window.scorelineSite?.status().catch(() => ({ mode: "on" })) || { mode: "on" };
+        html += '<div class="section-title"><b>Site switch</b></div><div class="panel dev-panel"><div class="va-btns">' +
+          [["on", "✅ Normal"], ["readonly", "⏸️ Read-only"], ["offline", "🛠️ Offline"]].map(([k, n]) => '<button type="button" class="pill-btn' + (st.mode === k ? " tos-go" : "") + '" data-site-mode="' + k + '">' + n + "</button>").join("") +
+          '</div><input class="acct-input" data-site-msg maxlength="200" placeholder="Message people see (optional)" value="' + esc(st.msg || "") + '">' +
+          '<div class="g-note"><b>Read-only:</b> everything shows, but new chat messages, friend requests and reactions are paused (the database blocks them too). <b>Offline:</b> everyone sees a "taking a short break" page. Nothing is ever deleted. You can always switch back here.</div></div>';
+      }
       if (me === "owner" || me === "mod") {
         const reps = await R.reports().catch(() => null);
         const REASON = { bullying: "Bullying or harassment", inappropriate: "Inappropriate content", spam: "Spam or scam", danger: "Someone may be in danger", other: "Something else" };
@@ -6113,6 +6122,32 @@
       try { const who = await window.scorelineRoles.give(f.who.value, f.role.value); buzz(12); toast("@" + who + " is now " + ROLE_NAMES[f.role.value]); const v = views.find((x) => x.key === "dev"); if (v) fillStaff(v); }
       catch (err) { toast(err?.message || "Couldn't give that role."); btn.disabled = false; }
     });
+    // Site switch: owner flips it in Dev tools; everyone else sees a bar (read-only) or a break page (offline).
+    document.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-site-mode]"); if (!b) return;
+      const msg = b.closest(".dev-panel")?.querySelector("[data-site-msg]")?.value || "";
+      b.disabled = true;
+      try { await window.scorelineSite.set(b.dataset.siteMode, msg); buzz(12); toast(b.dataset.siteMode === "on" ? "Scoreline is back to normal ✅" : b.dataset.siteMode === "readonly" ? "Read-only is on ⏸️" : "Offline is on 🛠️ (you can still see the site)"); const v = views.find((x) => x.key === "dev"); if (v) fillStaff(v); applySite(); }
+      catch (err) { toast(err?.message || "Couldn't change it."); b.disabled = false; }
+    });
+    async function applySite() {
+      const S = window.scorelineSite; if (!S) return;
+      const st = await S.status().catch(() => ({ mode: "on" })), owner = await S.isOwner().catch(() => false);
+      document.querySelector(".site-bar")?.remove(); document.querySelector(".site-off")?.remove();
+      window.SITE_MODE = st.mode || "on";
+      if (st.mode === "offline" && !owner) {
+        const o = document.createElement("div"); o.className = "site-off";
+        o.innerHTML = "<div><div class=\"site-off-e\">🛠️</div><b>Scoreline is taking a short break</b><p>" + esc(st.msg || "We'll be back soon. Thanks for your patience!") + "</p></div>";
+        document.body.appendChild(o); return;
+      }
+      if (st.mode === "readonly" || (st.mode === "offline" && owner)) {
+        const bar = document.createElement("div"); bar.className = "site-bar"; bar.setAttribute("role", "status");
+        bar.textContent = st.mode === "offline" ? "🛠️ Offline for everyone else (you're the Owner)" : "⏸️ " + (st.msg || "Read-only for now: chat, friend requests and reactions are paused.");
+        document.body.prepend(bar);
+      }
+    }
+    setTimeout(() => applySite().catch(() => {}), 1500);
+    setInterval(() => { if (!document.hidden) applySite().catch(() => {}); }, 120000);
     // View site as a role: a bar across the top while it's on, with Stop.
     (() => {
       const va = store.get("viewAs", ""); if (!ROLE_NAMES[va] && va !== "user") return;
