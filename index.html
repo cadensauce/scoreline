@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795818250" />
+  <meta name="build" content="1795818401" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -3884,10 +3884,13 @@
       return '<div class="g-label" style="margin-top:18px">Play-by-play</div><div class="feed">' + html + "</div>" + (total > 12 && !v.feedAll ? '<button type="button" class="pill-btn feed-more" data-sfeedall>Show all ' + total + " plays</button>" : "");
     }
     function renderSportFeed(v, calm) { const fs = v.el.querySelector("[data-feedsec]"); if (fs) { fs.innerHTML = sportFeed(v); fs.classList.toggle("calm-sec", !!calm); } }
+    // A little emoji for big basketball and baseball moments in the play cards.
+    const HEAD_EMOJI = [[/^Grand slam/, "💣💣 "], [/^Home run/, "💣 "], [/^Strikeout/i, "🔥 "], [/^Triple/, "🏃 "], [/^Double play/i, "✌️ "], [/^3-pointer/, "🎯 "], [/^Dunk/, "💥 "], [/^Block/, "🧱 "], [/^Steal/, "🕵️ "], [/^Missed/, ""]];
+    const headEmoji = (h) => { const m = HEAD_EMOJI.find(([re]) => re.test(h || "")); return (m ? m[1] : "") + (h || ""); };
     function feedRow(o) {
       const head = headshot(o.lg, o.pid), logo = o.tm?.team?.logos?.[0]?.href || o.tm?.team?.logo;
       return '<div class="pf' + (o.scoring ? " scoring" : "") + '"><div class="pf-pic">' + (head ? '<img src="' + esc(head) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + (logo ? '<img class="pf-tm" src="' + esc(logo) + '" alt="">' : "") + "</div>" +
-        '<div class="pf-body"><div class="pf-top">' + o.top + '</div><div class="pf-h">' + esc(o.head) + "</div>" + (o.main ? '<div class="pf-p">' + o.main + "</div>" : "") + '<div class="pf-s">' + o.sub + "</div>" +
+        '<div class="pf-body"><div class="pf-top">' + o.top + '</div><div class="pf-h">' + esc(headEmoji(o.head)) + "</div>" + (o.main ? '<div class="pf-p">' + o.main + "</div>" : "") + '<div class="pf-s">' + o.sub + "</div>" +
         (o.tags.length ? '<div class="pf-tags">' + o.tags.map(([c, l]) => '<span class="' + c + '">' + esc(l) + "</span>").join("") + "</div>" : "") +
         '</div><div class="pf-g ' + (o.good ? "pos" : "") + '">' + esc(o.badge) + "</div></div>";
     }
@@ -4144,7 +4147,11 @@
     const athId = (ref) => (String(ref || "").match(/athletes\/(\d+)/) || [])[1];
     const headshot = (lg, id) => id ? "https://a.espncdn.com/i/headshots/" + (lg === "cfb" ? "college-football" : lg) + "/players/full/" + id + ".png" : "";
     const ago = (iso) => { const m = Math.round((Date.now() - new Date(iso)) / 60000); return !iso || isNaN(m) || m < 0 ? "" : m < 1 ? "now" : m < 60 ? m + "m" : m < 1440 ? Math.round(m / 60) + "h" : ""; };
-    function playHeadline(p) {
+    // The headline for a play, with a bit of personality (emoji), shown in the play list and on the field.
+    function playHeadline(p) { const h = playHeadline0(p), t = p.text || "", g = Number(p.statYardage) || 0;
+      const e = /disqualif|ejected/i.test(t) ? "🚫 " : /^Touchdown/.test(h) ? "🙌 " : /^Interception/.test(h) ? "😱 " : /^Fumble/.test(h) ? "👀 " : /^Sack/.test(h) ? "💥 " : /^Field goal good|^Extra point good/.test(h) ? "✅ " : /missed/.test(h) ? "❌ " : /^Penalty/.test(h) ? "🚩 " : g >= 40 ? "🚀 " : g >= 20 ? "🔥 " : "";
+      return e + (/disqualif|ejected/i.test(t) && !/^Touchdown/.test(h) ? "Ejection" + (h === "Penalty" ? "" : " · " + h) : h); }
+    function playHeadline0(p) {
       const ty = p.type?.text || "", t = p.text || "", g = Number(p.statYardage) || 0;
       if (/touchdown/i.test(t) && !/no good|nullified/i.test(t)) return "Touchdown! " + (/pass|reception/i.test(ty) ? g + "-yd catch" : /rush/i.test(ty) ? g + "-yd run" : "");
       if (/field goal/i.test(ty)) return /good/i.test(t) && !/no good/i.test(t) ? "Field goal good" : "Field goal missed";
