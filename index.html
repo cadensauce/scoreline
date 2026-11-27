@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795817889" />
+  <meta name="build" content="1795818250" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -584,6 +584,13 @@
     .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; text-align: center; } .cal-grid i { font-style: normal; font-size: 11.5px; color: var(--muted); padding: 4px 0; }
     .cal-d { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 52px; border: 0; border-radius: 12px; background: none; color: var(--muted); font: inherit; cursor: pointer; } .cal-d b { font-size: 17px; font-weight: 500; } .cal-d small { font-size: 10.5px; }
     .cal-d.has { color: var(--text); } .cal-d.has b { font-weight: 800; } .cal-d:disabled { opacity: .4; cursor: default; } .cal-d.today b { color: var(--live); } .cal-d.on { background: var(--text); color: var(--bg); } .cal-d.on b { color: var(--bg); }
+    /* Ideas */
+    .idea-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; } .idea-form textarea { width: 100%; box-sizing: border-box; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text); font: inherit; font-size: 15px; resize: vertical; }
+    .idea-opts { display: flex; flex-direction: column; gap: 4px; } .idea-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; } .idea-row .muted { font-size: 12px; }
+    .idea { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); margin-bottom: 10px; } .idea p { margin: 0 0 10px; font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
+    .idea-st { display: inline-block; margin-bottom: 6px; padding: 2px 9px; border-radius: 999px; background: var(--line); font-size: 11.5px; font-weight: 800; }
+    .idea-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; } .idea-votes { display: flex; gap: 6px; }
+    .idea-mod { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); } .idea-mod select { height: 32px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; padding: 0 10px; }
     /* Reactions */
     .bz-react { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; min-height: 30px; }
     .rx { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2, var(--panel)); color: var(--text); font: inherit; font-size: 14px; cursor: pointer; }
@@ -6015,6 +6022,7 @@
         '<div class="g-note">Pick up to ' + MAX_PINS + ". Home shows only these sports.</div>" +
         '<div class="section-title"><b>Settings</b></div><div class="panel nteams">' +
           (MOBILE_APP ? '<div class="opt nteam" role="button" tabindex="0" data-open-notifs><span><b>Notifications</b><small>' + esc(alertsOn ? "On" + (quietLabel() ? " · quiet " + quietLabel() : "") : "Off") + '</small></span><span class="chev">›</span></div>' : "") +
+          '<div class="opt nteam" role="button" tabindex="0" data-open-ideas><span><b>Ideas 💡</b><small>Suggest features and vote on what gets built next</small></span><span class="chev">›</span></div>' +
           '<div class="opt nteam" role="button" tabindex="0" data-open-custom><span><b>Customize</b><small>Choose what shows on game pages, and text size</small></span><span class="chev">›</span></div>' +
           (signedIn ? '<div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>Account and security</b><small>Email, two-step sign-in, sign-in codes, log out' + (reqs ? " · " + reqs + " friend request" + (reqs === "1" ? "" : "s") : "") + '</small></span><span class="chev">›</span></div>' : "") +
           '<div class="opt nteam" role="button" tabindex="0" data-open-dev hidden><span><b>Developer tools</b><small>Only shown to the Scoreline team</small></span><span class="chev">›</span></div>' +
@@ -6097,6 +6105,12 @@
           [["on", "✅ Normal"], ["readonly", "⏸️ Read-only"], ["offline", "🛠️ Offline"]].map(([k, n]) => '<button type="button" class="pill-btn' + (st.mode === k ? " tos-go" : "") + '" data-site-mode="' + k + '">' + n + "</button>").join("") +
           '</div><input class="acct-input" data-site-msg maxlength="200" placeholder="Message people see (optional)" value="' + esc(st.msg || "") + '">' +
           '<div class="g-note"><b>Read-only:</b> everything shows, but new chat messages, friend requests and reactions are paused (the database blocks them too). <b>Offline:</b> everyone sees a "taking a short break" page. Nothing is ever deleted. You can always switch back here.</div></div>';
+      }
+      if (me === "owner" || me === "mod" || me === "dev") {
+        const sug = await window.scorelineIdeas?.suggestions().catch(() => null);
+        html += '<div class="section-title"><b>Private suggestions 🔒</b><span class="muted">' + (sug ? sug.length : "") + '</span></div><div class="panel">' +
+          (!sug ? '<p class="muted people-hint">Couldn\'t load suggestions.</p>' : !sug.length ? '<p class="muted people-hint">None yet.</p>' :
+            sug.map((x) => '<div class="opt rep-row"><span><b>' + esc(x.text) + "</b><small>" + (x.name ? "@" + esc(x.name) : "Anonymous") + " · " + esc(tms(x.at) ? new Date(tms(x.at)).toLocaleDateString([], { month: "short", day: "numeric" }) : "") + "</small></span></div>").join("")) + "</div>";
       }
       if (me === "owner" || me === "mod") {
         const reps = await R.reports().catch(() => null);
@@ -6428,6 +6442,74 @@
       if (st) { const v = views.find((x) => x.el === st.closest(".sheet")); if (!v) return; calMonth.setMonth(calMonth.getMonth() + Number(st.dataset.calStep)); buzz(6); return drawCalendar(v, v.el.dataset.lg); }
       const dd = e.target.closest("[data-cal-day]");
       if (dd) { const v = views.find((x) => x.el === dd.closest(".sheet")); if (!v) return; const key = v.el.dataset.lg; dayOff[key] = offOf(dd.dataset.calDay); buzz(8); closeTop(); state.tab = key; setTimeout(() => render(), 380); }
+    });
+    /* ---------- Ideas 💡: post ideas, vote 👍/👎 (once each), see what's planned. Private option goes only to the team. ---------- */
+    const IDEA_STATUS = { open: "", planned: "🛠️ Planned", done: "✅ Done", no: "🚫 Not doing" };
+    let ideaSort = "top", ideaRows = [], ideaMine = new Set(), ideaRole = "";
+    async function openIdeas() {
+      const v = { kind: "ideas", key: "ideas" };
+      if (!pushView(v)) return;
+      const I = window.scorelineIdeas;
+      if (!I || !(await I.ready().catch(() => false))) return setBody(v, "Ideas 💡", '<div class="panel"><b>Ideas</b><p class="muted">Sign in to share ideas and vote on them.</p><button type="button" class="pill-btn" data-social-signin>Sign in</button></div>');
+      setBody(v, "Ideas 💡", '<form class="idea-form" data-idea-form><textarea data-idea-text maxlength="300" rows="3" placeholder="What should Scoreline add or fix? 💭" aria-label="Your idea"></textarea>' +
+        '<div class="idea-opts"><label class="acct-check"><input type="checkbox" data-idea-anon> Post without my name</label><label class="acct-check"><input type="checkbox" data-idea-priv> 🔒 Only the Scoreline team can see it</label></div>' +
+        '<div class="idea-row"><span class="muted" data-idea-count>0 / 300</span><button type="submit" class="pill-btn tos-go">Post idea</button></div></form>' +
+        dm("<b>Ideas.</b> Post an idea and vote 👍 or 👎 on others (one vote each; tap again to take it back). The most-wanted ideas rise to the top. 🛠️ Planned means it's being worked on. Tick 🔒 to send it privately to the Scoreline team instead.") +
+        '<div class="bz-chips seg chips">' + [["top", "🔥 Top"], ["new", "🆕 New"], ["planned", "🛠️ Planned"], ["done", "✅ Done"]].map(([k, n]) => '<button type="button" class="' + (ideaSort === k ? "on" : "") + '" data-idea-sort="' + k + '">' + n + "</button>").join("") + "</div>" +
+        '<div data-ideas><div class="skel" style="height:90px"></div></div>');
+      await loadIdeas(v);
+    }
+    async function loadIdeas(v) {
+      const I = window.scorelineIdeas;
+      try { [ideaRows, ideaRole] = await Promise.all([I.list(), I.role()]); ideaMine = new Set(await I.mineIds(ideaRows.map((x) => x.id)).catch(() => [])); }
+      catch { const b = v.el.querySelector("[data-ideas]"); if (b) b.innerHTML = '<div class="panel"><p class="muted people-hint">Couldn\'t load ideas. Try again soon.</p></div>'; return; }
+      drawIdeas(v);
+    }
+    function drawIdeas(v) {
+      const box = v.el.querySelector("[data-ideas]"); if (!box) return;
+      const mod = ideaRole === "owner" || ideaRole === "mod";
+      let rows = ideaRows.slice();
+      if (ideaSort === "top") rows = rows.filter((x) => x.status === "open" || x.status === "planned").sort((a, b) => (b.up - b.down) - (a.up - a.down) || tms(b.at) - tms(a.at));
+      else if (ideaSort === "new") rows = rows.filter((x) => x.status !== "no");
+      else rows = rows.filter((x) => x.status === ideaSort);
+      box.innerHTML = rows.length ? rows.map((x) => '<div class="idea" data-idea="' + esc(x.id) + '">' +
+        (IDEA_STATUS[x.status] ? '<span class="idea-st">' + IDEA_STATUS[x.status] + "</span>" : "") +
+        "<p>" + esc(x.text) + "</p>" +
+        '<div class="idea-foot"><small class="muted">' + (x.name ? "@" + esc(x.name) : "Anonymous") + " · " + esc(tms(x.at) ? bzAgo(tms(x.at)) + " ago" : "just now") + "</small>" +
+        '<span class="idea-votes"><button type="button" class="rx' + (x.mine === 1 ? " on" : "") + '" data-idea-vote="1" aria-label="Upvote">👍 <b>' + (x.up || 0) + '</b></button><button type="button" class="rx' + (x.mine === -1 ? " on" : "") + '" data-idea-vote="-1" aria-label="Downvote">👎 <b>' + (x.down || 0) + "</b></button></span></div>" +
+        (mod || ideaMine.has(x.id) ? '<div class="idea-mod">' + (mod ? '<select data-idea-status aria-label="Status">' + Object.entries({ open: "Open", planned: "🛠️ Planned", done: "✅ Done", no: "🚫 Not doing" }).map(([k, n]) => '<option value="' + k + '"' + (x.status === k ? " selected" : "") + ">" + n + "</option>").join("") + "</select>" + (x.name ? "" : '<button type="button" class="link-btn" data-idea-who>Who wrote this?</button>') : "") +
+          '<button type="button" class="link-btn" data-idea-del>Delete</button></div>' : "") + "</div>").join("")
+        : '<div class="panel"><p class="muted people-hint">' + (ideaSort === "top" || ideaSort === "new" ? "No ideas yet. Be the first! 💡" : "Nothing here yet.") + "</p></div>";
+    }
+    const tms = (t) => (t?.toMillis ? t.toMillis() : t?.seconds ? t.seconds * 1000 : 0);
+    document.addEventListener("input", (e) => { if (e.target.matches?.("[data-idea-text]")) { const c = e.target.closest("form").querySelector("[data-idea-count]"); if (c) c.textContent = e.target.value.length + " / 300"; } });
+    document.addEventListener("submit", async (e) => {
+      const f = e.target.closest?.("[data-idea-form]"); if (!f) return;
+      e.preventDefault();
+      const text = f.querySelector("[data-idea-text]").value.trim(), priv = f.querySelector("[data-idea-priv]").checked, anon = f.querySelector("[data-idea-anon]").checked;
+      if (text.length < 3) return toast("Write a little more first 🙂");
+      const b = f.querySelector("button[type=submit]"); b.disabled = true;
+      try { await window.scorelineIdeas.post(text, { anon, priv }); buzz(12); toast(priv ? "Sent privately to the Scoreline team 🔒" : "Idea posted 💡"); f.reset(); f.querySelector("[data-idea-count]").textContent = "0 / 300"; if (!priv) { const v = views.find((x) => x.key === "ideas"); if (v) { ideaSort = "new"; v.el.querySelectorAll("[data-idea-sort]").forEach((x) => x.classList.toggle("on", x.dataset.ideaSort === "new")); loadIdeas(v); } } }
+      catch { toast(window.SITE_MODE === "readonly" ? "Posting is paused right now." : "Couldn't post that. Try again."); }
+      b.disabled = false;
+    });
+    document.addEventListener("click", async (e) => {
+      if (e.target.closest("[data-open-ideas]")) return openIdeas();
+      const v = views.find((x) => x.key === "ideas");
+      const s = e.target.closest("[data-idea-sort]");
+      if (s && v) { ideaSort = s.dataset.ideaSort; s.parentElement.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === s)); buzz(6); return drawIdeas(v); }
+      const card = e.target.closest("[data-idea]"); if (!card || !v) return;
+      const id = card.dataset.idea, row = ideaRows.find((x) => x.id === id); if (!row) return;
+      const vb = e.target.closest("[data-idea-vote]");
+      if (vb) { vb.disabled = true; try { Object.assign(row, await window.scorelineIdeas.vote(id, Number(vb.dataset.ideaVote))); buzz(8); drawIdeas(v); } catch { vb.disabled = false; toast("Couldn't vote. Try again."); } return; }
+      if (e.target.closest("[data-idea-who]")) { const n = await window.scorelineIdeas.author(id).catch(() => ""); return toast(n ? "Written by @" + n + " (only staff can see this)" : "Not available"); }
+      const del = e.target.closest("[data-idea-del]");
+      if (del) { if (!del.dataset.sure) { del.dataset.sure = "1"; del.textContent = "Delete? Tap again"; return; } try { await window.scorelineIdeas.remove(id); ideaRows = ideaRows.filter((x) => x.id !== id); drawIdeas(v); toast("Deleted"); } catch { toast("Couldn't delete."); } }
+    });
+    document.addEventListener("change", async (e) => {
+      const s = e.target.closest?.("[data-idea-status]"); if (!s) return;
+      const id = s.closest("[data-idea]")?.dataset.idea, row = ideaRows.find((x) => x.id === id); if (!row) return;
+      try { await window.scorelineIdeas.setStatus(id, s.value); row.status = s.value; buzz(8); toast("Marked " + (IDEA_STATUS[s.value] || "open")); } catch { toast("Only the Owner and Mods can do that."); }
     });
     // Find people (top bar): search usernames as you type (similar names too), open a profile, or send a request.
     // Results are small cards like Roblox's: photo, name, @username, a status line and one button.
