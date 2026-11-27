@@ -39,7 +39,8 @@ test("profile: your page shows name, bio, stats and favourites", async ({ page }
   const s = sheet(page);
   await expect(s.locator(".prof-id")).toContainText("Caden");
   await expect(s.locator(".prof-id")).toContainText("@cadenbinglefry");
-  await expect(s.locator(".prof-id .role-tag")).toHaveText("Owner");
+  await expect(s.locator(".prof-id .role-tag:not(.r-og)")).toHaveText("Owner");
+  await expect(s.locator(".prof-id .role-tag.r-og")).toHaveText("✨ OG");
   await expect(s).toContainText("Niners all day");
   await expect(s.locator(".prof-stat")).toHaveCount(9);
   await expect(s).toContainText("1–0");
