@@ -1235,3 +1235,79 @@ window.scorelineRoles = {
     return rows.map((x) => ({ ...x, fromName: names[x.from], aboutName: names[x.about], when: x.at?.toMillis ? x.at.toMillis() : 0 }));
   },
 };
+
+/* ---------- reactions: 🔥 😂 😮 😭 🐐 👀 on plays, news and moves (counts for everyone, like Discord) ----------
+   reactions/{item} = { c: { fire: 12, ... } } and reactions/{item}/by/{uid} = { e: "fire" }, changed together in one
+   transaction; the rules check the counts only move by your own change. */
+const RX = [["fire", "🔥"], ["lol", "😂"], ["wow", "😮"], ["cry", "😭"], ["goat", "🐐"], ["eyes", "👀"]];
+const RXE = Object.fromEntries(RX);
+const rxState = {};
+async function rxLoad(item) {
+  await startFirebase();
+  if (!fb || !db) return { c: {}, mine: "" };
+  if (FIREBASE_CONFIG) await Promise.race([authReady, new Promise((r) => setTimeout(r, 4000))]);
+  const [d, m] = await Promise.all([fb.getDoc(fb.doc(db, "reactions", item)).catch(() => null), user ? fb.getDoc(fb.doc(db, "reactions", item, "by", user.uid)).catch(() => null) : null]);
+  return (rxState[item] = { c: d?.exists() ? d.data().c || {} : {}, mine: m?.exists() ? m.data().e : "" });
+}
+function rxDraw(el) {
+  const item = el.dataset.reactId, r = rxState[item] || { c: {}, mine: "" };
+  const list = RX.filter(([k]) => (r.c[k] || 0) > 0).sort((a, b) => (r.c[b[0]] || 0) - (r.c[a[0]] || 0));
+  const total = list.reduce((n, [k]) => n + (r.c[k] || 0), 0);
+  el.innerHTML = list.map(([k, e]) => '<button type="button" class="rx' + (r.mine === k ? " on" : "") + '" data-rx="' + k + '" aria-label="' + e + " " + r.c[k] + '">' + e + " <b>" + r.c[k] + "</b></button>").join("") +
+    (el.classList.contains("open") ? RX.map(([k, e]) => '<button type="button" class="rx pick' + (r.mine === k ? " on" : "") + '" data-rx="' + k + '" aria-label="React ' + e + '">' + e + "</button>").join("")
+      : '<button type="button" class="rx add" data-rx-add aria-label="Add a reaction">😀<i>+</i></button>') +
+    (total >= 10 ? '<span class="rx-total">' + total.toLocaleString() + " reactions</span>" : "");
+}
+const rxSeen = new WeakSet();
+const rxIO = "IntersectionObserver" in window ? new IntersectionObserver((ents) => ents.forEach((en) => {
+  if (!en.isIntersecting) return;
+  rxIO.unobserve(en.target);
+  rxLoad(en.target.dataset.reactId).then(() => rxDraw(en.target)).catch(() => rxDraw(en.target));
+}), { rootMargin: "200px" }) : null;
+async function rxToggle(el, k) {
+  if (!user) return toast("Sign in to react 🙂");
+  const item = el.dataset.reactId, ref = fb.doc(db, "reactions", item), mineRef = fb.doc(db, "reactions", item, "by", user.uid);
+  const prev = rxState[item] ? { c: { ...rxState[item].c }, mine: rxState[item].mine } : { c: {}, mine: "" };
+  const apply = (s) => { const c = { ...s.c }, had = s.mine, now = had === k ? "" : k; if (had) c[had] = Math.max(0, (c[had] || 0) - 1); if (now) c[now] = (c[now] || 0) + 1; return { c, mine: now }; };
+  rxState[item] = apply(prev); el.classList.remove("open"); rxDraw(el); buzz(8);   // show it straight away
+  try {
+    await fb.runTransaction(db, async (tx) => {
+      const [d, m] = [await tx.get(ref), await tx.get(mineRef)];
+      const cur = { c: d.exists() ? d.data().c || {} : {}, mine: m.exists() ? m.data().e : "" }, next = apply(cur);
+      const c = {}; RX.forEach(([key]) => { if (next.c[key]) c[key] = next.c[key]; else if (key in cur.c) c[key] = 0; });
+      tx.set(ref, { c });
+      if (next.mine) tx.set(mineRef, { e: next.mine }); else tx.delete(mineRef);
+      rxState[item] = { c, mine: next.mine };
+    });
+  } catch { rxState[item] = prev; toast("Couldn't react. Try again."); }
+  rxDraw(el);
+}
+window.scorelineReact = {
+  fill(root) {
+    (root || document).querySelectorAll("[data-react-id]").forEach((el) => {
+      if (rxSeen.has(el)) return; rxSeen.add(el);
+      if (rxState[el.dataset.reactId]) rxDraw(el); else { rxDraw(el); if (rxIO) rxIO.observe(el); else rxLoad(el.dataset.reactId).then(() => rxDraw(el)); }
+    });
+  },
+};
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-react-id]"); if (!el) return;
+  if (e.target.closest("[data-rx-add]")) { el.classList.add("open"); rxDraw(el); return; }
+  const b = e.target.closest("[data-rx]"); if (b) rxToggle(el, b.dataset.rx);
+});
+
+/* ---------- site switch (owner only): normal, read-only or offline ---------- */
+window.scorelineSite = {
+  async status() {
+    await startFirebase();
+    if (!fb || !db) return { mode: "on" };
+    const d = await fb.getDoc(fb.doc(db, "public", "site")).catch(() => null);
+    return d?.exists() ? d.data() : { mode: "on" };
+  },
+  async set(mode, msg) {
+    if (!user) throw new Error("Sign in first.");
+    try { await fb.setDoc(fb.doc(db, "public", "site"), { mode, msg: String(msg || "").slice(0, 200), at: fb.serverTimestamp(), by: user.uid }); }
+    catch { throw new Error("Only the Owner can change this."); }
+  },
+  async isOwner() { if (!user) return false; delete roleCache[user.uid]; return (await realRoleOf(user.uid)) === "owner"; },
+};

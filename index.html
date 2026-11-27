@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795816822" />
+  <meta name="build" content="1795817889" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -481,8 +481,8 @@
     .btab { transition: color var(--t-fast); }
     .mobile-app .card:active, .mobile-app .f-row:active, .mobile-app .row:active, .mobile-app button.ldr:active { background: var(--panel-2); }
     #splash { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; transition: opacity .35s ease; }
-    #splash svg { animation: splashIn .45s var(--ease) both; }
-    #splash b { font-family: var(--display); font-size: 30px; font-weight: 650; letter-spacing: -.01em; animation: splashIn .45s .06s var(--ease) both; }
+    #splash svg { animation: none; }   /* no entrance animation: it takes over from the phone's own launch logo without a flicker */
+    #splash b { font-family: var(--display); font-size: 30px; font-weight: 650; letter-spacing: -.01em; }
     #splash.out { opacity: 0; pointer-events: none; }
     html.mobile-app, html.mobile-app body { scrollbar-width: none; } html.mobile-app ::-webkit-scrollbar { display: none; }
     @keyframes splashIn { from { opacity: 0; transform: translateY(6px); } }
@@ -563,6 +563,45 @@
     .dev-form input[type="number"] { flex: 0 1 110px; } .dev-form input:focus { border-color: var(--muted); } .dev-form .pill-btn { flex: none; }
     .dev-form select { flex: 0 1 140px; height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; }
     .va-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .site-bar { position: sticky; top: 0; z-index: 70; padding: 8px 14px; background: var(--text); color: var(--bg); font-size: 13px; font-weight: 700; text-align: center; }
+    .site-off { position: fixed; inset: 0; z-index: 99998; display: grid; place-items: center; padding: 24px; background: var(--bg); color: var(--text); text-align: center; } .site-off-e { font-size: 54px; margin-bottom: 8px; } .site-off b { font-size: 22px; } .site-off p { color: var(--muted); max-width: 360px; margin: 10px auto 0; }
+    /* Customize: parts you turned off are hidden */
+    html.h-wp [data-wpsec], html.h-plays [data-field], html.h-plays [data-feedsec], html.h-plays [data-chart],
+    html.h-players .sheet [data-c="players"], html.h-tstats .sheet [data-c="stats"]:not([data-wpsec]),
+    html.h-pred .sheet .pred, html.h-pred .sheet .pick-sec, html.h-venue .venue-card, html.h-venue .sheet [data-wx], html.h-tags .card-tags { display: none !important; }
+    /* Text size (Customize) */
+    html[data-ts="l"] #main, html[data-ts="l"] .sheet-root { zoom: 1.12; }
+    html[data-ts="xl"] #main, html[data-ts="xl"] .sheet-root { zoom: 1.25; }
+    .ts-seg { display: flex; gap: 6px; flex-wrap: wrap; } .ts-seg button { flex: 1; min-width: 90px; height: 38px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-weight: 700; cursor: pointer; } .ts-seg button.on { background: var(--text); color: var(--bg); }
+    /* Stat leaders + calendar */
+    .ldr-pick { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; } .ldr-pick select { flex: 1 1 150px; min-width: 0; height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-hi, var(--line)); background: var(--panel); color: var(--text); font: inherit; font-weight: 700; }
+    .ldr-row { width: 100%; text-align: left; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; display: flex; align-items: center; gap: 10px; } .ldr-row + .ldr-row { border-top: 1px solid var(--line); }
+    .ldr-rank { width: 26px; text-align: center; font-weight: 800; color: var(--muted); flex: none; } .ldr-row.top .ldr-rank { font-size: 20px; }
+    .ldr-name { flex: 1; min-width: 0; display: flex; flex-direction: column; } .ldr-name b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ldr-name small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ldr-val { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; } .ldr-row.top .ldr-val { font-size: 21px; }
+    .cal-chip b { font-size: 18px !important; }
+    .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; } .cal-head b { font-size: 18px; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; text-align: center; } .cal-grid i { font-style: normal; font-size: 11.5px; color: var(--muted); padding: 4px 0; }
+    .cal-d { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 52px; border: 0; border-radius: 12px; background: none; color: var(--muted); font: inherit; cursor: pointer; } .cal-d b { font-size: 17px; font-weight: 500; } .cal-d small { font-size: 10.5px; }
+    .cal-d.has { color: var(--text); } .cal-d.has b { font-weight: 800; } .cal-d:disabled { opacity: .4; cursor: default; } .cal-d.today b { color: var(--live); } .cal-d.on { background: var(--text); color: var(--bg); } .cal-d.on b { color: var(--bg); }
+    /* Reactions */
+    .bz-react { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; min-height: 30px; }
+    .rx { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2, var(--panel)); color: var(--text); font: inherit; font-size: 14px; cursor: pointer; }
+    .rx b { font-size: 12.5px; } .rx.on { border-color: var(--text); background: color-mix(in srgb, var(--text) 14%, var(--panel)); }
+    .rx.add { color: var(--muted); } .rx.add i { font-style: normal; font-weight: 800; font-size: 12px; } .rx.pick { padding: 0 8px; font-size: 17px; animation: tkIn .2s var(--ease) both; }
+    .rx-total { font-size: 12px; color: var(--muted); margin-left: 4px; }
+    .f-react { justify-content: center; margin: 8px 0 4px; }
+    @keyframes tkIn { from { opacity: 0; transform: translateY(6px); } }
+    /* The Buzz */
+    .bz-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 10px; } .bz-chips button { flex: none; height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; } .bz-chips button.on { background: var(--text); color: var(--bg); }
+    .bz-item { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); margin-bottom: 10px; }
+    .bz-top { display: flex; gap: 12px; } .bz-e { font-size: 24px; line-height: 1.1; flex: none; } .bz-txt { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    .bz-txt b { font-size: 15.5px; line-height: 1.3; overflow-wrap: anywhere; } .bz-txt small { color: var(--muted); font-size: 12.5px; line-height: 1.4; overflow-wrap: anywhere; } .bz-meta a { color: var(--text); }
+    .bz-move { display: flex; align-items: center; gap: 8px; } .bz-move i { font-style: normal; color: var(--muted); }
+    .tbadge { display: inline-grid; place-items: center; min-width: 38px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--tc, #555); color: #fff; font-size: 11.5px; font-weight: 800; letter-spacing: .02em; box-shadow: inset 0 0 0 2px rgba(255,255,255,.18); }
+    .tbadge.fa { background: var(--line); color: var(--text); } .tbadge.q { background: var(--line); color: var(--muted); }
+    .bz-home .bz-item:nth-child(n+3) { display: none; } @media (min-width: 721px) { .bz-home { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } .bz-home .bz-item { margin: 0; } .bz-home .bz-item:nth-child(n+3) { display: block; } }
+    .kd-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 0 12px; } .kd { flex: none; display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); } .kd b { font-size: 13px; } .kd small { color: var(--muted); font-size: 12px; } .kd.soon { border-color: var(--live); } .kd.past { opacity: .75; }
     #main.you-wait > :not(.bar) { opacity: 0; } #main > * { transition: opacity .18s ease; }   /* You page: sections appear together */
     .va-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 9999; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 24px); padding: 8px 8px 8px 14px; border-radius: 999px; background: var(--text); color: var(--bg); font-size: 13px; box-shadow: 0 6px 24px rgba(0,0,0,.35); white-space: nowrap; }
     .va-bar span { overflow: hidden; text-overflow: ellipsis; } .va-bar button { flex: none; height: 30px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--bg); color: var(--text); font: inherit; font-weight: 800; cursor: pointer; }
@@ -1868,7 +1907,7 @@
       if (!days.length) return '<div class="dstrip" data-dstrip><button type="button" class="dchip" style="visibility:hidden" tabindex="-1" aria-hidden="true"><small>-</small><b>0</b><em>-</em></button></div>';   // game days still loading: keep the space, show no day yet
       const i = days.indexOf(sel);
       days = days.slice(Math.max(0, i - 5), i + 9);
-      return '<div class="dstrip" data-dstrip>' + days.map((s) => {
+      return '<div class="dstrip" data-dstrip><button type="button" class="dchip cal-chip" data-open-cal="' + key + '" aria-label="Pick a day from a calendar"><small>Pick</small><b>📅</b><em>day</em></button>' + days.map((s) => {
         const d = fromYmd(s), o = offOf(s);
         const wk = o === 0 ? "Today" : o === 1 ? "Tmrw" : d.toLocaleDateString([], { weekday: "short" });
         return '<button type="button" data-day="' + o + '" class="dchip has' + (s === sel ? " on" : "") + (o === 0 ? " today" : "") + '"><small>' + esc(wk) + "</small><b>" + d.getDate() + '</b><em>' + esc(d.toLocaleDateString([], { month: "short" })) + "</em></button>";
@@ -2106,7 +2145,7 @@
       const sBtn = paged ? '<button type="button" class="icon-btn' + (open ? " on" : "") + '" data-searchtoggle aria-label="Search ' + esc(L.short || L.name) + ' teams"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>' : "";
       const hBtn = key !== "f1" ? '<button type="button" class="icon-btn' + (HEAT ? " on" : "") + '" data-heat aria-label="' + (HEAT ? "Show as list" : "Show as heat map") + '" title="' + (HEAT ? "List" : "Heat map") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2" opacity=".55"/><rect x="3" y="13" width="8" height="8" rx="2" opacity=".3"/><rect x="13" y="13" width="8" height="8" rx="2" opacity=".75"/></svg></button>' : "";
       return '<div class="bar"><h1>' + esc(title) + "</h1>" + hBtn + sBtn + "</div>" + headlineHtml(key) + (open ? search : "") +
-        '<div class="bar-row">' + liveBtn + (paged ? '<button type="button" class="icon-btn st-btn" data-standings="' + key + '" aria-label="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '" title="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button>' : "") + "</div>" + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
+        '<div class="bar-row">' + liveBtn + (paged ? '<button type="button" class="icon-btn st-btn" data-standings="' + key + '" aria-label="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '" title="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button><button type="button" class="icon-btn" data-leaders="' + key + '" aria-label="Stat leaders" title="Stat leaders">🏆</button>' : "") + "</div>" + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
         (HEAT ? '<div class="heat-key"><span>One-sided</span><i></i><span>Close game</span></div>' : "") + (HEAT ? dm("<b>Reading the heat map.</b> Each tile is one game. The brighter the tile, the closer the game is to a coin flip (from win probability), so the most exciting games stand out. Upcoming games use the pre-game odds; finished games are dimmed. The ball icon shows who has it.") : "");
     }
 
@@ -2210,6 +2249,7 @@
         html += '<div class="section-title"><b>★ Your teams</b></div><div class="grid">' + favEvents.map(([e, k], i) => gameCard(e, k, i, true)).join("") + "</div>";
       }
       if (noFilters()) html += playersHomeHtml(keys, results, f1);
+      if (noFilters()) html += '<div data-home-buzz>' + homeBuzzHtml + "</div>";   // The Buzz: newest news and moves
       if (f1?.events?.[0] && noFilters()) html += f1Mini(f1.events[0]);
       keys.forEach((k, i) => {
         const L = LEAGUES[k];
@@ -2229,6 +2269,7 @@
       });
       html += "</div>";
       paint(main, html, "home");
+      if (noFilters()) homeBuzz(main.querySelector("[data-home-buzz]")).catch(() => {});
       if (Date.now() - hpAt > 60_000) fillHomePicks().catch(() => {});
       renderTabs();
       stamp();
@@ -2636,11 +2677,12 @@
       }
       // Saved copy, shown instantly next time the app opens while fresh scores load.
       // Only the current week/day is saved, so the app never opens on a week you paged to last time.
-      if (key && !state.offset[key] && !dayOff[key] && !html.includes('class="empty"') && html.length < 400000 && Date.now() - (shellSavedAt[key] || 0) > 60000) { shellSavedAt[key] = Date.now(); store.set("shell:" + key, html); store.set("shellAt:" + key, Date.now()); }
+      if (key && !state.offset[key] && !dayOff[key] && !html.includes('class="empty"') && html.length < 400000 && Date.now() - (shellSavedAt[key] || 0) > 60000) { shellSavedAt[key] = Date.now(); store.set("shell:" + key, html); store.set("shellAt:" + key, Date.now()); store.set("shellBuild", BUILD_ID); }
     }
     const shellSavedAt = {};
     // The saved copy is only shown if it's recent (10 minutes): an old one would open the app on old scores.
-    const savedShell = (key) => { const h = Date.now() - store.get("shellAt:" + key, 0) < 6e5 ? store.get("shell:" + key, "") : ""; return h.includes('class="empty"') ? "" : h; };   // never flash an empty day
+    const BUILD_ID = document.querySelector('meta[name="build"]')?.content || "";
+    const savedShell = (key) => { const h = Date.now() - store.get("shellAt:" + key, 0) < 6e5 && store.get("shellBuild", "") === BUILD_ID ? store.get("shell:" + key, "") : "";   /* a copy from an older version is never shown */ return h.includes('class="empty"') ? "" : h; };   // never flash an empty day
 
     /* ---------- refresh loop ---------- */
     function stamp() { $("updated").textContent = "Updated " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }); }
@@ -4623,7 +4665,9 @@
         }).reverse().join("") + "</div>";
       }
       html += '</div><div data-c="plays" class="sum-hide">' + stopsHtml(F) + '</div>';
+      if (P?.id && /^\d+$/.test(String(P.id))) html = html.replace('<div class="f-detail">', '<div class="bz-react f-react" data-react-id="p' + P.id + '"></div><div class="f-detail">');   // react to this play
       sec.innerHTML = html;
+      window.scorelineReact?.fill(sec);
       runFieldAnim(sec.querySelector("svg.field"), v.anim, !!still);
       // Fit each name tag to its real text width and centre it over the player (estimates drift with font metrics).
       sec.querySelectorAll(".f-lbl").forEach((t) => { try { const tw = t.getComputedTextLength(); if (!tw) return; const w = tw + 14, VW = +t.ownerSVGElement?.dataset.fw || t.ownerSVGElement?.viewBox?.baseVal?.width || 0, cx = +t.dataset.cx; const sv = t.ownerSVGElement, v0 = sv?.dataset.vx0 != null ? +sv.dataset.vx0 : 0, v1 = sv?.dataset.vx1 != null ? +sv.dataset.vx1 : VW, keep = (p) => Math.max(v0 + w / 2 + 4, Math.min(v1 - w / 2 - 4, p)); const lx = t.dataset.rel ? (t.dataset.ax ? keep(+t.dataset.ax) - +t.dataset.ax : cx) : VW ? keep(cx) : cx; t.setAttribute("x", lx); const r = t.previousElementSibling; if (r) { r.setAttribute("x", lx - w / 2); r.setAttribute("width", w); } } catch {} });
@@ -4972,7 +5016,7 @@
         (vn.fullName ? '<div class="vc-top"><span class="vc-ic" aria-hidden="true">🏟️</span><span><b>' + esc(vn.fullName) + "</b>" + (where ? "<small>" + esc(where) + "</small>" : "") + "</span></div>" : "") +
         (state !== "pre" && gi.attendance ? row("Attendance", Number(gi.attendance).toLocaleString()) : "") +
         (surface ? row("Surface", esc(surface)) : "") +
-        (outdoor && state === "post" && vn.id ? '<div class="vc-row"><span>Weather</span><b data-vwx>…</b></div>' : "") +
+        (outdoor && state === "post" && vn.id ? '<div class="vc-row"><span>Weather <small class="vc-src">(Open-Meteo)</small></span><b data-vwx>…</b></div>' : "") +
         (tv ? row("On TV", esc(tv)) : "") + "</div>";
     }
     // What the weather was at a finished game (Open-Meteo history; indoor stadiums say so).
@@ -5971,6 +6015,7 @@
         '<div class="g-note">Pick up to ' + MAX_PINS + ". Home shows only these sports.</div>" +
         '<div class="section-title"><b>Settings</b></div><div class="panel nteams">' +
           (MOBILE_APP ? '<div class="opt nteam" role="button" tabindex="0" data-open-notifs><span><b>Notifications</b><small>' + esc(alertsOn ? "On" + (quietLabel() ? " · quiet " + quietLabel() : "") : "Off") + '</small></span><span class="chev">›</span></div>' : "") +
+          '<div class="opt nteam" role="button" tabindex="0" data-open-custom><span><b>Customize</b><small>Choose what shows on game pages, and text size</small></span><span class="chev">›</span></div>' +
           (signedIn ? '<div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>Account and security</b><small>Email, two-step sign-in, sign-in codes, log out' + (reqs ? " · " + reqs + " friend request" + (reqs === "1" ? "" : "s") : "") + '</small></span><span class="chev">›</span></div>' : "") +
           '<div class="opt nteam" role="button" tabindex="0" data-open-dev hidden><span><b>Developer tools</b><small>Only shown to the Scoreline team</small></span><span class="chev">›</span></div>' +
         "</div>" +
@@ -6046,6 +6091,13 @@
           (list.length ? list.map((x) => '<div class="opt soc-row"><span class="soc-who" data-viewcard="' + esc(x.uid) + '" role="button" tabindex="0"><span><b>@' + esc(x.username || "…") + roleTag(x.role) + "</b></span></span>" +
             (x.role === "owner" ? '<span class="muted">You</span>' : '<button type="button" class="pill-btn" data-role-remove="' + esc(x.uid) + '" data-role-name="' + esc(x.username || "") + '">Remove</button>') + "</div>").join("") : '<p class="muted people-hint">No one yet.</p>') + "</div>";
       }
+      if (me === "owner") {
+        const st = await window.scorelineSite?.status().catch(() => ({ mode: "on" })) || { mode: "on" };
+        html += '<div class="section-title"><b>Site switch</b></div><div class="panel dev-panel"><div class="va-btns">' +
+          [["on", "✅ Normal"], ["readonly", "⏸️ Read-only"], ["offline", "🛠️ Offline"]].map(([k, n]) => '<button type="button" class="pill-btn' + (st.mode === k ? " tos-go" : "") + '" data-site-mode="' + k + '">' + n + "</button>").join("") +
+          '</div><input class="acct-input" data-site-msg maxlength="200" placeholder="Message people see (optional)" value="' + esc(st.msg || "") + '">' +
+          '<div class="g-note"><b>Read-only:</b> everything shows, but new chat messages, friend requests and reactions are paused (the database blocks them too). <b>Offline:</b> everyone sees a "taking a short break" page. Nothing is ever deleted. You can always switch back here.</div></div>';
+      }
       if (me === "owner" || me === "mod") {
         const reps = await R.reports().catch(() => null);
         const REASON = { bullying: "Bullying or harassment", inappropriate: "Inappropriate content", spam: "Spam or scam", danger: "Someone may be in danger", other: "Something else" };
@@ -6063,6 +6115,32 @@
       try { const who = await window.scorelineRoles.give(f.who.value, f.role.value); buzz(12); toast("@" + who + " is now " + ROLE_NAMES[f.role.value]); const v = views.find((x) => x.key === "dev"); if (v) fillStaff(v); }
       catch (err) { toast(err?.message || "Couldn't give that role."); btn.disabled = false; }
     });
+    // Site switch: owner flips it in Dev tools; everyone else sees a bar (read-only) or a break page (offline).
+    document.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-site-mode]"); if (!b) return;
+      const msg = b.closest(".dev-panel")?.querySelector("[data-site-msg]")?.value || "";
+      b.disabled = true;
+      try { await window.scorelineSite.set(b.dataset.siteMode, msg); buzz(12); toast(b.dataset.siteMode === "on" ? "Scoreline is back to normal ✅" : b.dataset.siteMode === "readonly" ? "Read-only is on ⏸️" : "Offline is on 🛠️ (you can still see the site)"); const v = views.find((x) => x.key === "dev"); if (v) fillStaff(v); applySite(); }
+      catch (err) { toast(err?.message || "Couldn't change it."); b.disabled = false; }
+    });
+    async function applySite() {
+      const S = window.scorelineSite; if (!S) return;
+      const st = await S.status().catch(() => ({ mode: "on" })), owner = await S.isOwner().catch(() => false);
+      document.querySelector(".site-bar")?.remove(); document.querySelector(".site-off")?.remove();
+      window.SITE_MODE = st.mode || "on";
+      if (st.mode === "offline" && !owner) {
+        const o = document.createElement("div"); o.className = "site-off";
+        o.innerHTML = "<div><div class=\"site-off-e\">🛠️</div><b>Scoreline is taking a short break</b><p>" + esc(st.msg || "We'll be back soon. Thanks for your patience!") + "</p></div>";
+        document.body.appendChild(o); return;
+      }
+      if (st.mode === "readonly" || (st.mode === "offline" && owner)) {
+        const bar = document.createElement("div"); bar.className = "site-bar"; bar.setAttribute("role", "status");
+        bar.textContent = st.mode === "offline" ? "🛠️ Offline for everyone else (you're the Owner)" : "⏸️ " + (st.msg || "Read-only for now: chat, friend requests and reactions are paused.");
+        document.body.prepend(bar);
+      }
+    }
+    setTimeout(() => applySite().catch(() => {}), 1500);
+    setInterval(() => { if (!document.hidden) applySite().catch(() => {}); }, 120000);
     // View site as a role: a bar across the top while it's on, with Stop.
     (() => {
       const va = store.get("viewAs", ""); if (!ROLE_NAMES[va] && va !== "user") return;
@@ -6106,6 +6184,250 @@
         const L = FX.L;
         return window.scorelineChat?.share({ k: "fantasy", lg: L.mode === "marks" ? "marks" : "free", id: String(L.id).slice(0, 40), t: String(L.name || "Fantasy league").slice(0, 80), s: (tabName(L.lg) + " · " + (L.mode === "marks" ? "Marks league" : "Free league")).slice(0, 80) });
       }
+    });
+    /* ---------- Customize: show only what you want (game page parts, the live ticker, emojis) + text size ---------- */
+    const CUSTOM = [
+      ["wp", "Win probability", "The chart and live chances"],
+      ["plays", "Plays", "The play-by-play and the field / court / diamond"],
+      ["players", "Player stats", "Box scores and leaders"],
+      ["tstats", "Team stats", "Team totals and comparisons"],
+      ["pred", "Predictions and picks", "Who's favored and your pick"],
+      ["venue", "Stadium and weather", "Crowd, surface, weather, TV"],
+      ["tags", "Fun labels", "🔥 Nail-biter, 🦃 Thanksgiving game and the like"],
+    ];
+    const hidden = () => store.get("hide", {}) || {};
+    const applyCustom = () => { const h = hidden(); CUSTOM.forEach(([k]) => document.documentElement.classList.toggle("h-" + k, !!h[k])); document.documentElement.dataset.ts = store.get("textSize", "m"); };
+    applyCustom();
+    const TEXT_SIZES = [["m", "Normal"], ["l", "Large"], ["xl", "Extra large"]];
+    function customHtml() {
+      const h = hidden(), ts = store.get("textSize", "m");
+      return '<div class="section-title"><b>Text size</b></div><div class="panel"><div class="seg chips ts-seg">' + TEXT_SIZES.map(([k, n]) => '<button type="button" class="' + (ts === k ? "on" : "") + '" data-ts="' + k + '">' + n + "</button>").join("") + "</div><p class=\"g-note\" style=\"margin:8px 2px 0\">Makes scores, plays and cards easier to read.</p></div>" +
+        '<div class="section-title"><b>Show</b></div><div class="panel">' + CUSTOM.map(([k, n, d]) => '<button type="button" class="opt ' + (h[k] ? "" : "on") + '" data-custom="' + k + '"><span><b>' + esc(n) + "</b><small>" + esc(d) + '</small></span><i class="switch"></i></button>').join("") + "</div>" +
+        '<p class="g-note">Turned off parts are just hidden. Scores always show.</p>';
+    }
+    function openCustom() { const v = { kind: "custom", key: "custom" }; if (!pushView(v)) return; setBody(v, "Customize", customHtml()); }
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("[data-open-custom]")) return openCustom();
+      const c = e.target.closest("[data-custom]");
+      if (c) { const h = hidden(); h[c.dataset.custom] = !h[c.dataset.custom]; store.set("hide", h); applyCustom(); c.classList.toggle("on", !h[c.dataset.custom]); buzz(8); return; }
+      const t = e.target.closest("[data-ts]");
+      if (t && t.closest(".ts-seg")) { store.set("textSize", t.dataset.ts); applyCustom(); t.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === t)); buzz(8); }
+    });
+    /* ---------- The Buzz: news + moves (cuts, signings, trades, call-ups, injured list) with a bit of personality ----------
+       News headlines and move lists come from ESPN's public feeds; titles get an emoji by what happened. No news photos
+       (they belong to the photographers); teams show as colour badges, not logos. Every story links to its source. */
+    const BUZZ_LGS = ["nfl", "nba", "mlb", "cfb"];
+    const POS = "(?:QB|RB|FB|WR|TE|OL|OT|OG|G|C|T|DL|DE|DT|NT|LB|OLB|ILB|MLB|DB|CB|S|SS|FS|K|P|LS|KR|PR|LHP|RHP|P|1B|2B|3B|SS|OF|LF|CF|RF|DH|INF|UTIL|PG|SG|SF|PF|F|G-F|F-C|C-F|ATH)";
+    const teamBadge = (t) => t ? '<span class="tbadge" style="--tc:#' + esc(t.color || "555") + '">' + esc(t.abbreviation || "?") + "</span>" : "";
+    const FA = '<span class="tbadge fa" title="Free agent">FA</span>';
+    const LBL = (t, title) => '<span class="tbadge fa" title="' + title + '">' + t + "</span>";
+    const PS = LBL("PS", "Practice squad"), IR = LBL("IR", "Injured list"), WV = LBL("Waivers", "Waivers"), MIN = LBL("Minors", "Minor leagues"), SUS = LBL("Suspended", "Suspended"), TRD = LBL("Trade", "Trade");
+    // One move sentence → { emoji, title, from, to }. "Team" is the team that made the move.
+    function readMove(sentence, team) {
+      const T = team?.name || team?.displayName || "team", ab = teamBadge(team);
+      const nm = (sentence.match(new RegExp("^(?:[A-Z][a-z]+(?: [a-z]+){0,3})\\s+(?:" + POS + "\\s+)?([A-Z][\\w.'’-]+(?:\\s(?:[A-Z][\\w.'’-]+|III|II|IV|Jr\\.?|Sr\\.?)){1,3})")) || [])[1] || "";
+      const who = nm || "a player", s = sentence;
+      if (/^Waived/i.test(s)) return { e: "✂️", title: "The " + T + " waive " + who, from: ab, to: FA };
+      if (/^Released/i.test(s)) return { e: "✂️", title: who + " gets cut by the " + T + (/practice squad/i.test(s) ? "" : " 👀"), from: ab, to: FA };
+      if (/^Traded/i.test(s)) return { e: "🔄", title: "The " + T + " trade " + who + " 👀", from: ab, to: TRD };
+      if (/^Acquired/i.test(s)) return { e: "🔄", title: "The " + T + " land " + who + " in a trade", from: TRD, to: ab };
+      if (/^Claimed/i.test(s)) return { e: "🧲", title: "The " + T + " scoop up " + who + " off waivers", from: WV, to: ab };
+      if (/^Re-?signed|^Extended/i.test(s)) return { e: "🔁", title: who + " is staying with the " + T + " 🤝", from: ab, to: ab };
+      if (/^(Signed|Agreed to terms)/i.test(s) && /practice squad/i.test(s) && /\bto\b.*practice squad/i.test(s)) return { e: "✍️", title: "The " + T + " add " + who + " to the practice squad", from: FA, to: ab };
+      if (/^(Signed|Agreed to terms)/i.test(s) && /from the practice squad/i.test(s)) return { e: "⬆️", title: who + " gets promoted to the " + T + " roster 🎉", from: PS, to: ab };
+      if (/^(Signed|Agreed to terms)/i.test(s)) return { e: "✍️", title: "The " + T + " sign " + who + " 💰", from: FA, to: ab };
+      if (/^(Elevated|Recalled|Called up|Selected the contract)/i.test(s)) return { e: "⬆️", title: who + " gets the call-up (" + T + ")", from: /practice squad/i.test(s) ? PS : MIN, to: ab };
+      if (/^(Optioned|Assigned|Sent|Outrighted)/i.test(s)) return { e: "⬇️", title: who + " sent down by the " + T, from: ab, to: MIN };
+      if (/^Placed/i.test(s) && /suspend/i.test(s)) return { e: "⛔", title: who + " is suspended (" + T + ")", from: ab, to: SUS };
+      if (/^Placed/i.test(s)) return { e: "🩹", title: who + " heads to the injured list (" + T + ")", from: ab, to: IR };
+      if (/^(Activated|Reinstated)/i.test(s)) return { e: "💪", title: who + " is back for the " + T + "!", from: /injur|physically/i.test(s) ? IR : "", to: ab };
+      if (/^Designated/i.test(s) && /return/i.test(s)) return { e: "🔜", title: who + " is close to returning for the " + T, from: IR, to: ab };
+      if (/^Designated/i.test(s)) return { e: "📋", title: "The " + T + " designate " + who + " for assignment", from: ab, to: "" };
+      if (/^(Fired|Dismissed|Relieved)/i.test(s)) return { e: "🔥", title: "The " + T + " part ways with " + who + " 👀", from: ab, to: "" };
+      if (/^(Hired|Named)/i.test(s)) return { e: "🤝", title: "The " + T + " hire " + who, from: "", to: ab };
+      if (/^Retired|announced (his|their) retirement/i.test(s)) return { e: "👋", title: who + " retires. Thanks for the memories!", from: ab, to: "" };
+      return { e: "📝", title: T + ": " + s.replace(/\.$/, ""), from: "", to: "" };
+    }
+    // A move description can hold several sentences and several players ("Elevated A and B from ..."): one item each.
+    function splitMoves(desc) {
+      return String(desc || "").split(/(?<=[a-z\)])\.\s+(?=[A-Z])/).map((x) => x.trim().replace(/\.$/, "")).filter(Boolean).flatMap((s) => {
+        const m = s.match(new RegExp("^([A-Z][a-z]+(?: [a-z]+){0,3})\\s+(" + POS + "\\s+[^,]+?)\\s+and\\s+(" + POS + "\\s+.+)$"));
+        if (!m) return [s];
+        const rest = m[3].match(new RegExp("^(" + POS + "\\s+[A-Z][\\w.'’-]+(?:\\s(?:[A-Z][\\w.'’-]+|III|II|IV|Jr\\.?|Sr\\.?)){1,3})(.*)$"));
+        return rest ? [m[1] + " " + m[2] + rest[2], m[1] + " " + rest[1] + rest[2]] : [s];
+      });
+    }
+    const NEWS_EMOJI = [[/injur|out vs|ruled out|questionable|doubtful|\bIR\b|torn|sprain|concussion|hamstring|\bsore\b|knee|ankle|shoulder|illness|surgery|\bACL\b|\bMCL\b|groin|calf|spasms/i, "🩹"], [/trade|traded|deal\b/i, "🔄"], [/fired|dismiss|part ways/i, "🔥"],
+      [/suspend|banned/i, "⛔"], [/sign|contract|extension|\$\d/i, "💰"], [/record|career-high|historic|first ever/i, "📈"], [/rank|power rankings/i, "📊"], [/highlight|best plays|watch/i, "🎬"],
+      [/draft|mock/i, "🎯"], [/return|back in|cleared/i, "💪"], [/coach/i, "🧢"], [/playoff|clinch|eliminat/i, "🏆"]];
+    const newsEmoji = (h) => (NEWS_EMOJI.find(([re]) => re.test(h)) || [0, "📰"])[1];
+    const spicy = (h) => /fired|benched|suspend|traded|cut|released|feud|comments|fined|ejected|controvers/i.test(h);
+    const bzAgo = (ms) => { const s = Math.max(1, (Date.now() - ms) / 1000); return s < 3600 ? Math.round(s / 60) + "m" : s < 86400 ? Math.round(s / 3600) + "h" : Math.round(s / 86400) + "d"; };
+    const buzzCache = {};
+    async function loadBuzz(lg) {
+      if (buzzCache[lg] && Date.now() - buzzCache[lg].at < 120000) return buzzCache[lg].items;
+      const path = LEAGUES[lg].path;
+      const [news, moves] = await Promise.all([
+        getJSON(API + path + "/news?limit=25").catch(() => null),
+        getJSON(API + path + "/transactions?limit=40").catch(() => null),
+      ]);
+      const items = [];
+      (news?.articles || []).forEach((a) => {
+        const h = a.headline || ""; if (!h) return;
+        const link = a.links?.web?.href || a.links?.mobile?.href || "";
+        items.push({ kind: "news", lg, id: "n" + a.id, at: Date.parse(a.published || a.lastModified) || 0, e: newsEmoji(h), title: h + (spicy(h) ? " 👀" : ""), sub: a.description || "", link });
+      });
+      (moves?.transactions || []).forEach((t, i) => splitMoves(t.description).forEach((s, k) => {
+        const m = readMove(s, t.team);
+        items.push({ kind: "move", lg, id: "m" + lg + (Date.parse(t.date) || 0) + "_" + (t.team?.id || "") + "_" + k + "_" + i, at: Date.parse(t.date) || 0, e: m.e, title: m.title, sub: s + ".", from: m.from, to: m.to });
+      }));
+      buzzCache[lg] = { at: Date.now(), items };
+      return items;
+    }
+    const buzzRow = (x) => '<div class="bz-item">' +
+      '<div class="bz-top"><span class="bz-e" aria-hidden="true">' + x.e + '</span><span class="bz-txt"><b>' + esc(x.title) + "</b>" +
+      (x.kind === "move" && x.from && x.to ? '<span class="bz-move">' + x.from + '<i aria-hidden="true">→</i>' + x.to + "</span>" : "") +
+      '<small>' + esc(x.sub) + "</small>" +
+      '<small class="bz-meta">' + esc((LEAGUES[x.lg]?.short || x.lg.toUpperCase()) + " · " + bzAgo(x.at) + " ago") + (x.link ? ' · <a href="' + esc(x.link) + '" target="_blank" rel="noopener nofollow">Read more ↗</a>' : "") + "</small></span></div>" +
+      '<div class="bz-react" data-react-id="' + esc(x.id) + '"></div></div>';
+    // Key dates (official league calendars; update each season). Unknown ones say so instead of guessing.
+    const KEY_DATES = [
+      { lg: "nfl", what: "NFL trade deadline", at: "2026-11-10T21:00:00Z" },   // NFL.com 2026-27 important dates: Nov 10, 4 p.m. ET
+      { lg: "nba", what: "NBA trade deadline", at: "2027-02-11T20:00:00Z" },   // NBA 2026-27 key dates: Feb 11, 3 p.m. ET
+      { lg: "mlb", what: "MLB trade deadline", at: null },                     // 2027 date not announced yet
+    ];
+    function keyDatesHtml() {
+      const now = Date.now(), day = 864e5;
+      return '<div class="kd-row">' + KEY_DATES.map((k) => {
+        if (!k.at) return '<span class="kd"><b>📅 ' + esc(k.what) + "</b><small>Not set yet</small></span>";
+        const t = Date.parse(k.at), left = Math.ceil((t - now) / day), when = new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+        return '<span class="kd' + (left < 0 ? " past" : left <= 7 ? " soon" : "") + '"><b>' + (left < 0 ? "✅ " : left <= 7 ? "⏰ " : "📅 ") + esc(k.what) + "</b><small>" +
+          esc(left < 0 ? "Passed " + when + ". No more trades this season." : left === 0 ? "Today, " + new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + " 👀" : when + " · " + left + (left === 1 ? " day" : " days") + " left") + "</small></span>";
+      }).join("") + "</div>";
+    }
+    let buzzKind = "all", buzzLg = "all";
+    async function drawBuzz(v) {
+      const box = v.el.querySelector("[data-buzz]"); if (!box) return;
+      const lgs = buzzLg === "all" ? BUZZ_LGS.filter((k) => pins().includes(k) || k === "nfl") : [buzzLg];
+      const all = (await Promise.all(lgs.map((k) => loadBuzz(k).catch(() => [])))).flat().filter((x) => buzzKind === "all" || x.kind === buzzKind).sort((a, b) => b.at - a.at).slice(0, 80);
+      if (!box.isConnected) return;
+      box.innerHTML = all.length ? all.map(buzzRow).join("") : '<div class="panel"><p class="muted people-hint">Nothing new right now. Check back soon 👀</p></div>';
+      window.scorelineReact?.fill(box);
+    }
+    function openBuzz(kind) {
+      buzzKind = kind || "all";
+      const v = { kind: "buzz", key: "buzz" };
+      if (!pushView(v)) return;
+      const chip = (attr, k, n, on) => '<button type="button" class="' + (on ? "on" : "") + '" ' + attr + '="' + k + '">' + n + "</button>";
+      setBody(v, "The Buzz 🐝", '<div class="bz-chips seg chips">' + [["all", "Everything"], ["news", "📰 News"], ["move", "🔄 Moves"]].map(([k, n]) => chip("data-bzk", k, n, buzzKind === k)).join("") + "</div>" +
+        '<div class="bz-chips seg chips">' + [["all", "All sports"], ...BUZZ_LGS.map((k) => [k, LEAGUES[k].short || k.toUpperCase()])].map(([k, n]) => chip("data-bzl", k, n, buzzLg === k)).join("") + "</div>" +
+        keyDatesHtml() + dm("<b>Reading The Buzz.</b> News and roster moves from around the league. <b>FA</b> means free agent (not on a team). <b>Waived</b> or <b>released</b> means cut. <b>Practice squad</b> is the NFL's backup group that trains with the team. <b>Injured list / reserve</b> means out hurt for a while. <b>Called up</b> means moved onto the main roster. The <b>trade deadline</b> is the last day teams can trade players for the rest of the season.") +
+        '<div data-buzz><div class="skel" style="height:90px"></div><div class="skel" style="height:90px"></div></div><p class="g-note">News and moves from ESPN\'s public feeds. Tap Read more for the full story.</p>');
+      drawBuzz(v);
+    }
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("[data-open-buzz]")) return openBuzz(e.target.closest("[data-open-buzz]").dataset.openBuzz);
+      const k = e.target.closest("[data-bzk]"), l = e.target.closest("[data-bzl]");
+      if (!k && !l) return;
+      if (k) buzzKind = k.dataset.bzk; if (l) buzzLg = l.dataset.bzl;
+      const v = views.find((x) => x.key === "buzz"); if (!v) return;
+      (k || l).parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === (k || l)));
+      buzz(8); drawBuzz(v);
+    });
+    // Home: the newest few, with a way into the full feed.
+    var homeBuzzHtml = "";   // var: Home can draw before this line runs
+    async function homeBuzz(el) {
+      if (!el) return;
+      const lgs = BUZZ_LGS.filter((k) => pins().includes(k) || k === "nfl");
+      const all = (await Promise.all(lgs.map((k) => loadBuzz(k).catch(() => [])))).flat().sort((a, b) => b.at - a.at).slice(0, 4);
+      if (!el.isConnected || !all.length) return;
+      const h = '<div class="section-title"><b>The Buzz 🐝</b><button class="see-all" type="button" data-open-buzz="all">See all ›</button></div><div class="bz-home">' + all.map(buzzRow).join("") + "</div>";
+      homeBuzzHtml = h; if (el.innerHTML !== h) el.innerHTML = h;
+      window.scorelineReact?.fill(el);
+    }
+    /* ---------- Stat leaders: top 10 for any stat, this season or past seasons and playoffs (every sport) ---------- */
+    const LDR = {};   // lg -> { season, type, cat }
+    // The number to show: ESPN sometimes gives a whole stat line ("179-567, 42 HR, ..."); then use the value itself.
+    const ldrVal = (l) => { const d = String(l.displayValue ?? ""); if (d.length <= 8) return d; const v = Number(l.value); return !isFinite(v) ? d.split(",")[0] : v > 0 && v < 1 ? v.toFixed(3).replace(/^0/, "") : Number.isInteger(v) ? v.toLocaleString() : v.toFixed(1); };
+    const seasonName = (lg, y) => (lg === "nba" ? (y - 1) + "-" + String(y).slice(2) : String(y));
+    async function openLeaders(lg) {
+      const v = { kind: "leaders", key: "leaders|" + lg };
+      if (!pushView(v)) return; v.el.dataset.lg = lg;
+      setBody(v, "Stat leaders 🏆", '<div data-ldr><div class="skel" style="height:300px"></div></div>');
+      drawLeaders(v, lg);
+    }
+    async function drawLeaders(v, lg) {
+      const box = v.el.querySelector("[data-ldr]"); if (!box) return;
+      const o = (LDR[lg] ||= { season: 0, type: 2, cat: "" });
+      let d;
+      try { d = await getJSON("https://site.web.api.espn.com/apis/site/v3/sports/" + LEAGUES[lg].path + "/leaders?" + (o.season ? "season=" + o.season + "&" : "") + "seasontype=" + o.type); }
+      catch {
+        // ESPN's quick leaders feed fails for some past seasons; the season database always works (players looked up one by one).
+        try {
+          const [sp, lgn] = LEAGUES[lg].path.split("/"), yr = o.season || LDR.cur?.[lg] || new Date().getFullYear();
+          const c = await getJSON("https://sports.core.api.espn.com/v2/sports/" + sp + "/leagues/" + lgn + "/seasons/" + yr + "/types/" + o.type + "/leaders?limit=10");
+          const https = (u) => String(u || "").replace(/^http:/, "https:");
+          const want = (c.categories || []).find((x) => x.name === o.cat) || (c.categories || [])[0];
+          if (want) want.leaders = await Promise.all((want.leaders || []).slice(0, 10).map(async (l) => {
+            const [a, t] = await Promise.all([getJSON(https(l.athlete?.$ref)).catch(() => null), l.team?.$ref ? getJSON(https(l.team.$ref)).catch(() => null) : null]);
+            return { displayValue: l.displayValue, athlete: a ? { id: a.id, displayName: a.displayName, position: a.position } : null, team: t ? { abbreviation: t.abbreviation, color: t.color, displayName: t.displayName } : null };
+          }));
+          d = { requestedSeason: { year: yr }, currentSeason: { year: LDR.cur?.[lg] || yr }, categories: c.categories || [] };
+        } catch { box.innerHTML = '<div class="error">Couldn\'t load leaders.</div>'; return; }
+      }
+      if (!box.isConnected) return;
+      const cur = d.currentSeason?.year || new Date().getFullYear(), sel = o.season || d.requestedSeason?.year || cur;
+      (LDR.cur ||= {})[lg] = cur;
+      const cats = d.leaders?.categories || d.categories || [];
+      const cat = cats.find((c) => c.name === o.cat) || cats[0];
+      const seasons = []; for (let y = cur; y > cur - 10; y--) seasons.push(y);
+      const opt = (val, txt, on) => '<option value="' + esc(val) + '"' + (on ? " selected" : "") + ">" + esc(txt) + "</option>";
+      const medal = ["🥇", "🥈", "🥉"];
+      box.innerHTML = '<div class="ldr-pick"><select data-ldr-season aria-label="Season">' +
+        seasons.flatMap((y) => [opt(y + "|2", seasonName(lg, y) + " season", sel === y && o.type === 2), opt(y + "|3", seasonName(lg, y) + " playoffs", sel === y && o.type === 3)]).join("") + "</select>" +
+        '<select data-ldr-cat aria-label="Stat">' + cats.map((c) => opt(c.name, c.displayName, c === cat)).join("") + "</select></div>" +
+        dm("<b>Stat leaders.</b> The top players in one stat. Per-game stats (like points per game) only count players who've played enough games. Playoffs only count playoff games.") +
+        (!cat?.leaders?.length ? '<div class="panel"><p class="muted people-hint">No leaders for this yet. Not available.</p></div>' :
+          '<div class="panel ldr-list">' + cat.leaders.slice(0, 10).map((l, i) => '<button type="button" class="opt ldr-row' + (i < 3 ? " top" : "") + '" data-player="' + lg + "|" + esc(l.athlete?.id || "") + '">' +
+            '<span class="ldr-rank">' + (medal[i] || i + 1) + "</span>" + teamBadge(l.team) + '<span class="ldr-name"><b>' + esc(l.athlete?.displayName || "") + "</b><small>" + esc([l.athlete?.position?.abbreviation, l.team?.displayName].filter(Boolean).join(" · ")) + "</small></span>" +
+            '<span class="ldr-val">' + esc(ldrVal(l)) + "</span></button>").join("") + "</div>");
+    }
+    document.addEventListener("change", (e) => {
+      const s = e.target.closest?.("[data-ldr-season], [data-ldr-cat]"); if (!s) return;
+      const v = views.find((x) => x.el === s.closest(".sheet")); if (!v) return;
+      const lg = v.el.dataset.lg, o = (LDR[lg] ||= { season: 0, type: 2, cat: "" });
+      if (s.matches("[data-ldr-season]")) { const [y, t] = s.value.split("|"); o.season = +y; o.type = +t; } else o.cat = s.value;
+      buzz(8); drawLeaders(v, lg);
+    });
+    document.addEventListener("click", (e) => { const b = e.target.closest("[data-leaders]"); if (b) openLeaders(b.dataset.leaders); });
+
+    /* ---------- Calendar: pick any day from a month view (days with games are bold; football shows the week) ---------- */
+    let calMonth = null;
+    function openCalendar(key) {
+      const v = { kind: "calendar", key: "calendar|" + key };
+      if (!pushView(v)) return; v.el.dataset.lg = key;
+      calMonth = dateAt(dayOff[key] || 0); calMonth.setDate(1);
+      drawCalendar(v, key);
+    }
+    async function drawCalendar(v, key) {
+      await ensureGameDays(key).catch(() => {});
+      const gd = gameDays[key] || new Set(), wk = weekOf[key] || {}, sel = ymd(dateAt(dayOff[key] || 0)), today = ymd(dateAt(0));
+      const m = new Date(calMonth), first = new Date(m.getFullYear(), m.getMonth(), 1, 12), days = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+      let cells = ""; for (let i = 0; i < first.getDay(); i++) cells += "<span></span>";
+      for (let dnum = 1; dnum <= days; dnum++) {
+        const d = new Date(m.getFullYear(), m.getMonth(), dnum, 12), s = ymd(d), has = gd.has(s);
+        cells += '<button type="button" class="cal-d' + (has ? " has" : "") + (s === sel ? " on" : "") + (s === today ? " today" : "") + '"' + (has ? "" : " disabled") + ' data-cal-day="' + s + '"><b>' + dnum + "</b>" + (wk[s] ? "<small>W" + wk[s].n + "</small>" : "") + "</button>";
+      }
+      setBody(v, "Pick a day 📅", '<div class="cal-head"><button type="button" class="sheet-btn" data-cal-step="-1" aria-label="Previous month">‹</button><b>' + esc(first.toLocaleDateString([], { month: "long", year: "numeric" })) +
+        '</b><button type="button" class="sheet-btn" data-cal-step="1" aria-label="Next month">›</button></div><div class="cal-grid">' + ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((x) => "<i>" + x + "</i>").join("") + cells + "</div>" +
+        '<p class="g-note">Bold days have games' + (Object.keys(wk).length ? "; W = week of the season" : "") + ". Only nearby weeks are known, so far-off months may look empty.</p>");
+    }
+    document.addEventListener("click", (e) => {
+      const o = e.target.closest("[data-open-cal]"); if (o) return openCalendar(o.dataset.openCal);
+      const st = e.target.closest("[data-cal-step]");
+      if (st) { const v = views.find((x) => x.el === st.closest(".sheet")); if (!v) return; calMonth.setMonth(calMonth.getMonth() + Number(st.dataset.calStep)); buzz(6); return drawCalendar(v, v.el.dataset.lg); }
+      const dd = e.target.closest("[data-cal-day]");
+      if (dd) { const v = views.find((x) => x.el === dd.closest(".sheet")); if (!v) return; const key = v.el.dataset.lg; dayOff[key] = offOf(dd.dataset.calDay); buzz(8); closeTop(); state.tab = key; setTimeout(() => render(), 380); }
     });
     // Find people (top bar): search usernames as you type (similar names too), open a profile, or send a request.
     // Results are small cards like Roblox's: photo, name, @username, a status line and one button.

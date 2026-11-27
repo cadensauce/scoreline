@@ -8,6 +8,8 @@ service cloud.firestore {
     // entered the emailed code; the push worker then signs it in with a token marked ts = true.
     function verified() { return !exists(/databases/$(database)/documents/twoStep/$(request.auth.uid)) || request.auth.token.ts == true; }
     function member() { return signedIn() && verified(); }
+    // Site switch: in read-only or offline mode, new messages, friend requests and reactions are paused (the owner can still act).
+    function siteOpen() { return !exists(/databases/$(database)/documents/public/site) || get(/databases/$(database)/documents/public/site).data.mode == 'on' || isOwner(); }
     function friends(a, b) {
       return (exists(/databases/$(database)/documents/requests/$(a + '_' + b)) && get(/databases/$(database)/documents/requests/$(a + '_' + b)).data.status == 'accepted')
           || (exists(/databases/$(database)/documents/requests/$(b + '_' + a)) && get(/databases/$(database)/documents/requests/$(b + '_' + a)).data.status == 'accepted');
@@ -97,7 +99,7 @@ service cloud.firestore {
     // Friend requests. Document id is "<from>_<to>".
     match /requests/{id} {
       allow read: if member() && (resource.data.from == me() || resource.data.to == me());
-      allow create: if member() && request.resource.data.from == me()
+      allow create: if member() && siteOpen() && request.resource.data.from == me()
         && id == me() + '_' + request.resource.data.to
         && request.resource.data.keys().hasOnly(['from', 'to', 'status', 'at'])
         && request.resource.data.to is string && request.resource.data.to.size() <= 128
@@ -113,6 +115,13 @@ service cloud.firestore {
     match /public/{doc} {
       allow read: if true;
       allow write: if false;
+    }
+    // The site switch (owner only): normal, read-only or offline, with a short message. Everyone can read it.
+    match /public/site {
+      allow read: if true;
+      allow write: if member() && isOwner() && request.resource.data.keys().hasOnly(['mode', 'msg', 'at', 'by'])
+        && request.resource.data.mode in ['on', 'readonly', 'offline'] && request.resource.data.msg is string && request.resource.data.msg.size() <= 200
+        && request.resource.data.by == me() && request.resource.data.at == request.time;
     }
 
     // Push alert subscriptions (phones with Scoreline on the home screen). The id is a hash of the
@@ -501,7 +510,7 @@ service cloud.firestore {
             && (!('s' in s) || (s.s is string && s.s.size() <= 80));
         }
         allow read: if member() && me() in chat().members;
-        allow create: if member() && request.resource.data.from == me()
+        allow create: if member() && siteOpen() && request.resource.data.from == me()
           && me() in chat().members
           && exists(/databases/$(database)/documents/chatOk/$(me()))
           && request.resource.data.keys().hasOnly(['from', 'text', 'at', 'share'])
@@ -512,6 +521,35 @@ service cloud.firestore {
           && (isGroup(chat()) || (friends(chat().members[0], chat().members[1])
               && !exists(/databases/$(database)/documents/blocks/$(other())/people/$(me()))));
         allow delete: if member() && resource.data.from == me();
+      }
+    }
+    // Reactions (🔥 😂 😮 😭 🐐 👀) on plays, news and moves. reactions/{item} holds the counts anyone can see;
+    // reactions/{item}/by/{uid} is your one reaction. Both change together in one write, and the rules check the counts
+    // move by exactly your change, so nobody can fake them or react twice.
+    function rk() { return ['fire', 'lol', 'wow', 'cry', 'goat', 'eyes']; }
+    function cnt(d, k) { return d.get('c', {}).get(k, 0); }
+    function oneMove(before, after, had, now, k) {
+      return cnt(after, k) == cnt(before, k) + (k == now ? 1 : 0) - (k == had ? 1 : 0);
+    }
+    function countsOk(before, after, had, now) {
+      return had != now && after.keys().hasOnly(['c']) && after.c.keys().hasOnly(rk())
+        && oneMove(before, after, had, now, 'fire') && oneMove(before, after, had, now, 'lol') && oneMove(before, after, had, now, 'wow')
+        && oneMove(before, after, had, now, 'cry') && oneMove(before, after, had, now, 'goat') && oneMove(before, after, had, now, 'eyes');
+    }
+    function mineBefore(item) { return exists(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)) ? get(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)).data.e : ''; }
+    function mineAfter(item) { return existsAfter(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)) ? getAfter(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)).data.e : ''; }
+    match /reactions/{item} {
+      allow get: if true;   // just counts, no names
+      allow create, update: if member() && siteOpen() && item.matches('^[A-Za-z0-9_.-]{1,120}$')
+        && countsOk(resource == null ? {} : resource.data, request.resource.data, mineBefore(item), mineAfter(item));
+      match /by/{uid} {
+        allow get: if member() && me() == uid;
+        allow create, update: if member() && me() == uid && request.resource.data.keys().hasOnly(['e']) && request.resource.data.e in rk()
+          && existsAfter(/databases/$(database)/documents/reactions/$(item))
+          && countsOk(exists(/databases/$(database)/documents/reactions/$(item)) ? get(/databases/$(database)/documents/reactions/$(item)).data : {},
+                      getAfter(/databases/$(database)/documents/reactions/$(item)).data, mineBefore(item), request.resource.data.e);
+        allow delete: if member() && me() == uid
+          && countsOk(get(/databases/$(database)/documents/reactions/$(item)).data, getAfter(/databases/$(database)/documents/reactions/$(item)).data, resource.data.e, '');
       }
     }
     // Agreed to the chat rules (once). Needed before sending messages.
@@ -527,7 +565,7 @@ service cloud.firestore {
     }
     // Reports: anyone signed in can send one; nobody can read them in the app (the owner reviews them).
     match /reports/{id} {
-      allow create: if member() && request.resource.data.from == me()
+      allow create: if member() && request.resource.data.from == me()   // reports always work, even in read-only
         && request.resource.data.keys().hasOnly(['from', 'about', 'chat', 'text', 'reason', 'at'])
         && request.resource.data.about is string && request.resource.data.about.size() <= 128 && request.resource.data.about != me()
         && request.resource.data.reason in ['bullying', 'inappropriate', 'spam', 'danger', 'other']
