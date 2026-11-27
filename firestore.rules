@@ -46,7 +46,8 @@ service cloud.firestore {
     match /cards/{uid} {
       allow read: if member() && (me() == uid || (resource.data.show == 'friends' && friends(me(), uid)));
       allow create, update: if member() && me() == uid
-        && request.resource.data.keys().hasOnly(['avatar', 'bio', 'teams', 'show', 'updatedAt', 'title', 'banner', 'deco', 'name', 'theme', 'sports', 'favTeams', 'favPlayers'])
+        && request.resource.data.keys().hasOnly(['avatar', 'bio', 'teams', 'show', 'updatedAt', 'title', 'banner', 'deco', 'name', 'theme', 'sports', 'favTeams', 'favPlayers', 'hideOg'])
+        && (!('hideOg' in request.resource.data) || request.resource.data.hideOg is bool)
         // Shop extras can only be shown if you own them, and only while you've agreed to the Terms (withdrawing freezes them).
         && ((request.resource.data.get('title', '') == '' && request.resource.data.get('banner', '') == '' && request.resource.data.get('deco', '') == '')
           || (exists(/databases/$(database)/documents/ages/$(uid)) && get(/databases/$(database)/documents/ages/$(uid)).data.is13plus == true))
