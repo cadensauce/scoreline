@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795818401" />
+  <meta name="build" content="1795818650" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -383,7 +383,7 @@
     .f-ez { fill: #fff; font: 700 24px var(--display); letter-spacing: 4px; opacity: .85; text-anchor: middle; dominant-baseline: middle; text-transform: uppercase; }
     .f-los { stroke: #5b9dff; stroke-width: 2.5; }
     .f-1st { stroke: var(--gold); stroke-width: 2.5; }
-    .f-tag { font: 700 11px system-ui, sans-serif; paint-order: stroke; stroke: rgba(0,0,0,.6); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; } .t-los { fill: #9cc2ff; } .t-1st { fill: #ffd400; }
+    .f-tag { pointer-events: none; } .f-tag text { font: 800 10.5px system-ui, sans-serif; } .t-los rect { fill: #3b7dff; } .t-los text { fill: #fff; } .t-1st rect { fill: #ffd400; } .t-1st text { fill: #1a1a00; }
     .f-throw { fill: none; stroke: rgba(255,255,255,.75); stroke-width: 1.8; stroke-dasharray: 4 5; }
     .f-run { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; }
     .f-ball { fill: #fff; stroke: #fff; stroke-width: 1; }
@@ -591,6 +591,21 @@
     .idea-st { display: inline-block; margin-bottom: 6px; padding: 2px 9px; border-radius: 999px; background: var(--line); font-size: 11.5px; font-weight: 800; }
     .idea-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; } .idea-votes { display: flex; gap: 6px; }
     .idea-mod { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); } .idea-mod select { height: 32px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; padding: 0 10px; }
+    /* Win probability: labels sit above and below the chart, never on the line */
+    .wpg { display: flex; flex-direction: column; } .wpg svg { order: 1; } .wpg-t, .wpg-b { position: static !important; text-shadow: none !important; padding: 0 2px; } .wpg-t { order: 0; margin-bottom: 4px; } .wpg-b { order: 2; margin-top: 4px; } .wpg-50 { display: none; }
+    /* Team badges: letters centred and even */
+    .tbadge { display: inline-flex !important; align-items: center; justify-content: center; line-height: 1 !important; font-family: var(--display, inherit); font-variant-numeric: tabular-nums; letter-spacing: .04em !important; padding-top: 1px !important; text-transform: uppercase; }
+    /* Custom picker */
+    .pick-btn2 { display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; flex: 1 1 150px; min-width: 0; height: 42px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line-hi, var(--line)); background: var(--panel); color: var(--text); font: inherit; font-weight: 800; cursor: pointer; } .pick-btn2 span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .pick-btn2 i { font-style: normal; color: var(--muted); }
+    .pick-list .pick-opt { width: 100%; text-align: left; background: none; border: 0; color: inherit; font: inherit; font-size: 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; } .pick-list .pick-opt + .pick-opt { border-top: 1px solid var(--line); }
+    .pick-opt.on { font-weight: 800; } .pick-tick { font-weight: 900; font-size: 18px; } .pick-group { padding: 12px 16px 4px; font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    /* Playoff bracket */
+    .br-col { display: flex; flex-direction: column; gap: 10px; }
+    .br-game { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--text); font: inherit; text-align: left; cursor: pointer; } .br-game small { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .br-team { display: flex; align-items: center; gap: 10px; font-size: 16px; } .br-team b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .br-team.lost { opacity: .55; }
+    .br-seed { width: 16px; text-align: right; color: var(--muted); font-size: 13px; font-weight: 700; } .br-score { font-weight: 800; font-variant-numeric: tabular-nums; } .br-score i { font-style: normal; font-size: 11px; }
+    .br-game.bye { flex-direction: row; align-items: center; flex-wrap: wrap; } .br-game.bye .br-team { flex: 1; } .br-bye { font-weight: 800; color: var(--muted); } .br-game.bye small { flex-basis: 100%; }
+    .br-note { margin: 4px 2px 0; }
     /* Reactions */
     .bz-react { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; min-height: 30px; }
     .rx { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2, var(--panel)); color: var(--text); font: inherit; font-size: 14px; cursor: pointer; }
@@ -2152,7 +2167,7 @@
       const sBtn = paged ? '<button type="button" class="icon-btn' + (open ? " on" : "") + '" data-searchtoggle aria-label="Search ' + esc(L.short || L.name) + ' teams"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>' : "";
       const hBtn = key !== "f1" ? '<button type="button" class="icon-btn' + (HEAT ? " on" : "") + '" data-heat aria-label="' + (HEAT ? "Show as list" : "Show as heat map") + '" title="' + (HEAT ? "List" : "Heat map") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2" opacity=".55"/><rect x="3" y="13" width="8" height="8" rx="2" opacity=".3"/><rect x="13" y="13" width="8" height="8" rx="2" opacity=".75"/></svg></button>' : "";
       return '<div class="bar"><h1>' + esc(title) + "</h1>" + hBtn + sBtn + "</div>" + headlineHtml(key) + (open ? search : "") +
-        '<div class="bar-row">' + liveBtn + (paged ? '<button type="button" class="icon-btn st-btn" data-standings="' + key + '" aria-label="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '" title="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button><button type="button" class="icon-btn" data-leaders="' + key + '" aria-label="Stat leaders" title="Stat leaders">🏆</button>' : "") + "</div>" + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
+        '<div class="bar-row">' + liveBtn + (paged ? '<button type="button" class="icon-btn st-btn" data-standings="' + key + '" aria-label="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '" title="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button><button type="button" class="icon-btn" data-leaders="' + key + '" aria-label="Stat leaders" title="Stat leaders">🏆</button>' + (key !== "cfb" ? '<button type="button" class="icon-btn" data-bracket="' + key + '" aria-label="Playoff bracket" title="Playoff bracket"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h5v4H3M3 15h5v4H3M8 7h3v10H8M11 12h4M15 10h6v4h-6"/></svg></button>' : "") + '' : "") + "</div>" + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
         (HEAT ? '<div class="heat-key"><span>One-sided</span><i></i><span>Close game</span></div>' : "") + (HEAT ? dm("<b>Reading the heat map.</b> Each tile is one game. The brighter the tile, the closer the game is to a coin flip (from win probability), so the most exciting games stand out. Upcoming games use the pre-game odds; finished games are dimmed. The ball icon shows who has it.") : "");
     }
 
@@ -4373,9 +4388,12 @@
       s += '<line x1="' + xL + '" x2="' + xL + '" y1="0" y2="' + H + '" class="f-los"/>';
       if (dist && dist < t0 && !/kickoff|extra point|field goal|punt/i.test(ty)) s += '<line x1="' + X(pos(t0 - dist)) + '" x2="' + X(pos(t0 - dist)) + '" y1="0" y2="' + H + '" class="f-1st"/>';
       // Name the lines right on the field (blue = where the play starts, yellow = the 1st-down line).
-      const fTag = (x, txt, cls, y) => { const end = x > W - 130; return '<text x="' + (end ? x - 5 : x + 5) + '" y="' + y + '" text-anchor="' + (end ? "end" : "start") + '" class="f-tag ' + cls + '">' + txt + "</text>"; };
-      s += fTag(xL, "Line of scrimmage", "t-los", 15);
-      if (dist && dist < t0 && !/kickoff|extra point|field goal|punt/i.test(ty)) { const x1 = X(pos(t0 - dist)); s += fTag(x1, "1st down", "t-1st", Math.abs(x1 - xL) < 120 ? 31 : 15); }
+      // Solid chips at the very top edge (above the yard numbers), each on its own side of its line so they never overlap.
+      const fTag = (x, txt, cls, side) => { const w = txt.length * 6.3 + 14, left = side < 0 ? x - w - 3 : x + 3, cx = Math.max(2, Math.min(W - w - 2, left));
+        return '<g class="f-tag ' + cls + '"><rect x="' + cx + '" y="3" width="' + w + '" height="17" rx="8.5"/><text x="' + (cx + w / 2) + '" y="12" text-anchor="middle" dominant-baseline="central">' + txt + "</text></g>"; };
+      const x1st = dist && dist < t0 && !/kickoff|extra point|field goal|punt/i.test(ty) ? X(pos(t0 - dist)) : null, ahead = x1st != null && x1st > xL ? 1 : -1;
+      s += fTag(xL, "Line of scrimmage", "t-los", x1st == null ? (xL > W / 2 ? -1 : 1) : -ahead);
+      if (x1st != null) s += fTag(x1st, "1st down", "t-1st", ahead);
       const side = /\bleft\b/i.test(t) ? -1 : /\bright\b/i.test(t) ? 1 : 0;
       const lane = (k) => CY + side * k * dir;
       const ath = (type) => { const r = (P.participants || []).find((x) => x.type === type)?.athlete?.$ref; return r ? athCache[r] : null; };
@@ -6366,6 +6384,23 @@
       homeBuzzHtml = h; if (el.innerHTML !== h) el.innerHTML = h;
       window.scorelineReact?.fill(el);
     }
+    /* ---------- Custom picker (instead of the phone's plain dropdown): a list with a ✓ on the current choice ---------- */
+    // opts: [{ v, l, group? }]. Resolves with the picked value, or null if closed.
+    function choose(title, opts, cur) {
+      return new Promise((done) => {
+        const v = { kind: "picker", key: "picker" };
+        if (!pushView(v)) return done(null);
+        let last = "";
+        setBody(v, title, '<div class="panel pick-list">' + opts.map((o) => {
+          const head = o.group && o.group !== last ? '<div class="pick-group">' + esc(o.group) + "</div>" : ""; last = o.group || last;
+          return head + '<button type="button" class="opt pick-opt' + (String(o.v) === String(cur) ? " on" : "") + '" data-pick-v="' + esc(o.v) + '"><span>' + esc(o.l) + "</span>" + (String(o.v) === String(cur) ? '<span class="pick-tick" aria-label="Selected">✓</span>' : "") + "</button>";
+        }).join("") + "</div>");
+        v.el.querySelector(".pick-opt.on")?.scrollIntoView({ block: "center" });
+        v.el.addEventListener("click", (e) => { const b = e.target.closest("[data-pick-v]"); if (!b) return; buzz(8); done(b.dataset.pickV); closeTop(); });
+        const watch = setInterval(() => { if (!v.el.isConnected) { clearInterval(watch); done(null); } }, 400);
+      });
+    }
+    const pickBtn = (attr, label) => '<button type="button" class="pick-btn2" ' + attr + '><span>' + esc(label) + '</span><i aria-hidden="true">▾</i></button>';
     /* ---------- Stat leaders: top 10 for any stat, this season or past seasons and playoffs (every sport) ---------- */
     const LDR = {};   // lg -> { season, type, cat }
     // The number to show: ESPN sometimes gives a whole stat line ("179-567, 42 HR, ..."); then use the value itself.
@@ -6404,9 +6439,10 @@
       const seasons = []; for (let y = cur; y > cur - 10; y--) seasons.push(y);
       const opt = (val, txt, on) => '<option value="' + esc(val) + '"' + (on ? " selected" : "") + ">" + esc(txt) + "</option>";
       const medal = ["🥇", "🥈", "🥉"];
-      box.innerHTML = '<div class="ldr-pick"><select data-ldr-season aria-label="Season">' +
-        seasons.flatMap((y) => [opt(y + "|2", seasonName(lg, y) + " season", sel === y && o.type === 2), opt(y + "|3", seasonName(lg, y) + " playoffs", sel === y && o.type === 3)]).join("") + "</select>" +
-        '<select data-ldr-cat aria-label="Stat">' + cats.map((c) => opt(c.name, c.displayName, c === cat)).join("") + "</select></div>" +
+      v.ldrSeasons = seasons.flatMap((y) => [{ v: y + "|2", l: seasonName(lg, y) + " season", group: seasonName(lg, y) }, { v: y + "|3", l: seasonName(lg, y) + " playoffs", group: seasonName(lg, y) }]);
+      v.ldrCats = cats.map((c) => ({ v: c.name, l: c.displayName }));
+      v.ldrCur = { season: sel + "|" + o.type, cat: cat?.name || "" };
+      box.innerHTML = '<div class="ldr-pick">' + pickBtn("data-ldr-season-pick", seasonName(lg, sel) + (o.type === 3 ? " playoffs" : " season")) + pickBtn("data-ldr-cat-pick", cat?.displayName || "Stat") + "</div>" +
         dm("<b>Stat leaders.</b> The top players in one stat. Per-game stats (like points per game) only count players who've played enough games. Playoffs only count playoff games.") +
         (!cat?.leaders?.length ? '<div class="panel"><p class="muted people-hint">No leaders for this yet. Not available.</p></div>' :
           '<div class="panel ldr-list">' + cat.leaders.slice(0, 10).map((l, i) => '<button type="button" class="opt ldr-row' + (i < 3 ? " top" : "") + '" data-player="' + lg + "|" + esc(l.athlete?.id || "") + '">' +
@@ -6420,7 +6456,16 @@
       if (s.matches("[data-ldr-season]")) { const [y, t] = s.value.split("|"); o.season = +y; o.type = +t; } else o.cat = s.value;
       buzz(8); drawLeaders(v, lg);
     });
-    document.addEventListener("click", (e) => { const b = e.target.closest("[data-leaders]"); if (b) openLeaders(b.dataset.leaders); });
+    document.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-leaders]"); if (b) return openLeaders(b.dataset.leaders);
+      const p = e.target.closest("[data-ldr-season-pick], [data-ldr-cat-pick]"); if (!p) return;
+      const v = views.find((x) => x.el === p.closest(".sheet")); if (!v) return;
+      const lg = v.el.dataset.lg, o = (LDR[lg] ||= { season: 0, type: 2, cat: "" }), isSeason = p.matches("[data-ldr-season-pick]");
+      const pick = await choose(isSeason ? "Season" : "Stat", isSeason ? v.ldrSeasons : v.ldrCats, isSeason ? v.ldrCur.season : v.ldrCur.cat);
+      if (pick == null) return;
+      if (isSeason) { const [y, t] = pick.split("|"); o.season = +y; o.type = +t; } else o.cat = pick;
+      drawLeaders(v, lg);
+    });
 
     /* ---------- Calendar: pick any day from a month view (days with games are bold; football shows the week) ---------- */
     let calMonth = null;
@@ -6517,6 +6562,74 @@
       const s = e.target.closest?.("[data-idea-status]"); if (!s) return;
       const id = s.closest("[data-idea]")?.dataset.idea, row = ideaRows.find((x) => x.id === id); if (!row) return;
       try { await window.scorelineIdeas.setStatus(id, s.value); row.status = s.value; buzz(8); toast("Marked " + (IDEA_STATUS[s.value] || "open")); } catch { toast("Only the Owner and Mods can do that."); }
+    });
+    /* ---------- Playoff bracket 🏆: real playoff games by round (NFL), or "if the season ended today" from the standings ----------
+       Seeds come from the standings of that season. Winners get an arrow. Before the playoffs: the projected matchups. */
+    const BR_ROUNDS = { nfl: [[1, "Wild Card"], [2, "Divisional"], [3, "Conf. Championships"], [5, "Super Bowl"]] };
+    const BR = { season: 0, round: 1 };
+    async function brSeeds(lg, season) {
+      const [sp, l] = LEAGUES[lg].path.split("/");
+      const d = await getJSON("https://site.api.espn.com/apis/v2/sports/" + sp + "/" + l + "/standings" + (season ? "?season=" + season : ""));
+      const confs = (d.children || []).map((c) => {
+        const entries = []; const walk = (n) => { (n.standings?.entries || []).forEach((e) => entries.push(e)); (n.children || []).forEach(walk); }; walk(c);
+        const seed = (e) => Number((e.stats || []).find((s) => s.name === "playoffSeed")?.value) || 99;
+        return { name: c.abbreviation || c.name, teams: entries.map((e) => ({ id: String(e.team?.id), seed: seed(e), team: e.team })).filter((t) => t.seed < 99).sort((a, b) => a.seed - b.seed) };
+      });
+      return confs;
+    }
+    function brCard(g, seedOf) {
+      const c = g.competitions?.[0] || {}, t = (c.competitors || []).slice().sort((a, b) => (seedOf(a.team?.id) || 99) - (seedOf(b.team?.id) || 99)), st = g.status?.type || {};
+      const row = (x) => { const won = st.completed && x.winner; return '<div class="br-team' + (st.completed && !x.winner ? " lost" : "") + '"><span class="br-seed">' + (seedOf(x.team?.id) || "") + "</span>" + teamBadge(x.team) + '<b>' + esc(x.team?.shortDisplayName || x.team?.displayName || "") + "</b>" + (st.state !== "pre" ? '<span class="br-score">' + esc(x.score ?? "") + (won ? ' <i aria-label="Winner">◀</i>' : "") + "</span>" : "") + "</div>"; };
+      return '<button type="button" class="br-game" data-ev="' + esc(g.id) + '" data-lg="' + esc(g.__lg || "nfl") + '"><small>' + esc(st.state === "pre" ? fmtDay(g.date) + " · " + fmtTime(g.date) : st.shortDetail || "") + "</small>" + t.map(row).join("") + "</button>";
+    }
+    function brProjected(conf, size, lg) {
+      const T = conf.teams, s = (n) => T.find((x) => x.seed === n), byes = lg === "nfl" ? 1 : lg === "mlb" ? 2 : 0;
+      const row = (x) => x ? '<div class="br-team"><span class="br-seed">' + x.seed + "</span>" + teamBadge(x.team) + "<b>" + esc(x.team?.shortDisplayName || x.team?.displayName || "") + "</b></div>" : "";
+      let out = "";
+      for (let i = 1; i <= byes; i++) if (s(i)) out += '<div class="br-game bye">' + row(s(i)) + '<span class="br-bye">BYE</span><small>Plays the lowest seed left</small></div>';
+      const n = size, firstPair = byes + 1;
+      for (let a = firstPair, b = n; a < b; a++, b--) if (s(a) && s(b)) out += '<div class="br-game">' + row(s(a)) + row(s(b)) + "</div>";
+      return out;
+    }
+    async function openBracket(lg) {
+      const v = { kind: "bracket", key: "bracket|" + lg };
+      if (!pushView(v)) return; v.el.dataset.lg = lg;
+      setBody(v, "Playoff bracket 🏆", '<div data-br><div class="skel" style="height:300px"></div></div>');
+      drawBracket(v, lg);
+    }
+    async function drawBracket(v, lg) {
+      const box = v.el.querySelector("[data-br]"); if (!box) return;
+      const now = new Date(), cur = lg === "nba" ? (now.getMonth() >= 8 ? now.getFullYear() + 1 : now.getFullYear()) : now.getMonth() < 2 ? now.getFullYear() - 1 : now.getFullYear();
+      const season = BR.season || cur, rounds = BR_ROUNDS[lg];
+      let games = [], confs = [];
+      try {
+        confs = await brSeeds(lg, season);
+        if (rounds) games = (await getJSON(API + LEAGUES[lg].path + "/scoreboard?seasontype=3&week=" + BR.round + "&dates=" + season).catch(() => ({}))).events || [];
+      } catch { box.innerHTML = '<div class="error">Couldn\'t load the bracket.</div>'; return; }
+      if (!box.isConnected) return;
+      const seedOf = (id) => confs.flatMap((c) => c.teams).find((t) => t.id === String(id))?.seed;
+      const size = { nfl: 7, nba: 10, mlb: 6, cfb: 0 }[lg] ?? 0;
+      v.brSeasons = Array.from({ length: 8 }, (_, i) => cur - i).map((y) => ({ v: y, l: seasonName(lg, y) }));
+      let html = '<div class="ldr-pick">' + pickBtn("data-br-season", seasonName(lg, season)) + "</div>";
+      if (rounds) html += '<div class="bz-chips seg chips">' + rounds.map(([w, n]) => '<button type="button" class="' + (BR.round === w ? "on" : "") + '" data-br-round="' + w + '">' + esc(n) + "</button>").join("") + "</div>";
+      if (games.length) {
+        const byConf = {}; games.forEach((g) => { const h = g.competitions?.[0]?.notes?.[0]?.headline || ""; const k = (confs.find((c) => h.startsWith(c.name))?.name) || (BR.round === 5 ? "Super Bowl" : "Games"); (byConf[k] ||= []).push(g); });
+        html += Object.entries(byConf).map(([k, gs]) => '<div class="section-title"><b>' + esc(k) + '</b></div><div class="br-col">' + gs.map((g) => brCard(g, seedOf)).join("") + "</div>").join("");
+      } else if (size && confs.some((c) => c.teams.length)) {
+        html += '<p class="g-note br-note">' + (season === cur ? "🔮 If the season ended today" : "Seeds from the final standings") + (lg === "nba" ? ". Seeds 7–10 go to the play-in." : "") + "</p>" +
+          confs.map((c) => '<div class="section-title"><b>' + esc(c.name) + '</b></div><div class="br-col">' + brProjected(c, lg === "nba" ? 6 : size, lg) + (lg === "nba" ? '<div class="g-label">Play-in</div>' + brProjected({ teams: c.teams.filter((t) => t.seed >= 7 && t.seed <= 10).map((t) => ({ ...t })) }, 10, "playin") : "") + "</div>").join("");
+      } else html += '<div class="panel"><p class="muted people-hint">Bracket not available for this one.</p></div>';
+      html += dm("<b>Reading the bracket.</b> The number by each team is its <b>seed</b>: its rank among the playoff teams (1 is best). <b>BYE</b> means the top seed skips the first round. Winners move on; the ◀ marks who won. Before the playoffs, this shows who'd play if the season ended today.");
+      box.innerHTML = html;
+    }
+    document.addEventListener("click", async (e) => {
+      const o = e.target.closest("[data-bracket]"); if (o) { BR.season = 0; BR.round = 1; return openBracket(o.dataset.bracket); }
+      const r = e.target.closest("[data-br-round]"), s = e.target.closest("[data-br-season]");
+      if (!r && !s) return;
+      const v = views.find((x) => x.el === (r || s).closest(".sheet")); if (!v) return;
+      if (r) { BR.round = Number(r.dataset.brRound); buzz(6); return drawBracket(v, v.el.dataset.lg); }
+      const pick = await choose("Season", v.brSeasons, BR.season || v.brSeasons[0].v); if (pick == null) return;
+      BR.season = Number(pick); drawBracket(v, v.el.dataset.lg);
     });
     // Find people (top bar): search usernames as you type (similar names too), open a profile, or send a request.
     // Results are small cards like Roblox's: photo, name, @username, a status line and one button.
