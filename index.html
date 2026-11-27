@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795817480" />
+  <meta name="build" content="1795817639" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -2682,11 +2682,12 @@
       }
       // Saved copy, shown instantly next time the app opens while fresh scores load.
       // Only the current week/day is saved, so the app never opens on a week you paged to last time.
-      if (key && !state.offset[key] && !dayOff[key] && !html.includes('class="empty"') && html.length < 400000 && Date.now() - (shellSavedAt[key] || 0) > 60000) { shellSavedAt[key] = Date.now(); store.set("shell:" + key, html); store.set("shellAt:" + key, Date.now()); }
+      if (key && !state.offset[key] && !dayOff[key] && !html.includes('class="empty"') && html.length < 400000 && Date.now() - (shellSavedAt[key] || 0) > 60000) { shellSavedAt[key] = Date.now(); store.set("shell:" + key, html); store.set("shellAt:" + key, Date.now()); store.set("shellBuild", BUILD_ID); }
     }
     const shellSavedAt = {};
     // The saved copy is only shown if it's recent (10 minutes): an old one would open the app on old scores.
-    const savedShell = (key) => { const h = Date.now() - store.get("shellAt:" + key, 0) < 6e5 ? store.get("shell:" + key, "") : ""; return h.includes('class="empty"') ? "" : h; };   // never flash an empty day
+    const BUILD_ID = document.querySelector('meta[name="build"]')?.content || "";
+    const savedShell = (key) => { const h = Date.now() - store.get("shellAt:" + key, 0) < 6e5 && store.get("shellBuild", "") === BUILD_ID ? store.get("shell:" + key, "") : "";   // a copy from an older version is never shown return h.includes('class="empty"') ? "" : h; };   // never flash an empty day
 
     /* ---------- refresh loop ---------- */
     function stamp() { $("updated").textContent = "Updated " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }); }
@@ -6363,9 +6364,23 @@
       const o = (LDR[lg] ||= { season: 0, type: 2, cat: "" });
       let d;
       try { d = await getJSON("https://site.web.api.espn.com/apis/site/v3/sports/" + LEAGUES[lg].path + "/leaders?" + (o.season ? "season=" + o.season + "&" : "") + "seasontype=" + o.type); }
-      catch { box.innerHTML = '<div class="error">Couldn\'t load leaders.</div>'; return; }
+      catch {
+        // ESPN's quick leaders feed fails for some past seasons; the season database always works (players looked up one by one).
+        try {
+          const [sp, lgn] = LEAGUES[lg].path.split("/"), yr = o.season || LDR.cur?.[lg] || new Date().getFullYear();
+          const c = await getJSON("https://sports.core.api.espn.com/v2/sports/" + sp + "/leagues/" + lgn + "/seasons/" + yr + "/types/" + o.type + "/leaders?limit=10");
+          const https = (u) => String(u || "").replace(/^http:/, "https:");
+          const want = (c.categories || []).find((x) => x.name === o.cat) || (c.categories || [])[0];
+          if (want) want.leaders = await Promise.all((want.leaders || []).slice(0, 10).map(async (l) => {
+            const [a, t] = await Promise.all([getJSON(https(l.athlete?.$ref)).catch(() => null), l.team?.$ref ? getJSON(https(l.team.$ref)).catch(() => null) : null]);
+            return { displayValue: l.displayValue, athlete: a ? { id: a.id, displayName: a.displayName, position: a.position } : null, team: t ? { abbreviation: t.abbreviation, color: t.color, displayName: t.displayName } : null };
+          }));
+          d = { requestedSeason: { year: yr }, currentSeason: { year: LDR.cur?.[lg] || yr }, categories: c.categories || [] };
+        } catch { box.innerHTML = '<div class="error">Couldn\'t load leaders.</div>'; return; }
+      }
       if (!box.isConnected) return;
       const cur = d.currentSeason?.year || new Date().getFullYear(), sel = o.season || d.requestedSeason?.year || cur;
+      (LDR.cur ||= {})[lg] = cur;
       const cats = d.leaders?.categories || d.categories || [];
       const cat = cats.find((c) => c.name === o.cat) || cats[0];
       const seasons = []; for (let y = cur; y > cur - 10; y--) seasons.push(y);
