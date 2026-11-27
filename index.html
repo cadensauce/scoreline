@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795816255" />
+  <meta name="build" content="1795816623" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -162,6 +162,7 @@
     .card.live::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 2px; background: var(--live); }
     .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; font-size: 12px; color: var(--muted); }
     .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 8px; } .card-tags span { padding: 2px 9px; border-radius: 999px; background: var(--panel-2, var(--line)); color: var(--text); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+    .fe { font-style: normal; } @media (max-width: 400px) { .fe { display: none; } }   /* filter emojis: only where there is room */
     .venue-card { padding: 14px 16px !important; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
     .p-college { color: var(--text) !important; font-weight: 700; }
     .vc-top { display: flex; align-items: center; gap: 12px; padding-bottom: 10px; margin-bottom: 4px; border-bottom: 1px solid var(--line); } .vc-ic { font-size: 22px; } .vc-top b { display: block; font-size: 15px; } .vc-top small { color: var(--muted); font-size: 12.5px; }
@@ -2089,7 +2090,7 @@
       const paged = !!L?.paging, day = paged && viewOf(key) === "day";
       const toggle = paged ? '<div class="seg chips vt">' + [["week", "Week"], ["day", "Day"]].map(([k, l]) => '<button type="button" data-view="' + k + '" class="' + (viewOf(key) === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
       const pager = paged && !day ? '<div class="pager"><button class="pill-btn" type="button" data-page="-1" aria-label="Previous">‹</button><span class="label">' + esc(weekLabel(key)) + '</span><button class="pill-btn" type="button" data-page="1" aria-label="Next">›</button></div>' : "";
-      const liveBtn = key === "f1" ? '<button type="button" class="pill-btn f1-follow ' + (state.favs.has("f1") ? "on" : "") + '" data-fav="f1" aria-label="Follow Formula 1"><span class="fo">★ Following F1</span><span class="fn">☆ Follow F1</span></button>' : key !== "f1" ? '<div class="seg chips">' + [["all", "All"], ["fav", "⭐ My teams"], ["live", "🔴 Live"], ["close", "🔥 Closest"]].map(([k, l]) => '<button type="button" data-filter="' + k + '" class="' + (state.filter === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
+      const liveBtn = key === "f1" ? '<button type="button" class="pill-btn f1-follow ' + (state.favs.has("f1") ? "on" : "") + '" data-fav="f1" aria-label="Follow Formula 1"><span class="fo">★ Following F1</span><span class="fn">☆ Follow F1</span></button>' : key !== "f1" ? '<div class="seg chips">' + [["all", "All"], ["fav", "<i class=fe>⭐ </i>My teams"], ["live", "<i class=fe>🔴 </i>Live"], ["close", "<i class=fe>🔥 </i>Closest"]].map(([k, l]) => '<button type="button" data-filter="' + k + '" class="' + (state.filter === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
       const search = paged ? '<div class="search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" data-search placeholder="Search ' + esc(L.short || L.name) + ' teams" autocomplete="off" value="' + esc(searchQ[key] || "") + '"><div class="sres" data-sres></div></div>' : "";
       // One title row (with a search icon), one row of filters + Week/Day, then the week or day picker.
       const open = paged && (searchOpen[key] || searchQ[key]);
