@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795818841" />
+  <meta name="build" content="1795818930" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -4410,7 +4410,8 @@
       // Small = defender (number only).
       const mark = (x, y, c, a, fb, delay, up, from, route, small) => {
         xs.push(x);
-        const name = small ? "" : [a?.short || fb || "", a?.pos].filter(Boolean).join(" · "), r = small ? 12 : 16, ly = up ? -32 : 36;
+        // Defenders (small) are named too when the data says who (e.g. "F. Warner · Tackle"), so it's clear who made the stop.
+        const name = small ? (a?.short ? a.short + (fb ? " · " + fb : "") : "") : [a?.short || fb || "", a?.pos].filter(Boolean).join(" · "), r = small ? 12 : 16, ly = up ? -32 : 36;
         const body = (small ? '<polygon points="0,-15 13,9 -13,9" fill="' + c + '"/>' : '<circle cx="0" cy="0" r="' + r + '" fill="' + c + '"/>') + '<text x="0" y="' + (small ? 2 : 0) + '" class="f-jn' + (small ? " s" : "") + '">' + esc(a?.jersey || "") + "</text>" +
           (name ? '<rect x="-60" y="' + (ly - 15) + '" width="120" height="25" rx="12.5" class="f-pill"/><text x="0" data-cx="0" data-rel="1" data-ax="' + x + '" y="' + (ly + 3) + '" class="f-lbl">' + esc(name) + "</text>" : "");
         let ph = null;
@@ -4490,7 +4491,7 @@
         s += '<path d="' + rt.d + '" class="f-route draw gone" pathLength="1" data-dr="0.1,1.25" style="animation:fadeout .45s 1.5s forwards"/>';
         s += fly(arc(qbX, CY, cxp, ly, 60), 0.75, 0.6) + land(cxp, ly, 1.35);
         if (yac) s += run(yp, 1.35, rd);
-        s += mark(qbX, CY, oc, { jersey: ath("passer")?.jersey }, "", 0.05, false, { x: xL - dir * S, y: CY, begin: 0.1, dur: 0.6 });
+        s += mark(qbX, CY, oc, ath("passer") ? { ...ath("passer"), pos: "QB" } : { pos: "QB" }, nm(/([A-Z][a-z]?\.[\w'-]+) pass/) || "", 0.05, true, { x: xL - dir * S, y: CY, begin: 0.1, dur: 0.6 });   // the QB, named, label above
         // Route to the catch point, wait for the ball, then the run after the catch.
         s += mark(yac ? xE : cxp, yac ? ey2 : ly, oc, ath("receiver"), nm(/ to ([A-Z][a-z]?\.[\w'-]+)/), 0.1, (yac ? ey2 : ly) < CY, null,
           { phases: [{ d: rt.d, b: 0.1, u: 1.25 }].concat(yac ? [{ d: yp, b: 1.35, u: rd }] : []) });
@@ -4508,7 +4509,7 @@
         const bx = pick ? tx : tx + dir * 16, by = pick ? ly : ly + (ly < CY ? -16 : 16);   // where the ball ended up, next to the receiver
         s += pick ? land(tx, ly, 1.35) : '<text x="' + bx + '" y="' + (by + 8) + '" class="f-x" style="animation-delay:1.35s">✕</text>';
         // result is shown in the card below
-        s += mark(qbX, CY, oc, { jersey: ath("passer")?.jersey }, "", 0.05, false, { x: xL - dir * S, y: CY, begin: 0.1, dur: 0.6 });
+        s += mark(qbX, CY, oc, ath("passer") ? { ...ath("passer"), pos: "QB" } : { pos: "QB" }, nm(/([A-Z][a-z]?\.[\w'-]+) pass/) || "", 0.05, true, { x: xL - dir * S, y: CY, begin: 0.1, dur: 0.6 });   // the QB, named, label above
         const tgt = ath("target") || ath("receiver"), tn = nm(/ (?:to|for) ([A-Z][a-z]?\.[\w'-]+)/);
         if (tgt || tn) s += mark(tx, ly, oc, tgt, tn, 0.1, ly < CY, null, { d: rt.d, begin: 0.1, dur: 1.25 });
         const pd = ath("passDefender");
