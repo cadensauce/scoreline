@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795569045" />
+  <meta name="build" content="1795816255" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -161,6 +161,12 @@
     .card.live { border-color: rgba(255, 71, 87, .28); }
     .card.live::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 2px; background: var(--live); }
     .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; font-size: 12px; color: var(--muted); }
+    .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 8px; } .card-tags span { padding: 2px 9px; border-radius: 999px; background: var(--panel-2, var(--line)); color: var(--text); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+    .venue-card { padding: 14px 16px !important; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+    .p-college { color: var(--text) !important; font-weight: 700; }
+    .vc-top { display: flex; align-items: center; gap: 12px; padding-bottom: 10px; margin-bottom: 4px; border-bottom: 1px solid var(--line); } .vc-ic { font-size: 22px; } .vc-top b { display: block; font-size: 15px; } .vc-top small { color: var(--muted); font-size: 12.5px; }
+    .vc-row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; font-size: 14px; } .vc-row span { color: var(--muted); } .vc-row b { text-align: right; }
+    .g-tags { justify-content: center; margin: 0 0 8px; }
     .sep { font-style: normal; }
     .status { font-weight: 700; letter-spacing: .3px; text-transform: uppercase; }
     .status.live { color: var(--live); display: inline-flex; align-items: center; gap: 6px; }
@@ -1733,7 +1739,32 @@
       const venue = comp.venue?.fullName ? "<span>" + esc(comp.venue.fullName) + "</span>" : "";
       const foot = situation || tv || venue ? '<div class="card-foot">' + (situation || venue || "<span></span>") + (tv ? "<span>" + esc(tv) + "</span>" : "") + "</div>" : "";
       return '<article data-ev="' + esc(ev.id) + '" data-lg="' + key + '" class="card ' + (live ? "live" : "") + '" style="animation-delay:' + Math.min(i * 30, 300) + 'ms">' +
-        '<div class="card-head">' + statusHtml + league + "</div>" + rows + foot + "</article>";
+        '<div class="card-head">' + statusHtml + league + "</div>" + tagsHtml(ev, key) + rows + foot + "</article>";
+    }
+    // Special games get a label: big games from ESPN's game note (Super Bowl, bowls, playoffs, cups) and holidays by date.
+    const tagsHtml = (ev, key) => { const t = [specialGame(ev), gameVibe(ev, key)].filter(Boolean); return t.length ? '<div class="card-tags">' + t.map((x) => "<span>" + esc(x) + "</span>").join("") + "</div>" : ""; };
+    function specialGame(ev) {
+      const n = (ev.competitions?.[0]?.notes || []).map((x) => x?.headline || "").find(Boolean) || "";
+      if (/super bowl/i.test(n)) return "🏆 Super Bowl";
+      if (/bowl\b/i.test(n)) return "🏈 " + n.slice(0, 40);
+      if (/championship|final|playoff|wild ?card|divisional|semifinal|world series|in-season|nba cup|play-in|game \d/i.test(n)) return "🏆 " + n.slice(0, 40);
+      const d = new Date(ev.date); if (isNaN(d)) return "";
+      const m = d.getMonth(), day = d.getDate(), wd = d.getDay();
+      if (m === 10 && wd === 4 && day >= 22 && day <= 28) return "🦃 Thanksgiving game";
+      if (m === 10 && wd === 5 && day >= 23 && day <= 29) return "🛍️ Black Friday game";
+      if (m === 11 && day === 24) return "🎁 Christmas Eve game";
+      if (m === 11 && day === 25) return "🎄 Christmas game";
+      if (m === 11 && day === 31) return "🎉 New Year's Eve game";
+      if (m === 0 && day === 1) return "🎆 New Year's Day game";
+      if (m === 6 && day === 4) return "🎆 Fourth of July game";
+      return "";
+    }
+    // A little personality: how the game is going, in one emoji line.
+    function gameVibe(ev, key) {
+      const state = ev.status?.type?.state;
+      if (state === "in") { const c = closeness(ev, key); return c < 0.08 ? "🔥 Nail-biter" : c > 0.46 ? "🧹 Running away with it" : ""; }
+      if (state === "post") { const t = teamsOf(ev), g = Math.abs(Number(t[0]?.score) - Number(t[1]?.score)); if (isNaN(g)) return ""; return g <= ({ mlb: 1, nfl: 3, cfb: 3, nba: 3 }[key] ?? 1) ? "😮‍💨 Down to the wire" : ""; }
+      return "";
     }
     function applyFilter(evs, key) {
       if (state.filter === "close") return evs.slice().sort((a, b) => closeness(a, key || leagueOf(a)) - closeness(b, key || leagueOf(b)));
@@ -2058,7 +2089,7 @@
       const paged = !!L?.paging, day = paged && viewOf(key) === "day";
       const toggle = paged ? '<div class="seg chips vt">' + [["week", "Week"], ["day", "Day"]].map(([k, l]) => '<button type="button" data-view="' + k + '" class="' + (viewOf(key) === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
       const pager = paged && !day ? '<div class="pager"><button class="pill-btn" type="button" data-page="-1" aria-label="Previous">‹</button><span class="label">' + esc(weekLabel(key)) + '</span><button class="pill-btn" type="button" data-page="1" aria-label="Next">›</button></div>' : "";
-      const liveBtn = key === "f1" ? '<button type="button" class="pill-btn f1-follow ' + (state.favs.has("f1") ? "on" : "") + '" data-fav="f1" aria-label="Follow Formula 1"><span class="fo">★ Following F1</span><span class="fn">☆ Follow F1</span></button>' : key !== "f1" ? '<div class="seg chips">' + [["all", "All"], ["fav", "My teams"], ["live", "Live"], ["close", "Closest"]].map(([k, l]) => '<button type="button" data-filter="' + k + '" class="' + (state.filter === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
+      const liveBtn = key === "f1" ? '<button type="button" class="pill-btn f1-follow ' + (state.favs.has("f1") ? "on" : "") + '" data-fav="f1" aria-label="Follow Formula 1"><span class="fo">★ Following F1</span><span class="fn">☆ Follow F1</span></button>' : key !== "f1" ? '<div class="seg chips">' + [["all", "All"], ["fav", "⭐ My teams"], ["live", "🔴 Live"], ["close", "🔥 Closest"]].map(([k, l]) => '<button type="button" data-filter="' + k + '" class="' + (state.filter === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" : "";
       const search = paged ? '<div class="search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" data-search placeholder="Search ' + esc(L.short || L.name) + ' teams" autocomplete="off" value="' + esc(searchQ[key] || "") + '"><div class="sres" data-sres></div></div>' : "";
       // One title row (with a search icon), one row of filters + Week/Day, then the week or day picker.
       const open = paged && (searchOpen[key] || searchQ[key]);
@@ -2741,7 +2772,8 @@
     const setBody = (v, title, html) => { v.el.querySelector(".sheet-title").textContent = title; v.el.querySelector(".sheet-body").innerHTML = html; };   // the data/affiliation note lives in the footer and You → About, not on every page
     const SRC_NOTE = '<div class="src-note">Data from ESPN public feeds; may be delayed. Scoreline is an independent fan app, not affiliated with or endorsed by ESPN, the NFL, the NCAA, the NBA, MLB, Formula 1, or any team or player. Names and logos belong to their owners.</div>';
 
-    const pct = (x) => Math.round(x * 100);
+    // Win chance as a whole percent. Never 100 (or 0) unless it is decided: 100% means a guaranteed win.
+    const pct = (x) => (x >= 1 ? 100 : x <= 0 ? 0 : Math.min(99, Math.max(1, Math.round(x * 100))));
     function winProb(s, st) {
       const wp = s.winprobability;
       if (st === "in" && wp?.length) return { home: wp[wp.length - 1].homeWinPercentage, src: "Live win probability" };
@@ -3370,14 +3402,14 @@
       let txt = "";
       if (state === "pre") {
         const when = fmtDay(comp.date) + " at " + fmtTime(comp.date);
-        txt = hp == null ? "Starts " + when + "." : name(hp >= .5 ? home : away) + " are favored to win (" + Math.round(Math.max(hp, 1 - hp) * 100) + "%). Starts " + when + ".";
+        txt = hp == null ? "Starts " + when + "." : name(hp >= .5 ? home : away) + " are favored to win (" + pct(Math.max(hp, 1 - hp)) + "%). Starts " + when + ".";
       } else if (state === "post") {
         txt = a === b ? "Ended in a tie, " + a + "–" + b + "." : name(a > b ? away : home) + " won " + Math.max(a, b) + "–" + Math.min(a, b) + ".";
       } else {
         const lead = a === b ? null : a > b ? away : home, diff = Math.abs(a - b);
         const when = (st.shortDetail || "").replace(/ - /, " left in the ").replace(/^Halftime$/i, "at halftime");
         txt = lead ? name(lead) + " lead by " + diff + (when ? ", " + when : "") + "." : "Tied " + a + "–" + b + (when ? ", " + when : "") + ".";
-        if (lead && hp != null) { const pc = Math.round((lead === home ? hp : 1 - hp) * 100); if (pc >= 55) txt += " Teams in this spot win about " + pc + "% of the time."; }
+        if (lead && hp != null) { const pc = pct(lead === home ? hp : 1 - hp); if (pc >= 55) txt += " Teams in this spot win about " + pc + "% of the time."; }
       }
       return '<p class="plain-line" data-plain>' + esc(txt) + "</p>";
     }    /* ---------- every sport: scores by period + team stat bars ---------- */
@@ -4405,6 +4437,10 @@
       }
       // The flag comes in once the play has finished (the play itself is drawn above).
       if (flagName && !/penalty/i.test(ty)) { const fd = tEnd + 0.35; s += tag(clampX(xL), 24, "🚩 " + flagName, fd); at(fd + 1.2); }   // along the top edge, clear of the players and the ball's path   // (a bare "Penalty" with no play to draw already shows just the flag)
+      // Ejections (disqualified players) get their own tag, so it is clear someone was sent off.
+      { const out = [...t.matchAll(/PENALTY on [A-Z]{2,4}-([A-Z][^,()]{1,30}?),[^.;]*?Disqualif/gi)].map((m) => m[1].trim())
+          .concat([...t.matchAll(/([A-Z]\.\s?[A-Z][A-Za-z'-]+) (?:was |has been )?ejected/g)].map((m) => m[1]));
+        if (out.length) { const fd = tEnd + 0.5; s += tag(clampX(xL), flagName && !/penalty/i.test(ty) ? 46 : 24, "🚫 Ejected: " + [...new Set(out)].join(", "), fd); at(fd + 1.2); } }
       // Tacklers close in on the ball carrier as he is brought down (only players the data credits).
       if (carrier) {
         const head = Math.sign(carrier.ex - carrier.sx) || dir;
@@ -4791,7 +4827,7 @@
       if (!a) return setBody(v, "Player", '<div class="error">Couldn\'t load this player.</div>');
       let h = '<div class="p-head">' + (a.headshot?.href ? '<img src="' + esc(a.headshot.href) + '" alt="">' : "") + "<div><b>" + esc(a.displayName) + "</b><small>" +
         esc([a.team?.abbreviation || a.team?.displayName, a.jersey ? "#" + a.jersey : "", a.position?.abbreviation].filter(Boolean).join(" · ")) + "</small><small>" +
-        esc([a.displayHeight, a.displayWeight, a.age ? "Age " + a.age : "", a.college?.name, a.displayExperience].filter(Boolean).join(" · ")) + "</small></div>" + pfBtn(lg + "|" + id, a.displayName, a.team?.id, a.headshot?.href) + "</div>";
+        esc([a.displayHeight, a.displayWeight, a.age ? "Age " + a.age : "", a.displayExperience].filter(Boolean).join(" · ")) + "</small>" + (a.college?.name ? '<small class="p-college">🎓 ' + esc(a.college.name) + (lg === "cfb" ? "" : " (college)") + "</small>" : "") + "</div>" + pfBtn(lg + "|" + id, a.displayName, a.team?.id, a.headshot?.href) + "</div>";
       const inj = (a.injuries || [])[0];
       if (inj) {
         const ab = inj.type?.abbreviation || inj.details?.fantasyStatus?.abbreviation || String(inj.status || "").slice(0, 1);
@@ -4905,6 +4941,44 @@
       if (!out.length) out.push(["Good conditions", "The weather shouldn't have much effect on this one."]);
       return out;
     }
+    // Stadium card: where, crowd, surface and the weather at the game (finished games: what it actually was).
+    // ESPN doesn't give capacity, so it isn't shown (no made-up numbers).
+    function venueCard(s, comp, lg, state) {
+      const gi = s.gameInfo || {}, vn = gi.venue || {}, a = vn.address || {};
+      const tv = (comp.broadcasts || []).map((b) => b.media?.shortName).filter(Boolean).join(", ");
+      if (!vn.fullName && !tv) return "";
+      const where = [a.city, a.state || a.country].filter(Boolean).join(", ");
+      const surface = lg === "nba" ? "Hardwood" : vn.grass === true ? "Grass" : vn.grass === false ? "Turf" : "";
+      const row = (k, v) => '<div class="vc-row"><span>' + esc(k) + "</span><b>" + v + "</b></div>";
+      const outdoor = lg === "nfl" || lg === "cfb" || lg === "mlb";
+      return '<div class="g-sec venue-card" data-c="info">' +
+        (vn.fullName ? '<div class="vc-top"><span class="vc-ic" aria-hidden="true">🏟️</span><span><b>' + esc(vn.fullName) + "</b>" + (where ? "<small>" + esc(where) + "</small>" : "") + "</span></div>" : "") +
+        (state !== "pre" && gi.attendance ? row("Attendance", Number(gi.attendance).toLocaleString()) : "") +
+        (surface ? row("Surface", esc(surface)) : "") +
+        (outdoor && state === "post" && vn.id ? '<div class="vc-row"><span>Weather</span><b data-vwx>…</b></div>' : "") +
+        (tv ? row("On TV", esc(tv)) : "") + "</div>";
+    }
+    // What the weather was at a finished game (Open-Meteo history; indoor stadiums say so).
+    async function pastWeather(el, vn, dateIso, coreVenue) {
+      if (!el) return;
+      try {
+        const cv = coreVenue ? await getJSON(coreVenue).catch(() => null) : null;
+        if (cv?.indoor) { el.textContent = "Indoors 🏠"; return; }
+        const a = vn.address || {};
+        const us = /^(USA?|United States)$/i.test(a.country || "") || US_ST[a.state] || Object.values(US_ST).includes(a.state);
+        const g = await getJSON("https://geocoding-api.open-meteo.com/v1/search?count=10&language=en&format=json&name=" + encodeURIComponent(a.city || "") + (us ? "&countryCode=US" : ""));
+        const want = (US_ST[a.state] || a.state || a.country || "").toLowerCase();
+        const r = (g.results || []).find((x) => want && [x.admin1, x.country].some((n) => (n || "").toLowerCase() === want)) || (g.results || [])[0];
+        if (!r) throw 0;
+        const d = new Date(dateIso), day = d.toISOString().slice(0, 10);
+        const f = await getJSON("https://archive-api.open-meteo.com/v1/archive?latitude=" + r.latitude + "&longitude=" + r.longitude + "&start_date=" + day + "&end_date=" + day + "&hourly=temperature_2m,weather_code&timeformat=unixtime" + (IMPERIAL ? "&temperature_unit=fahrenheit" : ""))
+          .catch(() => getJSON("https://api.open-meteo.com/v1/forecast?latitude=" + r.latitude + "&longitude=" + r.longitude + "&past_days=7&forecast_days=1&hourly=temperature_2m,weather_code&timeformat=unixtime" + (IMPERIAL ? "&temperature_unit=fahrenheit" : "")));
+        const H = f.hourly || {}, t = H.time || [], at = Math.floor(d.getTime() / 36e5) * 3600, i = t.indexOf(at);
+        if (i < 0 || H.temperature_2m?.[i] == null) throw 0;
+        const c = H.weather_code[i], icon = c === 0 ? "☀️" : c <= 2 ? "⛅" : c === 3 ? "☁️" : c <= 48 ? "🌫️" : c <= 67 || (c >= 80 && c <= 82) ? "🌧️" : c <= 77 || c === 85 || c === 86 ? "❄️" : "⛈️";
+        el.textContent = icon + " " + Math.round(H.temperature_2m[i]) + "° · " + WX_WORD(c);
+      } catch { el.textContent = "Not available"; }
+    }
     function wxHtml(w, label, lg) {
       if (!w) return "";
       const head = '<div class="g-label">' + esc(label) + "</div>";
@@ -4937,7 +5011,8 @@
       const teams = (comp.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
       const showScore = st.state !== "pre";
       const gpid = gamePoss(lg, id, s);
-      let h = '<div class="g-head">' + teams.map((t, i) => {
+      const special = specialGame({ date: comp.date, competitions: [{ notes: comp.notes?.length ? comp.notes : s.header?.gameNote ? [{ headline: s.header.gameNote }] : [] }] });
+      let h = (special ? '<div class="card-tags g-tags"><span>' + esc(special) + "</span></div>" : "") + '<div class="g-head">' + teams.map((t, i) => {
         const logo = t.team?.logos?.[0]?.href || t.team?.logo;
         return '<button type="button" class="g-team" data-team="' + lg + "|" + esc(t.team?.id) + '">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : "") +
           "<b>" + esc(t.team?.abbreviation || t.team?.displayName) + "</b>" + (gpid && gpid === String(t.team?.id) ? POSS_ICON(lg) : "") + (st.state === "in" ? '<i class="poss-ph"></i>' : "") + '<small>' + esc(t.record?.[0]?.summary || t.record?.[0]?.displayValue || "") + "</small></button>" +
@@ -4991,7 +5066,7 @@
       const info = [s.gameInfo?.venue?.fullName, (comp.broadcasts || []).map((b) => b.media?.shortName).filter(Boolean).join(", ")].filter(Boolean);
       const outdoorSport = lg === "nfl" || lg === "cfb" || lg === "mlb", vnu = s.gameInfo?.venue;
       if (outdoorSport && st.state !== "post" && vnu?.id) h += '<div class="g-sec" data-wx data-c="info"><div class="skel" style="height:90px"></div></div>';
-      if (info.length) h += '<div class="g-sec g-note" data-c="info">' + info.map(esc).join(" · ") + "</div>";
+      h += venueCard(s, comp, lg, st.state);
       h += '<div class="g-sec" data-feedsec data-c="plays"></div>';
       setBody(v, (teams[0]?.team?.abbreviation || "") + " @ " + (teams[1]?.team?.abbreviation || ""), h);
       if (lg === "nfl" || lg === "cfb") loadField(v, lg, id, teams, st.state);
@@ -5003,6 +5078,7 @@
       predictionHtml(lg, s, teams, st.state).then((x) => { const el = v.el.querySelector("[data-pred]"); if (!el) return; if (x) el.outerHTML = x; else el.remove(); }).catch(() => v.el.querySelector("[data-pred]")?.remove());
       const [wsp, wlg] = LEAGUES[lg].path.split("/");
       if (vnu?.id) loadWeather(v.el.querySelector("[data-wx]"), vnu, comp.date, st.state === "in" ? "Weather now" : lg === "mlb" ? "Weather at first pitch" : "Weather at kickoff", "https://sports.core.api.espn.com/v2/sports/" + wsp + "/leagues/" + wlg + "/venues/" + vnu.id, lg);
+      if (vnu?.id && st.state === "post") pastWeather(v.el.querySelector("[data-vwx]"), vnu, comp.date, "https://sports.core.api.espn.com/v2/sports/" + wsp + "/leagues/" + wlg + "/venues/" + vnu.id);
       useOurModel(lg, v, s, teams, st.state, id);
     }
 
