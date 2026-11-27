@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795818758" />
+  <meta name="build" content="1795818841" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -606,6 +606,10 @@
     .br-seed { width: 16px; text-align: right; color: var(--muted); font-size: 13px; font-weight: 700; } .br-score { font-weight: 800; font-variant-numeric: tabular-nums; } .br-score i { font-style: normal; font-size: 11px; }
     .br-game.bye { flex-direction: row; align-items: center; flex-wrap: wrap; } .br-game.bye .br-team { flex: 1; } .br-bye { font-weight: 800; color: var(--muted); } .br-game.bye small { flex-basis: 100%; }
     .br-note { margin: 4px 2px 0; }
+    /* Team schedule: week numbers and W/L predictions */
+    .wk { font-weight: 800; color: var(--text); margin-right: 2px; } .tpred-t { font-size: 11.5px; }
+    .tpred { display: inline-flex; gap: 4px; } .tpred button { width: 30px; height: 28px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); font: inherit; font-weight: 800; font-size: 13px; cursor: pointer; } .tpred button.on.w { background: var(--good, #1f7a4d); border-color: transparent; color: #fff; } .tpred button.on.l { background: var(--bad, #b4232f); border-color: transparent; color: #fff; }
+    .tpred-sum { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 8px 0 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); font-size: 14px; }
     .br-pick { width: 100%; padding: 6px 4px; border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; } .br-pick:hover { background: var(--panel-2, var(--line)); } .br-pick.won { background: color-mix(in srgb, var(--text) 12%, transparent); font-weight: 800; } .br-pick.lost { opacity: .45; }
     .br-team.tbd b { color: var(--muted); font-weight: 500; font-size: 14px; } .br-champ { margin: 14px 0 6px; padding: 14px 16px; border-radius: 16px; background: var(--text); color: var(--bg); text-align: center; font-size: 16px; } .br-reset { display: block; margin: 12px auto 0; }
     /* Reactions */
@@ -5341,14 +5345,20 @@
       h += '<div class="seg"><button type="button" data-tseg="schedule" class="' + (v.seg === "schedule" ? "active" : "") + '">Schedule</button><button type="button" data-tseg="roster" class="' + (v.seg === "roster" ? "active" : "") + '">Roster</button><button type="button" data-tseg="injuries" class="' + (v.seg === "injuries" ? "active" : "") + '">Injuries</button></div>';
       if (v.seg === "schedule") {
         const evs = v.sc?.events || [];
+        // 🔮 Predict the record: tap W or L on games still to play; the total updates. Saved on this device.
+        const pkey = "pred:" + v.lg + ":" + v.id + ":" + (v.sc?.season?.year || ""), pred = store.get(pkey, {}) || {};
+        let w = 0, l = 0, pw = 0, pl = 0, left = 0;
+        const sideOf = (ev) => { const c = ev.competitions?.[0] || {}, me = (c.competitors || []).find((x) => x.team?.id === String(v.id) || x.id === String(v.id)); return { c, me, opp: (c.competitors || []).find((x) => x !== me) }; };
+        evs.forEach((ev) => { const { c, me } = sideOf(ev); if (c.status?.type?.state === "post") { if (me?.winner) w++; else if (me?.winner === false) l++; } else { left++; if (pred[ev.id] === "W") pw++; else if (pred[ev.id] === "L") pl++; } });
+        if (evs.length) h += '<div class="tpred-sum"><span>Record <b>' + w + "–" + l + "</b></span>" + (left ? '<span>🔮 Your prediction <b>' + (w + pw) + "–" + (l + pl) + "</b>" + (left - pw - pl ? ' <small class="muted">(' + (left - pw - pl) + " left to pick)</small>" : "") + "</span>" : "") + "</div>";
         h += evs.length ? '<div class="list">' + evs.map((ev) => {
-          const c = ev.competitions?.[0] || {};
-          const me = (c.competitors || []).find((x) => x.team?.id === String(v.id) || x.id === String(v.id));
-          const opp = (c.competitors || []).find((x) => x !== me);
+          const { c, me, opp } = sideOf(ev);
           const done = c.status?.type?.state === "post";
           const sc = (x) => x?.score?.displayValue ?? x?.score ?? "";
-          const res = done ? '<span class="res ' + (me?.winner ? "w" : "l") + '">' + (me?.winner ? "W" : "L") + "</span> " + esc(sc(me)) + "–" + esc(sc(opp)) : esc(c.status?.type?.state === "in" ? "Live" : fmtTime(ev.date));
-          return '<div class="row" data-ev="' + esc(ev.id) + '" data-lg="' + v.lg + '"><span class="muted">' + esc(fmtDay(ev.date)) + "</span><span>" + (me?.homeAway === "home" ? "vs " : "@ ") +
+          const res = done ? '<span class="res ' + (me?.winner ? "w" : "l") + '">' + (me?.winner ? "W" : "L") + "</span> " + esc(sc(me)) + "–" + esc(sc(opp))
+            : c.status?.type?.state === "in" ? "Live" : '<span class="tpred">' + ["W", "L"].map((k) => '<button type="button" class="' + (pred[ev.id] === k ? "on " + k.toLowerCase() : "") + '" data-tpred="' + esc(pkey) + "|" + esc(ev.id) + "|" + k + '" aria-label="Predict ' + (k === "W" ? "a win" : "a loss") + '">' + k + "</button>").join("") + "</span>";
+          const wk = (v.lg === "nfl" || v.lg === "cfb") && ev.week?.number ? '<b class="wk">W' + ev.week.number + "</b> " : "";
+          return '<div class="row" data-ev="' + esc(ev.id) + '" data-lg="' + v.lg + '"><span class="muted">' + wk + esc(fmtDay(ev.date)) + (done ? "" : '<small class="tpred-t"> · ' + esc(fmtTime(ev.date)) + "</small>") + "</span><span>" + (me?.homeAway === "home" ? "vs " : "@ ") +
             (opp?.team?.logos?.[0]?.href ? '<img src="' + esc(opp.team.logos[0].href) + '" alt="" loading="lazy">' : "") + esc(opp?.team?.abbreviation || opp?.team?.displayName || "") + "</span><span>" + res + "</span></div>";
         }).join("") + "</div>" : '<div class="empty">No schedule available.</div>';
       } else if (v.seg === "injuries") {
@@ -6694,6 +6704,15 @@
       const pick = await choose("Season", v.brSeasons, BR.season || v.brSeasons[0].v); if (pick == null) return;
       BR.season = Number(pick); drawBracket(v, v.el.dataset.lg);
     });
+    // Team schedule: W / L prediction buttons (they don't open the game).
+    document.addEventListener("click", (e) => {
+      const b = e.target.closest?.("[data-tpred]"); if (!b) return;
+      e.stopImmediatePropagation(); e.preventDefault();
+      const [key, gid, k] = b.dataset.tpred.split("|"), pred = store.get(key, {}) || {};
+      if (pred[gid] === k) delete pred[gid]; else pred[gid] = k;
+      store.set(key, pred); buzz(8);
+      const v = views.find((x) => x.el === b.closest(".sheet")); if (v) { const y = v.el.querySelector(".sheet-body")?.scrollTop; drawTeam(v); const bd = v.el.querySelector(".sheet-body"); if (bd && y != null) bd.scrollTop = y; }
+    }, true);
     // Find people (top bar): search usernames as you type (similar names too), open a profile, or send a request.
     // Results are small cards like Roblox's: photo, name, @username, a status line and one button.
     const PEOPLE_HINT = '<p class="muted people-hint">Type a username. The @ is optional.</p>';
