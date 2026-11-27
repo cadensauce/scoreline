@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795816423" />
+  <meta name="build" content="1795816475" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -6147,7 +6147,10 @@
       const all = await Promise.all(lgs.map((k) => getJSON(API + LEAGUES[k].path + "/scoreboard" + (LEAGUES[k].extra ? "?" + LEAGUES[k].extra.replace(/^&/, "") : "")).then((d) => (d.events || []).map((e) => ({ e, k }))).catch(() => [])));
       tickerItems = all.flat().filter(({ e }) => e.status?.type?.state === "in").map(({ e, k }) => {
         const c = e.competitions?.[0] || {}, t = (c.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
-        const last = c.situation?.lastPlay?.text || "";
+        // Tidy the play text: no clock stamps or jersey numbers, first sentence only, short.
+        let last = String(c.situation?.lastPlay?.text || "").replace(/^\(\s*\d{1,2}:\d{2}\s*-?\s*\d?\w*\s*\)\s*/, "").replace(/#\d+\s*/g, "").replace(/\s*\([^)]*\)/g, "").trim();
+        last = last.split(/(?<=[a-z0-9])\.\s/)[0];
+        if (last.length > 90) last = last.slice(0, 88).replace(/\s+\S*$/, "") + "…";
         const score = (t[0]?.team?.abbreviation || "") + " " + (t[0]?.score ?? "") + "–" + (t[1]?.score ?? "") + " " + (t[1]?.team?.abbreviation || "");
         return { k, id: e.id, text: (SPORT_EMOJI[k] || "") + " " + score + " · " + (e.status?.type?.shortDetail || "") + (last ? " · " + last : "") };
       });
