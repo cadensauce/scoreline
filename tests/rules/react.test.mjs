@@ -12,8 +12,9 @@ after(() => env?.cleanup());
 beforeEach(async () => {
   await env.clearFirestore();
   await env.withSecurityRulesDisabled(async (c) => {
-    await setDoc(doc(c.firestore(), "reactions/play_1"), { c: { fire: 3 } });
-    await setDoc(doc(c.firestore(), "reactions/play_1/by/bob"), { e: "fire" });
+    const db = c.firestore();
+    await setDoc(doc(db, "reactions/play_1"), { c: { fire: 3 } });
+    await setDoc(doc(db, "reactions/play_1/by/bob"), { e: "fire" });
   });
 });
 const as = (uid) => env.authenticatedContext(uid).firestore();
