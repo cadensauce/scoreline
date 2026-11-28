@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795828382" />
+  <meta name="build" content="1795828491" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -2146,7 +2146,11 @@
         const score = (big ? 3 : 0) + (vip ? 2 : 0) + Math.min(hot, 4) + (now - t < 864e5 ? 1 : 0);
         if (!best || score > best.score || (score === best.score && t > best.t)) best = { score, t, h, d: a.description || "", url: a.links?.web?.href || "" };
       }
-      return best;
+      if (best) return best;
+      // No big story right now: show the newest one instead, so there's always a headline at the top.
+      const fresh = arts.filter((a) => ["HeadlineNews", "Story"].includes(a.type) && a.headline && !NEWS_SKIP.test(a.headline) && now - (Date.parse(a.published || "") || 0) < 2 * 864e5)
+        .sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0))[0];
+      return fresh ? { score: 0, t: Date.parse(fresh.published) || now, h: fresh.headline, d: fresh.description || "", url: fresh.links?.web?.href || "" } : null;
     }
     async function loadHeadline(key) {
       headAt[key] = Date.now();
