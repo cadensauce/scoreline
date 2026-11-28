@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795889108" />
+  <meta name="build" content="1795889160" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -3181,9 +3181,9 @@
     // The open game / player / team / driver goes in the address (#g=nfl-401873069), so a refresh comes back to it.
     // Each page's address lives in its own history entry, so going back restores the one before.
     function markPage(k, lg, id) { try { history.replaceState(history.state, "", location.pathname + location.search + "#" + k + "=" + lg + "-" + id); } catch {} }
-    function reopenFromAddress() {
-      if (/^#c=/.test(location.hash || "")) { const h = location.hash; try { history.replaceState(null, "", location.pathname + location.search); } catch {} return openLink(h); }   // a chat link (from a chat alert)
-      const m = /^#([gptd])=([a-z0-9]+)-([0-9A-Za-z]+)$/.exec(location.hash || "");
+    function reopenFromAddress(hash = location.hash) {
+      if (/^#c=/.test(hash || "")) { try { history.replaceState(null, "", location.pathname + location.search); } catch {} return openLink(hash); }   // a chat link (from a chat alert)
+      const m = /^#([gptd])=([a-z0-9]+)-([0-9A-Za-z]+)$/.exec(hash || "");
       try { history.replaceState(null, "", location.pathname + location.search); } catch {}   // start clean; opening the page adds its entry again
       if (!m || (m[2] !== "f1" && !LEAGUES[m[2]])) return;
       const [, k, lg, id] = m;
@@ -3196,8 +3196,7 @@
       if (c) { let n = 0; const go = () => (window.scorelineChat ? window.scorelineChat.open(c[1]) : ++n < 40 && setTimeout(go, 250)); return go(); }
       if (!/^#[gptd]=/.test(hash || "")) return;
       while (views.length) popView();
-      try { history.replaceState(null, "", location.pathname + location.search + hash); } catch {}
-      reopenFromAddress();
+      reopenFromAddress(hash);   // close what was open, then open the page the alert points to
     }
     navigator.serviceWorker?.addEventListener("message", (e) => { if (e.data?.type === "open-link") { try { openLink(new URL(e.data.url).hash); } catch {} } });
     const nativeLink = () => { try { const l = window.ScorelineNative?.pendingLink?.(); if (l) openLink(l); } catch {} };
@@ -8116,6 +8115,6 @@
     if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
-  <script type="module" src="account.js?v=1795889108"></script>
+  <script type="module" src="account.js?v=1795889160"></script>
 </body>
 </html>
