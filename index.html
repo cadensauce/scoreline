@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795846783" />
+  <meta name="build" content="1795846882" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -362,6 +362,8 @@
     .fg-chip { width: 32px; height: 32px; border-radius: 9px; border: 0; font: inherit; font-size: 13px; font-weight: 700; display: grid; place-items: center; cursor: pointer; }
     .fg-chip.W { background: rgba(52, 199, 89, .16); color: #4cd471; } .fg-chip.L { background: rgba(255, 69, 58, .14); color: #ff6b61; } .fg-chip.T { background: var(--panel-2); color: var(--muted); }
     .fg .g-note { margin: 8px 0 0; } .fg-series { color: var(--text); }
+    .t-form { display: flex; align-items: center; gap: 10px; margin: -2px 0 14px; } .t-form small { color: var(--muted); font-size: 13px; }
+    .fg-chip.sm { width: 28px; height: 28px; font-size: 12px; border-radius: 8px; }
     .greet { display: flex; flex-direction: column; gap: 2px; margin: -4px 0 14px; } .greet b { font-size: 15px; } .greet span { color: var(--muted); font-size: 14px; line-height: 1.45; }
     .pick-sec:empty { display: none; } .pick-row { display: flex; gap: 10px; } .pick-msg { font-size: 14px; line-height: 1.45; margin-bottom: 10px; }
     .pick-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 8px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); color: var(--text); transition: border-color var(--t-fast), background var(--t-fast); }
@@ -3598,6 +3600,19 @@
 
     /* Form guide (upcoming games): each team's last five results, oldest → newest, and this season's meetings.
        From ESPN's own game data; nothing shows when it isn't there. Tap a result for the score and opponent. */
+    // Team page: last five results (tap for the score) and the current streak, from the team's own schedule.
+    function teamFormHtml(v) {
+      const done = (v.sc?.events || []).filter((ev) => ev.competitions?.[0]?.status?.type?.state === "post").sort((a, b) => new Date(a.date) - new Date(b.date));
+      const res = done.map((ev) => { const c = ev.competitions[0], me = (c.competitors || []).find((x) => x.team?.id === String(v.id) || x.id === String(v.id)), opp = (c.competitors || []).find((x) => x !== me);
+        if (!me || me.winner == null) return null; const sc = (x) => x?.score?.displayValue ?? x?.score ?? "";
+        const r = me.winner ? "W" : opp?.winner ? "L" : "T";
+        return { r, say: r + " " + sc(me) + "–" + sc(opp) + " " + (me.homeAway === "home" ? "vs " : "at ") + (opp?.team?.abbreviation || "") + ", " + new Date(ev.date).toLocaleDateString([], { month: "short", day: "numeric" }) }; }).filter(Boolean);
+      if (!res.length) return "";
+      let run = 0; for (let i = res.length - 1; i >= 0 && res[i].r === res[res.length - 1].r; i--) run++;
+      const last = res[res.length - 1].r;
+      const streak = run >= 2 && last !== "T" ? (last === "W" ? "🔥 Won " + run + " straight" : "🥶 Lost " + run + " straight") : last === "W" ? "✅ Won last time out" : last === "L" ? "Lost last time out" : "";
+      return '<div class="t-form"><span class="fg-chips">' + res.slice(-5).map((x) => '<button type="button" class="fg-chip sm ' + x.r + '" data-fg="' + esc(x.say) + '" aria-label="' + esc(x.say) + '">' + x.r + "</button>").join("") + "</span>" + (streak ? "<small>" + esc(streak) + "</small>" : "") + "</div>";
+    }
     function formGuideHtml(s, teams, lg) {
       const l5 = s.lastFiveGames || [];
       const rows = teams.map((t) => {
@@ -5492,6 +5507,7 @@
       const logo = t.logo || t.logos?.[0]?.href;
       let h = '<div class="t-head">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : "") + "<div><b>" + esc(t.displayName || "Team") + "</b><small>" + esc(t.recordSummary || "") + (t.standingSummary ? " · " + esc(t.standingSummary) : "") + "</small></div>" +
         '<button class="fav ' + (state.favs.has(teamKeyOf(t, v.lg)) ? "on" : "") + '" type="button" data-fav="' + esc(teamKeyOf(t, v.lg)) + '" aria-label="Follow ' + esc(t.displayName || "") + '">★</button></div>';
+      h += teamFormHtml(v);
       h += '<div class="seg"><button type="button" data-tseg="schedule" class="' + (v.seg === "schedule" ? "active" : "") + '">Schedule</button><button type="button" data-tseg="roster" class="' + (v.seg === "roster" ? "active" : "") + '">Roster</button><button type="button" data-tseg="injuries" class="' + (v.seg === "injuries" ? "active" : "") + '">Injuries</button></div>';
       if (v.seg === "schedule") {
         const evs = v.sc?.events || [];
@@ -7698,6 +7714,6 @@
     if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
-  <script type="module" src="account.js?v=1795846783"></script>
+  <script type="module" src="account.js?v=1795846882"></script>
 </body>
 </html>
