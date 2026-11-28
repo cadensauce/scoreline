@@ -1131,6 +1131,11 @@
       .btabs { display: flex; position: fixed; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 30; padding: 6px; border-radius: 28px; background: var(--bar); border: 1px solid var(--line-hi); box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }   /* floating rounded bar */
       .btab { flex: 1; border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0 4px; color: var(--muted); font-size: 10.5px; font-weight: 700; letter-spacing: .3px; position: relative; transition: color .2s; }
       .btab svg { width: 24px; height: 24px; }
+      .btabs.many .btab { min-width: 0; font-size: 9px; letter-spacing: 0; white-space: nowrap; overflow: hidden; }   /* 8-9 tabs: a bit smaller so all fit */
+      .btabs.many .btab svg { width: 20px; height: 20px; }
+      .btabs.many { left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); padding-left: 2px !important; padding-right: 2px !important; }
+      .btabs.many .btab { letter-spacing: -.2px !important; font-size: 8.6px !important; }
+      .btabs.many .btab::before { width: 30px !important; margin-left: -15px !important; }
       .btab.active { color: var(--accent); }
       .btab svg { transition: transform var(--t-fast); }
       .btab .dot { position: absolute; top: 4px; left: calc(50% + 10px); width: 7px; height: 7px; border-radius: 50%; background: var(--live); }
@@ -1600,7 +1605,7 @@
       if (e.target.closest("[data-ppclose]")) e.target.closest(".pp-wrap")?.remove();
     });
     const MOBILE_APP = !!window.__PREVIEW_APP || (IS_PHONE && (!!window.__TAURI__ || STANDALONE));
-    const navHidden = () => store.get("navHide", {}) || {};   /* tabs turned off in Customize → Bottom bar */
+    const navHidden = () => store.get("navHide", {}) || {};   /* News / Fantasy turned off in You → Your bottom bar */
     const navOrder = () => { const p = pins(); return ["home", ...p, ...(ALL_SPORTS.includes(state.tab) && !p.includes(state.tab) ? [state.tab] : []), ...["news", "fantasy"].filter((k) => !navHidden()[k] || state.tab === k), "you"]; };   // Social is part of You now (one less tab on phones)
     /* ---------- native-app feel (phone app only) ---------- */
     if (MOBILE_APP) {
@@ -1883,7 +1888,7 @@
       }).join("");
       const liveIn = (k) => (cache[k]?.events || []).some(isLive);
       const btn = (k, label, active, extra) => '<button class="btab ' + (active ? "active" : "") + '" type="button" ' + extra + ">" + ICONS[k] + label + (k !== "home" && k !== "more" && liveIn(k) ? '<span class="dot"></span>' : "") + "</button>";
-      $("btabs").innerHTML = navOrder().map((k) => btn(k, tabName(k), state.tab === k, 'data-tab="' + k + '"')).join("");
+      const o = navOrder(); $("btabs").innerHTML = o.map((k) => btn(k, tabName(k), state.tab === k, 'data-tab="' + k + '"')).join(""); $("btabs").classList.toggle("many", o.length > 7);
     }
     const tabName = (k) => k === "home" ? "Home" : k === "you" ? "You" : k === "news" ? "News" : k === "fantasy" ? "Fantasy" : k === "social" ? "Social" : (LEAGUES[k].short || LEAGUES[k].name);
     const svg = (d) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + "</svg>";
@@ -6076,13 +6081,13 @@
       let h = '<div class="bar"><h1>You</h1></div>' +
         '<div data-social-you>' + (youCache.social || (signedIn ? '<div class="skel" style="height:120px"></div>' : '<div class="panel nteams"><div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>Sign in</b><small>Keep your teams and alerts on every device, add friends and message them</small></span><span class="chev">›</span></div></div>')) + "</div>" +
         "<div data-picks-you></div><div data-shop-you></div>" +
-        '<div class="section-title"><b>Sports in your bar</b></div><div class="pin-row">' + ALL_SPORTS.map((k) =>
-          '<button type="button" class="pin ' + (pins().includes(k) ? "on" : "") + '" data-pin="' + k + '">' + esc(tabName(k)) + "</button>").join("") + "</div>" +
-        '<div class="g-note">Pick up to ' + MAX_PINS + ". Home shows only these sports.</div>" +
+        '<div class="section-title"><b>Your bottom bar</b></div><div class="pin-row">' + ALL_SPORTS.map((k) =>
+          '<button type="button" class="pin ' + (pins().includes(k) ? "on" : "") + '" data-pin="' + k + '">' + esc(tabName(k)) + "</button>").join("") + ["news", "fantasy"].map((k) => '<button type="button" class="pin ' + (navHidden()[k] ? "" : "on") + '" data-pin-x="' + k + '">' + esc(tabName(k)) + "</button>").join("") + "</div>" +
+        '<div class="g-note">Tap to add or remove. Home and You always stay, and Home shows only the sports you pick.</div>' +
         '<div class="section-title"><b>Settings</b></div><div class="panel nteams">' +
           (MOBILE_APP ? '<div class="opt nteam" role="button" tabindex="0" data-open-notifs><span><b>Notifications</b><small>' + esc(alertsOn ? "On" + (quietLabel() ? " · quiet " + quietLabel() : "") : "Off") + '</small></span><span class="chev">›</span></div>' : "") +
           '<div class="opt nteam" role="button" tabindex="0" data-open-ideas><span><b>Ideas 💡</b><small>Suggest features and vote on what gets built next</small></span><span class="chev">›</span></div>' +
-          '<div class="opt nteam" role="button" tabindex="0" data-open-custom><span><b>Customize</b><small>Choose what shows on game pages, the bottom bar, and text size</small></span><span class="chev">›</span></div>' +
+          '<div class="opt nteam" role="button" tabindex="0" data-open-custom><span><b>Customize</b><small>Choose what shows on game pages, and text size</small></span><span class="chev">›</span></div>' +
           (signedIn ? '<div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>Account and security</b><small>Email, two-step sign-in, sign-in codes, log out' + (reqs ? " · " + reqs + " friend request" + (reqs === "1" ? "" : "s") : "") + '</small></span><span class="chev">›</span></div>' : "") +
           '<div class="opt nteam" role="button" tabindex="0" data-open-dev hidden><span><b>Developer tools</b><small>Only shown to the Scoreline team</small></span><span class="chev">›</span></div>' +
         "</div>" +
@@ -6276,18 +6281,13 @@
       const h = hidden(), ts = store.get("textSize", "m");
       return '<div class="section-title"><b>Text size</b></div><div class="panel"><div class="seg chips ts-seg">' + TEXT_SIZES.map(([k, n]) => '<button type="button" class="' + (ts === k ? "on" : "") + '" data-ts="' + k + '">' + n + "</button>").join("") + "</div><p class=\"g-note\" style=\"margin:8px 2px 0\">Makes scores, plays and cards easier to read.</p></div>" +
         '<div class="section-title"><b>Show</b></div><div class="panel">' + CUSTOM.map(([k, n, d]) => '<button type="button" class="opt ' + (h[k] ? "" : "on") + '" data-custom="' + k + '"><span><b>' + esc(n) + "</b><small>" + esc(d) + '</small></span><i class="switch"></i></button>').join("") + "</div>" +
-        '<p class="g-note">Turned off parts are just hidden. Scores always show.</p>' +
-        '<div class="section-title"><b>Bottom bar</b></div><div class="panel">' + NAV_OPTS.map(([k, n, d]) => '<button type="button" class="opt ' + (navHidden()[k] ? "" : "on") + '" data-navtab="' + k + '"><span><b>' + esc(n) + "</b><small>" + esc(d) + '</small></span><i class="switch"></i></button>').join("") + "</div>" +
-        '<p class="g-note">Home and You always stay. Pick your sports on the You page.</p>';
+        '<p class="g-note">Turned off parts are just hidden. Scores always show.</p>';
     }
-    const NAV_OPTS = [["news", "📰 News", "Headlines and moves (also on each sport's 📰 button)"], ["fantasy", "🏆 Fantasy", "Your Fantasy leagues"]];
     function openCustom() { const v = { kind: "custom", key: "custom" }; if (!pushView(v)) return; setBody(v, "Customize", customHtml()); }
     document.addEventListener("click", (e) => {
       if (e.target.closest("[data-open-custom]")) return openCustom();
       const c = e.target.closest("[data-custom]");
       if (c) { const h = hidden(); h[c.dataset.custom] = !h[c.dataset.custom]; store.set("hide", h); applyCustom(); c.classList.toggle("on", !h[c.dataset.custom]); buzz(8); return; }
-      const nt = e.target.closest("[data-navtab]");
-      if (nt) { const h = navHidden(); h[nt.dataset.navtab] = !h[nt.dataset.navtab]; store.set("navHide", h); nt.classList.toggle("on", !h[nt.dataset.navtab]); renderTabs(); buzz(8); return; }
       const t = e.target.closest("[data-ts]");
       if (t && t.closest(".ts-seg")) { store.set("textSize", t.dataset.ts); applyCustom(); t.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === t)); buzz(8); }
     });
@@ -6861,15 +6861,16 @@
     const versionText = () => (document.querySelector("meta[name=version]")?.content || "2.0");
     const builtOn = () => { const b = Number(document.querySelector("meta[name=build]")?.content); return b ? new Date(b * 1000).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "recently"; };
     // Sports pinned to the bottom bar. Everything else stays one tap away on Home.
-    const ALL_SPORTS = ["nfl", "cfb", "nba", "mlb", "f1"], MAX_PINS = 4;
-    const pins = () => { const p = store.get("pins", ["nfl", "cfb", "f1"]).filter((k) => ALL_SPORTS.includes(k)); return p.length ? p.slice(0, MAX_PINS) : ["nfl"]; };
+    const ALL_SPORTS = ["nfl", "cfb", "nba", "mlb", "f1"];
+    const pins = () => { const p = store.get("pins", ["nfl", "cfb", "f1"]).filter((k) => ALL_SPORTS.includes(k)); return p.length ? p : ["nfl"]; };
     document.addEventListener("click", (e) => {
+      const px = e.target.closest("[data-pin-x]");
+      if (px) { const h = navHidden(), k = px.dataset.pinX; h[k] = !h[k]; store.set("navHide", h); px.classList.toggle("on", !h[k]); buzz(8); renderTabs(); return; }
       const p = e.target.closest("[data-pin]");
       if (p) {
         const k = p.dataset.pin, cur = pins();
         let next = cur.includes(k) ? cur.filter((x) => x !== k) : cur.concat(k);
         if (!next.length) { toast("Keep at least one sport in your bar."); return; }
-        if (next.length > MAX_PINS) { toast("Your bar fits " + MAX_PINS + " sports. Unpin one first."); return; }
         next = ALL_SPORTS.filter((x) => next.includes(x));   // keep a stable order
         store.set("pins", next); store.set("shell:home", ""); buzz(8); renderTabs(); renderAlerts();
         return;
