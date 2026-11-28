@@ -137,6 +137,7 @@
     .bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
     .bar h1 { margin: 0 auto 0 0; font-family: var(--display); font-size: 32px; font-weight: 650; letter-spacing: -.01em; }
     .pill-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 7px 14px; font-weight: 600; color: var(--text); transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast); }
+    .rc-sec { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; } .rc-sec small { color: var(--muted); font-size: var(--fs-xs, 12px); } .rc-img { display: block; width: 100%; max-width: 420px; margin: 0 auto 12px; border-radius: 16px; } .rc-row { display: flex; justify-content: center; margin-bottom: 8px; }
     @media (hover: hover) { .pill-btn:hover { background: var(--panel-2); border-color: var(--line-hi); } }
     .pill-btn:active, .tab:active, .refresh:active { transform: scale(.97); }
     .pill-btn.on { background: rgba(255, 59, 78, .14); border-color: rgba(255, 59, 78, .45); color: #ffb3bb; }
@@ -2549,6 +2550,7 @@
           left += '<div class="section-title"><b>' + esc(SESSION_NAMES[race.type?.abbreviation] || "Session") + " results</b></div><table><thead><tr><th>Pos</th><th>Driver</th>" + (hasTeam ? "<th>Team</th>" : "") + "</tr></thead><tbody>" +
             race.competitors.slice().sort((a, b) => (a.order || 99) - (b.order || 99)).slice(0, 20).map((d) =>
               "<tr" + (d.athlete?.id ? ' class="f1-follow" data-driver="' + esc(d.athlete.id) + '"' : "") + '><td class="pos">' + esc(d.order ?? "") + "</td><td>" + (d.athlete?.flag?.href ? '<img class="flag" src="' + esc(d.athlete.flag.href) + '" alt="">' : "") + esc(d.athlete?.displayName || "") + "</td>" + (hasTeam ? '<td style="color:var(--muted)">' + esc(d.team?.displayName || "") + "</td>" : "") + "</tr>").join("") + "</tbody></table>";
+          if (race.type?.abbreviation === "Race" && race.status?.type?.state === "post") { window.__f1rc = { ev, race }; left += '<div class="g-sec rc-sec" style="margin-top:12px"><button type="button" class="pill-btn" data-recap-card="f1">📸 Recap card</button><small>The top 10 as a picture to send anywhere</small></div>'; }
         }
       }
       left += "</div>";
@@ -2946,6 +2948,8 @@
       if (ext && TAURI?.opener) { e.preventDefault(); TAURI.opener.openUrl(ext.href).catch(() => window.open(ext.href, "_blank")); return; }
       const drv = e.target.closest("[data-driver]");
       if (drv) return openDriver(drv.dataset.driver);
+      const rcb = e.target.closest("[data-recap-card]");
+      if (rcb) return rcb.dataset.recapCard === "f1" ? recapCardF1() : recapCard(rcb);
       const pl = e.target.closest("[data-player]");
       if (pl) { const [lg, id] = pl.dataset.player.split("|"); return openPlayer(lg, id); }
       const sd = e.target.closest("[data-standings]");
@@ -5328,6 +5332,7 @@
 
       // Order: score → plain-English status → tabs → win probability → plays → the rest.
       h += plainLine(s, teams, st.state, lg);
+      if (st.state === "post") { v.el.__rc = { s, teams, lg }; h += '<div class="g-sec rc-sec" data-c="all recap"><button type="button" class="pill-btn" data-recap-card>📸 Recap card</button><small>A picture of this game to send anywhere</small></div>'; }
       if (st.state === "in") Object.assign(v, { flagLg: lg, flagTeams: teams, flagId: id });   // keeps the flags line current while live
       const recap = recapHtml(s, teams, lg);   // finished games only: gets its own Recap tab
       if (st.state !== "post") h += '<div data-why></div>';   // why this game matters (filled in below)
@@ -5387,6 +5392,108 @@
       if (vnu?.id) loadWeather(v.el.querySelector("[data-wx]"), vnu, comp.date, st.state === "in" ? "Weather now" : lg === "mlb" ? "Weather at first pitch" : "Weather at kickoff", "https://sports.core.api.espn.com/v2/sports/" + wsp + "/leagues/" + wlg + "/venues/" + vnu.id, lg);
       if (vnu?.id && st.state === "post") pastWeather(v.el.querySelector("[data-vwx]"), vnu, comp.date, "https://sports.core.api.espn.com/v2/sports/" + wsp + "/leagues/" + wlg + "/venues/" + vnu.id);
       useOurModel(lg, v, s, teams, st.state, id);
+    }
+
+    /* ---------- Recap card: a shareable picture of a finished game (score, top players, the big moment) ----------
+       Drawn on a canvas from the game data we already have: no logos or photos (nothing we don't own), team colours
+       only as thin accents, and any part we don't have is left off rather than guessed. */
+    function rcPlays(s) { return [...(s.plays || []), ...(s.drives?.previous || []).flatMap((d) => d.plays || [])]; }
+    function rcMoment(s) {
+      const wp = s.winprobability || [];
+      let best = null, bi = -1;
+      for (let i = 1; i < wp.length; i++) { const d = Math.abs((wp[i].homeWinPercentage ?? 0) - (wp[i - 1].homeWinPercentage ?? 0)); if (!best || d > best) { best = d; bi = i; } }
+      if (bi > 0 && best >= 0.08) { const p = rcPlays(s).find((x) => String(x.id) === String(wp[bi].playId)); if (p?.text) return p.text; }
+      const sp = (s.scoringPlays || []).slice(-1)[0];
+      return sp?.text || "";
+    }
+    function rcLeaders(s, teams) {
+      return teams.map((t) => {
+        const cat = (s.leaders || []).find((L) => String(L.team?.id) === String(t.team?.id))?.leaders?.[0], p = cat?.leaders?.[0];
+        return p?.athlete ? { who: p.athlete.shortName || p.athlete.displayName || "", what: p.displayValue || "", t: t.team?.abbreviation || "" } : null;
+      }).filter(Boolean);
+    }
+    function rcWrap(ctx, text, x, y, maxW, lh, maxLines) {
+      const words = String(text).split(/\s+/); let line = "", n = 0;
+      for (let i = 0; i < words.length; i++) {
+        const test = line ? line + " " + words[i] : words[i];
+        if (ctx.measureText(test).width > maxW && line) {
+          if (++n === maxLines) { while (ctx.measureText(line + "…").width > maxW && line.includes(" ")) line = line.slice(0, line.lastIndexOf(" ")); ctx.fillText(line + "…", x, y); return y + lh; }
+          ctx.fillText(line, x, y); y += lh; line = words[i];
+        } else line = test;
+      }
+      if (line) { ctx.fillText(line, x, y); y += lh; }
+      return y;
+    }
+    async function recapCardF1() {
+      const d = window.__f1rc; if (!d) return;
+      const { ev, race } = d, W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H;
+      const ctx = c.getContext("2d"), font = getComputedStyle(document.body).fontFamily || "system-ui, sans-serif", pad = 120;
+      ctx.fillStyle = "#0e0e11"; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#17171b"; ctx.beginPath(); ctx.roundRect(60, 60, W - 120, H - 120, 48); ctx.fill();
+      let y = 190;
+      ctx.fillStyle = "#9a9aa3"; ctx.font = "700 34px " + font;
+      ctx.fillText(("F1 · " + (SESSION_NAMES[race.type?.abbreviation] || "Race") + " · " + (race.date ? new Date(race.date).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "")).toUpperCase(), pad, y);
+      ctx.fillStyle = "#f2f2f4"; ctx.font = "800 64px " + font; y = rcWrap(ctx, gpName(ev) || ev.name || "Grand Prix", pad, y + 86, W - pad * 2, 74, 2) + 30;
+      const order = race.competitors.slice().filter((x) => x.order).sort((a, b) => a.order - b.order).slice(0, 10);
+      order.forEach((x, i) => {
+        const top3 = i < 3, rowH = top3 ? 96 : 62;
+        ctx.fillStyle = top3 ? ["#d9b44a", "#c0c0c8", "#b9875a"][i] : "#7d7d86"; ctx.font = "800 " + (top3 ? 58 : 38) + "px " + font; ctx.fillText(String(x.order), pad, y + (top3 ? 58 : 40));
+        ctx.fillStyle = top3 ? "#f2f2f4" : "#d6d6dc"; ctx.font = (top3 ? "800 52px " : "600 36px ") + font; ctx.fillText(x.athlete?.displayName || "", pad + (top3 ? 90 : 80), y + (top3 ? 58 : 40));
+        if (x.team?.displayName) { ctx.fillStyle = "#8a8a93"; ctx.font = "500 " + (top3 ? 30 : 26) + "px " + font; ctx.textAlign = "right"; ctx.fillText(x.team.displayName, W - pad, y + (top3 ? 56 : 39)); ctx.textAlign = "left"; }
+        y += rowH;
+      });
+      ctx.fillStyle = "#f2f2f4"; ctx.font = "800 40px " + font; ctx.fillText("Scoreline", pad, H - 130);
+      ctx.fillStyle = "#7d7d86"; ctx.font = "500 28px " + font; ctx.textAlign = "right"; ctx.fillText("Free fan app · not affiliated with F1", W - pad, H - 132); ctx.textAlign = "left";
+      return rcShare(c, "f1-" + String(gpName(ev) || "race").toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-recap.png", "Recap card: " + (gpName(ev) || "race") + " top 10");
+    }
+    async function rcShare(c, name, alt) {
+      const blob = await new Promise((r) => c.toBlob(r, "image/png"));
+      if (!blob) return toast("Couldn't make the card.");
+      const file = new File([blob], name, { type: "image/png" });
+      buzz(10);
+      if (navigator.canShare?.({ files: [file] })) { try { await navigator.share({ files: [file], title: "Recap" }); return; } catch (e) { if (e?.name === "AbortError") return; } }
+      const url = URL.createObjectURL(blob), v = { kind: "recapcard", key: "recapcard" };
+      if (!pushView(v)) return;
+      setBody(v, "Recap card", '<img class="rc-img" src="' + url + '" alt="' + esc(alt) + '">' +
+        '<div class="rc-row"><a class="pill-btn" href="' + url + '" download="' + esc(name) + '">⬇️ Save picture</a></div><p class="g-note">On a phone you can also press and hold the picture to save or share it.</p>');
+    }
+    async function recapCard(btn) {
+      const host = btn.closest("[data-lg]"), d = host?.__rc; if (!d) return;
+      const { s, teams, lg } = d, comp = s.header?.competitions?.[0] || {}, st = comp.status?.type || {};
+      const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H;
+      const ctx = c.getContext("2d"), font = getComputedStyle(document.body).fontFamily || "system-ui, sans-serif";
+      ctx.fillStyle = "#0e0e11"; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#17171b"; ctx.beginPath(); ctx.roundRect(60, 60, W - 120, H - 120, 48); ctx.fill();
+      const pad = 120; let y = 190;
+      ctx.fillStyle = "#9a9aa3"; ctx.font = "700 34px " + font; ctx.textBaseline = "alphabetic";
+      const when = comp.date ? new Date(comp.date).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", year: "numeric" }) : "";
+      ctx.fillText(((LEAGUES[lg]?.short || lg.toUpperCase()) + " · " + (st.shortDetail || "Final") + (when ? " · " + when : "")).toUpperCase(), pad, y);
+      y += 70;
+      const sc = teams.map((t) => Number(t.score)), top = Math.max(...sc);
+      teams.forEach((t, i) => {
+        const win = Number(t.score) === top && sc[0] !== sc[1], col = /^[0-9a-f]{6}$/i.test(t.team?.color || "") ? "#" + t.team.color : "#555";
+        ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect(pad, y, 14, 150, 7); ctx.fill();
+        ctx.fillStyle = win || sc[0] === sc[1] ? "#f2f2f4" : "#7d7d86";
+        ctx.font = "800 104px " + font; ctx.fillText(t.team?.abbreviation || "", pad + 44, y + 100);
+        ctx.font = "600 34px " + font; ctx.fillStyle = "#9a9aa3"; ctx.fillText((t.team?.displayName || "") + (t.record?.[0]?.summary ? " · " + t.record[0].summary : ""), pad + 46, y + 146);
+        ctx.font = "800 150px " + font; ctx.fillStyle = win || sc[0] === sc[1] ? "#f2f2f4" : "#7d7d86"; ctx.textAlign = "right"; ctx.fillText(String(t.score ?? ""), W - pad, y + 118); ctx.textAlign = "left";
+        y += 200;
+      });
+      ctx.strokeStyle = "#2a2a30"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke(); y += 76;
+      const lead = rcLeaders(s, teams);
+      if (lead.length) {
+        ctx.fillStyle = "#9a9aa3"; ctx.font = "800 30px " + font; ctx.fillText("TOP PLAYERS", pad, y); y += 58;
+        lead.forEach((p) => { ctx.fillStyle = "#f2f2f4"; ctx.font = "700 40px " + font; ctx.fillText(p.who + " (" + p.t + ")", pad, y); ctx.fillStyle = "#b8b8c0"; ctx.font = "500 34px " + font; y = rcWrap(ctx, p.what, pad, y + 48, W - pad * 2, 44, 1) + 22; });
+        y += 20;
+      }
+      const m = rcMoment(s);
+      if (m && y < H - 330) {
+        ctx.fillStyle = "#9a9aa3"; ctx.font = "800 30px " + font; ctx.fillText("THE BIG MOMENT", pad, y); y += 58;
+        ctx.fillStyle = "#e6e6ea"; ctx.font = "500 38px " + font; rcWrap(ctx, m, pad, y, W - pad * 2, 52, Math.max(1, Math.floor((H - 230 - y) / 52)));
+      }
+      ctx.fillStyle = "#f2f2f4"; ctx.font = "800 40px " + font; ctx.fillText("Scoreline", pad, H - 130);
+      ctx.fillStyle = "#7d7d86"; ctx.font = "500 28px " + font; ctx.textAlign = "right"; ctx.fillText("Free fan app · not affiliated with any league", W - pad, H - 132); ctx.textAlign = "left";
+      return rcShare(c, ((teams[0]?.team?.abbreviation || "") + "-" + (teams[1]?.team?.abbreviation || "") + "-recap.png").toLowerCase(), "Recap card: " + (teams[0]?.team?.abbreviation || "") + " " + (teams[0]?.score ?? "") + ", " + (teams[1]?.team?.abbreviation || "") + " " + (teams[1]?.score ?? ""));
     }
 
     /* ---------- standings + playoff picture (team sports) ---------- */
