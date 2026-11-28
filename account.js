@@ -425,7 +425,7 @@ async function openChatId(id, agreed) {
     if (!file) return;
     toast("Sending photo…");
     let img;
-    try { img = await shrinkPhoto(file); } catch { return toast("That photo couldn't be sent. Try a different one."); }
+    try { img = await chatPhoto(file); } catch { return toast("That photo couldn't be sent. Try a different one."); }
     try { await sendMsg(c, { img }); buzz(); } catch { toast("Photo didn't send. You can only message friends who haven't blocked you."); }
   });
   v.el.addEventListener("click", (e) => { const b = e.target.closest("[data-msgimg]"); if (b) b.classList.toggle("hide", false); });
@@ -434,7 +434,7 @@ async function openChatId(id, agreed) {
    JPEG, under ~280 KB) and saved inside the message. Re-drawing it also strips hidden data like GPS location.
    Videos are too big for this, so chat has photos only. Photos from others start hidden: tap to show. */
 const photoOk = (s) => typeof s === "string" && s.length <= 300000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(s);
-async function shrinkPhoto(file) {
+async function chatPhoto(file) {
   if (!/^image\//.test(file.type || "")) throw new Error("not a photo");
   let pic;
   try { pic = await createImageBitmap(file); } catch { const url = URL.createObjectURL(file); pic = new Image(); pic.src = url; await pic.decode(); URL.revokeObjectURL(url); }
