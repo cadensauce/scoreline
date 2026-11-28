@@ -561,32 +561,34 @@ service cloud.firestore {
       }
     }
     // Reactions (🔥 😂 😮 😭 🐐 👀) on plays, news and moves. reactions/{item} holds the counts anyone can see;
-    // reactions/{item}/by/{uid} is your one reaction. Both change together in one write, and the rules check the counts
-    // move by exactly your change, so nobody can fake them or react twice.
+    // reactions/{item}/by/{uid} lists your reactions (m: several emojis, each once; older docs hold one, e). Both change
+    // together in one write, and the rules check every count moves by exactly your change, so nobody can fake them or count twice.
     function rk() { return ['fire', 'lol', 'wow', 'cry', 'goat', 'eyes']; }
     function cnt(d, k) { return d.get('c', {}).get(k, 0); }
     function oneMove(before, after, had, now, k) {
-      return cnt(after, k) == cnt(before, k) + (k == now ? 1 : 0) - (k == had ? 1 : 0);
+      return cnt(after, k) == cnt(before, k) + (k in now ? 1 : 0) - (k in had ? 1 : 0);
     }
     function countsOk(before, after, had, now) {
       return had != now && after.keys().hasOnly(['c']) && after.c.keys().hasOnly(rk())
         && oneMove(before, after, had, now, 'fire') && oneMove(before, after, had, now, 'lol') && oneMove(before, after, had, now, 'wow')
         && oneMove(before, after, had, now, 'cry') && oneMove(before, after, had, now, 'goat') && oneMove(before, after, had, now, 'eyes');
     }
-    function mineBefore(item) { return exists(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)) ? get(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)).data.e : ''; }
-    function mineAfter(item) { return existsAfter(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)) ? getAfter(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)).data.e : ''; }
+    function mineList(d) { return 'm' in d ? d.m : ('e' in d ? [d.e] : []); }
+    function mineBefore(item) { return exists(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)) ? mineList(get(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)).data) : []; }
+    function mineAfter(item) { return existsAfter(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)) ? mineList(getAfter(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)).data) : []; }
+    function rxList(m) { return m is list && m.size() >= 1 && m.size() <= 6 && m.toSet().size() == m.size() && m.toSet().hasOnly(rk()); }
     match /reactions/{item} {
       allow get: if true;   // just counts, no names
       allow create, update: if member() && siteOpen() && item.matches('^[A-Za-z0-9_.-]{1,120}$')
         && countsOk(resource == null ? {} : resource.data, request.resource.data, mineBefore(item), mineAfter(item));
       match /by/{uid} {
         allow get: if member() && me() == uid;
-        allow create, update: if member() && me() == uid && request.resource.data.keys().hasOnly(['e']) && request.resource.data.e in rk()
+        allow create, update: if member() && me() == uid && request.resource.data.keys().hasOnly(['m']) && rxList(request.resource.data.m)
           && existsAfter(/databases/$(database)/documents/reactions/$(item))
           && countsOk(exists(/databases/$(database)/documents/reactions/$(item)) ? get(/databases/$(database)/documents/reactions/$(item)).data : {},
-                      getAfter(/databases/$(database)/documents/reactions/$(item)).data, mineBefore(item), request.resource.data.e);
+                      getAfter(/databases/$(database)/documents/reactions/$(item)).data, mineBefore(item), request.resource.data.m);
         allow delete: if member() && me() == uid
-          && countsOk(get(/databases/$(database)/documents/reactions/$(item)).data, getAfter(/databases/$(database)/documents/reactions/$(item)).data, resource.data.e, '');
+          && countsOk(get(/databases/$(database)/documents/reactions/$(item)).data, getAfter(/databases/$(database)/documents/reactions/$(item)).data, mineList(resource.data), []);
       }
     }
     // Ideas board: anyone signed in posts an idea (with their username or anonymous) and votes 👍/👎 once per idea.
