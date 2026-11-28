@@ -199,7 +199,7 @@ async function loadSubs() {
 
 // Each person picks, per alert and per team: always / playoffs / champ (Super Bowl, Finals...) / off.
 // Must match ALERT_DEFAULTS in index.html.
-const DEFAULTS = { start: "always", score: "always", halftime: "playoffs", second: "off", close: "playoffs", final: "always", trades: "always", injuries: "always", bignews: "always" };
+const DEFAULTS = { start: "always", score: "always", halftime: "playoffs", second: "off", close: "playoffs", final: "always", trades: "always", injuries: "always", bignews: "always", player: "always" };
 const asMode = (v) => (v === true ? "always" : v === false ? "off" : v);
 const isChampionship = (ev) => /super bowl|nba finals|world series|national championship|cfp national|championship game/i.test([ev?.name, ev?.competitions?.[0]?.notes?.[0]?.headline].join(" "));
 // Quiet hours: no alerts between quietFrom and quietTo in the phone's own time zone. Times are "HH:MM" (set to the
@@ -278,6 +278,7 @@ async function checkGames() {
       if (teams.length !== 2) continue;
       const st = ev.status?.type?.state, period = ev.status?.period || 0, clock = ev.status?.type?.shortDetail || "";
       const sc = teams.map((t) => Number(t.score) || 0);
+      await checkPlayers(lg, L, ev, st).catch((e) => console.log("players", e.message));
       const prev = seen.get(ev.id);
       seen.set(ev.id, { st, sc, period, clock });
       if (firstPass || !prev) continue;
@@ -319,6 +320,59 @@ async function checkGames() {
   firstPass = false;
 }
 
+
+// ---- followed players: big-moment alerts ("p:lg:athlete:team" in a phone's favs) -------------------------------
+// Only games with a followed player's team, box score at most once a minute per game. A milestone already reached
+// when we first look (e.g. after a restart) is remembered, not sent, so nobody gets late or repeated alerts.
+const plSeen = new Map();     // event|athlete -> Set of milestones already reached
+const plFetched = new Map();  // event -> last box score time
+const plDone = new Set();     // finished games already given their last look
+const MILESTONES = {
+  nba: (g) => [...[20, 30, 40, 50].filter((x) => g("PTS") >= x).map((x) => ["pts" + x, x + " points"]), ...(g("PTS") >= 10 && g("REB") >= 10 && g("AST") >= 10 ? [["td", "a triple-double"]] : [])],
+  cbb: (g) => [...[20, 30, 40].filter((x) => g("PTS") >= x).map((x) => ["pts" + x, x + " points"]), ...(g("PTS") >= 10 && g("REB") >= 10 && g("AST") >= 10 ? [["td", "a triple-double"]] : [])],
+  mlb: (g, cat) => /bat/i.test(cat) ? [...Array.from({ length: g("HR") }, (_, i) => ["hr" + (i + 1), i ? "home run #" + (i + 1) + " today" : "a home run"]), ...(g("H") >= 4 ? [["h4", g("H") + " hits"]] : [])]
+    : /pitch/i.test(cat) ? [10, 12, 15].filter((x) => g("K") >= x).map((x) => ["k" + x, x + " strikeouts"]) : [],
+  nfl: (g, cat) => cat === "passing" ? [300, 400].filter((x) => g("YDS") >= x).map((x) => ["py" + x, x + " passing yards"]).concat(g("TD") >= 3 ? [["ptd" + g("TD"), g("TD") + " passing TDs"]] : [])
+    : cat === "rushing" ? [100, 150, 200].filter((x) => g("YDS") >= x).map((x) => ["ry" + x, x + " rushing yards"]).concat(g("TD") >= 2 ? [["rtd" + g("TD"), g("TD") + " rushing TDs"]] : [])
+    : cat === "receiving" ? [100, 150, 200].filter((x) => g("YDS") >= x).map((x) => ["cy" + x, x + " receiving yards"]).concat(g("TD") >= 2 ? [["ctd" + g("TD"), g("TD") + " receiving TDs"]] : []) : [],
+};
+MILESTONES.cfb = MILESTONES.nfl;
+async function checkPlayers(lg, L, ev, st) {
+  if (st !== "in" && st !== "post") return;
+  if (st === "post" && (plDone.has(ev.id) || !plFetched.has(ev.id))) return;   // finished: one last look, only if we watched it live
+  const tids = new Set((ev.competitions?.[0]?.competitors || []).map((c) => String(c.team?.id)));
+  const want = new Map();   // athlete -> [sub]
+  for (const s of subs) for (const f of s.favs) {
+    if (!f.startsWith("p:" + lg + ":")) continue;
+    const [, , aid, tid] = f.split(":");
+    if (tids.has(tid)) want.set(aid, [...(want.get(aid) || []), s]);
+  }
+  if (!want.size) return;
+  if (st === "in" && Date.now() - (plFetched.get(ev.id) || 0) < 60e3) return;
+  if (st === "post") plDone.add(ev.id);
+  plFetched.set(ev.id, Date.now());
+  let sum; try { sum = await (await fetch(API + L.path + "/summary?event=" + ev.id)).json(); } catch { return; }
+  for (const team of sum?.boxscore?.players || []) for (const cat of team.statistics || []) for (const a of cat.athletes || []) {
+    const aid = String(a.athlete?.id || ""); if (!want.has(aid)) continue;
+    const g = (lab) => { const i = (cat.labels || []).indexOf(lab); return i < 0 ? 0 : parseFloat(String(a.stats?.[i] ?? "0").split(/[-/]/)[0]) || 0; };
+    const key = ev.id + "|" + aid, had = plSeen.get(key), now = (MILESTONES[lg]?.(g, cat.name || cat.type || "") || []);
+    const first = !had; const seenSet = had || new Set(); plSeen.set(key, seenSet);
+    for (const [id, what] of now) {
+      if (seenSet.has(id)) continue;
+      seenSet.add(id);
+      if (first || firstPass) continue;   // already true when we started watching
+      const name = a.athlete?.shortName || a.athlete?.displayName || "Your player";
+      for (const s of want.get(aid)) {
+        const dedupe = "pl-" + key + "-" + id;
+        if (quietNow(s.prefs) || s.prefs.player === "off" || sentKeys.has(s.id + "|" + dedupe)) continue;
+        sentKeys.add(s.id + "|" + dedupe);
+        await deliver(s, L.icon + " " + name + ": " + what + "!", scoreLine(ev) + " · " + (ev.status?.type?.shortDetail || ""), dedupe, 1800);
+      }
+      console.log(new Date().toISOString(), "player", lg, name, what);
+    }
+  }
+}
+
 // ---- Formula 1 (followed as a whole, key "f1"): session starting + results ------------------
 const F1_SESSIONS = { FP1: "Practice 1", FP2: "Practice 2", FP3: "Practice 3", Qual: "Qualifying", SQ: "Sprint Qualifying", SS: "Sprint Shootout", Sprint: "Sprint", Race: "Race" };
 const f1Seen = new Map();
@@ -335,6 +389,17 @@ async function checkF1() {
     if (prev !== "post" && st === "post" && /^(Qual|Race|Sprint)$/.test(ab)) {
       const top = (c.competitors || []).slice().sort((a, b) => (a.order || 99) - (b.order || 99)).slice(0, 3).map((d) => d.athlete?.shortName || d.athlete?.displayName);
       await send("f1", "final", "🏁 " + (ab === "Qual" ? "Pole: " + top[0] : name + " result: " + top[0] + " wins"), ab === "Qual" ? ev.name : top.map((n, k) => "P" + (k + 1) + " " + n).join(" · "), "final-" + key);
+      // Followed drivers ("p:f1:<id>:"): where they finished, if they made the top 10 (Race/Sprint) or front row (Qual).
+      const order = (c.competitors || []).filter((d) => d.order);
+      for (const s of subs) for (const f of s.favs) {
+        if (!f.startsWith("p:f1:")) continue;
+        const d = order.find((x) => String(x.athlete?.id) === f.split(":")[2]);
+        if (!d || d.order > (ab === "Qual" ? 3 : 10) || quietNow(s.prefs) || s.prefs.player === "off") continue;
+        const dedupe = "pl-f1-" + key + "-" + d.athlete.id;
+        if (sentKeys.has(s.id + "|" + dedupe)) continue;
+        sentKeys.add(s.id + "|" + dedupe);
+        await deliver(s, "🏁 " + (d.athlete?.shortName || d.athlete?.displayName) + ": P" + d.order + " in " + name + (d.order === 1 ? " 🏆" : d.order <= 3 && ab !== "Qual" ? " 🍾" : ""), ev.name, dedupe, 3600);
+      }
     }
   }
   f1First = false;

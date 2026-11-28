@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795881432" />
+  <meta name="build" content="1795885874" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -139,6 +139,9 @@
     .pill-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 7px 14px; font-weight: 600; color: var(--text); transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast); }
     .rc-sec { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; } .rc-sec small { color: var(--muted); font-size: var(--fs-xs, 12px); } .rc-img { display: block; width: 100%; max-width: 420px; margin: 0 auto 12px; border-radius: 16px; } .rc-row { display: flex; justify-content: center; margin-bottom: 8px; }
     .gc-list { max-height: 260px; overflow-y: auto; display: grid; gap: 2px; margin-bottom: 10px; overscroll-behavior: contain; } .gc-msg { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text); font: inherit; font-size: 14px; line-height: 1.4; padding: 6px 8px; border-radius: 10px; overflow-wrap: anywhere; cursor: pointer; } .gc-msg b { color: var(--muted); font-weight: 700; } .gc-msg.me b { color: var(--text); } .gc-form { display: flex; gap: 8px; } .gc-form input { flex: 1; min-width: 0; height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 16px; } .gc-rules { margin-top: 6px; }
+    .otd { display: grid; gap: 2px; width: 100%; text-align: left; padding: 12px 14px; margin: 0 0 12px; border: 1px solid var(--line); border-radius: var(--radius, 14px); background: var(--panel); color: var(--text); font: inherit; font-size: 14.5px; line-height: 1.4; cursor: pointer; } .otd-k { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); } .otd small { display: block; color: var(--muted); font-size: 12.5px; } .g-sec .otd { margin: 0; }
+    .pstat { display: block; color: var(--text) !important; font-weight: 600; } .pstat:empty { display: none; }
+    .pstat { display: block; color: var(--text) !important; font-weight: 600; } .pstat:empty { display: none; }
     @media (hover: hover) { .pill-btn:hover { background: var(--panel-2); border-color: var(--line-hi); } }
     .pill-btn:active, .tab:active, .refresh:active { transform: scale(.97); }
     .pill-btn.on { background: rgba(255, 59, 78, .14); border-color: rgba(255, 59, 78, .45); color: #ffb3bb; }
@@ -1698,10 +1701,52 @@
     let pfollows = store.get("players", []);
     const isPF = (k) => pfollows.some((p) => p.k === k);
     function pfBtn(k, n, t, h) { return '<button type="button" class="pill-btn f1-follow' + (isPF(k) ? " on" : "") + '" data-pfollow="' + esc(k) + '" data-pn="' + esc(n || "") + '" data-pt="' + esc(t || "") + '" data-ph="' + esc(h || "") + '"><span class="fo">★ Following</span><span class="fn">☆ Follow</span></button>'; }
+    /* A followed player's line from the box score ("31 PTS · 9 REB · 7 AST"); "" when the box score doesn't have them. */
+    const pstat = new Map();   // "lg|event|athlete" -> { at, line }
+    function pStatLine(lg, s, aid) {
+      const found = [];
+      for (const team of s?.boxscore?.players || []) for (const cat of team.statistics || []) {
+        const a = (cat.athletes || []).find((x) => String(x.athlete?.id) === String(aid));
+        if (a && !a.didNotPlay) found.push({ name: cat.name || "", labels: cat.labels || [], st: a.stats || [] });
+      }
+      const get = (c, L) => { const i = c.labels.indexOf(L); return i < 0 ? "" : String(c.st[i] ?? ""); }, n = (v) => parseFloat(v) || 0;
+      const out = [];
+      for (const c of found) {
+        if (BB(lg)) {
+          out.push(get(c, "PTS") + " PTS", get(c, "REB") + " REB", get(c, "AST") + " AST");
+          if (n(get(c, "STL")) >= 2) out.push(get(c, "STL") + " STL"); if (n(get(c, "BLK")) >= 2) out.push(get(c, "BLK") + " BLK");
+        } else if (lg === "mlb") {
+          if (/bat/i.test(c.name) || c.labels.includes("AB")) { const h = get(c, "H-AB"); out.push(h ? h.replace("/", "-") : get(c, "H") + "-" + get(c, "AB")); if (n(get(c, "HR"))) out.push(get(c, "HR") + " HR"); if (n(get(c, "RBI"))) out.push(get(c, "RBI") + " RBI"); }
+          else if (/pitch/i.test(c.name) || c.labels.includes("IP")) out.push(get(c, "IP") + " IP", get(c, "K") + " K", get(c, "ER") + " ER");
+        } else {
+          if (c.name === "passing") out.push(get(c, "C/ATT") + ", " + get(c, "YDS") + " pass yds" + (n(get(c, "TD")) ? ", " + get(c, "TD") + " TD" : "") + (n(get(c, "INT")) ? ", " + get(c, "INT") + " INT" : ""));
+          if (c.name === "rushing") out.push(get(c, "CAR") + " carries, " + get(c, "YDS") + " yds" + (n(get(c, "TD")) ? ", " + get(c, "TD") + " TD" : ""));
+          if (c.name === "receiving") out.push(get(c, "REC") + " catches, " + get(c, "YDS") + " yds" + (n(get(c, "TD")) ? ", " + get(c, "TD") + " TD" : ""));
+        }
+      }
+      return out.filter((x) => x && !/^\s|undefined/.test(x)).join(" · ");
+    }
+    async function fillPStats() {
+      const els = [...document.querySelectorAll("[data-pline]")];
+      const evs = new Map();
+      for (const el of els) {   // each game's box score at most once a minute
+        const c = pstat.get(el.dataset.pline);
+        if (c && Date.now() - c.at < 60e3) { if (c.line) el.textContent = c.line; continue; }
+        const [lg, ev] = el.dataset.pline.split("|"); evs.set(lg + "|" + ev, null);
+      }
+      if (!evs.size) return;
+      await Promise.all([...evs.keys()].map(async (k) => { const [lg, ev] = k.split("|"); evs.set(k, await getJSON(API + LEAGUES[lg].path + "/summary?event=" + ev).catch(() => null)); }));
+      for (const el of els.filter((x) => evs.has(x.dataset.pline.split("|").slice(0, 2).join("|")))) {
+        const [lg, ev, aid] = el.dataset.pline.split("|"), s = evs.get(lg + "|" + ev); if (!s) continue;
+        const line = pStatLine(lg, s, aid); pstat.set(el.dataset.pline, { at: Date.now(), line });
+        if (line && el.isConnected) el.textContent = line;
+      }
+    }
     function playersHomeHtml(keys, results, f1) {
+      let needStats = false;
       const rows = pfollows.map((p) => {
         const [lg, id] = p.k.split("|");
-        let line = "";
+        let line = "", pk = "";
         if (lg === "f1") {
           const ev = f1?.events?.[0];
           if (!ev) return "";
@@ -1716,10 +1761,12 @@
           const s = ev?.status?.type;
           line = !ev ? "No game on this schedule" : s.state === "pre" ? ev.shortName + " · " + fmtDay(ev.date) + " " + fmtTime(ev.date) : ev.shortName + " · " + (s.shortDetail || "");
           if (s?.state === "in") line = "Live · " + line;
+          if (ev && s.state !== "pre") { pk = lg + "|" + ev.id + "|" + id; needStats = true; }
         }
         return '<button type="button" class="prow" ' + (lg === "f1" ? 'data-tab="f1"' : 'data-player="' + esc(p.k) + '"') + ">" + (p.h ? '<img src="' + esc(p.h) + '" alt="" loading="lazy">' : '<span class="prow-ph"></span>') +
-          "<div><b>" + esc(p.n) + "</b><small>" + esc(line) + '</small></div><span class="chev">›</span></button>';
+          "<div><b>" + esc(p.n) + "</b><small>" + esc(line) + "</small>" + (pk ? '<small class="pstat" data-pline="' + esc(pk) + '">' + esc(pstat.get(pk)?.line || "") + "</small>" : "") + '</div><span class="chev">›</span></button>';
       }).filter(Boolean);
+      if (needStats) setTimeout(() => fillPStats().catch(() => {}), 0);
       return rows.length ? '<div class="section-title"><b>★ Your players</b></div><div class="prows">' + rows.join("") + "</div>" : "";
     }
 
@@ -2366,6 +2413,58 @@
       for (let i = 0; i < w.length; i++) { if (!/^[A-Z]\S{2,}/.test(w[i])) continue; const j = w.indexOf(w[i], i + 1); if (j > i) return w.slice(j).join(" "); }
       return w.join(" ");
     }
+    /* ---------- "On this day" (Home) and "Last time they met" (game pages): real past games from ESPN only ----------
+       Nothing is made up: if we can't find a past game, the line simply doesn't show. */
+    const OTD_LG = { 28: "nfl", 23: "cfb", 46: "nba", 41: "cbb", 10: "mlb" };
+    let otdHtml = "", otdDay = "";
+    async function otdLoad() {
+      const today = ymd(new Date());
+      const put = () => document.querySelectorAll("[data-otd]").forEach((x) => { if (x.innerHTML !== otdHtml) x.innerHTML = otdHtml; });
+      const okey = today + [...state.favs].sort().join(",");
+      if (otdDay === okey) return put();
+      otdDay = okey;
+      const cached = store.get("otd", null);
+      if (cached?.day === today && cached.favs === [...state.favs].sort().join(",")) { otdHtml = cached.html; return put(); }
+      const mine = [...state.favs].map((k) => String(k).match(/~l:(\d+)~t:(\d+)/)).filter((m) => m && OTD_LG[m[1]]).map((m) => ({ lg: OTD_LG[m[1]], tid: m[2] }));
+      const lgs = [...new Set(mine.map((x) => x.lg))].slice(0, 3), now = new Date(), found = [];
+      await Promise.all(lgs.flatMap((lg) => [1, 3, 5, 10].map(async (n) => {
+        const d = new Date(now.getFullYear() - n, now.getMonth(), now.getDate());
+        const evs = (await getJSON(API + LEAGUES[lg].path + "/scoreboard?dates=" + ymd(d) + (lg === "cbb" ? "&groups=50&limit=400" : lg === "cfb" ? "&groups=80&limit=300" : "")).catch(() => null))?.events || [];
+        evs.forEach((e) => {
+          if (!e.status?.type?.completed) return;
+          const ts = teamsOf(e), me = ts.find((t) => mine.some((x) => x.lg === lg && String(t.team?.id) === x.tid)); if (!me) return;
+          const opp = ts.find((t) => t !== me), won = Number(me.score) > Number(opp?.score);
+          found.push({ lg, e, me, opp, won, n, yr: d.getFullYear(), note: e.competitions?.[0]?.notes?.[0]?.headline || "" });
+        });
+      })));
+      found.sort((a, b) => (b.won - a.won) || (!!b.note - !!a.note) || (b.n - a.n));
+      const f = found[0];
+      const nm = (t) => t?.team?.shortDisplayName || t?.team?.displayName || "";
+      otdHtml = f ? '<button type="button" class="otd" data-game="' + f.lg + "|" + esc(f.e.id) + '"><span class="otd-k">📅 On this day in ' + f.yr + "</span><span>" +
+        esc(nm(f.me) + (f.won ? " beat " : Number(f.me.score) === Number(f.opp?.score) ? " tied " : " lost to ") + (f.won || Number(f.me.score) === Number(f.opp?.score) ? "the " : "the ") + nm(f.opp) + " " + f.me.score + "–" + f.opp?.score) +
+        (f.note ? " <small>" + esc(f.note) + "</small>" : "") + "</span></button>" : "";
+      store.set("otd", { day: today, favs: [...state.favs].sort().join(","), html: otdHtml });
+      put();
+    }
+    async function lastMetHtml(lg, s, teams) {
+      if (lg === "f1" || teams.length !== 2) return "";
+      const [a, b] = teams, yr = Number(s.header?.season?.year) || new Date().getFullYear(), thisId = String(s.header?.id || ""), before = Date.parse(s.header?.competitions?.[0]?.date || "") || Date.now();
+      for (const y of [yr, yr - 1, yr - 2]) {
+        const evs = (await getJSON(API + LEAGUES[lg].path + "/teams/" + a.team?.id + "/schedule?season=" + y).catch(() => null))?.events || [];
+        const met = evs.filter((e) => String(e.id) !== thisId && Date.parse(e.date) < before && e.competitions?.[0]?.status?.type?.completed !== false &&
+          (e.competitions?.[0]?.competitors || []).some((c) => String(c.team?.id) === String(b.team?.id)) && (e.competitions?.[0]?.competitors || []).every((c) => c.score != null))
+          .sort((x, z) => Date.parse(z.date) - Date.parse(x.date))[0];
+        if (!met) continue;
+        const cs = met.competitions[0].competitors, sc = (c) => c.score?.displayValue ?? c.score?.value ?? c.score;
+        const away = cs.find((c) => c.homeAway === "away") || cs[0], home = cs.find((c) => c !== away);
+        if (sc(away) == null || sc(home) == null || sc(away) === "" ) continue;
+        const when = new Date(met.date).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+        return '<button type="button" class="otd lastmet" data-game="' + lg + "|" + esc(met.id) + '"><span class="otd-k">🆚 Last time they met · ' + esc(when) + "</span><span>" +
+          esc((away.team?.abbreviation || "") + " " + sc(away) + " – " + sc(home) + " " + (home.team?.abbreviation || "")) + "</span></button>";
+      }
+      return "";
+    }
+
     function greetHtml(keys, results, f1) {
       const hr = new Date().getHours(), hi = hr < 5 ? "Up late? 🌙" : hr < 12 ? "Good morning ☀️" : hr < 17 ? "Good afternoon 👋" : "Good evening 🌆";
       const ICO = { nfl: "🏈", cfb: "🏈", nba: "🏀", cbb: "🏀", mlb: "⚾" }, today = ymd(new Date());
@@ -2401,7 +2500,9 @@
       if (pins().includes("f1")) try { f1 = await getJSON(API + LEAGUES.f1.path + "/scoreboard"); cache.f1 = f1; } catch {}
       if (state.tab !== "home") return;
       let anyLive = false;
-      let html = '<div data-home>' + barHtml("Today", null) + (noFilters() ? greetHtml(keys, results, f1) : "") + '<div data-home-picks>' + hpHtml + "</div>";
+      const otdOn = noFilters() && [...state.favs].some((k) => k !== "f1");
+      if (otdOn) setTimeout(() => otdLoad().catch(() => {}), 0);
+      let html = '<div data-home>' + barHtml("Today", null) + (noFilters() ? greetHtml(keys, results, f1) : "") + (otdOn ? '<div data-otd>' + otdHtml + "</div>" : "") + '<div data-home-picks>' + hpHtml + "</div>";
       const liveIds = new Set();
       const liveEvs = [];
       keys.forEach((k, i) => { if (results[i].status === "fulfilled") (results[i].value.events || []).filter(isLive).forEach((e) => { liveEvs.push([e, k]); liveIds.add(e.id); }); });
@@ -2906,6 +3007,7 @@
         store.set("players", pfollows);
         document.querySelectorAll('[data-pfollow="' + CSS.escape(k) + '"]').forEach((b) => b.classList.toggle("on", isPF(k)));
         toast(isPF(k) ? "Following " + n : "Stopped following " + n);
+        if (alertsOn && IS_PHONE) pushSync().catch(() => {});   // so big-moment alerts follow them too
         return;
       }
       const fav = e.target.closest("[data-fav]");
@@ -5352,6 +5454,7 @@
       if (st.state !== "in") h += '<div data-pred></div>';   // prediction (before) / predicted vs actual (after), filled in below
       if (PICK_LGS.includes(lg)) h += '<div class="g-sec pick-sec" data-pick data-c="all"></div>';
       if (st.state === "pre") h += formGuideHtml(s, teams, lg);
+      h += '<div data-lastmet data-c="all"></div>';
       if (lg === "mlb") h += pitchersHtml(s);
       if ((lg === "nfl" || lg === "cfb") && window.ScorelineWP) window.ScorelineWP.ready(lg).catch(() => {});   // for the strategy picker
       if (lg === "nfl" || lg === "cfb") h += '<div class="g-sec" data-field data-c="plays timeouts"><div class="g-label">Plays</div><div class="skel" style="height:150px"></div></div>';
@@ -5401,6 +5504,7 @@
       if (vnu?.id && st.state === "post") pastWeather(v.el.querySelector("[data-vwx]"), vnu, comp.date, "https://sports.core.api.espn.com/v2/sports/" + wsp + "/leagues/" + wlg + "/venues/" + vnu.id);
       useOurModel(lg, v, s, teams, st.state, id);
       window.scorelineGameChat?.mount(v.el.querySelector("[data-gamechat]"));
+      lastMetHtml(lg, s, teams).then((x) => { const el = v.el.querySelector("[data-lastmet]"); if (!el) return; if (x) el.outerHTML = '<div class="g-sec" data-c="all">' + x + "</div>"; else el.remove(); }).catch(() => v.el.querySelector("[data-lastmet]")?.remove());
     }
 
     /* ---------- Recap card: a shareable picture of a finished game (score, top players, the big moment) ----------
@@ -5729,8 +5833,9 @@
       { k: "trades", t: "Trades", d: "Players traded to or from the team", g: "news" },
       { k: "injuries", t: "Major injuries", d: "Season-ending injuries, surgery, injured reserve", g: "news" },
       { k: "bignews", t: "Big moves", d: "Coach changes, suspensions, retirements, major contracts", g: "news" },
+      { k: "player", t: "Your players' big moments", d: "Players you follow (★): 30-point games, 100-yard days, home runs, F1 top 10s", g: "news" },
     ];
-    const ALERT_DEFAULTS = { start: "always", score: "always", halftime: "playoffs", second: "off", close: "playoffs", final: "always", trades: "always", injuries: "always", bignews: "always" };
+    const ALERT_DEFAULTS = { start: "always", score: "always", halftime: "playoffs", second: "off", close: "playoffs", final: "always", trades: "always", injuries: "always", bignews: "always", player: "always" };
     const asMode = (v) => v === true ? "always" : v === false ? "off" : v;
     const alertPrefs = () => { const raw = store.get("alertPrefs", {}); const out = { ...ALERT_DEFAULTS }; for (const k in raw) out[k] = asMode(raw[k]); return out; };
     const modeFor = (p, team, kind) => p[kind + "@" + team] || p[kind] || "off";
@@ -5771,13 +5876,13 @@
         }
         return '<div class="nset"><div><b>' + a.t + "</b><small>" + a.d + '</small></div><div class="nsws">' + sws + "</div></div>";
       };
-      const list = (g) => ALERT_KINDS.filter((a) => a.g === g && !(lg && a.skip?.includes(lg))).map(row).join("");
+      const list = (g) => ALERT_KINDS.filter((a) => a.g === g && !(lg && (a.skip?.includes(lg) || a.k === "player"))).map(row).join("");   // player alerts are set once, not per team
       if (lg === "f1") return '<div class="g-label">Race weekend</div><div class="nlist">' + ["start", "final"].map((k) => row({ ...ALERT_KINDS.find((a) => a.k === k), ...F1_KINDS[k], g: "news" })).join("") + "</div>";
       return '<div class="g-label">Game</div><div class="nlist">' + list("game") + '</div><div class="g-label" style="margin-top:22px">Team news</div><div class="nlist">' + list("news") + "</div>" +
         '<div class="g-note" style="margin-top:12px">Playoffs means postseason games only. Team news skips routine moves and is capped at 2 alerts per team per day.</div>';
     }
     function teamAlertSummary(team) {
-      const lg = lgOfTeam(team), kinds = lg === "f1" ? ALERT_KINDS.filter((a) => a.k === "start" || a.k === "final") : ALERT_KINDS.filter((a) => !a.skip?.includes(lg));
+      const lg = lgOfTeam(team), kinds = lg === "f1" ? ALERT_KINDS.filter((a) => a.k === "start" || a.k === "final") : ALERT_KINDS.filter((a) => !a.skip?.includes(lg) && a.k !== "player");
       const p = alertPrefs(), on = kinds.filter((a) => modeFor(p, team, a.k) !== "off");
       return on.length === kinds.length ? "All alerts" : on.length ? on.length + " of " + kinds.length + " alerts on" : "Muted";
     }
@@ -6389,7 +6494,7 @@
       else if ("peSave" in D) {
         t.disabled = true;
         const out = { avatar: PE.avatar || "", name: (PE.name || "").trim().slice(0, 30), bio: (PE.bio || "").trim().slice(0, 160), theme: PE.theme || "plain", show: PE.show || "friends",
-          sports: PE.sports.slice(0, 5), favTeams: PE.favTeams.slice(0, PE_MAX), favPlayers: PE.favPlayers.slice(0, PE_MAX_P),
+          sports: PE.sports.slice(0, 6), favTeams: PE.favTeams.slice(0, PE_MAX), favPlayers: PE.favPlayers.slice(0, PE_MAX_P),
           hideOg: !!PE.hideOg, title: PE.teen && PE.owned.has(PE.title) ? PE.title : "", banner: PE.teen && PE.owned.has(PE.banner) ? PE.banner : "", deco: PE.teen && PE.owned.has(PE.deco) ? PE.deco : "" };
         try {
           await PF().save(out); buzz(10); toast("Profile saved"); PE = null; history.back();
@@ -7746,7 +7851,7 @@
         if (pushTestAt) p.testAt = pushTestAt;              // asks the alert server for a test alert
         const fields = {
           endpoint: { stringValue: endpoint }, p256dh: { stringValue: p256dh }, auth: { stringValue: auth },
-          favs: { arrayValue: { values: [...state.favs].map((f) => ({ stringValue: f })) } },
+          favs: { arrayValue: { values: [...state.favs, ...pfollows.map((p) => "p:" + p.k.replace("|", ":") + ":" + (p.t || ""))].slice(0, 200).map((f) => ({ stringValue: f })) } },   // teams, plus followed players as "p:lg:athlete:team" (big-moment alerts)
           prefs: { mapValue: { fields: Object.fromEntries(Object.entries(p).map(([k, v]) => [k, { stringValue: String(v) }])) } },
           updatedAt: { timestampValue: new Date().toISOString() },
         };
@@ -7875,6 +7980,6 @@
     if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
-  <script type="module" src="account.js?v=1795881432"></script>
+  <script type="module" src="account.js?v=1795885874"></script>
 </body>
 </html>
