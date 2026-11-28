@@ -1,11 +1,11 @@
-<!doctype html>
+!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795844398" />
+  <meta name="build" content="1795845894" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -16,7 +16,7 @@
     if (window.top !== window) { let own = false; try { own = !!window.top.document; } catch {} if (!own) { try { window.top.location = location.href; } catch { document.documentElement.style.display = "none"; } } }
   </script>
   <title>Scoreline</title>
-  <meta name="description" content="Live scores for the NFL, college football, F1, NBA and the Premier League." />
+  <meta name="description" content="Live scores and game details for the NFL, NBA, MLB, F1, and college football and basketball." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23101012%27/%3E%3Cpath d=%27M7 10h7M7 16h12M7 22h18%27 stroke=%27%23ececee%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#101012" />
@@ -626,6 +626,8 @@
     /* The Buzz */
     .bz-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 10px; } .bz-chips button { flex: none; height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; } .bz-chips button.on { background: var(--text); color: var(--bg); }
     .bz-item { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); margin-bottom: 10px; }
+    .bz-item.mine { border-color: var(--line-hi); } .bz-mine { color: var(--gold, #f2c14e); font-weight: 600; }
+    .bz-meta a, .credit-link, .g-note .link-btn, .acct-note .link-btn, p .link-btn, small .link-btn { display: inline-block; padding: 8px 4px; margin: -8px -4px; }   /* "Read more": a bigger tap area without moving the text */
     .bz-top { display: flex; gap: 12px; } .bz-e { font-size: 24px; line-height: 1.1; flex: none; } .bz-txt { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
     .bz-txt b { font-size: 15.5px; line-height: 1.3; overflow-wrap: anywhere; } .bz-txt small { color: var(--muted); font-size: 12.5px; line-height: 1.4; overflow-wrap: anywhere; } .bz-meta a { color: var(--text); }
     .bz-move { display: flex; align-items: center; gap: 8px; } .bz-move i { font-style: normal; color: var(--muted); }
@@ -752,7 +754,7 @@
     .dm-note { display: none; } html.dummy .dm-note { display: block; position: relative; margin: 10px 0 14px; padding: 12px 14px 12px 40px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
     html.dummy .dm-note::before { content: "?"; position: absolute; left: 13px; top: 12px; width: 18px; height: 18px; border-radius: 50%; background: var(--text); color: var(--bg); font: 700 11px/18px system-ui, sans-serif; text-align: center; }
     html.dummy .dm-note b { color: var(--text); }
-    .tour { position: fixed; inset: 0; z-index: 10050; animation: fadein .25s ease both; } .tour.out { opacity: 0; transition: opacity .25s; }
+    .tour { position: fixed; inset: 0; z-index: 10050; animation: fadein .25s ease both; font: 16px/1.5 var(--display); color: var(--text); -webkit-font-smoothing: antialiased; }   /* lives outside <body>, so it needs the app font itself */ .tour.out { opacity: 0; transition: opacity .25s; }
     .tour-dim { position: absolute; inset: 0; background: rgba(0,0,0,.62); }
     .tour-hole { position: absolute; border-radius: 16px; box-shadow: 0 0 0 9999px rgba(0,0,0,.62); transition: all .35s cubic-bezier(.22,1,.36,1); pointer-events: none; }
     .tour-card { position: absolute; left: 50%; transform: translateX(-50%); width: min(360px, calc(100vw - 32px)); background: var(--panel); color: var(--text); border-radius: 18px; padding: 16px 18px; box-shadow: 0 16px 48px rgba(0,0,0,.5); }
@@ -791,6 +793,8 @@
     .recap-head { margin: 0 0 6px; font-size: 16px; font-weight: 650; line-height: 1.4; } .recap-why { margin: 0 0 10px; font-size: 14px; color: var(--muted); line-height: 1.45; }
     .recap-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; } .recap-list li { display: grid; grid-template-columns: 96px 1fr; gap: 10px; font-size: 13.5px; line-height: 1.4; }
     .recap-list b { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding-top: 2px; }
+    html:not(.dummy) .term { pointer-events: none; }   /* only tappable in Dummy Mode; otherwise a tap goes to the row */
+    html.dummy .term { padding: 6px 0; margin: -6px 0; }   /* bigger tap area, same layout */
     html.dummy .term { border-bottom: 1px dotted currentColor; cursor: help; } html.dummy .term::after { content: " ⓘ"; font-size: .78em; opacity: .55; }
     .gloss-pop { position: fixed; left: 16px; right: 16px; bottom: calc(88px + env(safe-area-inset-bottom)); max-width: 440px; margin: 0 auto; z-index: 10000; background: var(--panel-3); color: var(--text); padding: 14px 16px; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.45); animation: pop .25s var(--ease) both; }
     .gloss-pop b { font-size: 15px; } .gloss-pop p { margin: 6px 0 4px; font-size: 14px; line-height: 1.45; } .gloss-pop small { color: var(--muted); font-size: 11px; }
@@ -1103,7 +1107,7 @@
       body.scrolled .top-inner { height: 44px; }
       body.scrolled .brand { font-size: 18px; }
       main { padding: 12px 16px calc(104px + env(safe-area-inset-bottom)); }
-      .card { contain-intrinsic-size: auto 76px; }
+      .card { contain-intrinsic-size: auto 102px; } .card:has(.card-tags) { contain-intrinsic-size: auto 128px; }   /* real phone card heights, so the page doesn't jump while scrolling */
       footer { padding-left: 12px; padding-right: 12px; }
       footer { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
       .bar { gap: 8px; margin-bottom: 10px; }
@@ -1372,6 +1376,7 @@
     .tool-chip { flex: none; display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line-hi, var(--line)); background: var(--panel); color: var(--text); border-radius: 999px; padding: 7px 10px; font: inherit; font-size: 12.5px; font-weight: 600; white-space: nowrap; cursor: pointer; }
     .tool-chip:active { background: var(--panel-2); transform: scale(.97); }
     .tool-chip i { font-style: normal; }
+    .off-note { margin-top: 12px; } .off-note p { margin: 6px 0 12px; line-height: 1.5; }
     @media (max-width: 400px) { .tool-chip i { display: none; } .tool-chip { padding: 7px 11px; } .tool-row { gap: 6px; } }
     @media (max-width: 340px) { .tool-chip { padding: 7px 8px; font-size: 12px; } .tool-row { gap: 4px; } }
     .wpr-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; } .wp-now { border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); border-radius: 999px; padding: 6px 14px; font: 650 13px var(--display); flex: none; }
@@ -2132,6 +2137,31 @@
       if (state.tab !== key || viewKey(key) !== vk) return;   // a newer page was asked for: never draw an old week under it
       schedule(drawLeague(key, res));
     }
+    /* Offseason: when no season is running today (from ESPN's season calendar), say so and when the next one starts,
+       instead of an empty week. Dates are ESPN's own; nothing shows if they aren't published yet. */
+    const offNote = {}, offAt = {};
+    const OFF_PRE = { mlb: "Spring training", nfl: "Preseason", nba: "Preseason", cbb: "The season", cfb: "The season" };
+    const calDay = (s) => { const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(s || ""); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+    async function fillOffseason(key) {
+      if (Date.now() - (offAt[key] || 0) > 6 * 3600e3) {
+        offAt[key] = Date.now();
+        const [sport, league] = LEAGUES[key].path.split("/"), base = "https://sports.core.api.espn.com/v2/sports/" + sport + "/leagues/" + league + "/seasons/";
+        const y = new Date().getFullYear(), now = new Date();
+        const seasons = (await Promise.all([y - 1, y, y + 1].map((yr) => getJSON(base + yr).then((j) => ({ yr, s: calDay(j.startDate), e: calDay(j.endDate) })).catch(() => null)))).filter((x) => x?.s && x?.e);
+        let note = "";
+        if (seasons.length && !seasons.some((x) => x.s <= now && now <= x.e)) {
+          const next = seasons.filter((x) => x.s > now).sort((a, b) => a.s - b.s)[0];
+          const reg = next ? calDay((await getJSON(base + next.yr + "/types/2").catch(() => null))?.startDate) : null;
+          const fmt = (d) => d.toLocaleDateString([], { month: "short", day: "numeric" });
+          const icon = { nfl: "🏈", cfb: "🏈", nba: "🏀", cbb: "🏀", mlb: "⚾" }[key] || "📅";
+          note = '<div class="panel off-note"><b>' + icon + " It's the " + esc(LEAGUES[key].short || LEAGUES[key].name) + " offseason</b><p class=\"muted\">" +
+            (next ? (reg && reg - next.s > 7 * 864e5 ? esc(OFF_PRE[key] || "Preseason") + " starts " + fmt(next.s) + ", and the " + esc(seasonName(key, next.yr)) + " regular season starts " + fmt(reg) + "." : "The " + esc(seasonName(key, next.yr)) + " season starts " + fmt(reg || next.s) + ".") : "The next season's dates aren't out yet.") +
+            " Catch up on moves and news in the meantime.</p><button type=\"button\" class=\"pill-btn\" data-open-buzz=\"all\" data-bz-lg=\"" + key + "\">📰 " + esc(LEAGUES[key].short || LEAGUES[key].name) + " news</button></div>";
+        }
+        offNote[key] = note;
+      }
+      document.querySelectorAll('[data-offseason="' + key + '"]').forEach((el) => { if (el.innerHTML !== offNote[key]) el.innerHTML = offNote[key]; });
+    }
     function drawLeague(key, res) {
       const L = LEAGUES[key], main = $("main");
       shownWeek[key] = res.week || 0;
@@ -2139,7 +2169,8 @@
       const when = viewOf(key) === "day" ? (dayOff[key] === 0 ? "today" : "on " + dateAt(dayOff[key]).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })) : weekLabel(key).toLowerCase();
       const body = !events.length ? '<div class="empty">' + (fl("live") && fl("fav") ? "None of your ★ teams are live right now." : fl("live") ? "No live games right now." : fl("fav") ? "None of your ★ teams play " + esc(when) + "." : "No games " + esc(when) + ".") + "</div>"
         : res.grouped && !fl("close") ? groupByDay(events, key) : !fl("close") && viewOf(key) === "day" ? (() => { let i = 0; return slotsHtml(events, key, () => i++); })() : '<div class="grid">' + events.map((e, i) => gameCard(e, key, i)).join("") + "</div>";
-      paint(main, barHtml(L.name, key) + body, key);
+      paint(main, barHtml(L.name, key) + body + (!events.length && noFilters() ? '<div data-offseason="' + key + '">' + (offNote[key] || "") + "</div>" : ""), key);
+      if (!events.length && noFilters()) fillOffseason(key);
       centerChip(main.querySelector(".dchip.on"), true);   // glide, never jump (a tap may already be sliding it)
       if (searchQ[key]) applySearch(key);
       renderTabs();
@@ -2154,6 +2185,19 @@
     const NEWS_BIG = /\b(releas\w*|cuts?|waive[sd]?|waiving|trade[ds]?|trading|signs?|signed|signing|agree(s|d|ment)?|extension|contract|fired|fires|hired|hires|hiring|resign\w*|retire\w*|retirement|suspend\w*|suspension|injur\w*|out for (the )?season|torn|tears?|fractur\w*|surgery|acl|ruled out|benched|will start|named (the )?starter|arrest\w*|dies|died|penalty|penalt\w*|disqualif\w*|replac\w*|leaves|leaving|joins|exit)\b/i;
     const NEWS_VIP = { nfl: /\b(qb|quarterback|head coach|fire[sd]|hire[sd])\b/i, cfb: /\b(qb|quarterback|head coach|fire[sd]|hire[sd])\b/i, nba: /\b(all-star|mvp|superstar|head coach|fire[sd]|hire[sd])\b/i, mlb: /\b(all-star|mvp|cy young|ace|manager|fire[sd]|hire[sd])\b/i };
     const headCache = store.get("headlines", {}) || {}, headAt = {};
+    /* Headlines with personality: same facts, friendlier voice. An emoji for what happened, a reaction at the end,
+       "Sources:" reads as "Word is," and stories about teams you follow say so. Names, numbers and results never change. */
+    const NEWS_TAIL = [[/injur|ruled out|\bout vs|questionable|doubtful|torn|sprain|concussion|hamstring|surgery|\bACL\b|spasms|\((?:ankle|knee|back|hip|foot|shoulder|hamstring|groin|calf|wrist|hand|illness|concussion)\)/i, "😬"],
+      [/fired|benched|suspend|fined|ejected|released|\bcut\b|waive/i, "😳"], [/trade[ds]?\b|trading/i, "👀"], [/record|career-high|historic|first ever|\b[4-9]\d-point/i, "🔥"],
+      [/return|back in|cleared|activated/i, "🙌"], [/clinch|advance|win streak|undefeated|\brout|upset/i, "🎉"], [/sign(?:s|ed|ing)?\b|contract|extension|\$\d/i, "🤑"]];
+    function vibeTitle(h) {
+      const raw = String(h || "").trim();
+      const t = raw.replace(/\s+-\s+ESPN$/i, "").replace(/^sources?(?: say)?:\s*/i, "Word is, ").replace(/^report:\s*/i, "Reportedly, ").replace(/^(?:breaking|watch|listen):\s*/i, "");
+      const tail = (NEWS_TAIL.find(([re]) => re.test(raw)) || [0, ""])[1];
+      return tail ? t + " " + tail : t;
+    }
+    // The first team you follow that a story is about ("Steelers"), from the story's own team tags.
+    const yourTeamIn = (a) => { const c = (a?.categories || []).find((x) => x.type === "team" && x.uid && state.favs.has(x.uid)); return c ? c.team?.shortDisplayName || c.description || "" : ""; };
     function pickHeadline(key, feed) {
       const arts = feed?.articles || [], now = Date.now();
       const who = (a) => (a.categories || []).filter((c) => c.type === "athlete" && c.athleteId).map((c) => c.athleteId);
@@ -2164,16 +2208,17 @@
         if (!["HeadlineNews", "Story"].includes(a.type) || !h || now - t > 2 * 864e5 || NEWS_SKIP.test(h)) continue;
         const big = NEWS_BIG.test(h), people = who(a);   // judged on the headline itself (summaries mention too much)
         const hot = Math.max(0, ...people.map((id) => buzz[id] || 0)), vip = NEWS_VIP[key]?.test(h) || false;
-        const ok = key === "f1" ? (people.length > 0 || big) : big && (vip || hot >= 2);
+        const mine = yourTeamIn(a);   // your teams come first, even when it isn't the biggest story
+        const ok = mine || (key === "f1" ? (people.length > 0 || big) : big && (vip || hot >= 2));
         if (!ok) continue;
-        const score = (big ? 3 : 0) + (vip ? 2 : 0) + Math.min(hot, 4) + (now - t < 864e5 ? 1 : 0);
-        if (!best || score > best.score || (score === best.score && t > best.t)) best = { score, t, h, d: a.description || "", url: a.links?.web?.href || "" };
+        const score = (mine ? 8 : 0) + (big ? 3 : 0) + (vip ? 2 : 0) + Math.min(hot, 4) + (now - t < 864e5 ? 1 : 0);
+        if (!best || score > best.score || (score === best.score && t > best.t)) best = { score, t, h, mine, d: a.description || "", url: a.links?.web?.href || "" };
       }
       if (best) return best;
       // No big story right now: show the newest one instead, so there's always a headline at the top.
       const fresh = arts.filter((a) => ["HeadlineNews", "Story"].includes(a.type) && a.headline && !NEWS_SKIP.test(a.headline) && now - (Date.parse(a.published || "") || 0) < 2 * 864e5)
         .sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0))[0];
-      return fresh ? { score: 0, t: Date.parse(fresh.published) || now, h: fresh.headline, d: fresh.description || "", url: fresh.links?.web?.href || "" } : null;
+      return fresh ? { score: 0, t: Date.parse(fresh.published) || now, h: fresh.headline, mine: "", d: fresh.description || "", url: fresh.links?.web?.href || "" } : null;
     }
     async function loadHeadline(key) {
       headAt[key] = Date.now();
@@ -2182,7 +2227,7 @@
       const feed = await getJSON(API + path + "/news?limit=50").catch(() => null);
       if (!feed) return;   // offline: keep what we had
       const b = pickHeadline(key, feed);
-      const html = b && /^https:\/\//.test(b.url) ? '<a class="headline" href="' + esc(b.url) + '" target="_blank" rel="noopener" data-ext><span class="headline-k">Headline · ' + esc(agoText(b.t)) + "</span><b>" + esc(b.h) + "</b>" + (b.d ? "<small>" + esc(b.d) + "</small>" : "") + "</a>" : "";
+      const html = b && /^https:\/\//.test(b.url) ? '<a class="headline" href="' + esc(b.url) + '" target="_blank" rel="noopener" data-ext><span class="headline-k">' + (b.mine ? "⭐ Your " + esc(b.mine) : b.score >= 5 ? "🚨 Big news" : "🗞️ Fresh off the wire") + " · " + esc(agoText(b.t)) + "</span><b>" + newsEmoji(b.h) + " " + esc(vibeTitle(b.h)) + "</b>" + (b.d ? "<small>" + esc(b.d) + "</small>" : "") + "</a>" : "";
       if (headCache[key] !== html) { headCache[key] = html; store.set("headlines", headCache); }
       document.querySelectorAll('[data-headline="' + key + '"]').forEach((el) => { if (el.innerHTML !== html) el.innerHTML = html; });
     }
@@ -2204,7 +2249,7 @@
       const sBtn = paged ? '<button type="button" class="icon-btn' + (open ? " on" : "") + '" data-searchtoggle aria-label="Search ' + esc(L.short || L.name) + ' teams"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>' : "";
       const hBtn = key !== "f1" ? '<button type="button" class="icon-btn' + (HEAT ? " on" : "") + '" data-heat aria-label="' + (HEAT ? "Show as list" : "Show as heat map") + '" title="' + (HEAT ? "List" : "Heat map") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2" opacity=".55"/><rect x="3" y="13" width="8" height="8" rx="2" opacity=".3"/><rect x="13" y="13" width="8" height="8" rx="2" opacity=".75"/></svg></button>' : "";
       return '<div class="bar"><h1>' + esc(title) + "</h1>" + hBtn + sBtn + "</div>" + headlineHtml(key) + (open ? search : "") +
-        '<div class="bar-row">' + liveBtn + "</div>" + (paged ? '<div class="tool-row" data-noswipe><button type="button" class="tool-chip" data-standings="' + key + '"><i>📊</i>' + (key === "cfb" ? "Top 25" : "Standings") + '</button><button type="button" class="tool-chip" data-open-buzz="all" data-bz-lg="' + key + '"><i>📰</i>News</button><button type="button" class="tool-chip" data-leaders="' + key + '"><i>🏅</i>Leaders</button>' + (key !== "cfb" && key !== "cbb" ? '<button type="button" class="tool-chip" data-bracket="' + key + '"><i>🏆</i>Bracket</button>' : "") + "</div>" : "") + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
+        '<div class="bar-row">' + liveBtn + "</div>" + (paged ? '<div class="tool-row" data-noswipe><button type="button" class="tool-chip" data-standings="' + key + '"><i>📊</i>' + (key === "cfb" || key === "cbb" ? "Top 25" : "Standings") + '</button><button type="button" class="tool-chip" data-open-buzz="all" data-bz-lg="' + key + '"><i>📰</i>News</button><button type="button" class="tool-chip" data-leaders="' + key + '"><i>🏅</i>Leaders</button>' + (key !== "cfb" && key !== "cbb" ? '<button type="button" class="tool-chip" data-bracket="' + key + '"><i>🏆</i>Bracket</button>' : "") + "</div>" : "") + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
         (HEAT ? '<div class="heat-key"><span>One-sided</span><i></i><span>Close game</span></div>' : "") + (HEAT ? dm("<b>Reading the heat map.</b> Each tile is one game. The brighter the tile, the closer the game is to a coin flip (from win probability), so the most exciting games stand out. Upcoming games use the pre-game odds; finished games are dimmed. The ball icon shows who has it.") : "");
     }
 
@@ -2308,11 +2353,11 @@
         html += '<div class="section-title"><b>★ Your teams</b></div><div class="grid">' + favEvents.map(([e, k], i) => gameCard(e, k, i, true)).join("") + "</div>";
       }
       if (noFilters()) html += playersHomeHtml(keys, results, f1);
-      if (noFilters()) html += '<div data-home-buzz>' + homeBuzzHtml + "</div>";   // The Buzz: newest news and moves
-      if (f1?.events?.[0] && noFilters()) html += f1Mini(f1.events[0]);
+      const extras = (noFilters() ? '<div data-home-buzz>' + homeBuzzHtml + "</div>" : "") + (f1?.events?.[0] && noFilters() ? f1Mini(f1.events[0]) : "");   // The Buzz + F1, placed after the first sport's games so Home opens on scores
+      const sports = [];
       keys.forEach((k, i) => {
         const L = LEAGUES[k];
-        if (results[i].status !== "fulfilled") { html += '<div class="section-title"><b>' + esc(L.name) + '</b></div><div class="error">Couldn\'t load ' + esc(L.name) + ".</div>"; return; }
+        if (results[i].status !== "fulfilled") { sports.push('<div class="section-title"><b>' + esc(L.name) + '</b></div><div class="error">Couldn\'t load ' + esc(L.name) + ".</div>"); return; }
         let evs = sortEvents(results[i].value.events || []);
         evs = applyFilter(evs, k);
         if (evs.some(isLive)) anyLive = true;
@@ -2323,10 +2368,10 @@
         if (!fl("close")) evs = evs.slice().sort((a, b) => rank(a) - rank(b) || (rank(a) === 3 ? new Date(b.date) - new Date(a.date) : new Date(a.date) - new Date(b.date)));   // Closest keeps its own order
         if (!evs.length) return;
         const show = evs.slice(0, 4);
-        html += '<div class="section-title"><b>' + esc(L.name) + "</b>" + '<button class="see-all" type="button" data-tab="' + k + '">See all ›</button></div>';
-        html += '<div class="grid">' + show.map((e, j) => gameCard(e, k, j)).join("") + "</div>";
+        sports.push('<div class="section-title"><b>' + esc(L.name) + "</b>" + '<button class="see-all" type="button" data-tab="' + k + '">See all ›</button></div>' +
+          '<div class="grid">' + show.map((e, j) => gameCard(e, k, j)).join("") + "</div>");
       });
-      html += "</div>";
+      html += (sports[0] || "") + extras + sports.slice(1).join("") + "</div>";
       paint(main, html, "home");
       if (noFilters()) homeBuzz(main.querySelector("[data-home-buzz]")).catch(() => {});
       if (Date.now() - hpAt > 60_000) fillHomePicks().catch(() => {});
@@ -2820,7 +2865,7 @@
       if (ap) { const p = alertPrefs(); p[ap.dataset.ap] = !p[ap.dataset.ap]; store.set("alertPrefs", p); window.scorelineSettingsChanged?.(); if (alertsOn) pushSync(); ap.classList.toggle("on", p[ap.dataset.ap]); return; }
       const np = e.target.closest(".news-note p");
       if (np) { np.classList.toggle("full"); return; }
-      if (e.target.closest("[data-headlines-toggle]")) { store.set("headlinesOn", !store.get("headlinesOn", true)); for (const k in viewMem) delete viewMem[k]; ["home", "f1", ...Object.keys(LEAGUES)].forEach((k) => store.set("shell:" + k, "")); buzz(8); return renderAlerts(); }
+      if (e.target.closest("[data-headlines-toggle]")) { store.set("headlinesOn", !store.get("headlinesOn", true)); for (const k in viewMem) delete viewMem[k]; ["home", "f1", ...Object.keys(LEAGUES)].forEach((k) => store.set("shell:" + k, "")); buzz(8); redrawCustom(); return renderAlerts(); }
       const ext = e.target.closest("a[data-ext]");
       if (ext && TAURI?.opener) { e.preventDefault(); TAURI.opener.openUrl(ext.href).catch(() => window.open(ext.href, "_blank")); return; }
       const drv = e.target.closest("[data-driver]");
@@ -3525,7 +3570,10 @@
         const when = fmtDay(comp.date) + " at " + fmtTime(comp.date);
         txt = hp == null ? "Starts " + when + "." : name(hp >= .5 ? home : away) + " are favored to win (" + pct(Math.max(hp, 1 - hp)) + "%). Starts " + when + ".";
       } else if (state === "post") {
-        txt = a === b ? "Ended in a tie, " + a + "–" + b + "." : name(a > b ? away : home) + " won " + Math.max(a, b) + "–" + Math.min(a, b) + ".";
+        // The score is right above; only say something it doesn't (a tie, overtime, extra innings).
+        const extra = /OT|overtime/i.test(st.detail || st.shortDetail || "") ? (lg === "mlb" ? "" : " in overtime") : lg === "mlb" && (comp.competitors?.[0]?.linescores || []).length > 9 ? " in extra innings" : "";
+        txt = a === b ? "Ended in a tie, " + a + "–" + b + "." : extra ? name(a > b ? away : home) + " won" + extra + "." : "";
+        if (!txt) return "";
       } else {
         const lead = a === b ? null : a > b ? away : home, diff = Math.abs(a - b);
         const when = (st.shortDetail || "").replace(/ - /, " left in the ").replace(/^Halftime$/i, "at halftime");
@@ -3538,9 +3586,9 @@
       const cs = (comp.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
       const n = Math.max(0, ...cs.map((c) => (c.linescores || []).length));
       if (!n) return "";
-      const reg = lg === "mlb" ? 9 : 4;
-      const lab = (i) => lg === "mlb" ? i + 1 : i < reg ? (lg === "epl" ? "H" : "Q") + (i + 1) : "OT" + (i - reg + 1 > 1 ? i - reg + 1 : "");
-      const cols = Math.max(n, lg === "mlb" ? 9 : 4);
+      const reg = lg === "mlb" ? 9 : lg === "cbb" ? 2 : 4;   // college basketball plays 2 halves
+      const lab = (i) => lg === "mlb" ? i + 1 : i < reg ? (lg === "cbb" ? "H" : "Q") + (i + 1) : "OT" + (i - reg + 1 > 1 ? i - reg + 1 : "");
+      const cols = Math.max(n, reg);
       const extra = lg === "mlb" ? [["R", (c) => c.score], ["H", (c) => c.hits], ["E", (c) => c.errors]] : [["T", (c) => c.score]];
       return '<div class="g-sec" data-c="stats"><div class="g-label">' + (lg === "mlb" ? "Line score" : "Scoring") + '</div><div class="ls-wrap"><table class="ls"><thead><tr><th></th>' +
         Array.from({ length: cols }, (_, i) => "<th>" + lab(i) + "</th>").join("") + extra.map(([l]) => '<th class="tot">' + l + "</th>").join("") + "</tr></thead><tbody>" +
@@ -3728,12 +3776,15 @@
     /* ---------- NBA shot chart / MLB spray chart ---------- */
     // NBA shooting by zone, from the play-by-play shots: at the rim / in the paint, mid-range, and 3-pointers.
     /* NBA: biggest scoring runs (one team scoring in a row while the other scores nothing), from the play-by-play */
+    // Short period name: Q1–Q4 + OT (NBA), H1/H2 + OT (college basketball).
+    const perShort = (lg, n) => lg === "cbb" ? (n > 2 ? "OT" + (n > 3 ? n - 2 : "") : "H" + n) : n > 4 ? "OT" : "Q" + n;
     function runsHtml(plays, teams) {
+      const lgOf = /~l:41\b/.test(teams?.[0]?.team?.uid || "") ? "cbb" : "nba";
       const ab = (id) => teams.find((t) => t.team?.id === String(id))?.team?.abbreviation || "";
       const runs = []; let cur = null, aw = teams.find((t) => t.homeAway === "away") || teams[0], hm = teams.find((t) => t.homeAway === "home") || teams[1];
       const sc = ([a, h]) => (aw.team?.abbreviation || "") + " " + a + ", " + (hm.team?.abbreviation || "") + " " + h;
       (plays || []).filter((p) => p.scoringPlay && p.scoreValue > 0 && p.team?.id).forEach((p) => {
-        const id = String(p.team.id), when = (p.period?.number > 4 ? "OT" : "Q" + (p.period?.number || "")) + " " + (p.clock?.displayValue || "");
+        const id = String(p.team.id), when = perShort(lgOf, p.period?.number || 0) + " " + (p.clock?.displayValue || "");
         if (cur && cur.id === id) { cur.pts += p.scoreValue; cur.to = when; cur.end = [p.awayScore, p.homeScore]; }
         else { if (cur) runs.push(cur); cur = { id, pts: p.scoreValue, from: when, to: when, end: [p.awayScore, p.homeScore] }; }
       });
@@ -3860,7 +3911,8 @@
         }
         const f = (t) => fouls[tid(t)] || 0;
         const mid = per ? "Fouls " + f(away) + " – " + f(home) + (Math.max(f(away), f(home)) >= (v.lg === "cbb" ? 7 : 5) ? " · Bonus" : "") : "";
-        return { live, stops, left: { [tid(away)]: left(away), [tid(home)]: left(home) }, max: per > 4 ? 2 : per === 4 ? 4 : 7, poss: live ? poss : null, mid, last };
+        // Timeouts left follow NBA rules; college rules differ, so CBB shows none rather than a wrong count.
+        return { live, stops, lg: v.lg, left: v.lg === "cbb" ? null : { [tid(away)]: left(away), [tid(home)]: left(home) }, max: per > 4 ? 2 : per === 4 ? 4 : 7, poss: live ? poss : null, mid, last };
       }
       // MLB
       plays.forEach((p) => {
@@ -3892,7 +3944,7 @@
     function sportStops(S) {
       const list = S.stops.slice().reverse();
       if (!list.length) return '<div class="g-note" style="margin-top:14px">' + (S.mlb ? "No pitching changes or challenges yet." : "No timeouts or stoppages yet.") + "</div>";
-      const when = (s) => s.half ? (s.half === "Bottom" ? "▼ " : "▲ ") + ordinal(s.per) : (s.per > 4 ? "OT" : "Q" + s.per) + (s.clock ? " " + s.clock : "");
+      const when = (s) => s.half ? (s.half === "Bottom" ? "▼ " : "▲ ") + ordinal(s.per) : perShort(S.lg, s.per) + (s.clock ? " " + s.clock : "");
       return '<div class="g-label" style="margin-top:18px">' + (list[0].half != null ? "Pitching changes & challenges" : "Timeouts & stoppages") + '</div><div class="stops">' + list.slice(0, 12).map((s) =>
         '<div class="stop ' + s.kind + '"><span class="st-ic">' + (s.half ? (s.kind === "team" ? "⚾" : STOP_ICON[s.kind]) : STOP_ICON[s.kind]) + '</span><span class="st-l">' + esc(s.label) + "</span><small>" + esc(when(s)) + "</small></div>").join("") +
         (list.length > 12 ? '<div class="g-note" style="padding:8px 10px">+' + (list.length - 12) + " earlier</div>" : "") + "</div>";
@@ -3917,7 +3969,7 @@
             p.shootingPlay && /misses/i.test(p.text) ? (/three point/i.test(p.text) ? "Missed 3-pointer" : /free throw/i.test(p.text) ? "Missed free throw" : /layup/i.test(p.text) ? "Missed layup" : /dunk/i.test(p.text) ? "Missed dunk" : "Missed jumper") : /block/i.test(p.text) ? "Block" : /steal/i.test(p.text) ? "Steal" : /turnover|bad pass|lost ball|traveling/i.test(ty) ? "Turnover" : /rebound/i.test(ty) ? (/offensive/i.test(ty) ? "Offensive rebound" : "Rebound") : /foul/i.test(ty) ? "Foul" : /timeout/i.test(ty) ? "Timeout" : ty;
           const name = (p.text.match(/^([A-Z][\w.'-]+(?: [A-Z][\w.'-]+){0,2}?) (?:makes|misses|defensive|offensive|personal|shooting|bad|lost|traveling|blocks|steals|loose|offensive)/) || [])[1];
           const tags = []; if (/assists/i.test(p.text)) tags.push(["", "🤝 " + p.text.match(/\((.*?) assists\)/)?.[1] + " assist"]);
-          return feedRow({ lg, pid, tm, top: "<b>" + abA + " " + esc(p.awayScore) + "–" + esc(p.homeScore) + " " + abH + "</b> · " + (p.period?.number > 4 ? "OT" : "Q" + p.period?.number) + " " + esc(p.clock?.displayValue || ""), head, main: name ? esc(name) + (made && n ? "<span> · " + n + " pts</span>" : "") : "", sub: esc(p.text), tags, badge: made ? "+" + p.scoreValue : "", good: made, scoring: made && p.scoreValue === 3 });
+          return feedRow({ lg, pid, tm, top: "<b>" + abA + " " + esc(p.awayScore) + "–" + esc(p.homeScore) + " " + abH + "</b> · " + (lg === "cbb" || lg === "nba" ? perShort(lg, p.period?.number || 0) : p.period?.number > 4 ? "OT" : "Q" + p.period?.number) + " " + esc(p.clock?.displayValue || ""), head, main: name ? esc(name) + (made && n ? "<span> · " + n + " pts</span>" : "") : "", sub: esc(p.text), tags, badge: made ? "+" + p.scoreValue : "", good: made, scoring: made && p.scoreValue === 3 });
         }).join("");
         var total = rows.length;
       } else {
@@ -5116,7 +5168,7 @@
     function wxHtml(w, label, lg) {
       if (!w) return "";
       const head = '<div class="g-label">' + esc(label) + "</div>";
-      const foot = '<div class="g-note">' + esc(w.city) + ' · forecast by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a></div>';
+      const foot = '<div class="g-note">' + esc(w.city) + ' · forecast by <a class="credit-link" href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a></div>';
       if (w.later) return head + '<div class="g-note">Forecast not out yet. Check back closer to the day.</div>' + foot;
       const u = IMPERIAL ? ["°", " mph"] : ["°", " km/h"];
       const imp = wxImpact(w, lg);
@@ -5219,12 +5271,12 @@
     /* ---------- standings + playoff picture (team sports) ---------- */
     const PLAYOFF_CUT = { nfl: [7, 0, "Top 7 in each conference make the playoffs if the season ended today."], nba: [6, 10, "Top 6 make the playoffs; 7–10 go to the play-in, if the season ended today."], mlb: [6, 0, "Top 6 in each league make the playoffs if the season ended today."] };
     /* College football: AP Top 25 with this week's moves (ESPN rankings) */
-    async function apTop25() {
-      const j = await getJSON("https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings").catch(() => null);
+    async function apTop25(lg = "cfb") {
+      const j = await getJSON(API + LEAGUES[lg].path + "/rankings").catch(() => null);
       const r = (j?.rankings || []).find((x) => /AP/i.test(x.name || "")) || j?.rankings?.[0];
       if (!r?.ranks?.length) return "";
       return '<div class="g-sec"><div class="g-label">' + esc(r.name || "Top 25") + "</div>" +
-        dm("<b>The rankings.</b> Every week, sports writers vote on the 25 best teams. ▲/▼ shows how many places a team moved since last week; <b>New</b> means it just entered the Top 25. Rankings matter: they shape who gets into the College Football Playoff.") +
+        dm("<b>The rankings.</b> Every week, sports writers vote on the 25 best teams. ▲/▼ shows how many places a team moved since last week; <b>New</b> means it just entered the Top 25. " + (lg === "cbb" ? "Rankings matter: they shape seeding in the NCAA Tournament (March Madness)." : "Rankings matter: they shape who gets into the College Football Playoff.")) +
         '<table class="st-tbl"><thead><tr><th></th><th>Team</th><th>W-L</th><th>Move</th></tr></thead><tbody>' +
         r.ranks.map((k) => {
           const t = k.team || {}, logo = t.logos?.[0]?.href, mv = k.previous > 0 ? k.previous - k.current : null;
@@ -5244,7 +5296,7 @@
       walk(d);
       const st = (e, n) => (e.stats || []).find((x) => x.name === n || x.type === n);
       const foot = lg === "nfl" || lg === "cfb", cut = PLAYOFF_CUT[lg];
-      let h = lg === "cfb" ? await apTop25() : ""; if (!v.el.isConnected) return;
+      let h = lg === "cfb" || lg === "cbb" ? await apTop25(lg) : ""; if (!v.el.isConnected) return;
       let cutNote = "";
       groups.forEach((g) => {
         const rows = g.standings.entries.slice();
@@ -6137,12 +6189,12 @@
         '<div class="section-title"><b>Settings</b></div><div class="panel nteams">' +
           (MOBILE_APP ? '<div class="opt nteam" role="button" tabindex="0" data-open-notifs><span><b>Notifications</b><small>' + esc(alertsOn ? "On" + (quietLabel() ? " · quiet " + quietLabel() : "") : "Off") + '</small></span><span class="chev">›</span></div>' : "") +
           '<div class="opt nteam" role="button" tabindex="0" data-open-ideas><span><b>Ideas 💡</b><small>Suggest features and vote on what gets built next</small></span><span class="chev">›</span></div>' +
-          '<div class="opt nteam" role="button" tabindex="0" data-open-custom><span><b>Customize</b><small>Choose what shows on game pages, and text size</small></span><span class="chev">›</span></div>' +
-          (signedIn ? '<div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>Account and security</b><small>Email, two-step sign-in, sign-in codes, log out' + (reqs ? " · " + reqs + " friend request" + (reqs === "1" ? "" : "s") : "") + '</small></span><span class="chev">›</span></div>' : "") +
+          '<div class="opt nteam" role="button" tabindex="0" data-open-custom><span><b>Customize</b><small>Theme, text size, headlines and what shows on game pages</small></span><span class="chev">›</span></div>' +
+          (signedIn ? '<div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>Account and security</b><small>Email, two-step sign-in, sign-in codes, sign out' + (reqs ? " · " + reqs + " friend request" + (reqs === "1" ? "" : "s") : "") + '</small></span><span class="chev">›</span></div>' : "") +
           '<div class="opt nteam" role="button" tabindex="0" data-open-dev hidden><span><b>Developer tools</b><small>Only shown to the Scoreline team</small></span><span class="chev">›</span></div>' +
         "</div>" +
-        '<div class="panel" style="margin-top:10px"><div class="set-row"><b>Theme</b><div class="seg theme-seg">' + [["system", "System"], ["dark", "Dark"], ["light", "Light"]].map(([k, l]) => '<button type="button" data-theme-pick="' + k + '" class="' + ((document.documentElement.dataset.theme || "dark") === k ? "active" : "") + '">' + l + "</button>").join("") + "</div></div>" +
-        '<button type="button" class="opt ' + (DUMMY ? "on" : "") + '" data-dummy><span><b>Dummy Mode</b><small>Explains terms, stats and rules as you go, for every sport. Tap anything with an ⓘ.</small></span><i class="switch"></i></button><button type="button" class="opt ' + (store.get("headlinesOn", true) ? "on" : "") + '" data-headlines-toggle><span><b>Headlines</b><small>The one big news story at the top of each sport</small></span><i class="switch"></i></button><button type="button" class="opt" data-tour><span><b>Replay the tour</b><small>The quick walkthrough new visitors see</small></span><span class="chev">›</span></button><div data-marks-row></div></div>';
+        '<div class="panel" style="margin-top:10px">' +
+        '<button type="button" class="opt ' + (DUMMY ? "on" : "") + '" data-dummy><span><b>Dummy Mode</b><small>Explains terms, stats and rules as you go, for every sport. Tap anything with an ⓘ.</small></span><i class="switch"></i></button><button type="button" class="opt" data-tour><span><b>Replay the tour</b><small>The quick walkthrough new visitors see</small></span><span class="chev">›</span></button><div data-marks-row></div></div>';
       h += '<div class="section-title"><b>About</b></div><div class="panel about"><div class="opt"><span><b>Version ' + esc(versionText()) + '</b><small id="appVer">Updated ' + esc(builtOn()) + '</small></span></div><button type="button" class="opt" data-terms><span><b>Terms of Service</b><small>Rules for Picks and Marks, and using Scoreline</small></span><span class="chev">›</span></button><details class="legal"><summary>Data sources and legal</summary>' + document.querySelector("footer").innerHTML + "</details></div>";
       if (TAURI?.app?.getVersion) TAURI.app.getVersion().then((v) => { const el = document.getElementById("appVer"); if (el) el.textContent = "Updated " + builtOn() + " · app " + v; }).catch(() => {});
       // Many things ask for a redraw (sign-in finishing, settings syncing, the 2-minute refresh). If the page would come out
@@ -6345,10 +6397,13 @@
     const TEXT_SIZES = [["m", "Normal"], ["l", "Large"], ["xl", "Extra large"]];
     function customHtml() {
       const h = hidden(), ts = store.get("textSize", "m");
-      return '<div class="section-title"><b>Text size</b></div><div class="panel"><div class="seg chips ts-seg">' + TEXT_SIZES.map(([k, n]) => '<button type="button" class="' + (ts === k ? "on" : "") + '" data-ts="' + k + '">' + n + "</button>").join("") + "</div><p class=\"g-note\" style=\"margin:8px 2px 0\">Makes scores, plays and cards easier to read.</p></div>" +
-        '<div class="section-title"><b>Show</b></div><div class="panel">' + CUSTOM.map(([k, n, d]) => '<button type="button" class="opt ' + (h[k] ? "" : "on") + '" data-custom="' + k + '"><span><b>' + esc(n) + "</b><small>" + esc(d) + '</small></span><i class="switch"></i></button>').join("") + "</div>" +
+      return '<div class="section-title"><b>Theme</b></div><div class="panel"><div class="seg chips theme-seg">' + [["system", "System"], ["dark", "Dark"], ["light", "Light"]].map(([k, l]) => '<button type="button" data-theme-pick="' + k + '" class="' + ((document.documentElement.dataset.theme || "dark") === k ? "active on" : "") + '">' + l + "</button>").join("") + "</div></div>" +
+        '<div class="section-title"><b>Text size</b></div><div class="panel"><div class="seg chips ts-seg">' + TEXT_SIZES.map(([k, n]) => '<button type="button" class="' + (ts === k ? "on" : "") + '" data-ts="' + k + '">' + n + "</button>").join("") + "</div><p class=\"g-note\" style=\"margin:8px 2px 0\">Makes scores, plays and cards easier to read.</p></div>" +
+        '<div class="section-title"><b>Show</b></div><div class="panel"><button type="button" class="opt ' + (store.get("headlinesOn", true) ? "on" : "") + '" data-headlines-toggle><span><b>Headlines</b><small>The big story at the top of each sport, with your teams first</small></span><i class="switch"></i></button>' + CUSTOM.map(([k, n, d]) => '<button type="button" class="opt ' + (h[k] ? "" : "on") + '" data-custom="' + k + '"><span><b>' + esc(n) + "</b><small>" + esc(d) + '</small></span><i class="switch"></i></button>').join("") + "</div>" +
         '<p class="g-note">Turned off parts are just hidden. Scores always show.</p>';
     }
+    // Keep the Customize page in step when one of its settings changes (it stays open).
+    function redrawCustom() { views.filter((x) => x.kind === "custom" && x.el?.isConnected).forEach((x) => { const b = x.el.querySelector(".sheet-body"), y = b?.scrollTop || 0; setBody(x, "Customize", customHtml()); if (b) b.scrollTop = y; }); }
     function openCustom() { const v = { kind: "custom", key: "custom" }; if (!pushView(v)) return; setBody(v, "Customize", customHtml()); }
     document.addEventListener("click", (e) => {
       if (e.target.closest("[data-open-custom]")) return openCustom();
@@ -6419,7 +6474,8 @@
       (news?.articles || []).forEach((a) => {
         const h = a.headline || ""; if (!h) return;
         const link = a.links?.web?.href || a.links?.mobile?.href || "";
-        items.push({ kind: "news", lg, id: "n" + a.id, at: Date.parse(a.published || a.lastModified) || 0, e: newsEmoji(h), title: h + (spicy(h) ? " 👀" : ""), sub: a.description || "", link });
+        const vt = vibeTitle(h);
+        items.push({ kind: "news", lg, id: "n" + a.id, at: Date.parse(a.published || a.lastModified) || 0, e: newsEmoji(h), title: vt + (spicy(h) && !/[😬😳👀🔥🙌🎉🤑]$/u.test(vt) ? " 👀" : ""), sub: a.description || "", link, mine: yourTeamIn(a) });
       });
       (moves?.transactions || []).forEach((t, i) => splitMoves(t.description).forEach((s, k) => {
         const m = readMove(s, t.team);
@@ -6428,11 +6484,11 @@
       buzzCache[lg] = { at: Date.now(), items };
       return items;
     }
-    const buzzRow = (x) => '<div class="bz-item">' +
+    const buzzRow = (x) => '<div class="bz-item' + (x.mine ? " mine" : "") + '">' +
       '<div class="bz-top"><span class="bz-e" aria-hidden="true">' + x.e + '</span><span class="bz-txt"><b>' + esc(x.title) + "</b>" +
       (x.kind === "move" && x.from && x.to ? '<span class="bz-move">' + x.from + '<i aria-hidden="true">→</i>' + x.to + "</span>" : "") +
       '<small>' + esc(x.sub) + "</small>" +
-      '<small class="bz-meta">' + esc((LEAGUES[x.lg]?.short || x.lg.toUpperCase()) + " · " + bzAgo(x.at) + " ago") + (x.link ? ' · <a href="' + esc(x.link) + '" target="_blank" rel="noopener nofollow">Read more ↗</a>' : "") + "</small></span></div>" +
+      '<small class="bz-meta">' + (x.mine ? '<span class="bz-mine">⭐ Your ' + esc(x.mine) + "</span> · " : "") + esc((LEAGUES[x.lg]?.short || x.lg.toUpperCase()) + " · " + bzAgo(x.at) + " ago") + (x.link ? ' · <a href="' + esc(x.link) + '" target="_blank" rel="noopener nofollow">Read more ↗</a>' : "") + "</small></span></div>" +
       '<div class="bz-react" data-react-id="' + esc(x.id) + '"></div></div>';
     // Key dates (official league calendars; update each season). Unknown ones say so instead of guessing.
     const KEY_DATES = [
@@ -6600,7 +6656,7 @@
       }
       setBody(v, "Pick a day 📅", '<div class="cal-head"><button type="button" class="sheet-btn" data-cal-step="-1" aria-label="Previous month">‹</button><b>' + esc(first.toLocaleDateString([], { month: "long", year: "numeric" })) +
         '</b><button type="button" class="sheet-btn" data-cal-step="1" aria-label="Next month">›</button></div><div class="cal-grid">' + ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((x) => "<i>" + x + "</i>").join("") + cells + "</div>" +
-        '<p class="g-note">Bold days have games' + (Object.keys(wk).length ? "; W = week of the season" : "") + ". Only nearby weeks are known, so far-off months may look empty.</p>");
+        '<p class="g-note">Bold days have games' + (Object.keys(wk).length ? "; W = week of the season" : "") + "; faded days have none. Months further ahead fill in as their schedules are posted.</p>");
     }
     document.addEventListener("click", (e) => {
       const o = e.target.closest("[data-open-cal]"); if (o) return openCalendar(o.dataset.openCal);
@@ -6943,7 +6999,7 @@
         return;
       }
       if (e.target.closest("[data-open-account]")) $("accountBtn")?.click();
-      const tp = e.target.closest("[data-theme-pick]"); if (tp) { applyTheme(tp.dataset.themePick); store.set("theme", tp.dataset.themePick); buzz(8); renderAlerts(); }
+      const tp = e.target.closest("[data-theme-pick]"); if (tp) { applyTheme(tp.dataset.themePick); store.set("theme", tp.dataset.themePick); buzz(8); redrawCustom(); renderAlerts(); }
     });
     const teamNames = store.get("favNames", {});
     function findName(k) { for (const c of Object.values(cache)) for (const ev of c?.events || []) for (const t of teamsOf(ev)) if (favKey(t) === k) return t.team?.displayName; }
@@ -7113,7 +7169,7 @@
 
     /* ---------- first-time tour (shows once for new visitors; replay from You -> About) ---------- */
     const TOUR = [
-      { t: "Welcome to Scoreline", d: "Live scores and game details for the NFL, college football, the NBA, MLB and F1. This quick tour takes 20 seconds.", sel: null },
+      { t: "Welcome to Scoreline 👋", d: "Live scores and game details for the NFL, NBA, MLB, F1 and college football and basketball. This quick tour takes 20 seconds.", sel: null },
       { t: "Your sports", d: "Switch sports here. On a phone you can also swipe left or right anywhere on the list.", sel: () => vis(".btabs") || vis(".tabs") },
       { t: "Tap any game", d: "Open a game for the live field, win probability, plays, stats, players and a recap after it ends.", sel: () => vis("#main [data-ev]") },
       { t: "Filters and views", d: "Show only your teams, live games, or the closest games. The square button switches to a heat map of every game.", sel: () => vis(".bar-row") || vis("[data-heat]") },
@@ -7578,6 +7634,6 @@
     if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
-  <script type="module" src="account.js?v=1795844398"></script>
+  <script type="module" src="account.js?v=1795845894"></script>
 </body>
 </html>
