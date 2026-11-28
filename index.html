@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795825489" />
+  <meta name="build" content="1795825779" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -5879,7 +5879,7 @@
       const teams = c.favTeams.length ? '<div class="prof-tiles">' + c.favTeams.map((t) => '<button type="button" class="prof-tile" data-team="' + esc(t.lg + "|" + t.id) + '"><span class="prof-logo">' + (teamLogo(t) ? '<img src="' + esc(teamLogo(t)) + '" alt="" loading="lazy">' : esc((t.a || t.n || "?").slice(0, 3))) + "</span><b>" + esc(t.n || "") + "</b><small>" + esc((LEAGUES[t.lg]?.short || LEAGUES[t.lg]?.name || "").toString()) + "</small></button>").join("") + "</div>" : "";
       const players = c.favPlayers.length ? '<div data-favplayers>' + favPlayersHtml(c.favPlayers, null) + "</div>" : "";
       return '<div class="prof">' + banner +
-        '<div class="prof-head">' + pAvatar(c, un, "xl") + '<div class="prof-id"><b>' + esc(c.name || "@" + un) + roleTag(d.role) + ogTag(d.joined) + "</b>" + titleTag(c.title) + "<small>@" + esc(un) + (d.mine ? " · " + ((c.show || "friends") === "me" ? "Only you can see this" : "Friends can see this") : "") + "</small></div></div>" +
+        '<div class="prof-head">' + pAvatar(c, un, "xl") + '<div class="prof-id"><b>' + esc(c.name || "@" + un) + roleTag(d.role) + (c.hideOg ? "" : ogTag(d.joined)) + "</b>" + titleTag(c.title) + "<small>@" + esc(un) + (d.mine ? " · " + ((c.show || "friends") === "me" ? "Only you can see this" : "Friends can see this") : "") + "</small></div></div>" +
         (acts ? '<div class="prof-acts">' + acts + "</div>" : "") +
         '<div class="section-title"><b>About</b></div><div class="prof-about">' + (c.bio ? "<p>" + esc(c.bio) + "</p>" : d.mine ? '<button class="link-btn" type="button" data-editprofile="bio">Add a bio</button>' : "") +
         (d.joined ? '<small class="muted">Joined ' + esc(new Date(d.joined).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })) + " · " + esc(plural(daysAgo(d.joined), "day")) + " ago</small>" : "") + "</div>" +
@@ -5940,6 +5940,7 @@
         '<div class="section-title" id="pe-players"><b>Favourite players</b><span class="muted">' + c.favPlayers.length + "/" + PE_MAX_P + "</span></div>" +
         (c.favPlayers.length ? '<div class="pe-chips">' + c.favPlayers.map((p, i) => chip(true, 'data-pe-unplayer="' + i + '"', esc(p.n) + " <small>" + esc(p.t || LEAGUES[p.lg]?.short || "") + "</small> ✕")).join("") + "</div>" : "") +
         '<div class="search pe-search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input data-pe-q type="search" placeholder="Find a player by name" autocomplete="off" value="' + esc(c.q) + '"></div><div data-pe-hits>' + hitsHtml() + "</div>" +
+        '<div class="section-title"><b>Tags</b></div><div class="panel"><button type="button" class="opt ' + (PE.hideOg ? "" : "on") + '" data-pe-og><span><b>Show my ✨ OG tag</b><small>Role tags like Dev or Mod always show</small></span><i class="switch"></i></button></div>' +
         '<div class="section-title"><b>Who can see your profile</b></div><div class="seg">' + [["friends", "Friends"], ["me", "Only me"]].map(([k, l]) => '<button type="button" data-pe-show="' + k + '" class="' + ((c.show || "friends") === k ? "active" : "") + '">' + l + "</button>").join("") + "</div>" +
         '<p class="g-note">Your stats, sports, teams and players are shown with your profile. Never put personal details like your address or school in your name or bio.</p>' +
         '<div class="pe-save"><button class="pill-btn prof-main" type="button" data-pe-save>Save profile</button></div></div>';
@@ -6006,6 +6007,7 @@
       if (ep) { e.preventDefault(); return openProfileEditor(ep.dataset.editprofile || ""); }
       if (e.target.closest("[data-pshare]")) { const un = PE?.un || document.querySelector(".prof-id small")?.textContent.split(" ")[0] || ""; try { await navigator.clipboard.writeText(un); toast("Username copied: friends can add you with it"); } catch { toast(un); } return; }
       if (!PE || !PE.v.el.contains(e.target)) return;
+      const og = e.target.closest("[data-pe-og]"); if (og && typeof PE !== "undefined") { PE.hideOg = !PE.hideOg; og.classList.toggle("on", !PE.hideOg); buzz(8); return; }
       const t = e.target.closest("[data-pe-theme],[data-pe-shop],[data-pe-sport],[data-pe-team],[data-pe-unteam],[data-pe-player],[data-pe-unplayer],[data-pe-show],[data-pe-nophoto],[data-pe-save]");
       if (!t) return;
       const D = t.dataset;
@@ -6029,7 +6031,7 @@
         t.disabled = true;
         const out = { avatar: PE.avatar || "", name: (PE.name || "").trim().slice(0, 30), bio: (PE.bio || "").trim().slice(0, 160), theme: PE.theme || "plain", show: PE.show || "friends",
           sports: PE.sports.slice(0, 5), favTeams: PE.favTeams.slice(0, PE_MAX), favPlayers: PE.favPlayers.slice(0, PE_MAX_P),
-          title: PE.teen && PE.owned.has(PE.title) ? PE.title : "", banner: PE.teen && PE.owned.has(PE.banner) ? PE.banner : "", deco: PE.teen && PE.owned.has(PE.deco) ? PE.deco : "" };
+          hideOg: !!PE.hideOg, title: PE.teen && PE.owned.has(PE.title) ? PE.title : "", banner: PE.teen && PE.owned.has(PE.banner) ? PE.banner : "", deco: PE.teen && PE.owned.has(PE.deco) ? PE.deco : "" };
         try {
           await PF().save(out); buzz(10); toast("Profile saved"); PE = null; history.back();
           setTimeout(() => views.filter((x) => x.kind === "profile").forEach(async (x) => { const d = await PF().load(x.uid).catch(() => null); if (d?.card && x.el.isConnected) setBody(x, d.card.name || "@" + d.username, profileHtml(d)); }), 450);
