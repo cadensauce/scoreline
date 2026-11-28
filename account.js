@@ -1351,3 +1351,18 @@ window.scorelineIdeas = {
   async suggestions() { const r = await fb.getDocs(fb.query(fb.collection(db, "suggestions"), fb.orderBy("at", "desc"), fb.limit(50))); return r.docs.map((d) => ({ id: d.id, ...d.data() })); },
   role: async () => (user ? roleOf(user.uid) : ""),
 };
+
+/* ---------- bracket predictions saved to your account (locked when the playoffs start; the worker pays Marks) ---------- */
+window.scorelineBracket = {
+  async load(lg, season) {
+    await startFirebase(); if (FIREBASE_CONFIG && fb) await Promise.race([authReady, new Promise((r) => setTimeout(r, 5000))]);
+    if (!user) return null;
+    const d = await fb.getDoc(fb.doc(db, "brackets", user.uid + "_" + lg + "_" + season)).catch(() => null);
+    return d?.exists() ? d.data() : null;
+  },
+  async save(lg, season, data) {
+    if (!user) return;
+    try { await fb.setDoc(fb.doc(db, "brackets", user.uid + "_" + lg + "_" + season), { uid: user.uid, lg, season: Number(season), picks: data.picks || {}, seeds: data.seeds || {}, at: fb.serverTimestamp() }); }
+    catch (e) { if (/permission/i.test(e?.code || "")) throw new Error("locked"); throw e; }
+  },
+};
