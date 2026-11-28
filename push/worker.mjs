@@ -267,6 +267,7 @@ const tv = (ev) => (ev.competitions?.[0]?.broadcasts || []).flatMap((b) => b.nam
 const footballScore = (pts) => (pts >= 6 ? "touchdown" : pts === 3 ? "field goal" : pts === 2 ? "safety" : pts === 1 ? "extra point" : "score");
 const seen = new Map();      // event id -> { st, scores:[a,h], period }
 const closeSent = new Set();
+const tdWait = new Map();   // event|team -> touchdown waiting for its try
 let firstPass = true;
 
 async function checkGames() {
@@ -290,10 +291,23 @@ async function checkGames() {
         if (prev.st === "pre" && st === "in")
           await send(key, "start", L.icon + " " + nick(me) + " vs " + nick(opp) + " is starting", [tv(ev), "Tap to follow along"].filter(Boolean).join(" · "), "start-" + ev.id, ev);
         // Your team scores (basketball: end of Q1 and Q3 instead of every basket; Q2 is "halftime")
-        if (st === "in" && lg !== "nba" && lg !== "cbb" && mine > prev.sc[i]) {
-          const pts = mine - prev.sc[i];
-          const what = lg === "mlb" ? (pts === 1 ? "scores a run" : "scores " + pts + " runs") : footballScore(pts);
+        // Football: a touchdown waits for the try (extra point or 2-point attempt) so it's one alert, not two.
+        // Sent when the try is in, or after 2 minutes / the other team scores / the quarter or game ends (try missed).
+        const football = lg === "nfl" || lg === "cfb", tdKey = ev.id + "|" + i, td = tdWait.get(tdKey);
+        let tdSent = false;
+        if (football && td && (mine > td.score || Date.now() - td.at > 120e3 || theirs > td.theirs || period !== td.period || st !== "in")) {
+          tdWait.delete(tdKey);
+          const extra = mine - td.score, what = extra === 1 ? "touchdown + extra point" : extra === 2 ? "touchdown + 2-point conversion" : "touchdown";
           await send(key, "score", L.icon + " " + nick(me) + " " + what, scoreLine(ev) + " · " + clock, "score-" + ev.id + "-" + i + "-" + mine, ev);
+          tdSent = extra > 0 && extra <= 2;   // the try is in this alert: don't send it again below
+        }
+        if (st === "in" && lg !== "nba" && lg !== "cbb" && mine > prev.sc[i] && !tdSent) {
+          const pts = mine - prev.sc[i];
+          if (football && pts === 6) { tdWait.set(tdKey, { at: Date.now(), score: mine, theirs, period }); }
+          else {
+            const what = lg === "mlb" ? (pts === 1 ? "scores a run" : "scores " + pts + " runs") : pts === 7 ? "touchdown + extra point" : pts === 8 ? "touchdown + 2-point conversion" : footballScore(pts);
+            await send(key, "score", L.icon + " " + nick(me) + " " + what, scoreLine(ev) + " · " + clock, "score-" + ev.id + "-" + i + "-" + mine, ev);
+          }
         }
         if (lg === "nba" && st === "in" && period > prev.period && prev.period >= 1 && prev.period !== 2)
           await send(key, "score", L.icon + " End of Q" + prev.period + ": " + lead, scoreLine(ev), "q-" + ev.id + "-" + prev.period, ev);
