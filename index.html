@@ -1133,6 +1133,9 @@
       .btab svg { width: 24px; height: 24px; }
       .btabs.many .btab { min-width: 0; font-size: 9px; letter-spacing: 0; white-space: nowrap; overflow: hidden; }   /* 8-9 tabs: a bit smaller so all fit */
       .btabs.many .btab svg { width: 20px; height: 20px; }
+      .btabs.many { left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); padding-left: 2px !important; padding-right: 2px !important; }
+      .btabs.many .btab { letter-spacing: -.2px !important; font-size: 8.6px !important; }
+      .btabs.many .btab::before { width: 30px !important; margin-left: -15px !important; }
       .btab.active { color: var(--accent); }
       .btab svg { transition: transform var(--t-fast); }
       .btab .dot { position: absolute; top: 4px; left: calc(50% + 10px); width: 7px; height: 7px; border-radius: 50%; background: var(--live); }
