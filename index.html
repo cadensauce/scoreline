@@ -362,6 +362,7 @@
     .fg-chip { width: 32px; height: 32px; border-radius: 9px; border: 0; font: inherit; font-size: 13px; font-weight: 700; display: grid; place-items: center; cursor: pointer; }
     .fg-chip.W { background: rgba(52, 199, 89, .16); color: #4cd471; } .fg-chip.L { background: rgba(255, 69, 58, .14); color: #ff6b61; } .fg-chip.T { background: var(--panel-2); color: var(--muted); }
     .fg .g-note { margin: 8px 0 0; } .fg-series { color: var(--text); }
+    .greet { display: flex; flex-direction: column; gap: 2px; margin: -4px 0 14px; } .greet b { font-size: 15px; } .greet span { color: var(--muted); font-size: 14px; line-height: 1.45; }
     .pick-sec:empty { display: none; } .pick-row { display: flex; gap: 10px; } .pick-msg { font-size: 14px; line-height: 1.45; margin-bottom: 10px; }
     .pick-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 8px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); color: var(--text); transition: border-color var(--t-fast), background var(--t-fast); }
     .pick-btn b { font-size: 16px; } .pick-btn small { font-size: 11.5px; color: var(--muted); } .pick-btn.on { border-color: var(--text); background: var(--panel-2); } .pick-btn:disabled { opacity: .55; }
@@ -2331,6 +2332,29 @@
       const g = e.target.closest("[data-game]");
       if (g) { const [lg, id] = g.dataset.game.split("|"); return openGame(lg, id); }    });
     window.addEventListener("scoreline-user", () => { hpAt = 0; if (state.tab === "home") fillHomePicks().catch(() => {}); });
+    /* A personal hello at the top of Home: the time of day plus your most important team news right now
+       (live, later today, just finished, or next up). Without followed teams it shows how to follow one. */
+    function greetHtml(keys, results) {
+      const hr = new Date().getHours(), hi = hr < 5 ? "Up late? 🌙" : hr < 12 ? "Good morning ☀️" : hr < 17 ? "Good afternoon 👋" : "Good evening 🌆";
+      const ICO = { nfl: "🏈", cfb: "🏈", nba: "🏀", cbb: "🏀", mlb: "⚾" }, today = ymd(new Date());
+      const mine = [];
+      keys.forEach((k, i) => { if (results[i]?.status === "fulfilled") (results[i].value.events || []).forEach((e) => { if (hasFav(e)) mine.push([e, k]); }); });
+      const nm = (t) => t?.team?.shortDisplayName || t?.team?.displayName || "";
+      const line = (() => {
+        if (!state.favs.size) return "Tap ☆ next to any team to follow it. Your teams show up first everywhere, with their own headlines.";
+        const me = (e) => teamsOf(e).find((t) => state.favs.has(favKey(t))), opp = (e) => teamsOf(e).find((t) => t !== me(e));
+        const live = mine.find(([e]) => isLive(e));
+        if (live) { const [e, k] = live, [a, h] = teamsOf(e); return "📺 Your " + nm(me(e)) + " are live: " + (a.team?.abbreviation || "") + " " + a.score + "–" + h.score + " " + (h.team?.abbreviation || "") + " (" + (e.status?.type?.shortDetail || "") + ")."; }
+        const later = mine.filter(([e]) => e.status?.type?.state === "pre" && ymd(new Date(e.date)) === today).sort((a, b) => new Date(a[0].date) - new Date(b[0].date));
+        if (later.length) { const [e, k] = later[0], more = later.length - 1; return (ICO[k] || "📅") + " Your " + nm(me(e)) + " play " + (new Date(e.date).getHours() >= 17 ? "tonight" : "today") + " at " + fmtTime(e.date) + " " + (me(e).homeAway === "home" ? "vs " : "at ") + nm(opp(e)) + "." + (more ? " +" + more + " more of your teams play today." : ""); }
+        const done = mine.filter(([e]) => e.status?.type?.state === "post" && Date.now() - new Date(e.date) < 20 * 3600e3).sort((a, b) => new Date(b[0].date) - new Date(a[0].date))[0];
+        if (done) { const e = done[0], m = me(e), o = opp(e), w = m.winner === true; return (w ? "✅ " + nm(m) + " beat the " + nm(o) + " " + m.score + "–" + o.score + " 🎉" : o.winner ? "😬 " + nm(m) + " fell to the " + nm(o) + " " + o.score + "–" + m.score + "." : nm(m) + " and " + nm(o) + " tied " + m.score + "–" + o.score + "."); }
+        const next = mine.filter(([e]) => e.status?.type?.state === "pre").sort((a, b) => new Date(a[0].date) - new Date(b[0].date))[0];
+        if (next) { const [e, k] = next; return (ICO[k] || "📅") + " Next up: your " + nm(me(e)) + " " + (me(e).homeAway === "home" ? "vs " : "at ") + nm(opp(e)) + ", " + fmtDay(e.date) + " at " + fmtTime(e.date) + "."; }
+        return "No games for your teams this week. Catch up in News 📰.";
+      })();
+      return '<div class="greet"><b>' + hi + "</b><span>" + esc(line) + "</span></div>";
+    }
     async function renderHome() {
       const main = $("main");
       if (!main.querySelector("[data-home]")) main.innerHTML = savedShell("home") || '<div data-home>' + barHtml("Today", null) + skeleton(9) + "</div>";
@@ -2340,7 +2364,7 @@
       if (pins().includes("f1")) try { f1 = await getJSON(API + LEAGUES.f1.path + "/scoreboard"); cache.f1 = f1; } catch {}
       if (state.tab !== "home") return;
       let anyLive = false;
-      let html = '<div data-home>' + barHtml("Today", null) + '<div data-home-picks>' + hpHtml + "</div>";
+      let html = '<div data-home>' + barHtml("Today", null) + (noFilters() ? greetHtml(keys, results) : "") + '<div data-home-picks>' + hpHtml + "</div>";
       const liveIds = new Set();
       const liveEvs = [];
       keys.forEach((k, i) => { if (results[i].status === "fulfilled") (results[i].value.events || []).filter(isLive).forEach((e) => { liveEvs.push([e, k]); liveIds.add(e.id); }); });
