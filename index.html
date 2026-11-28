@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795845894" />
+  <meta name="build" content="1795846290" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -2188,8 +2188,8 @@
     /* Headlines with personality: same facts, friendlier voice. An emoji for what happened, a reaction at the end,
        "Sources:" reads as "Word is," and stories about teams you follow say so. Names, numbers and results never change. */
     const NEWS_TAIL = [[/injur|ruled out|\bout vs|questionable|doubtful|torn|sprain|concussion|hamstring|surgery|\bACL\b|spasms|\((?:ankle|knee|back|hip|foot|shoulder|hamstring|groin|calf|wrist|hand|illness|concussion)\)/i, "😬"],
-      [/fired|benched|suspend|fined|ejected|released|\bcut\b|waive/i, "😳"], [/trade[ds]?\b|trading/i, "👀"], [/record|career-high|historic|first ever|\b[4-9]\d-point/i, "🔥"],
-      [/return|back in|cleared|activated/i, "🙌"], [/clinch|advance|win streak|undefeated|\brout|upset/i, "🎉"], [/sign(?:s|ed|ing)?\b|contract|extension|\$\d/i, "🤑"]];
+      [/fired|benched|suspend|fined|ejected|released|\bcut\b|waive/i, "😳"], [/trade[ds]?\b|trading/i, "👀"], [/\brecord\b|career-high|historic|first ever|\b[4-9]\d-point/i, "🔥"],
+      [/return|back in|cleared|activated/i, "🙌"], [/clinch|advance|win streak|undefeated|\brout|upset/i, "🎉"], [/\bsign(?:s|ed|ing)?\b|contract|extension|\$\d/i, "🤑"]];
     function vibeTitle(h) {
       const raw = String(h || "").trim();
       const t = raw.replace(/\s+-\s+ESPN$/i, "").replace(/^sources?(?: say)?:\s*/i, "Word is, ").replace(/^report:\s*/i, "Reportedly, ").replace(/^(?:breaking|watch|listen):\s*/i, "");
@@ -5312,7 +5312,7 @@
           }).join("") + "</tbody></table></div>"; if (seeded && cut) cutNote = '<div class="g-note">' + esc(cut[2]) + "</div>";
       });
       h += cutNote;
-      setBody(v, (LEAGUES[lg].short || LEAGUES[lg].name) + " standings", h || '<div class="empty">Standings not available right now.</div>');
+      setBody(v, lg === "cfb" || lg === "cbb" ? "Top 25 & standings" : (LEAGUES[lg].short || LEAGUES[lg].name) + " standings", h || '<div class="empty">Standings not available right now.</div>');
     }
 
     const ROSTER_GROUPS ={ offense: "Offense", defense: "Defense", specialTeam: "Special teams", injuredReserveOrOut: "Injured reserve / out", suspended: "Suspended", practiceSquad: "Practice squad" };
@@ -7194,7 +7194,8 @@
       };
       show();
     }
-    document.addEventListener("click", (e) => { if (e.target.closest("[data-tour]")) startTour(); });
+    // Replay from You: go Home first, so every step has something real to point at.
+    document.addEventListener("click", (e) => { if (!e.target.closest("[data-tour]")) return; if (state.tab !== "home") { state.tab = "home"; window.scrollTo(0, 0); render(false); setTimeout(startTour, 900); } else startTour(); });
     // First visit (no saved "toured" flag): start once the first screen has data.
     if (!store.get("toured", 0) && !/[?&]notour/.test(location.search) && !navigator.webdriver) setTimeout(function wait(n) {
       if (vis("#main [data-ev]") || n > 20) startTour(); else setTimeout(() => wait(n + 1), 500);
@@ -7634,6 +7635,6 @@
     if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
-  <script type="module" src="account.js?v=1795845894"></script>
+  <script type="module" src="account.js?v=1795846290"></script>
 </body>
 </html>
