@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795846583" />
+  <meta name="build" content="1795846783" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -2745,6 +2745,14 @@
     const released = () => { pressing = false; setTimeout(() => { if (!pressing && pendingPaint) { const p = pendingPaint; pendingPaint = null; paint(...p); } }, 400); };
     addEventListener("pointerup", released, true); addEventListener("pointercancel", released, true);
     const busyHands = () => pressing && Date.now() - pressAt < 10000;   // only while a finger is actually down (taps you just made still update at once)
+    // Watchdog: a held-back redraw is applied as soon as hands are free (even if the "finger up" event got lost),
+    // and a page still showing loading placeholders after 8 s tries again, so nothing stays stuck on skeletons.
+    let paintedAt = Date.now();
+    setInterval(() => {
+      if (document.hidden) return;
+      if (pendingPaint && !busyHands()) { const p = pendingPaint; pendingPaint = null; paint(...p); return; }
+      if (!views.length && document.querySelector("#main .grid > .skel") && Date.now() - paintedAt > 8000) { paintedAt = Date.now(); render(true); }
+    }, 2000);
     function paint(main, html, key) {
       if (busyHands() && main.childElementCount) { pendingPaint = [main, html, key]; return; }
       paintNow(main, html, key);
@@ -2782,6 +2790,7 @@
       if (Math.abs(d) > 1) window.scrollBy({ top: d, behavior: "instant" });
     }
     function paintNow(main, html, key) {
+      paintedAt = Date.now();
       const keep = sideScroll(main);
       markPlace(main);
       paintInner(main, html, key);
@@ -3618,8 +3627,10 @@
       const hp = series ? series[series.length - 1].home : (winProb(s, state)?.home ?? null);
       let txt = "";
       if (state === "pre") {
-        const when = fmtDay(comp.date) + " at " + fmtTime(comp.date);
-        txt = hp == null ? "Starts " + when + "." : name(hp >= .5 ? home : away) + " are favored to win (" + pct(Math.max(hp, 1 - hp)) + "%). Starts " + when + ".";
+        // The start time is in the header; just say who's favored, and by how much, in plain words.
+        if (hp == null) return "";
+        const fav = pct(Math.max(hp, 1 - hp)), who = name(hp >= .5 ? home : away);
+        txt = fav <= 52 ? "A coin flip 🪙 Neither team is favored (" + fav + "–" + (100 - fav) + ")." : who + (fav < 60 ? " are slight favorites" : fav < 75 ? " are favored" : " are big favorites") + " (" + fav + "% to win).";
       } else if (state === "post") {
         // The score is right above; only say something it doesn't (a tie, overtime, extra innings).
         const extra = /OT|overtime/i.test(st.detail || st.shortDetail || "") ? (lg === "mlb" ? "" : " in overtime") : lg === "mlb" && (comp.competitors?.[0]?.linescores || []).length > 9 ? " in extra innings" : "";
@@ -7687,6 +7698,6 @@
     if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
-  <script type="module" src="account.js?v=1795846583"></script>
+  <script type="module" src="account.js?v=1795846783"></script>
 </body>
 </html>
