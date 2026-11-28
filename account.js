@@ -415,7 +415,7 @@ async function openChatId(id, agreed) {
   }, () => { log.innerHTML = '<div class="g-note">Couldn\'t load this chat.</div>'; });
   v.el.querySelector("[data-chatform]").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const input = e.target.querySelector("input"), text = input.value.trim();
+    const input = e.target.querySelector("input:not([type=file])"), text = input.value.trim();
     if (!text) return;
     input.value = ""; buzz();
     try { await sendMsg(c, { text }); } catch { toast("Message didn't send. You can only message friends who haven't blocked you."); input.value = text; }
