@@ -811,6 +811,7 @@
     .pp-wrap { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.8); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
     .pp-bar { display: flex; gap: 12px; align-items: center; color: #fff; font-size: 14px; } .pp-bar small { color: #aaa; }
     .pp-bar button { border: 0; border-radius: 999px; padding: 7px 14px; background: #fff; color: #000; font: 600 13px Inter, sans-serif; cursor: pointer; }
+    body.pp-on > :not(.pp-wrap) { content-visibility: hidden; }
     .pp-frame { width: 390px; height: min(844px, calc(100vh - 80px)); border: 10px solid #000; border-radius: 44px; background: #000; }
     .f-key { flex-wrap: nowrap; gap: 12px; font-size: 10.5px; white-space: nowrap; } .f-key i { width: 12px; }
     .f-raw { margin-top: 10px; font-size: 12px; color: var(--muted); } .f-raw summary { cursor: pointer; list-style: none; } .f-raw summary::before { content: "▸ "; } .f-raw[open] summary::before { content: "▾ "; }
@@ -1604,9 +1605,9 @@
       if (e.target.closest("[data-phonepreview]") && IS_DEV) {
         const o = document.createElement("div"); o.className = "pp-wrap";
         o.innerHTML = '<div class="pp-bar"><b>Phone preview</b><small>Developer only · works like the phone app</small><button type="button" data-ppclose>Close</button></div><iframe class="pp-frame" title="Phone preview" src="' + location.pathname + '?phone=1"></iframe>';
-        document.body.appendChild(o);
+        document.body.appendChild(o); document.body.classList.add("pp-on");   /* the page behind stops drawing and refreshing while the preview is open */
       }
-      if (e.target.closest("[data-ppclose]")) e.target.closest(".pp-wrap")?.remove();
+      if (e.target.closest("[data-ppclose]")) { e.target.closest(".pp-wrap")?.remove(); document.body.classList.remove("pp-on"); render(); }
     });
     const MOBILE_APP = !!window.__PREVIEW_APP || (IS_PHONE && (!!window.__TAURI__ || STANDALONE));
     const navHidden = () => store.get("navHide", {}) || {};   /* News / Fantasy turned off in You → Your bottom bar */
@@ -2734,7 +2735,7 @@
     function stamp() { $("updated").textContent = "Updated " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }); }
     function schedule(live) {
       clearTimeout(timer);
-      timer = setTimeout(() => (document.hidden ? schedule(live) : render()), live ? 10000 : 120000);   // game pages keep their own 5 s updates
+      timer = setTimeout(() => (document.hidden || document.body.classList.contains("pp-on") ? schedule(live) : render()), live ? 10000 : 120000);   // game pages keep their own 5 s updates
     }
     function render(force = true) {   // force: fetch fresh data; tab switches pass false to use what's in memory
       if (state.tab === "social") state.tab = "you";   // the old Social tab lives in You now
