@@ -22,7 +22,7 @@ const as = (uid) => env.authenticatedContext(uid).firestore();
 function react(uid, item, counts, e) {
   const db = as(uid), b = writeBatch(db);
   b.set(doc(db, "reactions/" + item), { c: counts });
-  if (e) b.set(doc(db, "reactions/" + item + "/by/" + uid), { e }); else b.delete(doc(db, "reactions/" + item + "/by/" + uid));
+  if (e) b.set(doc(db, "reactions/" + item + "/by/" + uid), { m: Array.isArray(e) ? e : [e] }); else b.delete(doc(db, "reactions/" + item + "/by/" + uid));
   return b.commit();
 }
 
@@ -38,7 +38,15 @@ test("can't react twice with the same emoji", async () => {
 test("switching emoji moves your one count", () => assertSucceeds(react("bob", "play_1", { fire: 2, goat: 1 }, "goat")));
 test("removing your reaction takes one off", () => assertSucceeds(react("bob", "play_1", { fire: 2 }, null)));
 test("can't take off more than yours", () => assertFails(react("bob", "play_1", { fire: 0 }, null)));
-test("can't react as someone else", () => assertFails(setDoc(doc(as("ann"), "reactions/play_1/by/carl"), { e: "fire" })));
+test("can't react as someone else", () => assertFails(setDoc(doc(as("ann"), "reactions/play_1/by/carl"), { m: ["fire"] })));
 test("only the six emojis", () => assertFails(react("ann", "play_1", { fire: 3, poop: 1 }, "poop")));
 test("your reaction is private", () => assertFails(getDoc(doc(as("ann"), "reactions/play_1/by/bob"))));
 test("signed out can't react", () => assertFails(setDoc(doc(env.unauthenticatedContext().firestore(), "reactions/play_1"), { c: { fire: 4 } })));
+test("several reactions at once: each emoji counts once", () => assertSucceeds(react("ann", "play_1", { fire: 4, lol: 1 }, ["fire", "lol"])));
+test("an older single reaction can add a second emoji", () => assertSucceeds(react("bob", "play_1", { fire: 3, goat: 1 }, ["fire", "goat"])));
+test("can't list the same emoji twice", () => assertFails(react("ann", "play_1", { fire: 5 }, ["fire", "fire"])));
+test("several reactions: counts must match exactly", () => assertFails(react("ann", "play_1", { fire: 4, lol: 2 }, ["fire", "lol"])));
+test("removing one of several keeps the rest", async () => {
+  await assertSucceeds(react("ann", "play_1", { fire: 4, lol: 1 }, ["fire", "lol"]));
+  await assertSucceeds(react("ann", "play_1", { fire: 3, lol: 1 }, ["lol"]));
+});

@@ -561,32 +561,34 @@ service cloud.firestore {
       }
     }
     // Reactions (🔥 😂 😮 😭 🐐 👀) on plays, news and moves. reactions/{item} holds the counts anyone can see;
-    // reactions/{item}/by/{uid} is your one reaction. Both change together in one write, and the rules check the counts
-    // move by exactly your change, so nobody can fake them or react twice.
+    // reactions/{item}/by/{uid} lists your reactions (m: several emojis, each once; older docs hold one, e). Both change
+    // together in one write, and the rules check every count moves by exactly your change, so nobody can fake them or count twice.
     function rk() { return ['fire', 'lol', 'wow', 'cry', 'goat', 'eyes']; }
     function cnt(d, k) { return d.get('c', {}).get(k, 0); }
     function oneMove(before, after, had, now, k) {
-      return cnt(after, k) == cnt(before, k) + (k == now ? 1 : 0) - (k == had ? 1 : 0);
+      return cnt(after, k) == cnt(before, k) + (k in now ? 1 : 0) - (k in had ? 1 : 0);
     }
     function countsOk(before, after, had, now) {
       return had != now && after.keys().hasOnly(['c']) && after.c.keys().hasOnly(rk())
         && oneMove(before, after, had, now, 'fire') && oneMove(before, after, had, now, 'lol') && oneMove(before, after, had, now, 'wow')
         && oneMove(before, after, had, now, 'cry') && oneMove(before, after, had, now, 'goat') && oneMove(before, after, had, now, 'eyes');
     }
-    function mineBefore(item) { return exists(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)) ? get(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)).data.e : ''; }
-    function mineAfter(item) { return existsAfter(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)) ? getAfter(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)).data.e : ''; }
+    function mineList(d) { return 'm' in d ? d.m : ('e' in d ? [d.e] : []); }
+    function mineBefore(item) { return exists(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)) ? mineList(get(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)).data) : []; }
+    function mineAfter(item) { return existsAfter(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)) ? mineList(getAfter(/databases/$(database)/documents/reactions/$(item)/by/$(request.auth.uid)).data) : []; }
+    function rxList(m) { return m is list && m.size() >= 1 && m.size() <= 6 && m.toSet().size() == m.size() && m.toSet().hasOnly(rk()); }
     match /reactions/{item} {
       allow get: if true;   // just counts, no names
       allow create, update: if member() && siteOpen() && item.matches('^[A-Za-z0-9_.-]{1,120}$')
         && countsOk(resource == null ? {} : resource.data, request.resource.data, mineBefore(item), mineAfter(item));
       match /by/{uid} {
         allow get: if member() && me() == uid;
-        allow create, update: if member() && me() == uid && request.resource.data.keys().hasOnly(['e']) && request.resource.data.e in rk()
+        allow create, update: if member() && me() == uid && request.resource.data.keys().hasOnly(['m']) && rxList(request.resource.data.m)
           && existsAfter(/databases/$(database)/documents/reactions/$(item))
           && countsOk(exists(/databases/$(database)/documents/reactions/$(item)) ? get(/databases/$(database)/documents/reactions/$(item)).data : {},
-                      getAfter(/databases/$(database)/documents/reactions/$(item)).data, mineBefore(item), request.resource.data.e);
+                      getAfter(/databases/$(database)/documents/reactions/$(item)).data, mineBefore(item), request.resource.data.m);
         allow delete: if member() && me() == uid
-          && countsOk(get(/databases/$(database)/documents/reactions/$(item)).data, getAfter(/databases/$(database)/documents/reactions/$(item)).data, resource.data.e, '');
+          && countsOk(get(/databases/$(database)/documents/reactions/$(item)).data, getAfter(/databases/$(database)/documents/reactions/$(item)).data, mineList(resource.data), []);
       }
     }
     // Ideas board: anyone signed in posts an idea (with their username or anonymous) and votes 👍/👎 once per idea.
@@ -684,6 +686,30 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['at']) && request.resource.data.at == request.time;
     }
     // Reports: anyone signed in can send one; nobody can read them in the app (the owner reviews them).
+    // Game chat: everyone signed in can read a game's chat; to post you need the Terms (13+) and the chat rules agreed.
+    // Text only, 200 characters, no links, one message every 5 seconds (gcLast/{uid} is written in the same batch).
+    // You can delete your own messages; Mods and the Owner can delete any.
+    match /gamechat/{gid}/msgs/{m} {
+      allow read: if member();
+      allow create: if member() && siteOpen() && teen()
+        && exists(/databases/$(database)/documents/chatOk/$(me()))
+        && gid.matches('^(nfl|cfb|nba|cbb|mlb|f1)_[0-9]{1,15}$')
+        && request.resource.data.keys().hasOnly(['from', 'text', 'at'])
+        && request.resource.data.from == me()
+        && request.resource.data.text is string && request.resource.data.text.size() >= 1 && request.resource.data.text.size() <= 200
+        && !request.resource.data.text.lower().matches('.*(https?://|www[.]|discord|[a-z0-9-][.](com|net|org|gg|io|ly|me|tv|xyz|app)).*')
+        && request.resource.data.at == request.time
+        && existsAfter(/databases/$(database)/documents/gcLast/$(me()))
+        && getAfter(/databases/$(database)/documents/gcLast/$(me())).data.at == request.time;
+      allow delete: if member() && (resource.data.from == me() || isMod());
+      allow update: if false;
+    }
+    match /gcLast/{uid} {
+      allow read: if false;
+      allow create, update: if member() && me() == uid && request.resource.data.keys().hasOnly(['at'])
+        && request.resource.data.at == request.time
+        && (resource == null || request.time > resource.data.at + duration.value(5, 's'));
+    }
     match /reports/{id} {
       allow create: if member() && request.resource.data.from == me()   // reports always work, even in read-only
         && request.resource.data.keys().hasOnly(['from', 'about', 'chat', 'text', 'reason', 'at'])

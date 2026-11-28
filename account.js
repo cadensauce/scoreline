@@ -389,7 +389,7 @@ async function openChatId(id, agreed) {
     ? '<button type="button" class="chat-act" data-gmembers="' + esc(id) + '">' + c.members.length + ' people</button><button type="button" class="chat-act" data-greport="' + esc(id) + '">Report</button><button type="button" class="chat-act" data-gleave="' + esc(id) + '">Leave</button>'
     : '<button type="button" class="chat-act" data-viewcard="' + esc(other(c)) + '">Profile</button><button type="button" class="chat-act" data-block="' + esc(other(c)) + '">Block</button><button type="button" class="chat-act" data-report="' + esc(other(c)) + '" data-report-chat="' + esc(id) + '">Report</button>';
   setBody(v, await chatName(c), '<div class="chat-acts">' + acts + '</div><div class="chat-log" data-chatlog></div>' +
-    '<form class="chat-form" data-chatform><label class="chat-photo" aria-label="Send a photo" title="Send a photo">📷<input type="file" accept="image/*" data-chatphoto hidden></label><input maxlength="500" placeholder="Message…" autocomplete="off" aria-label="Message"><button class="pill-btn" type="submit">Send</button></form>');
+    '<form class="chat-form" data-chatform><button type="button" class="chat-plus" data-chatplus aria-label="Send a photo, game, player and more" title="Send a photo, game, player and more">+</button><input type="file" accept="image/*" data-chatphoto hidden><input type="file" accept="image/*" capture="environment" data-chatcam hidden><input maxlength="500" placeholder="Message…" autocomplete="off" aria-label="Message"><button class="pill-btn" type="submit">Send</button></form>');
   v.el.querySelector(".src-note")?.remove();
   v.el.classList.add("chat-sheet");
   v.chat = c; v.msgs = [];
@@ -420,14 +420,30 @@ async function openChatId(id, agreed) {
     input.value = ""; buzz();
     try { await sendMsg(c, { text }); } catch { toast("Message didn't send. You can only message friends who haven't blocked you."); input.value = text; }
   });
-  v.el.querySelector("[data-chatphoto]").addEventListener("change", async (e) => {
+  // "+" next to the message box: photo, camera, or a game / player / team / recap card from the app.
+  v.el.querySelector("[data-chatplus]").addEventListener("click", () => {
+    const m = { kind: "attmenu", key: "attmenu" };
+    if (!pushView(m)) return;
+    const opts = [["photo", "🖼️", "Photo"], ["camera", "📷", "Camera"], ["game", "🏟️", "Game"], ["player", "👤", "Player"], ["team", "🛡️", "Team"], ["recap", "📸", "Recap card"]];
+    setBody(m, "Send", '<div class="att-menu">' + opts.map(([k, i, l]) => '<button type="button" data-att="' + k + '"><i aria-hidden="true">' + i + "</i>" + l + "</button>").join("") + "</div>");
+    m.el.querySelector(".att-menu").addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-att]"); if (!b) return;
+      const k = b.dataset.att; buzz(8);
+      if (k === "photo" || k === "camera") { v.el.querySelector(k === "photo" ? "[data-chatphoto]" : "[data-chatcam]").click(); closeTop(); return; }
+      closeTop();
+      const r = await window.scorelineAttach?.[k]?.().catch(() => null);
+      if (!r) return;
+      try { await sendMsg(c, r.img ? { img: r.img } : { share: r.share }); buzz(12); } catch { toast("Didn't send. You can only message friends who haven't blocked you."); }
+    });
+  });
+  v.el.querySelectorAll("[data-chatphoto], [data-chatcam]").forEach((inp) => inp.addEventListener("change", async (e) => {
     const file = e.target.files?.[0]; e.target.value = "";
     if (!file) return;
     toast("Sending photo…");
     let img;
     try { img = await chatPhoto(file); } catch { return toast("That photo couldn't be sent. Try a different one."); }
     try { await sendMsg(c, { img }); buzz(); } catch { toast("Photo didn't send. You can only message friends who haven't blocked you."); }
-  });
+  }));
   v.el.addEventListener("click", (e) => { const b = e.target.closest("[data-msgimg]"); if (b) b.classList.toggle("hide", false); });
 }
 /* Chat photos: Firebase's free plan has no file storage, so a photo is shrunk on the phone (longest side ≤ 1080 px,
@@ -566,7 +582,7 @@ async function reportInGroup(id) {
 }
 
 /* share into a chat */
-async function shareTo(s) {
+async function shareTo(s, img = "") {   // a game/player/team/… card, or a picture (img: chat-ready JPEG)
   if (!user) return toast("Sign in to share with friends.");
   if (!(await ensureChatOk())) return;
   const v = { kind: "shareto", key: "shareto" };
@@ -575,7 +591,7 @@ async function shareTo(s) {
   const fr = friendState.friends.filter((f) => !withChat.has(f) && !blocked.has(f));
   await Promise.all([...chats.flatMap((c) => c.members), ...fr].map(nameOf));
   const rows = await Promise.all(chats.slice(0, 20).map(async (c) => '<button type="button" class="opt soc-row" data-sendshare="' + esc(c.id) + '"><span class="soc-who">' + (await chatPic(c)) + "<span><b>" + esc(await chatName(c)) + '</b></span></span><span class="pill-btn">Send</span></button>'));
-  setBody(v, "Share", '<div class="chat-share-prev">' + shareCard(s) + "</div>" +
+  setBody(v, img ? "Send picture" : "Share", '<div class="chat-share-prev">' + (img ? '<img class="rc-img" src="' + img + '" alt="Picture to send">' : shareCard(s)) + "</div>" +
     (rows.length + fr.length ? '<div class="panel">' + rows.join("") + fr.map((f) => '<button type="button" class="opt soc-row" data-sendshare-to="' + esc(f) + '"><span class="soc-who">' + avatarHtml("", names[f]) + "<span><b>@" + esc(names[f]) + '</b></span></span><span class="pill-btn">Send</span></button>').join("") + "</div>"
       : '<div class="panel"><p class="muted people-hint">Add friends to share with them.</p></div>'));
   const send = async (b, cid) => {
@@ -583,7 +599,7 @@ async function shareTo(s) {
     try {
       let c = chatState.chats.find((x) => x.id === cid);
       if (!c) { const d = await fb.getDoc(fb.doc(db, "chats", cid)); c = { id: cid, ...d.data() }; }
-      await sendMsg(c, { share: s }); buzz(12);
+      await sendMsg(c, img ? { img } : { share: s }); buzz(12);
       b.querySelector(".pill-btn").textContent = "Sent"; toast("Sent to " + (await chatName(c)));
     } catch { b.disabled = false; toast("Couldn't send it. Try again."); }
   };
@@ -625,6 +641,7 @@ window.addEventListener("scoreline-social", () => drawFriends().catch(() => {}))
 
 window.scorelineChat = {
   openList: openChats, openFriends, share: shareTo, open: openChatId,
+  sendImage: (img) => (photoOk(img) ? shareTo(null, img) : toast("That picture is too big to send.")),
   unread: () => (user ? chatState.chats.filter(unreadOf).length + chatState.invites.filter(okInvite).length : 0),
 };
 document.addEventListener("click", async (e) => {
@@ -1349,24 +1366,25 @@ window.scorelineMod = {
 };
 
 /* ---------- reactions: 🔥 😂 😮 😭 🐐 👀 on plays, news and moves (counts for everyone, like Discord) ----------
-   reactions/{item} = { c: { fire: 12, ... } } and reactions/{item}/by/{uid} = { e: "fire" }, changed together in one
+   reactions/{item} = { c: { fire: 12, ... } } and reactions/{item}/by/{uid} = { m: ["fire", "lol"] } (yours; several allowed), changed together in one
    transaction; the rules check the counts only move by your own change. */
 const RX = [["fire", "🔥"], ["lol", "😂"], ["wow", "😮"], ["cry", "😭"], ["goat", "🐐"], ["eyes", "👀"]];
 const RXE = Object.fromEntries(RX);
 const rxState = {};
+const rxMine = (d) => (Array.isArray(d?.m) ? d.m : d?.e ? [d.e] : []);   // your reactions (several allowed; older docs held one)
 async function rxLoad(item) {
   await startFirebase();
-  if (!fb || !db) return { c: {}, mine: "" };
+  if (!fb || !db) return { c: {}, mine: [] };
   if (FIREBASE_CONFIG) await Promise.race([authReady, new Promise((r) => setTimeout(r, 4000))]);
   const [d, m] = await Promise.all([fb.getDoc(fb.doc(db, "reactions", item)).catch(() => null), user ? fb.getDoc(fb.doc(db, "reactions", item, "by", user.uid)).catch(() => null) : null]);
-  return (rxState[item] = { c: d?.exists() ? d.data().c || {} : {}, mine: m?.exists() ? m.data().e : "" });
+  return (rxState[item] = { c: d?.exists() ? d.data().c || {} : {}, mine: m?.exists() ? rxMine(m.data()) : [] });
 }
 function rxDraw(el) {
-  const item = el.dataset.reactId, r = rxState[item] || { c: {}, mine: "" };
+  const item = el.dataset.reactId, r = rxState[item] || { c: {}, mine: [] };
   const list = RX.filter(([k]) => (r.c[k] || 0) > 0).sort((a, b) => (r.c[b[0]] || 0) - (r.c[a[0]] || 0));
   const total = list.reduce((n, [k]) => n + (r.c[k] || 0), 0);
-  el.innerHTML = list.map(([k, e]) => '<button type="button" class="rx' + (r.mine === k ? " on" : "") + '" data-rx="' + k + '" aria-label="' + e + " " + r.c[k] + '">' + e + " <b>" + r.c[k] + "</b></button>").join("") +
-    (el.classList.contains("open") ? RX.map(([k, e]) => '<button type="button" class="rx pick' + (r.mine === k ? " on" : "") + '" data-rx="' + k + '" aria-label="React ' + e + '">' + e + "</button>").join("")
+  el.innerHTML = list.map(([k, e]) => '<button type="button" class="rx' + (r.mine.includes(k) ? " on" : "") + '" data-rx="' + k + '" aria-label="' + e + " " + r.c[k] + '">' + e + " <b>" + r.c[k] + "</b></button>").join("") +
+    (el.classList.contains("open") ? RX.map(([k, e]) => '<button type="button" class="rx pick' + (r.mine.includes(k) ? " on" : "") + '" data-rx="' + k + '" aria-label="React ' + e + '">' + e + "</button>").join("") + '<button type="button" class="rx add" data-rx-done aria-label="Done reacting">✓</button>'
       : '<button type="button" class="rx add" data-rx-add aria-label="Add a reaction">😀<i>+</i></button>') +
     (total >= 10 ? '<span class="rx-total">' + total.toLocaleString() + " reactions</span>" : "");
 }
@@ -1379,16 +1397,17 @@ const rxIO = "IntersectionObserver" in window ? new IntersectionObserver((ents) 
 async function rxToggle(el, k) {
   if (!user) return toast("Sign in to react 🙂");
   const item = el.dataset.reactId, ref = fb.doc(db, "reactions", item), mineRef = fb.doc(db, "reactions", item, "by", user.uid);
-  const prev = rxState[item] ? { c: { ...rxState[item].c }, mine: rxState[item].mine } : { c: {}, mine: "" };
-  const apply = (s) => { const c = { ...s.c }, had = s.mine, now = had === k ? "" : k; if (had) c[had] = Math.max(0, (c[had] || 0) - 1); if (now) c[now] = (c[now] || 0) + 1; return { c, mine: now }; };
-  rxState[item] = apply(prev); el.classList.remove("open"); rxDraw(el); buzz(8);   // show it straight away
+  const prev = rxState[item] ? { c: { ...rxState[item].c }, mine: [...rxState[item].mine] } : { c: {}, mine: [] };
+  // A tap adds or removes just that emoji; you can have several on one item (each counts once).
+  const apply = (s) => { const c = { ...s.c }, on = s.mine.includes(k); c[k] = Math.max(0, (c[k] || 0) + (on ? -1 : 1)); return { c, mine: RX.map(([x]) => x).filter((x) => (x === k ? !on : s.mine.includes(x))) }; };
+  rxState[item] = apply(prev); rxDraw(el);   // the picker stays open so you can add more; ✓ closes it buzz(8);   // show it straight away
   try {
     await fb.runTransaction(db, async (tx) => {
       const [d, m] = [await tx.get(ref), await tx.get(mineRef)];
-      const cur = { c: d.exists() ? d.data().c || {} : {}, mine: m.exists() ? m.data().e : "" }, next = apply(cur);
+      const cur = { c: d.exists() ? d.data().c || {} : {}, mine: m.exists() ? rxMine(m.data()) : [] }, next = apply(cur);
       const c = {}; RX.forEach(([key]) => { if (next.c[key]) c[key] = next.c[key]; else if (key in cur.c) c[key] = 0; });
       tx.set(ref, { c });
-      if (next.mine) tx.set(mineRef, { e: next.mine }); else tx.delete(mineRef);
+      if (next.mine.length) tx.set(mineRef, { m: next.mine }); else tx.delete(mineRef);
       rxState[item] = { c, mine: next.mine };
     });
   } catch { rxState[item] = prev; toast("Couldn't react. Try again."); }
@@ -1405,6 +1424,7 @@ window.scorelineReact = {
 document.addEventListener("click", (e) => {
   const el = e.target.closest("[data-react-id]"); if (!el) return;
   if (e.target.closest("[data-rx-add]")) { el.classList.add("open"); rxDraw(el); return; }
+  if (e.target.closest("[data-rx-done]")) { el.classList.remove("open"); rxDraw(el); return; }
   const b = e.target.closest("[data-rx]"); if (b) rxToggle(el, b.dataset.rx);
 });
 
@@ -1497,5 +1517,66 @@ window.scorelineBracket = {
     if (!user) return;
     try { await fb.setDoc(fb.doc(db, "brackets", user.uid + "_" + lg + "_" + season), { uid: user.uid, lg, season: Number(season), picks: data.picks || {}, seeds: data.seeds || {}, at: fb.serverTimestamp() }); }
     catch (e) { if (/permission/i.test(e?.code || "")) throw new Error("locked"); throw e; }
+  },
+};
+
+/* ---------- Game chat: talk about a game while it's on, with everyone watching ----------
+   gamechat/{lg_id}/msgs/{id} = { from, text, at }. Safety: signed-in accounts that agreed to the Terms (13+) and the
+   chat rules; text only (no links, photos or shares), 200 characters, one message every 5 seconds (gcLast/{uid}).
+   Tap a message to report the person (or delete your own; Mods and the Owner can delete any). Blocked people are hidden. */
+const GC_LINK = /(https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|gg|io|co|ly|me|tv|xyz|app)\b|discord|snap(chat)?\b|insta(gram)?\b|tiktok)/i;
+window.scorelineGameChat = {
+  mount(el) {
+    if (!el || el.dataset.gcOn) return; el.dataset.gcOn = "1";
+    const gid = el.dataset.gamechat, open = el.dataset.open === "1";
+    el.innerHTML = '<div class="g-label">💬 Game chat</div><div class="gc-list" aria-live="polite"><p class="g-note">Loading…</p></div>' +
+      (open ? '<form class="gc-form" autocomplete="off"><input type="text" maxlength="200" placeholder="Say something about the game" aria-label="Message the game chat" enterkeyhint="send"><button type="submit" class="pill-btn">Send</button></form>'
+        : '<p class="g-note">Chat is closed for this game.</p>') +
+      '<p class="g-note gc-rules">Be kind · no links or personal info · tap a message to report it.</p>';
+    const list = el.querySelector(".gc-list");
+    let unsub = null, mod = false, msgs = [];
+    const stop = () => { unsub?.(); unsub = null; clearInterval(tick); };
+    const tick = setInterval(() => { if (!el.isConnected) stop(); }, 5000);
+    const draw = async () => {
+      if (!el.isConnected) return stop();
+      const shown = msgs.filter((m) => !blocked.has(m.from));
+      if (!shown.length) { list.innerHTML = '<p class="g-note">No messages yet. Start the conversation 👋</p>'; return; }
+      const names = await Promise.all(shown.map((m) => nameOf(m.from).catch(() => "player")));
+      const atEnd = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+      list.innerHTML = shown.map((m, i) => '<button type="button" class="gc-msg' + (m.from === user?.uid ? " me" : "") + '" data-gc-id="' + esc(m.id) + '" data-gc-from="' + esc(m.from) + '"><b>@' + esc(names[i]) + "</b> " + esc(m.text) + "</button>").join("");
+      if (atEnd) list.scrollTop = list.scrollHeight;
+    };
+    (async () => {
+      await startFirebase();
+      if (FIREBASE_CONFIG) await Promise.race([authReady, new Promise((r) => setTimeout(r, 4000))]);
+      if (!user) { list.innerHTML = '<p class="g-note">Sign in to see and join the game chat.</p>'; el.querySelector(".gc-form")?.remove(); return; }
+      mod = ["owner", "mod"].includes(await roleOf(user.uid).catch(() => ""));
+      const q = fb.query(fb.collection(db, "gamechat", gid, "msgs"), fb.orderBy("at"), fb.limitToLast(60));
+      unsub = fb.onSnapshot(q, (snap) => { msgs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.text); draw(); },
+        () => { list.innerHTML = '<p class="g-note">Game chat isn\'t available right now.</p>'; });
+    })();
+    el.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-gc-id]"); if (!b || !user) return;
+      const mine = b.dataset.gcFrom === user.uid;
+      if (mine || mod) {
+        if (!confirm(mine ? "Delete your message?" : "Delete this message (Mod)?")) return;
+        try { await fb.deleteDoc(fb.doc(db, "gamechat", gid, "msgs", b.dataset.gcId)); } catch { toast("Couldn't delete it."); }
+        if (!mine && confirm("Report this person too?")) reportUser(b.dataset.gcFrom, ("g_" + gid).slice(0, 64));
+        return;
+      }
+      reportUser(b.dataset.gcFrom, ("g_" + gid).slice(0, 64));
+    });
+    el.querySelector(".gc-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const inp = e.target.querySelector("input"), text = inp.value.trim();
+      if (!text) return;
+      if (GC_LINK.test(text)) return toast("No links or social handles in game chat 🙂");
+      if (!(await ensureChatOk())) return;
+      const batch = fb.writeBatch(db);
+      batch.set(fb.doc(db, "gcLast", user.uid), { at: fb.serverTimestamp() });
+      batch.set(fb.doc(fb.collection(db, "gamechat", gid, "msgs")), { from: user.uid, text, at: fb.serverTimestamp() });
+      try { await batch.commit(); inp.value = ""; buzz(8); list.scrollTop = list.scrollHeight; }
+      catch { toast("Couldn't send. Game chat needs the Terms agreed (13+), and one message every 5 seconds."); }
+    });
   },
 };
