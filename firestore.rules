@@ -616,6 +616,7 @@ service cloud.firestore {
         && request.resource.data.username is string && request.resource.data.username.matches('^[a-z0-9_]{3,20}$')
         && request.resource.data.at == request.time;
       allow read, update, delete: if false;
+    }
     // Bracket predictions: your own bracket only (id = uid_league_season). Locked once that league's playoffs start
     // (the worker writes the lock time from the real schedule). The worker pays Marks for correct picks.
     function bracketOpen(lg, season) {

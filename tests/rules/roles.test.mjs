@@ -75,6 +75,7 @@ test("forgot password: anyone can ask, nobody can read the requests", async () =
   await assertSucceeds(setDoc(doc(anon, "resetRequests/r1"), { username: "joe", at: serverTimestamp() }));
   await assertFails(getDoc(doc(as("joe"), "resetRequests/r1")));
   await assertFails(setDoc(doc(anon, "resetRequests/r2"), { username: "JOE!!", at: serverTimestamp() }));
+});
 test("brackets: your own only, and locked once the playoffs start", async () => {
   const mine = { uid: "joe", lg: "nfl", season: 2026, picks: { "AFC|0|0": 2 }, seeds: { AFC: { "2": "17" } }, at: serverTimestamp() };
   await assertSucceeds(setDoc(doc(as("joe"), "brackets/joe_nfl_2026"), mine));
