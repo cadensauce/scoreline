@@ -52,7 +52,7 @@ function switchTo(slot) {
 }
 function addAccount() {
   const used = new Set([SLOT, ...savedAccts().map((a) => a.slot)]);
-  if (used.size > MAX_ACCTS) return toast("You can keep up to " + MAX_ACCTS + " accounts here. Log out of one first.");
+  if (used.size > MAX_ACCTS) return toast("You can keep up to " + MAX_ACCTS + " accounts here. Sign out of one first.");
   let n = 2; while (used.has("a" + n)) n++;
   switchTo("a" + n);
 }
@@ -656,7 +656,7 @@ const agreeTerms = (uid) => fb.setDoc(fb.doc(db, "ages", uid), { is13plus: true,
 const TRUST = '<div class="trust"><div class="trust-h">🔒 What Scoreline stores</div><ul>' +
   "<li><b>Your username</b>: anyone signed in can see it, so friends can find you. Pick one that doesn't include your real name.</li>" +
   "<li><b>Your profile card</b> (photo, bio, teams you follow): only your friends see it, and only if you choose to share it.</li>" +
-  "<li><b>Your email</b>: private, only used to log in and reset your password. Never shown to anyone or sold.</li>" +
+  "<li><b>Your email</b>: private, only used to sign in and reset your password. Never shown to anyone or sold.</li>" +
   "<li><b>Your ★ teams and alert settings</b>: so they sync to your other devices.</li>" +
   "<li><b>Chats</b>: only you and your friend can read them in the app.</li>" +
   "<li><b>Picks and Marks</b>: private to you.</li></ul>" +
@@ -701,14 +701,14 @@ function refreshAccountSheet() {
   if (!FIREBASE_CONFIG) h = '<div class="empty">Accounts are coming soon.</div>';
   else if (!fb) h = '<div class="skel" style="height:200px"></div>';
   else if (!user) {
-    h = '<div class="seg"><button type="button" data-amode="login" class="' + (mode === "login" ? "active" : "") + '">Log in</button><button type="button" data-amode="signup" class="' + (mode === "signup" ? "active" : "") + '">Create account</button></div>' +
+    h = '<div class="seg"><button type="button" data-amode="login" class="' + (mode === "login" ? "active" : "") + '">Sign in</button><button type="button" data-amode="signup" class="' + (mode === "signup" ? "active" : "") + '">Create account</button></div>' +
       '<form class="acct-form" data-acct>' + (mode === "signup"
         ? '<label>Username<input name="username" maxlength="20" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. niners_fan" required></label>'
         : '<label>Username or email<input name="who" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>') +
       '<label>Password<input name="password" type="password" minlength="6" autocomplete="' + (mode === "signup" ? "new-password" : "current-password") + '" required></label>' +
       (mode === "signup" ? '<label>Email <small class="muted">(optional)</small><input name="email" type="email" autocomplete="email" placeholder="Only for password resets and two-step codes"></label><p class="g-note">No email? That\'s fine. Just remember your password: without an email we can\'t send a reset link.</p>' : "") +
       (mode === "signup" ? TOS_CHECK + '<p class="g-note">By clicking Create account you agree to the TOS and understand the consequences.</p>' : "") +
-      '<div class="acct-err" data-err></div><button class="pill-btn dl acct-go" type="submit">' + (mode === "signup" ? "Create account" : "Log in") + "</button>" +
+      '<div class="acct-err" data-err></div><button class="pill-btn dl acct-go" type="submit">' + (mode === "signup" ? "Create account" : "Sign in") + "</button>" +
       (mode === "login" ? '<button type="button" class="acct-link" data-forgot>Forgot password?</button>' : "") + "</form>" +
       (mode === "login" ? '<button type="button" class="acct-link" data-usecode>Have a sign-in code from the website?</button>' : "") +
       (window.__TAURI__ ? "" : '<div class="or"><span>or</span></div><button type="button" class="pill-btn g-btn" data-google><svg viewBox="0 0 24 24" width="18" height="18"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.6 5.6 0 0 1-2.4 3.7v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.9-3c-1.1.7-2.4 1.2-4 1.2-3.1 0-5.7-2.1-6.6-4.9h-4v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.4 14.4a7.2 7.2 0 0 1 0-4.7V6.6h-4a12 12 0 0 0 0 10.9z"/><path fill="#EA4335" d="M12 4.8c1.7 0 3.3.6 4.5 1.8l3.4-3.4A12 12 0 0 0 1.4 6.6l4 3.1C6.3 6.9 8.9 4.8 12 4.8z"/></svg>Continue with Google</button>') +
@@ -716,14 +716,14 @@ function refreshAccountSheet() {
       TRUST + '<button type="button" class="acct-link" data-privacy>Read the full privacy page</button>';
   } else if (pending2) {
     h = otpForm("Check your email", "Two-step sign-in is on. We sent a 6-digit code to " + esc(maskEmail(contactEmail())) + ". It works for 10 minutes.") +
-      '<div class="acct-foot"><button type="button" class="acct-link" data-otpresend>Send a new code</button><button type="button" class="acct-link" data-logout>Log out</button></div>';  } else if (!profile) {
+      '<div class="acct-foot"><button type="button" class="acct-link" data-otpresend>Send a new code</button><button type="button" class="acct-link" data-logout>Sign out</button></div>';  } else if (!profile) {
     h = '<div class="g-label">Pick a username</div><p class="g-note">This is the only thing other people will see. 3–20 letters, numbers or _.</p>' +
       '<form class="acct-add acct-unf" data-uname><input maxlength="20" placeholder="e.g. niners_fan" autocomplete="off"><button class="pill-btn" type="submit">Save</button>' + TOS_CHECK + '</form><div class="acct-err" data-err></div>' +
-      '<div class="acct-foot"><button type="button" class="acct-link" data-acct-switch>Switch account</button><button type="button" class="acct-link" data-logout>Log out</button></div>';
+      '<div class="acct-foot"><button type="button" class="acct-link" data-acct-switch>Switch account</button><button type="button" class="acct-link" data-logout>Sign out</button></div>';
   } else {
     const F = friendState;
     const person = (uid, actions) => '<div class="opt"><span><b>@' + esc(names[uid] || "…") + "</b></span><span class=\"acct-acts\">" + actions + "</span></div>";
-    h = '<div class="acct-me' + bnCls(myCard?.banner) + '">' + avatarHtml(myCard?.avatar, profile?.username) + "<div><b>@" + esc(profile?.username || "") + "</b>" + titleTag(myCard?.title) + "<small data-email>" + emailLine() + '</small></div><button class="pill-btn" type="button" data-logout>Log out</button></div>' +
+    h = '<div class="acct-me' + bnCls(myCard?.banner) + '">' + avatarHtml(myCard?.avatar, profile?.username) + "<div><b>@" + esc(profile?.username || "") + "</b>" + titleTag(myCard?.title) + "<small data-email>" + emailLine() + '</small></div><button class="pill-btn" type="button" data-logout>Sign out</button></div>' +
       '<div class="g-note">★ teams and alert settings are synced.</div>' +
       '<div class="g-label" style="margin-top:18px">Your profile</div><div class="opt"><span><b>Photo, bio, theme and favourites</b><small>' + ((myCard?.show || "friends") === "me" ? "Only you can see it" : "Your friends can see it") + '</small></span><span class="acct-acts"><button class="pill-btn" type="button" data-viewcard="' + esc(user.uid) + '">View</button><button class="pill-btn" type="button" data-editprofile>Edit</button></span></div>' +
       '<div class="g-label" style="margin-top:18px">Two-step sign-in</div><div data-2box><div class="opt"><span><b>' + (twoStepOn ? "On" : "Off") + '</b><small>' + (twoStepOn ? "New devices need a code we email you" : "Ask for an emailed code when you sign in on a new device") + '</small></span>' +
@@ -787,7 +787,7 @@ window.scorelineSocial = {
 const niceErr = (e) => {
   const c = e?.code || "";
   if (/invalid-credential|wrong-password|user-not-found/.test(c)) return "Wrong username or password.";
-  if (/email-already-in-use/.test(c)) return "That email already has an account. Log in instead.";
+  if (/email-already-in-use/.test(c)) return "That email already has an account. Sign in instead.";
   if (/weak-password/.test(c)) return "Use at least 6 characters for your password.";
   if (/invalid-email/.test(c)) return "That email doesn't look right.";
   if (/too-many-requests/.test(c)) return "Too many tries. Wait a minute and try again.";
@@ -824,7 +824,7 @@ document.addEventListener("click", async (e) => {
   }
   if (e.target.closest("[data-2off]")) {
     try { await fb.deleteDoc(fb.doc(db, "twoStep", user.uid)); twoStepOn = false; toast("Two-step sign-in is off"); refreshAccountSheet(); }
-    catch { toast("Log out and back in with your code, then try again."); }
+    catch { toast("Sign out and back in with your code, then try again."); }
   }
 });
 document.addEventListener("submit", async (e) => {
@@ -994,7 +994,7 @@ document.addEventListener("submit", async (e) => {
     try {
       if (mode === "signup") { await signUp(d.username, d.password, (d.email || "").trim(), !!d.teen); await startSync().catch(() => {}); refreshAccountSheet(); }
       else { const who = (d.who || "").trim(); await fb.signInWithEmailAndPassword(auth, who.includes("@") ? who : loginFor(who), d.password); }
-      buzz(12); toast(mode === "signup" ? "Account created" : "Logged in");
+      buzz(12); toast(mode === "signup" ? "Account created" : "Signed in");
     } catch (err) { errBox(f, niceErr(err)); }
     btn.disabled = false;
   }
@@ -1027,7 +1027,7 @@ document.addEventListener("click", async (e) => {
   if (m) { mode = m.dataset.amode; return refreshAccountSheet(); }
   if (t.closest("[data-privacy]")) return openPrivacy();
   if (t.closest("[data-google]")) {
-    try { await fb.signInWithPopup(auth, new fb.GoogleAuthProvider()); buzz(12); toast("Logged in"); }
+    try { await fb.signInWithPopup(auth, new fb.GoogleAuthProvider()); buzz(12); toast("Signed in"); }
     catch (err) { if (!/popup-closed|cancelled-popup/.test(err?.code || "")) errBox(t, /operation-not-allowed/.test(err?.code || "") ? "Google sign-in isn't turned on yet." : niceErr(err)); }
     return;
   }
@@ -1041,7 +1041,7 @@ document.addEventListener("click", async (e) => {
     del.textContent = "Deleting…";
     try { await deleteAccount(); toast("Your account was deleted"); }
     catch (err) {
-      errBox(del, /requires-recent-login/.test(err?.code || "") ? "For safety, log out and log back in, then delete again." : "Couldn't delete. Try again.");
+      errBox(del, /requires-recent-login/.test(err?.code || "") ? "For safety, sign out and back in, then delete again." : "Couldn't delete. Try again.");
       del.textContent = "Delete my account"; delete del.dataset.sure;
     }
     return;
@@ -1049,7 +1049,7 @@ document.addEventListener("click", async (e) => {
   if (t.closest("[data-logout]")) {
     const others = savedAccts().filter((a) => a.slot !== SLOT);
     const cp = chatPushDoc(); if (cp) await fb.deleteDoc(cp).catch(() => {});   // this phone stops getting this account's messages
-    forgetSlot(SLOT); await fb.signOut(auth); toast("Logged out");
+    forgetSlot(SLOT); await fb.signOut(auth); toast("Signed out");
     if (others.length) switchTo(others[0].slot);   // like TikTok: carry on in your other account
     return;
   }

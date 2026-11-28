@@ -1,7 +1,7 @@
 {
   "name": "Scoreline",
   "short_name": "Scoreline",
-  "description": "Live scores for the NFL, college football, F1, NBA and the Premier League.",
+  "description": "Live scores and game details for the NFL, NBA, MLB, F1, and college football and basketball.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
