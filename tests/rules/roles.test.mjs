@@ -63,3 +63,12 @@ test("read-only pauses friend requests but reports still work", async () => {
   await assertFails(setDoc(doc(as("joe"), "requests/joe_ann"), { from: "joe", to: "ann", status: "pending", at: serverTimestamp() }));
   await assertSucceeds(setDoc(doc(as("joe"), "reports/r2"), { from: "joe", about: "bad", reason: "spam", at: serverTimestamp() }));
 });
+
+test("brackets: your own only, and locked once the playoffs start", async () => {
+  const mine = { uid: "joe", lg: "nfl", season: 2026, picks: { "AFC|0|0": 2 }, seeds: { AFC: { "2": "17" } }, at: serverTimestamp() };
+  await assertSucceeds(setDoc(doc(as("joe"), "brackets/joe_nfl_2026"), mine));
+  await assertFails(setDoc(doc(as("ann"), "brackets/joe_nfl_2026"), mine));
+  await assertFails(getDoc(doc(as("ann"), "brackets/joe_nfl_2026")));
+  await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "public/bracketLocks"), { nfl_2026: Timestamp.fromMillis(Date.now() - 1000) }));
+  await assertFails(setDoc(doc(as("joe"), "brackets/joe_nfl_2026"), mine));
+});
