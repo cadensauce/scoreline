@@ -11,6 +11,7 @@ import nodemailer from "nodemailer";
 import crypto from "node:crypto";
 import { picksTick, cleanupDeleted, seedShop, marksCheck } from "./picks.mjs";
 import { bracketTick } from "./bracket.mjs";
+import { startChatMod } from "./chatmod.mjs";
 let bracketAt = 0;
 import { fantasyTick } from "./fantasy.mjs";
 import { profileStats } from "./profile.mjs";
@@ -25,6 +26,7 @@ const LEAGUES = {
   nfl: { name: "NFL", icon: "🏈", path: "football/nfl", league: 28 },
   cfb: { name: "CFB", icon: "🏈", path: "football/college-football", extra: "groups=80&limit=300", league: 23 },
   nba: { name: "NBA", icon: "🏀", path: "basketball/nba", league: 46 },
+  cbb: { name: "CBB", icon: "🏀", path: "basketball/mens-college-basketball", extra: "groups=50&limit=400", league: 41 },
   mlb: { name: "MLB", icon: "⚾", path: "baseball/mlb", league: 10 },
 };
 
@@ -164,6 +166,7 @@ db.collection("otpAttempts").onSnapshot((snap) => {
 }, (e) => console.log("otp attempt listener stopped", e.message));
 // ---- subscribers -------------------------------------------------------------------------
 let subs = [];
+let subsById = new Map();   // every phone with alerts on (chat alerts don't need followed teams)
 let subsAt = 0;
 let lastTest = null;   // shown in public/push.status so a test can be checked without logs
 async function loadSubs() {
@@ -182,6 +185,7 @@ async function loadSubs() {
       console.log(new Date().toISOString(), "test →", s.id.slice(0, 8), result);
     }
   }
+  subsById = new Map(all.map((s) => [s.id, s]));
   subs = all.filter((s) => s.favs.size);
   subsAt = Date.now();
   console.log(new Date().toISOString(), "subscribers:", subs.length);
@@ -285,7 +289,7 @@ async function checkGames() {
         if (prev.st === "pre" && st === "in")
           await send(key, "start", L.icon + " " + nick(me) + " vs " + nick(opp) + " is starting", [tv(ev), "Tap to follow along"].filter(Boolean).join(" · "), "start-" + ev.id, ev);
         // Your team scores (basketball: end of Q1 and Q3 instead of every basket; Q2 is "halftime")
-        if (st === "in" && lg !== "nba" && mine > prev.sc[i]) {
+        if (st === "in" && lg !== "nba" && lg !== "cbb" && mine > prev.sc[i]) {
           const pts = mine - prev.sc[i];
           const what = lg === "mlb" ? (pts === 1 ? "scores a run" : "scores " + pts + " runs") : footballScore(pts);
           await send(key, "score", L.icon + " " + nick(me) + " " + what, scoreLine(ev) + " · " + clock, "score-" + ev.id + "-" + i + "-" + mine, ev);
@@ -305,7 +309,7 @@ async function checkGames() {
       }
       // Close finish, once per game
       const diff = Math.abs(sc[0] - sc[1]);
-      const late = lg === "mlb" ? period >= 9 && diff <= 1 : lg === "nba" ? period >= 4 && diff <= 5 && /^[0-2]:\d\d/.test(clock) : period >= 4 && diff <= 8 && /^[0-4]:\d\d/.test(clock);
+      const late = lg === "mlb" ? period >= 9 && diff <= 1 : lg === "nba" ? period >= 4 && diff <= 5 && /^[0-2]:\d\d/.test(clock) : lg === "cbb" ? period >= 2 && diff <= 5 && /^[0-2]:\d\d/.test(clock) : period >= 4 && diff <= 8 && /^[0-4]:\d\d/.test(clock);
       if (st === "in" && late && !closeSent.has(ev.id)) {
         closeSent.add(ev.id);
         for (const t of teams) await send(keyOf(t), "close", L.icon + " Close finish: " + nick(teams[0]) + " vs " + nick(teams[1]), scoreLine(ev) + " · " + clock, "close-" + ev.id, ev);
@@ -393,6 +397,8 @@ async function checkNews() {
 try { const d = await stateDoc.get(); if (d.exists) newsState = { seen: d.data().seen || [], caps: d.data().caps || {} }; } catch {}
 let picksAt = 0, cleanupAt = 0, fantasyAt = 0, marksAt = 0, statsAt = 0;
 await seedShop(db);
+await loadSubs().catch((e) => console.log("subs error", e.message));
+startChatMod(db, admin, { getSub: (id) => subsById.get(id), deliver, quietNow });   // chat alerts + Mod safety
 const until = Date.now() + RUN_FOR_MS;
 console.log("Push worker running until", new Date(until).toISOString());
 while (Date.now() < until) {

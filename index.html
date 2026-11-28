@@ -563,6 +563,7 @@
     .dev-form input[type="number"] { flex: 0 1 110px; } .dev-form input:focus { border-color: var(--muted); } .dev-form .pill-btn { flex: none; }
     .dev-form select { flex: 0 1 140px; height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; }
     .va-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .mod-box .acct-input { width: 100%; margin-bottom: 8px; } .mod-days { margin-bottom: 8px; flex-wrap: wrap; }
     .site-bar { position: sticky; top: 0; z-index: 70; padding: 8px 14px; background: var(--text); color: var(--bg); font-size: 13px; font-weight: 700; text-align: center; }
     .site-off { position: fixed; inset: 0; z-index: 99998; display: grid; place-items: center; padding: 24px; background: var(--bg); color: var(--text); text-align: center; } .site-off-e { font-size: 54px; margin-bottom: 8px; } .site-off b { font-size: 22px; } .site-off p { color: var(--muted); max-width: 360px; margin: 10px auto 0; }
     /* Customize: parts you turned off are hidden */
@@ -895,11 +896,11 @@
     .sb-to i { width: 12px; height: 3px; border-radius: 2px; background: var(--tick); }
     .sb-to i.on { background: var(--gold); }
     .sb-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 8px; min-width: 72px; text-align: center; }
-    @media (max-width: 400px) { .sb-to i { width: 10px; } .scorebug.nba .sb-to i { width: 5px; } .sb-sc { font-size: 21px; } .sb-team b { font-size: 16px; } }
+    @media (max-width: 400px) { .sb-to i { width: 10px; } .scorebug.nba .sb-to i, .scorebug.cbb .sb-to i { width: 5px; } .sb-sc { font-size: 21px; } .sb-team b { font-size: 16px; } }
     .sb-ball { width: 17px; height: 17px; flex: none; }
     .sb-mid small { font-size: 12.5px !important; }
     .sb-mid b { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; } .sb-mid small { font-size: 10.5px; color: var(--gold); font-weight: 700; }
-    .scorebug.nba .sb-to i { width: 7px; height: 5px; }
+    .scorebug.nba .sb-to i, .scorebug.cbb .sb-to i { width: 7px; height: 5px; }
     .sb-outs { display: inline-flex; gap: 3px; margin: 0 6px; vertical-align: 1px; } .sb-outs i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.2); } .sb-outs i.on { background: var(--gold); }
     .stops { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--panel); }
     .stop { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px; padding: 9px 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
@@ -1015,6 +1016,12 @@
     .msg p { margin: 0; padding: 9px 13px; border-radius: 18px 18px 18px 6px; background: var(--panel-3); font-size: 14.5px; line-height: 1.35; word-wrap: break-word; -webkit-user-select: text; user-select: text; }
     .msg.me { align-self: flex-end; } .msg.me p { background: var(--accent); color: var(--on-accent); border-radius: 18px 18px 6px 18px; }
     .msg small { display: block; font-size: 10.5px; color: var(--muted); margin: 3px 8px 0; } .msg.me small { text-align: right; }
+    .chat-photo { flex: none; display: grid; place-items: center; width: 42px; border-radius: var(--r-in); border: 1px solid var(--line); background: var(--panel); font-size: 18px; cursor: pointer; }
+    .msg-img { display: block; position: relative; border: 0; padding: 0; margin: 0 0 4px; background: none; border-radius: 12px; overflow: hidden; max-width: min(240px, 100%); cursor: pointer; }
+    .msg-img img { display: block; width: 100%; height: auto; }
+    .msg-img span { display: none; }
+    .msg-img.hide img { filter: blur(24px); opacity: .5; }
+    .msg-img.hide span { display: grid; place-items: center; position: absolute; inset: 0; font-size: 13px; font-weight: 600; color: #fff; text-shadow: 0 1px 3px #000; }
     .chat-form { display: flex; gap: 8px; padding: 10px 0 calc(12px + env(safe-area-inset-bottom)); position: sticky; bottom: 0; background: var(--bg); }
     .chat-form input { flex: 1; min-width: 0; border-radius: 99px; }
     /* Chats: list, chat page, shares, safety notes (like Instagram) */
@@ -1583,11 +1590,13 @@
 
   <script>
     const API = "https://site.api.espn.com/apis/site/v2/sports/";
+    const BB = (lg) => lg === "nba" || lg === "cbb";   /* basketball: NBA and college share the court, fouls, halves aside */
     const LEAGUES = {
       nfl:  { name: "NFL", path: "football/nfl", paging: "week" },
       cfb:  { name: "College Football", short: "CFB", path: "football/college-football", paging: "week", extra: "&groups=80&limit=300" },
       f1:   { name: "Formula 1", short: "F1", path: "racing/f1" },
       nba:  { name: "NBA", path: "basketball/nba", paging: "day" },
+      cbb:  { name: "College Basketball", short: "CBB", path: "basketball/mens-college-basketball", paging: "day", extra: "&groups=50&limit=400" },
       mlb:  { name: "MLB", path: "baseball/mlb", paging: "day" },
     };
     // Phone app mode: the Android app, or Scoreline added to an iPhone/Android home screen.
@@ -1689,7 +1698,7 @@
       tab: store.get("tab", "home"),
       favs: new Set(cleanFavs(store.get("favs", []))),
       filters: new Set((() => { const f = store.get("filters", null); if (Array.isArray(f)) return f; const old = store.get("filter", "all"); return old && old !== "all" ? [old] : []; })().filter((k) => ["live", "close", "fav"].includes(k))),
-      offset: { nfl: 0, cfb: 0, nba: 0, mlb: 0 },
+      offset: { nfl: 0, cfb: 0, nba: 0, cbb: 0, mlb: 0 },
       f1Table: "drivers",
     };
     const cache = {};     // league -> last scoreboard JSON
@@ -1746,7 +1755,7 @@
     function teamsOf(ev) { return (ev.competitions?.[0]?.competitors || []).slice().sort((a, b) => (a.homeAway === "away" ? -1 : 1)); }
     function favKey(t) { return t.team?.uid || t.team?.id; }
     // Team pages get the team without its uid; rebuild it so the ★ matches the one on game rows.
-    const LG_UID = { nfl: "s:20~l:28", cfb: "s:20~l:23", nba: "s:40~l:46", mlb: "s:1~l:10" };
+    const LG_UID = { nfl: "s:20~l:28", cfb: "s:20~l:23", nba: "s:40~l:46", cbb: "s:40~l:41", mlb: "s:1~l:10" };
     const teamKeyOf = (t, lg) => t.uid || (LG_UID[lg] && t.id ? LG_UID[lg] + "~t:" + t.id : t.id);
     // Slide a chip strip sideways only. scrollIntoView would also scroll the whole page back up.
     function centerChip(c, smooth) { const s = c?.parentElement; if (!s) return; s.scrollTo({ left: c.offsetLeft - (s.clientWidth - c.offsetWidth) / 2, behavior: smooth ? "smooth" : "auto" }); }
@@ -1772,7 +1781,7 @@
       if (p) return p;
       return st.state === "in" && (lg === "nfl" || lg === "cfb") && s.drives?.current?.team?.id ? String(s.drives.current.team.id) : null;
     }
-    const POSS_ICON = (lg) => '<svg class="poss" viewBox="0 0 24 24" aria-label="' + (lg === "mlb" ? "Batting" : "Has the ball") + '" role="img">' + (lg === "nba"
+    const POSS_ICON = (lg) => '<svg class="poss" viewBox="0 0 24 24" aria-label="' + (lg === "mlb" ? "Batting" : "Has the ball") + '" role="img">' + (BB(lg)
       ? '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 12h16M12 4v16" stroke="currentColor" stroke-width="1.6"/>'
       : lg === "mlb" ? '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 5.5c2 2.5 2 10.5 0 13M16 5.5c-2 2.5-2 10.5 0 13" fill="none" stroke="currentColor" stroke-width="1.5"/>'
       :'<ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-35 12 12)" fill="currentColor"/><path d="M9.5 14.5l5-5" stroke="var(--bg)" stroke-width="1.6"/>') + "</svg>";
@@ -1849,7 +1858,7 @@
     function gameVibe(ev, key) {
       const state = ev.status?.type?.state;
       if (state === "in") { const c = closeness(ev, key); return c < 0.08 ? "🔥 Nail-biter" : c > 0.46 ? "🧹 Running away with it" : ""; }
-      if (state === "post") { const t = teamsOf(ev), g = Math.abs(Number(t[0]?.score) - Number(t[1]?.score)); if (isNaN(g)) return ""; return g <= ({ mlb: 1, nfl: 3, cfb: 3, nba: 3 }[key] ?? 1) ? "😮‍💨 Down to the wire" : ""; }
+      if (state === "post") { const t = teamsOf(ev), g = Math.abs(Number(t[0]?.score) - Number(t[1]?.score)); if (isNaN(g)) return ""; return g <= ({ mlb: 1, nfl: 3, cfb: 3, nba: 3, cbb: 3 }[key] ?? 1) ? "😮‍💨 Down to the wire" : ""; }
       return "";
     }
     // Filters you can combine: Live, Closest (sorts) and ★ My teams. All = none on.
@@ -2195,7 +2204,7 @@
       const sBtn = paged ? '<button type="button" class="icon-btn' + (open ? " on" : "") + '" data-searchtoggle aria-label="Search ' + esc(L.short || L.name) + ' teams"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>' : "";
       const hBtn = key !== "f1" ? '<button type="button" class="icon-btn' + (HEAT ? " on" : "") + '" data-heat aria-label="' + (HEAT ? "Show as list" : "Show as heat map") + '" title="' + (HEAT ? "List" : "Heat map") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2" opacity=".55"/><rect x="3" y="13" width="8" height="8" rx="2" opacity=".3"/><rect x="13" y="13" width="8" height="8" rx="2" opacity=".75"/></svg></button>' : "";
       return '<div class="bar"><h1>' + esc(title) + "</h1>" + hBtn + sBtn + "</div>" + headlineHtml(key) + (open ? search : "") +
-        '<div class="bar-row">' + liveBtn + "</div>" + (paged ? '<div class="tool-row" data-noswipe><button type="button" class="tool-chip" data-standings="' + key + '"><i>📊</i>' + (key === "cfb" ? "Top 25" : "Standings") + '</button><button type="button" class="tool-chip" data-open-buzz="all" data-bz-lg="' + key + '"><i>📰</i>News</button><button type="button" class="tool-chip" data-leaders="' + key + '"><i>🏅</i>Leaders</button>' + (key !== "cfb" ? '<button type="button" class="tool-chip" data-bracket="' + key + '"><i>🏆</i>Bracket</button>' : "") + "</div>" : "") + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
+        '<div class="bar-row">' + liveBtn + "</div>" + (paged ? '<div class="tool-row" data-noswipe><button type="button" class="tool-chip" data-standings="' + key + '"><i>📊</i>' + (key === "cfb" ? "Top 25" : "Standings") + '</button><button type="button" class="tool-chip" data-open-buzz="all" data-bz-lg="' + key + '"><i>📰</i>News</button><button type="button" class="tool-chip" data-leaders="' + key + '"><i>🏅</i>Leaders</button>' + (key !== "cfb" && key !== "cbb" ? '<button type="button" class="tool-chip" data-bracket="' + key + '"><i>🏆</i>Bracket</button>' : "") + "</div>" : "") + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
         (HEAT ? '<div class="heat-key"><span>One-sided</span><i></i><span>Close game</span></div>' : "") + (HEAT ? dm("<b>Reading the heat map.</b> Each tile is one game. The brighter the tile, the closer the game is to a coin flip (from win probability), so the most exciting games stand out. Upcoming games use the pre-game odds; finished games are dimmed. The ball icon shows who has it.") : "");
     }
 
@@ -2275,7 +2284,7 @@
     async function renderHome() {
       const main = $("main");
       if (!main.querySelector("[data-home]")) main.innerHTML = savedShell("home") || '<div data-home>' + barHtml("Today", null) + skeleton(9) + "</div>";
-      const keys = ["nfl", "cfb", "nba", "mlb"].filter((k) => pins().includes(k));   // only the sports in your bar (You tab)
+      const keys = ["nfl", "cfb", "nba", "cbb", "mlb"].filter((k) => pins().includes(k));   // only the sports in your bar (You tab)
       const results = await Promise.allSettled(keys.map((k) => { state.offset[k] = 0; return loadLeague(k); }));
       let f1;
       if (pins().includes("f1")) try { f1 = await getJSON(API + LEAGUES.f1.path + "/scoreboard"); cache.f1 = f1; } catch {}
@@ -2908,7 +2917,7 @@
         return { id: String(w.playId ?? ""), home: Math.min(1, Math.max(0, +w.homeWinPercentage || 0)), per: p?.period?.number || 0, clock: p?.clock?.displayValue || "", text: p?.text || p?.type?.text || "" };
       });
     }
-    const perName = (lg, n) => !n ? "" : lg === "nba" ? (n > 4 ? "OT" + (n > 5 ? n - 4 : "") : "Q" + n) : lg === "mlb" ? "Inn " + n : lg === "cfb" || lg === "nfl" ? (n > 4 ? "OT" : "Q" + n) : "P" + n;
+    const perName = (lg, n) => !n ? "" : lg === "cbb" ? (n > 2 ? "OT" + (n > 3 ? n - 2 : "") : n === 1 ? "1st half" : "2nd half") : lg === "nba" ? (n > 4 ? "OT" + (n > 5 ? n - 4 : "") : "Q" + n) : lg === "mlb" ? "Inn " + n : lg === "cfb" || lg === "nfl" ? (n > 4 ? "OT" : "Q" + n) : "P" + n;
     // NBA: Scoreline's own model (models/wp.js) beat ESPN in the backtest when given ESPN's pre-game number as team
     // strength (reports/winprob/REPORT.md). Other sports show ESPN's number, labelled as ESPN's.
     function ourNbaSeries(s, teams) {
@@ -3060,7 +3069,7 @@
       }
       return seasonCache[lg];
     }
-    const HOME_EDGE = { nfl: 1.5, cfb: 2.5, nba: 1.5, mlb: 0.15 };
+    const HOME_EDGE = { nfl: 1.5, cfb: 2.5, nba: 1.5, cbb: 3, mlb: 0.15 };
     // Player projections for an upcoming game: each team's leaders, projected at their per-game average this season.
     const PP_CATS = {
       nfl: [["passingLeader", "passing yards"], ["rushingLeader", "rushing yards"], ["receivingLeader", "receiving yards"]],
@@ -3079,9 +3088,9 @@
         return (await Promise.all(cats.map(async ([name, what]) => {
           const top = (L.categories || []).find((c) => c.name === name)?.leaders?.[0];
           if (!top?.athlete?.$ref) return null;
-          const [a, st] = await Promise.all([refJSON(top.athlete.$ref).catch(() => null), lg === "nba" ? null : top.statistics?.$ref ? refJSON(top.statistics.$ref).catch(() => null) : null]);
+          const [a, st] = await Promise.all([refJSON(top.athlete.$ref).catch(() => null), BB(lg) ? null : top.statistics?.$ref ? refJSON(top.statistics.$ref).catch(() => null) : null]);
           let per = top.value;
-          if (lg !== "nba") {   // football leaders are season totals: divide by the games he played
+          if (!BB(lg)) {   // football leaders are season totals: divide by the games he played
             const gp = (st?.splits?.categories || []).flatMap((c) => c.stats || []).find((x) => x.name === "gamesPlayed")?.value;
             if (!gp) return null;
             per = top.value / gp;
@@ -3092,7 +3101,7 @@
       const rows = perTeam.flat();
       if (!rows.length) return "";
       return '<div class="pp"><div class="pp-t">Player projections</div>' + rows.map((r) => '<button type="button" class="pp-row" data-player="' + lg + "|" + esc(r.id) + '"><span>' + esc(r.name) + " <small>" + esc(r.team) + "</small></span><b>" +
-        (lg === "nba" ? r.per.toFixed(1) : Math.round(r.per)) + " <small>" + esc(r.what) + "</small></b></button>").join("") + '<div class="g-note">Each player\'s average per game this season.</div></div>';
+        (BB(lg) ? r.per.toFixed(1) : Math.round(r.per)) + " <small>" + esc(r.what) + "</small></b></button>").join("") + '<div class="g-note">Each player\'s average per game this season.</div></div>';
     }
 
     // "Why this game matters": one short line, only when something real is at stake (from standings / rankings).
@@ -3170,7 +3179,7 @@
     /* ---------- Picks (Phase 5): pick the winner before kickoff and earn Marks ----------
        Free to play. Marks are earned only (never bought, cashed out or traded). Locking and the 13+ rule are
        enforced by the Firestore rules; the push worker sets the Upset bonus and pays Marks after the final. */
-    const PICK_LGS = ["nfl", "cfb", "nba", "mlb"];
+    const PICK_LGS = ["nfl", "cfb", "nba", "cbb", "mlb"];
     /* ---------- Terms of Service (shown from Picks and You → About). Plain wording; update TERMS_DATE when it changes. ---------- */
     const TERMS_DATE = "November 20, 2026";   // Picks are kept clear of gambling law: free (no consideration), no prizes or cash value (no prize). See docs/research-legal-phase5.md.
     const TERMS_HTML = '<div class="terms"><p class="muted">Last updated ' + TERMS_DATE + "</p>" +
@@ -3427,7 +3436,7 @@
         }).join("") : '<div class="g-note">Open an upcoming game to make your first pick.</div>') + "</div>");
     }
     async function predictionHtml(lg, s, teams, state) {
-      if (!["nfl", "cfb", "nba", "mlb"].includes(lg) || teams.length < 2) return "";
+      if (!["nfl", "cfb", "nba", "cbb", "mlb"].includes(lg) || teams.length < 2) return "";
       const comp = s.header?.competitions?.[0] || {}, post = state === "post", id = s.header?.id || comp.id;
       const [away, home] = teams;
       const yr = s.header?.season?.year, as0 = Number(away.score), hs0 = Number(home.score);
@@ -3467,7 +3476,7 @@
       const nmT = (t) => t.team?.name || t.team?.shortDisplayName || t.team?.displayName || t.team?.abbreviation || "";
       // Tidy ESPN play text: drop formation notes and snapper/holder names, shorten the extra-point part.
       const tidy = (x) => String(x || "").replace(/^\([^)]*\)\s*/, "").replace(/,?\s*(Center|Holder)-[^,.)]+/g, "").replace(/\.?\s*[A-Z]\.[\w'-]+ extra point is GOOD.*$/i, ", extra point good").replace(/\s+/g, " ").trim().slice(0, 120);
-      const margin = sc(W) - sc(L), big = { nfl: 17, cfb: 21, nba: 15, mlb: 5 }[lg] || 15, close = { nfl: 3, cfb: 3, nba: 5, mlb: 1 }[lg] || 3;
+      const margin = sc(W) - sc(L), big = { nfl: 17, cfb: 21, nba: 15, cbb: 15, mlb: 5 }[lg] || 15, close = { nfl: 3, cfb: 3, nba: 5, cbb: 5, mlb: 1 }[lg] || 3;
       const series = lg === "mlb" ? null : wpSeries(s);
       const low = series ? Math.min(...series.map((p) => (wHome ? p.home : 1 - p.home))) : null;
       let head = nmT(W) + " beat " + nmT(L) + " " + sc(W) + "–" + sc(L) + ".";
@@ -3687,7 +3696,7 @@
       const stat = (tm2, name, abbr) => { const t = bt.find((x) => x.team?.id === tm2.team?.id); if (!t) return null; for (const g of t.statistics || []) { if (g.name === name) return g.displayValue; for (const x of g.stats || []) if (x.abbreviation === abbr || x.name === name) return x.displayValue; } return null; };
       let label = "", vals;
       if (lg === "nfl" || lg === "cfb") { label = "Flags"; vals = teams.map((t) => { const v = stat(t, "totalPenaltiesYards"); return v == null ? null : String(v).replace("-", ":"); }); }
-      else if (lg === "nba") { label = "Fouls"; vals = teams.map((t) => { const f = stat(t, "fouls"), tf = Number(stat(t, "totalTechnicalFouls")) || 0; return f == null ? null : f + (tf ? " (" + tf + " tech)" : ""); }); }
+      else if (BB(lg)) { label = "Fouls"; vals = teams.map((t) => { const f = stat(t, "fouls"), tf = Number(stat(t, "totalTechnicalFouls")) || 0; return f == null ? null : f + (tf ? " (" + tf + " tech)" : ""); }); }
       else if (lg === "mlb") { label = "Errors"; vals = teams.map((t) => stat(t, "errors", "E")); }
       if (!label || vals.some((x) => x == null)) return "";
       return '<div class="flag-line" title="' + (label === "Flags" ? "Penalties: number of flags : yards" : label) + '"><span class="muted">' + tm(lg, label) + "</span>" +
@@ -3752,7 +3761,7 @@
       const tabs = '<div class="seg chips">' + [["all", "Both"], ["0", teams[0].team?.abbreviation], ["1", teams[1].team?.abbreviation]].map(([k, l]) => '<button type="button" data-ct="' + k + '" class="' + (f === k ? "active" : "") + '">' + (k === "all" ? "" : '<i class="ct-dot" style="background:' + ["#ff7a45", "#5bb4ff"][k] + '"></i>') + esc(l) + "</button>").join("") + "</div>";
       const want = (tid) => f === "all" || teams[+f]?.team?.id === String(tid);
       const PAL = ["#ff7a45", "#5bb4ff"], colorOf = (tid) => PAL[teams[1]?.team?.id === String(tid) ? 1 : 0];
-      if (v.lg === "nba") {
+      if (BB(v.lg)) {
         const shots = (s.plays || []).filter((p) => p.shootingPlay && p.coordinate && p.coordinate.x >= 0 && p.coordinate.x <= 50 && !/free throw/i.test(p.text || ""));
         if (!shots.length) return '<div class="g-label">Shot chart</div><div class="g-note">Shots will appear here once the game starts.</div>';
         const W = 300, H = 282, k = W / 50, X = (x) => x * k, Y = (y) => (y + 4) * k;
@@ -3815,7 +3824,7 @@
       const tid = (t) => t.team?.id;
       const byName = (txt) => teams.find((t) => [t.team?.shortDisplayName, t.team?.name, t.team?.location, t.team?.displayName].some((n) => n && String(txt).toLowerCase().startsWith(String(n).toLowerCase())));
       const stops = [];
-      if (v.lg === "nba") {
+      if (BB(v.lg)) {
         const used = {}, usedQ4 = {}, usedOT = {};
         plays.forEach((p) => {
           const ty = p.type?.text || "", tx = p.text || "", base = { per: p.period?.number, clock: p.clock?.displayValue };
@@ -3850,7 +3859,7 @@
           else if (/shot|jumper|layup|dunk|hook|tip/i.test(lt)) poss = lteam;
         }
         const f = (t) => fouls[tid(t)] || 0;
-        const mid = per ? "Fouls " + f(away) + " – " + f(home) + (f(away) >= 5 || f(home) >= 5 ? " · Bonus" : "") : "";
+        const mid = per ? "Fouls " + f(away) + " – " + f(home) + (Math.max(f(away), f(home)) >= (v.lg === "cbb" ? 7 : 5) ? " · Bonus" : "") : "";
         return { live, stops, left: { [tid(away)]: left(away), [tid(home)]: left(home) }, max: per > 4 ? 2 : per === 4 ? 4 : 7, poss: live ? poss : null, mid, last };
       }
       // MLB
@@ -3894,7 +3903,7 @@
       const abA = esc(away.team?.abbreviation), abH = esc(home.team?.abbreviation);
       const teamOf = (id) => v.teams.find((t) => t.team?.id === String(id));
       let list, html;
-      if (lg === "nba") {
+      if (BB(lg)) {
         const pts = {};
         const rows = plays.map((p) => {
           const pid = p.participants?.[0]?.athlete?.id;
@@ -5073,7 +5082,7 @@
       const tv = (comp.broadcasts || []).map((b) => b.media?.shortName).filter(Boolean).join(", ");
       if (!vn.fullName && !tv) return "";
       const where = [a.city, a.state || a.country].filter(Boolean).join(", ");
-      const surface = lg === "nba" ? "Hardwood" : vn.grass === true ? "Grass" : vn.grass === false ? "Turf" : "";
+      const surface = BB(lg) ? "Hardwood" : vn.grass === true ? "Grass" : vn.grass === false ? "Turf" : "";
       const row = (k, v) => '<div class="vc-row"><span>' + esc(k) + "</span><b>" + v + "</b></div>";
       const outdoor = lg === "nfl" || lg === "cfb" || lg === "mlb";
       return '<div class="g-sec venue-card" data-c="info">' +
@@ -5160,7 +5169,7 @@
       if (lg === "mlb") h += pitchersHtml(s);
       if ((lg === "nfl" || lg === "cfb") && window.ScorelineWP) window.ScorelineWP.ready(lg).catch(() => {});   // for the strategy picker
       if (lg === "nfl" || lg === "cfb") h += '<div class="g-sec" data-field data-c="plays timeouts"><div class="g-label">Plays</div><div class="skel" style="height:150px"></div></div>';
-      if (lg === "nba" || lg === "mlb") { v.s = s; v.lg = lg; v.teams = teams; v.chartTeam = "all"; v.id = id; v.updated = Date.now(); h += '<div class="g-sec" data-chart data-c="plays timeouts">' + chartSecHtml(v) + "</div>"; }
+      if (BB(lg) || lg === "mlb") { v.s = s; v.lg = lg; v.teams = teams; v.chartTeam = "all"; v.id = id; v.updated = Date.now(); h += '<div class="g-sec" data-chart data-c="plays timeouts">' + chartSecHtml(v) + "</div>"; }
       if (lg === "mlb") h += mlbSituation(lg, id, teams);
       h += linescoreHtml(comp, lg);
 
@@ -5195,8 +5204,8 @@
       h += '<div class="g-sec" data-feedsec data-c="plays"></div>';
       setBody(v, (teams[0]?.team?.abbreviation || "") + " @ " + (teams[1]?.team?.abbreviation || ""), h);
       if (lg === "nfl" || lg === "cfb") loadField(v, lg, id, teams, st.state);
-      if (lg === "nba" || lg === "mlb") renderSportFeed(v, false);
-      if ((lg === "nba" || lg === "mlb") && st.state === "in") liveSummary(v);
+      if (BB(lg) || lg === "mlb") renderSportFeed(v, false);
+      if ((BB(lg) || lg === "mlb") && st.state === "in") liveSummary(v);
       if (st.state === "in") wpLive(v, lg, id);
       whyMatters(lg, s, teams).then((x) => { const el = v.el.querySelector("[data-why]"); if (!el) return; if (x) el.outerHTML = '<p class="why"><b>Why it matters.</b> ' + esc(x) + "</p>"; else el.remove(); }).catch(() => v.el.querySelector("[data-why]")?.remove());
       fillPick(v, lg, id, teams, st.state).catch(() => {});
@@ -5444,8 +5453,8 @@
     const qTime = (v, d) => { const n = qMins(v); return isNaN(n) ? d : String(Math.floor(n / 60)).padStart(2, "0") + ":" + String(n % 60).padStart(2, "0"); };
     const quietNow = (p) => { const a = qMins(p.quietFrom), b = qMins(p.quietTo), d = new Date(), now = d.getHours() * 60 + d.getMinutes(); return !isNaN(a) && !isNaN(b) && a !== b && (a < b ? now >= a && now < b : now >= a || now < b); };
     const wants = (p, team, kind, ev) => { if (quietNow(p)) return false; const m =modeFor(p, team, kind); return m === "always" || (m === "playoffs" && ev?.season?.type === 3) || (m === "champ" && isChampionship(ev)); };
-    const CHAMP_NAME = { nfl: "Super Bowl", nba: "Finals", mlb: "World Series", cfb: "Title game" };
-    const LEAGUE_OF = { 28: "nfl", 23: "cfb", 46: "nba", 10: "mlb" };
+    const CHAMP_NAME = { nfl: "Super Bowl", nba: "Finals", mlb: "World Series", cfb: "Title game", cbb: "National title" };
+    const LEAGUE_OF = { 28: "nfl", 23: "cfb", 46: "nba", 41: "cbb", 10: "mlb" };
     const lgOfTeam = (key) => key === "f1" ? "f1" : LEAGUE_OF[(String(key).match(/l:(\d+)/) || [])[1]];
     // Formula 1 is followed as a whole: just "session starting" and "results", each on or off.
     const F1_KINDS = { start: { t: "Session starting", d: "Qualifying, sprint and race" }, final: { t: "Results", d: "Pole position and the race podium" } };
@@ -5813,12 +5822,12 @@
     /* ---------- Profiles: a full page (banner, photo, stats, favourite sports/teams/players) and an editor.
        Data comes from account.js (window.scorelineProfile). Stats are written only by the worker, so they can't be faked. ---------- */
     const PTHEMES = [["plain", "Plain"], ["night", "Night"], ["field", "Field"], ["court", "Court"], ["diamond", "Diamond"], ["track", "Track"]];
-    const SPORT_NAMES = { nfl: "NFL", cfb: "College Football", nba: "NBA", mlb: "MLB", f1: "Formula 1" };
-    const HS_PATH = { nfl: "nfl", cfb: "college-football", nba: "nba", mlb: "mlb", f1: "rpm" };
+    const SPORT_NAMES = { nfl: "NFL", cfb: "College Football", nba: "NBA", cbb: "College Basketball", mlb: "MLB", f1: "Formula 1" };
+    const HS_PATH = { nfl: "nfl", cfb: "college-football", nba: "nba", cbb: "mens-college-basketball", mlb: "mlb", f1: "rpm" };
     const profHeadshot = (lg, id) => /^\d+$/.test(String(id)) && HS_PATH[lg] ? "https://a.espncdn.com/combiner/i?img=/i/headshots/" + HS_PATH[lg] + "/players/full/" + id + ".png&w=200&h=145&scale=crop" : "";
     const safeLogo = (u) => (/^https:\/\/a\.espncdn\.com\/[\w/.\-?=&%]+$/.test(u || "") ? u : "");
-    const UID_LG = { 28: "nfl", 23: "cfb", 46: "nba", 10: "mlb" };
-    const LOGO_PATH = { nfl: "nfl", cfb: "ncaa", nba: "nba", mlb: "mlb" };
+    const UID_LG = { 28: "nfl", 23: "cfb", 46: "nba", 41: "cbb", 10: "mlb" };
+    const LOGO_PATH = { nfl: "nfl", cfb: "ncaa", nba: "nba", cbb: "ncaa", mlb: "mlb" };
     const teamLogo = (t) => safeLogo(t?.l) || (LOGO_PATH[t?.lg] && /^\d+$/.test(String(t?.id)) ? "https://a.espncdn.com/i/teamlogos/" + LOGO_PATH[t.lg] + "/500/" + t.id + ".png" : "");
     const teamFromKey = (k) => { const m = /l:(\d+)~t:(\d+)/.exec(k || ""); return m && UID_LG[m[1]] ? { lg: UID_LG[m[1]], id: m[2] } : null; };
     const PF = () => window.scorelineProfile;
@@ -5831,7 +5840,7 @@
     // (best season against an elite season for the position). Before the stats load, they're still grouped by sport.
     function favPlayersHtml(list, meta) {
       const M = meta || {}, by = (a, b) => (M[b.lg + "|" + b.id]?.score || 0) - (M[a.lg + "|" + a.id]?.score || 0);
-      const lgs = ["nfl", "cfb", "nba", "mlb", "f1"].filter((lg) => list.some((p) => p.lg === lg));
+      const lgs = ["nfl", "cfb", "nba", "cbb", "mlb", "f1"].filter((lg) => list.some((p) => p.lg === lg));
       return lgs.map((lg) => {
         const mine = list.filter((p) => p.lg === lg), f1 = lg === "f1";
         const cur = mine.filter((p) => M[p.lg + "|" + p.id]?.active !== false).sort(by), old = mine.filter((p) => M[p.lg + "|" + p.id]?.active === false).sort(by);
@@ -5922,7 +5931,40 @@
         favMeta(d.card.favPlayers, 30000).then(draw).catch(() => {});   // and again when the slow ones finish (or retry once)
       }
       setBody(v, d.card?.name || "@" + d.username, d.card ? profileHtml(d) : '<div class="empty">@' + esc(d.username || "this person") + " keeps their profile private" + (d.isFriend ? "." : ", or you're not friends yet.") + "</div>");
+      if (!d.mine) modPanel(v, d).catch(() => {});
     }
+    /* Mod tools on someone's profile (Owner and Mods only; the rules enforce who can act on whom). */
+    async function modPanel(v, d) {
+      const R = window.scorelineRoles, M = window.scorelineMod;
+      if (!R || !M) return;
+      const me = await R.mine().catch(() => "");
+      if (me !== "owner" && me !== "mod") return;
+      const st = await M.status(d.uid).catch(() => ({ banned: false }));
+      const body = v.el?.querySelector(".sheet-body"); if (!body || !v.el.isConnected) return;
+      const box = document.createElement("div"); box.className = "mod-box";
+      box.innerHTML = '<div class="section-title"><b>🛡️ Mod tools</b></div><div class="panel dev-panel">' +
+        (st.banned ? '<p class="muted">🚫 Banned ' + (st.until ? "until " + esc(new Date(st.until).toLocaleDateString([], { month: "short", day: "numeric" })) : "for good") + " · " + esc(st.reason || "") + "</p>" : "") +
+        '<input class="acct-input" data-mod-reason maxlength="300" placeholder="Reason (they will see this)">' +
+        '<div class="seg chips mod-days">' + M.BAN_DAYS.map(([n, l], i) => '<button type="button" data-mod-days="' + n + '" class="' + (i === 0 ? "on" : "") + '">' + l + "</button>").join("") + "</div>" +
+        '<div class="va-btns"><button type="button" class="pill-btn" data-mod-warn="' + esc(d.uid) + '">⚠️ Warn</button><button type="button" class="pill-btn" data-mod-ban="' + esc(d.uid) + '">🚫 Ban</button>' +
+        (st.banned ? '<button type="button" class="pill-btn" data-mod-unban="' + esc(d.uid) + '">Unban</button>' : "") + "</div>" +
+        '<div class="g-note">A ban turns off chat, friends, reactions and ideas for them; scores still work. Too many bans or warnings in a short time pauses a Mod until the Owner checks.</div></div>';
+      body.appendChild(box);
+    }
+    document.addEventListener("click", async (e) => {
+      const dd = e.target.closest("[data-mod-days]");
+      if (dd) { dd.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === dd)); return; }
+      const w = e.target.closest("[data-mod-warn], [data-mod-ban], [data-mod-unban]"); if (!w) return;
+      const box = w.closest(".mod-box"), M = window.scorelineMod, reason = box.querySelector("[data-mod-reason]").value;
+      const days = +(box.querySelector("[data-mod-days].on")?.dataset.modDays || 1);
+      w.disabled = true;
+      try {
+        if (w.dataset.modWarn) { await M.warn(w.dataset.modWarn, reason); toast("Warning sent ⚠️"); }
+        else if (w.dataset.modBan) { await M.ban(w.dataset.modBan, reason, days); toast("Banned 🚫"); }
+        else { await M.unban(w.dataset.modUnban); toast("Unbanned"); }
+        buzz(12); const v = views.find((x) => x.el?.contains(box)); box.remove(); if (v) modPanel(v, { uid: v.uid }).catch(() => {});
+      } catch (err) { toast(err.message || "That didn't work."); w.disabled = false; }
+    });
     window.openProfile = openProfile;
 
     /* editor */
@@ -5995,7 +6037,7 @@
       const seen = new Set(hits.map((h) => h.lg + "|" + h.id));
       PE.hits = [...hits.slice(0, 10), ...past.filter((h) => lgs.includes(h.lg) && !seen.has(h.lg + "|" + h.id))].slice(0, 16);
     }
-    const SEARCH_LG = { 28: "nfl", 23: "cfb", 46: "nba", 10: "mlb" };
+    const SEARCH_LG = { 28: "nfl", 23: "cfb", 46: "nba", 41: "cbb", 10: "mlb" };
     async function espnPlayers(q) {
       const d = await getJSON("https://site.web.api.espn.com/apis/search/v2?query=" + encodeURIComponent(q) + "&limit=20&type=player");
       const list = (d.results || []).find((x) => x.type === "player")?.contents || [];
@@ -6192,8 +6234,24 @@
             reps.map((x) => '<div class="opt rep-row"><span><b>' + esc(REASON[x.reason] || x.reason) + '</b><small>@' + esc(x.fromName || "…") + " reported <button type=\"button\" class=\"link-btn\" data-viewcard=\"" + esc(x.about) + "\">@" + esc(x.aboutName || "…") + "</button> · " + esc(x.when ? new Date(x.when).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "") + "</small>" +
               (x.text ? '<small class="rep-text">“' + esc(x.text) + "”</small>" : "") + "</span></div>").join("")) + "</div>";
       }
+      if (me === "owner" || me === "mod") {
+        const M = window.scorelineMod, bans = await M?.bans().catch(() => null);
+        html += '<div class="section-title"><b>Banned 🚫</b><span class="muted">' + (bans ? bans.length : "") + '</span></div><div class="panel">' +
+          (!bans ? '<p class="muted people-hint">Couldn\'t load bans.</p>' : !bans.length ? '<p class="muted people-hint">No one is banned.</p>' :
+            bans.map((x) => '<div class="opt rep-row"><span><b><button type="button" class="link-btn" data-viewcard="' + esc(x.uid) + '">@' + esc(x.name || "…") + "</button></b><small>" + esc(x.reason || "") + " · " + (x.until ? (x.until > Date.now() ? "until " + esc(new Date(x.until).toLocaleDateString([], { month: "short", day: "numeric" })) : "ended") : "forever") + " · by @" + esc(x.byName || "…") + "</small></span></div>").join("")) +
+          '</div><div class="g-note">Open someone\'s profile to warn, ban or unban them.</div>';
+        if (me === "owner") {
+          const ps = await M?.paused().catch(() => []) || [];
+          if (ps.length) html += '<div class="section-title"><b>Paused for too many actions ⏸️</b></div><div class="panel">' + ps.map((x) => '<div class="opt soc-row"><span><b>@' + esc(x.name || "…") + "</b><small>" + esc(x.why || "Acted too fast") + '</small></span><button type="button" class="pill-btn" data-unpause="' + esc(x.uid) + '" data-unpause-role="' + esc(x.role) + '">Unpause</button></div>').join("") + "</div>";
+        }
+      }
       if (box.isConnected) box.innerHTML = html;
     }
+    document.addEventListener("click", async (e) => {
+      const u = e.target.closest("[data-unpause]"); if (!u) return;
+      u.disabled = true;
+      try { await window.scorelineMod.unpause(u.dataset.unpause, u.dataset.unpauseRole); toast("Unpaused"); u.closest(".opt")?.remove(); } catch { toast("Couldn't unpause."); u.disabled = false; }
+    });
     document.addEventListener("submit", async (e) => {
       const f = e.target.closest("[data-role-form]"); if (!f) return;
       e.preventDefault();
@@ -6302,7 +6360,7 @@
     /* ---------- The Buzz: news + moves (cuts, signings, trades, call-ups, injured list) with a bit of personality ----------
        News headlines and move lists come from ESPN's public feeds; titles get an emoji by what happened. No news photos
        (they belong to the photographers); teams show as colour badges, not logos. Every story links to its source. */
-    const BUZZ_LGS = ["nfl", "nba", "mlb", "cfb"];
+    const BUZZ_LGS = ["nfl", "nba", "mlb", "cfb", "cbb"];
     const POS = "(?:QB|RB|FB|WR|TE|OL|OT|OG|G|C|T|DL|DE|DT|NT|LB|OLB|ILB|MLB|DB|CB|S|SS|FS|K|P|LS|KR|PR|LHP|RHP|P|1B|2B|3B|SS|OF|LF|CF|RF|DH|INF|UTIL|PG|SG|SF|PF|F|G-F|F-C|C-F|ATH)";
     const teamBadge = (t) => t ? '<span class="tbadge" style="--tc:#' + esc(t.color || "555") + '">' + esc(t.abbreviation || "?") + "</span>" : "";
     const FA = '<span class="tbadge fa" title="Free agent">FA</span>';
@@ -6461,7 +6519,7 @@
     const LDR = {};   // lg -> { season, type, cat }
     // The number to show: ESPN sometimes gives a whole stat line ("179-567, 42 HR, ..."); then use the value itself.
     const ldrVal = (l) => { const d = String(l.displayValue ?? ""); if (d.length <= 8) return d; const v = Number(l.value); return !isFinite(v) ? d.split(",")[0] : v > 0 && v < 1 ? v.toFixed(3).replace(/^0/, "") : Number.isInteger(v) ? v.toLocaleString() : v.toFixed(1); };
-    const seasonName = (lg, y) => (lg === "nba" ? (y - 1) + "-" + String(y).slice(2) : String(y));
+    const seasonName = (lg, y) => (BB(lg) ? (y - 1) + "-" + String(y).slice(2) : String(y));
     async function openLeaders(lg) {
       const v = { kind: "leaders", key: "leaders|" + lg };
       if (!pushView(v)) return; v.el.dataset.lg = lg;
@@ -6839,7 +6897,7 @@
     const fmtClock = (v) => { const n = qMins(v); return new Date(2000, 0, 1, Math.floor(n / 60), n % 60).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); };
     function notifsHtml() {
       const favs = [...state.favs], p = alertPrefs(), quietOn = !isNaN(qMins(p.quietFrom)) && !isNaN(qMins(p.quietTo));
-      return '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Only about the teams you follow</small></span><i class="switch"></i></button><button type="button" class="pill-btn test-btn" id="testNotify">Send test notification</button>' + (alertsOn ? '<div class="g-note" id="pushState">' + esc(pushStatus) + "</div>" : "") + "</div>" +
+      return '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Only about the teams you follow</small></span><i class="switch"></i></button><button type="button" class="opt ' + (p.chat === "off" ? "" : "on") + '" data-chat-alerts><span><b>💬 Messages</b><small>New chat messages and photos (when you\'re signed in)</small></span><i class="switch"></i></button><button type="button" class="pill-btn test-btn" id="testNotify">Send test notification</button>' + (alertsOn ? '<div class="g-note" id="pushState">' + esc(pushStatus) + "</div>" : "") + "</div>" +
         '<div class="section-title"><b>Quiet hours</b></div><div class="panel"><button type="button" class="opt ' + (quietOn ? "on" : "") + '" data-quiet-toggle><span><b>Quiet hours</b><small>No alerts between these times (your phone\'s time)</small></span><i class="switch"></i></button>' +
         (quietOn ? '<div class="quiet-times"><label>From<input type="time" data-quiet-from value="' + esc(qTime(p.quietFrom, "22:00")) + '"></label><label>To<input type="time" data-quiet-to value="' + esc(qTime(p.quietTo, "07:00")) + '"></label></div>' : "") + "</div>" +
         '<div class="section-title"><b>Your teams</b></div><div class="panel nteams">' + (favs.length ? favs.map((k) =>
@@ -6859,6 +6917,7 @@
     document.addEventListener("click", (e) => {
       if (e.target.closest("[data-open-notifs]")) return openNotifs();
       if (e.target.closest("[data-open-dev]")) return openDev();
+      if (e.target.closest("[data-chat-alerts]")) { const raw = store.get("alertPrefs", {}); raw.chat = raw.chat === "off" ? "on" : "off"; store.set("alertPrefs", raw); window.scorelineSettingsChanged?.(); if (alertsOn) pushSync(); buzz(6); return renderAlerts(); }
       if (e.target.closest("[data-quiet-toggle]")) { const p = alertPrefs(), on = !isNaN(qMins(p.quietFrom)) && !isNaN(qMins(p.quietTo)); saveQuiet(on ? null : "22:00", on ? null : "07:00"); buzz(6); renderAlerts(); }
     });
     document.addEventListener("change", (e) => {
@@ -6869,7 +6928,7 @@
     const versionText = () => (document.querySelector("meta[name=version]")?.content || "2.0");
     const builtOn = () => { const b = Number(document.querySelector("meta[name=build]")?.content); return b ? new Date(b * 1000).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "recently"; };
     // Sports pinned to the bottom bar. Everything else stays one tap away on Home.
-    const ALL_SPORTS = ["nfl", "cfb", "nba", "mlb", "f1"];
+    const ALL_SPORTS = ["nfl", "cfb", "nba", "cbb", "mlb", "f1"];
     const pins = () => { const p = store.get("pins", ["nfl", "cfb", "f1"]).filter((k) => ALL_SPORTS.includes(k)); return p.length ? p : ["nfl"]; };
     document.addEventListener("click", (e) => {
       const px = e.target.closest("[data-pin-x]");
@@ -6982,6 +7041,9 @@
         "Pit crew": "About 20 mechanics who change all 4 tyres in roughly 2 to 3 seconds.",
       },
     };
+    /* College basketball shares the NBA's tables (stats, glossary, positions, icons); only halves and the primer differ. */
+    [ICONS, NEWS_VIP, PP_CATS, RECAP_EDGES, STAT_KEYS, BALL_ICON, GLOSS, POSINFO].forEach((t) => { if (t && t.nba && !t.cbb) t.cbb = t.nba; });
+    PRIMER.cbb = "<b>College basketball in 30 seconds.</b> Score by shooting through the hoop: 2 points, 3 from behind the arc, 1 for a free throw. 2 halves of 20 minutes. Over 350 Division I schools play in conferences, and in March the NCAA Tournament (March Madness) decides the champion.";
     function posInfo(lg, a) {
       const t = POSINFO[lg]; if (!t || !a) return "";
       a = String(a).toUpperCase();
@@ -7007,7 +7069,7 @@
       [/^Track$/, "<b>Live car positions.</b> Each dot is a car in its team's colour, moving around the circuit as it happens. Dots bunched together are cars fighting for position."],
       [/^Pre|^Predict/, "<b>Our pick.</b> Worked out from each team's season so far (points scored and allowed, plus home field). It's an educated guess, not a promise: upsets happen all the time. After the game, it shows how close the pick was."],
       [/^Recap/, "<b>The short version.</b> How the game went, written from the final score and the key plays."],
-      [/^Scoring$/, { nba: "<b>Points by quarter.</b> 4 quarters of 12 minutes. <b>OT</b> is overtime (5 extra minutes when it's tied). <b>T</b> is the total.", all: "<b>Points by quarter.</b> 4 quarters of 15 minutes. <b>OT</b> is overtime, extra time when the game is tied. <b>T</b> is the total." }],
+      [/^Scoring$/, { cbb: "<b>Points by half.</b> 2 halves of 20 minutes. <b>OT</b> is overtime (5 extra minutes when it's tied). <b>T</b> is the total.", nba: "<b>Points by quarter.</b> 4 quarters of 12 minutes. <b>OT</b> is overtime (5 extra minutes when it's tied). <b>T</b> is the total.", all: "<b>Points by quarter.</b> 4 quarters of 15 minutes. <b>OT</b> is overtime, extra time when the game is tied. <b>T</b> is the total." }],
       [/^Line score/, "<b>Runs by inning.</b> Each column is an inning (9 in a game). <b>R</b> = runs, <b>H</b> = hits, <b>E</b> = errors (fielding mistakes). Most runs after 9 innings wins."],
       [/^Team stats/, {
         nba: "<b>Both teams side by side.</b> The longer bar is the better number. Watch <b>FG%</b> (share of shots made), <b>rebounds</b> (grabbing missed shots, which means more chances) and <b>turnovers</b> (losing the ball, giving the other team a chance).",
@@ -7017,7 +7079,7 @@
       [/^Spray chart/, "<b>Where the ball was hit.</b> Home plate is at the bottom. Dots are hits, circles are outs, stars are home runs."],
       [/^At the plate/, "<b>The batter vs the pitcher.</b> The count is balls then strikes: 4 balls is a walk (free trip to 1st base), 3 strikes is a strikeout. 3 outs ends the team's turn at bat."],
       [/^Plays$/, { nfl: FB_PLAYS, cfb: FB_PLAYS, all: "<b>Every play, newest first.</b> Scoring plays stand out so you can spot the big moments quickly." }],
-      [/^Timeouts/, { nba: "<b>Breaks in play.</b> Each team gets 7 timeouts per game to stop the clock or regroup. Play also stops for injuries and replay reviews.", mlb: "<b>Breaks in play.</b> Pauses for pitching changes, mound visits, injuries and replay reviews.", all: "<b>Breaks in play.</b> Each team gets 3 timeouts per half to stop the clock or regroup. Play also stops for injuries, reviews and the 2-minute warning." }],
+      [/^Timeouts/, { cbb: "<b>Breaks in play.</b> Each team gets a few timeouts per game, plus TV timeouts at set times in each half. Play also stops for injuries and replay reviews.", nba: "<b>Breaks in play.</b> Each team gets 7 timeouts per game to stop the clock or regroup. Play also stops for injuries and replay reviews.", mlb: "<b>Breaks in play.</b> Pauses for pitching changes, mound visits, injuries and replay reviews.", all: "<b>Breaks in play.</b> Each team gets 3 timeouts per half to stop the clock or regroup. Play also stops for injuries, reviews and the 2-minute warning." }],
       [/^Play-by-play/, "<b>The full list.</b> Every play of the game in order, grouped by drive or period. Scoring plays are marked so you can jump to the big moments."],
       [/^What would you do/, "<b>Be the coach.</b> Pick a choice and see how often it usually works from this exact spot, based on past games. There's no wrong answer: real coaches argue about these all the time."],
       [/recent games$/, "<b>Lately.</b> How this number went in the team's last few games. A taller bar means a higher number."],
@@ -7043,7 +7105,7 @@
         if (l.nextElementSibling?.classList.contains("dm-note")) return;
         const t = l.textContent.trim(), hit = DM_SEC.find(([k]) => (typeof k === "function" ? k(l) : k.test(t)));
         let txt = hit?.[1];
-        if (txt && typeof txt === "object") txt = txt[dmLg(l)] || txt.all;
+        if (txt && typeof txt === "object") txt = txt[dmLg(l)] || (dmLg(l) === "cbb" ? txt.nba : null) || txt.all;
         if (txt) l.insertAdjacentHTML("afterend", dm(txt));
       });
     }
@@ -7331,6 +7393,7 @@
     const deviceId = (() => { let id = store.get("deviceId", ""); if (!/^[0-9a-f]{64}$/.test(id)) { id = hex(crypto.getRandomValues(new Uint8Array(32))); store.set("deviceId", id); } return id; })();
     const subUrl = (id) => PUSH_DB + id + "?key=" + PUSH_KEY;
     let pushActive = false;
+    window.scorelineDeviceId = deviceId; window.scorelinePushOn = () => pushActive;
     let pushTestAt = "";
     // The installed Android app gets a push address from Android itself (Firebase Cloud Messaging).
     const nativePush = () => typeof window.ScorelineNative?.pushToken === "function";
@@ -7391,7 +7454,7 @@
           updatedAt: { timestampValue: new Date().toISOString() },
         };
         const r = await pfetch(subUrl(deviceId), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fields }) });
-        pushActive = r.ok;
+        pushActive = r.ok; if (pushActive) window.scorelineChatPush?.();   /* and link this phone to your account for chat alerts */
         if (r.ok) {
           store.set("pushOffPending", false);
           // Older versions saved this phone under a hash of its push address; remove that copy once.
@@ -7425,7 +7488,7 @@
       const sent = store.get("sentAlerts", {}), now0 = Date.now();
       for (const k in sent) if (now0 - sent[k] > 2 * 864e5) delete sent[k];
       const say = (title, body, tag) => { const id = tag + "|" + title + "|" + body; if (!fresh || sent[id]) return; sent[id] = now0; notify(title, body, tag); };
-      const keys = ["nfl", "cfb", "nba", "mlb"], ICON = { nfl: "🏈", cfb: "🏈", nba: "🏀", mlb: "⚾" };
+      const keys = ["nfl", "cfb", "nba", "cbb", "mlb"], ICON = { nfl: "🏈", cfb: "🏈", nba: "🏀", cbb: "🏀", mlb: "⚾" };
       const datas = await Promise.allSettled(keys.map((k) => getJSON(API + LEAGUES[k].path + "/scoreboard?" + (LEAGUES[k].extra || "").replace(/^&/, ""))));
       const nick = (t) => t.team?.name || t.team?.shortDisplayName || t.team?.abbreviation;
       datas.forEach((res, i) => {
@@ -7443,7 +7506,7 @@
             const opp = teams[1 - j], mine = sc[j], theirs = sc[1 - j];
             const W = (k) => wants(P, favKey(me), k, ev);
             if (W("start") && prev.st === "pre" && st === "in") say(ic + " " + nick(me) + " vs " + nick(opp) + " is starting", "Tap to follow along", "start-" + ev.id);
-            if (W("score") && st === "in" && lg !== "nba" && mine > prev.sc[j]) {
+            if (W("score") && st === "in" && !BB(lg) && mine > prev.sc[j]) {
               const pts = mine - prev.sc[j];
               const what = lg === "mlb" ? (pts === 1 ? "scores a run" : "scores " + pts + " runs") : pts >= 6 ? "touchdown" : pts === 3 ? "field goal" : pts === 2 ? "safety" : "score";
               say(ic + " " + nick(me) + " " + what, line(ev) + " · " + clock, "score-" + ev.id);
@@ -7454,7 +7517,7 @@
             if (W("final") && st === "post" && prev.st !== "post") say(ic + " Final: " + nick(me) + " " + (mine > theirs ? "win" : mine < theirs ? "lose" : "tie") + " " + Math.max(mine, theirs) + "–" + Math.min(mine, theirs), "vs " + (opp.team?.displayName || nick(opp)), "final-" + ev.id);
           });
           const diff = Math.abs(sc[0] - sc[1]);
-          const late = lg === "mlb" ? per >= 9 && diff <= 1 : lg === "nba" ? per >= 4 && diff <= 5 && /^[0-2]:\d\d/.test(clock) : per >= 4 && diff <= 8 && /^[0-4]:\d\d/.test(clock);
+          const late = lg === "mlb" ? per >= 9 && diff <= 1 : lg === "nba" ? per >= 4 && diff <= 5 && /^[0-2]:\d\d/.test(clock) : lg === "cbb" ? per >= 2 && diff <= 5 && /^[0-2]:\d\d/.test(clock) : per >= 4 && diff <= 8 && /^[0-4]:\d\d/.test(clock);
           if (st === "in" && late && !snapshot["close" + ev.id] && teams.some((t) => state.favs.has(favKey(t)) && wants(P, favKey(t), "close", ev))) { snapshot["close" + ev.id] = 1; say(ic + " Close finish: " + nick(teams[0]) + " vs " + nick(teams[1]), line(ev) + " · " + clock, "close-" + ev.id); }
         });
       });
