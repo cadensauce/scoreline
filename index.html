@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795848458" />
+  <meta name="build" content="1795848565" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -2545,9 +2545,10 @@
         if (nx && ev.circuit?.address?.city) left += '<div class="g-sec" data-wx style="margin-top:12px"><div class="skel" style="height:90px"></div></div>';
         const race =(ev.competitions || []).slice().reverse().find((c) => c.status?.type?.state !== "pre" && (c.competitors || []).length);
         if (race) {
-          left += '<div class="section-title"><b>' + esc(SESSION_NAMES[race.type?.abbreviation] || "Session") + " results</b></div><table><thead><tr><th>Pos</th><th>Driver</th><th>Team</th></tr></thead><tbody>" +
+          const hasTeam = race.competitors.some((d) => d.team?.displayName);   // ESPN often leaves teams out of session results: then no empty column
+          left += '<div class="section-title"><b>' + esc(SESSION_NAMES[race.type?.abbreviation] || "Session") + " results</b></div><table><thead><tr><th>Pos</th><th>Driver</th>" + (hasTeam ? "<th>Team</th>" : "") + "</tr></thead><tbody>" +
             race.competitors.slice().sort((a, b) => (a.order || 99) - (b.order || 99)).slice(0, 20).map((d) =>
-              "<tr" + (d.athlete?.id ? ' class="f1-follow" data-driver="' + esc(d.athlete.id) + '"' : "") + '><td class="pos">' + esc(d.order ?? "") + "</td><td>" + (d.athlete?.flag?.href ? '<img class="flag" src="' + esc(d.athlete.flag.href) + '" alt="">' : "") + esc(d.athlete?.displayName || "") + '</td><td style="color:var(--muted)">' + esc(d.team?.displayName || "") + "</td></tr>").join("") + "</tbody></table>";
+              "<tr" + (d.athlete?.id ? ' class="f1-follow" data-driver="' + esc(d.athlete.id) + '"' : "") + '><td class="pos">' + esc(d.order ?? "") + "</td><td>" + (d.athlete?.flag?.href ? '<img class="flag" src="' + esc(d.athlete.flag.href) + '" alt="">' : "") + esc(d.athlete?.displayName || "") + "</td>" + (hasTeam ? '<td style="color:var(--muted)">' + esc(d.team?.displayName || "") + "</td>" : "") + "</tr>").join("") + "</tbody></table>";
         }
       }
       left += "</div>";
@@ -7757,6 +7758,6 @@
     if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
-  <script type="module" src="account.js?v=1795848458"></script>
+  <script type="module" src="account.js?v=1795848565"></script>
 </body>
 </html>
