@@ -2,7 +2,7 @@
 // - Free Fantasy: no currency at all.
 // - Marks Fantasy: free to enter (never costs Marks); finishing higher earns Marks, only for accounts that agreed to the
 //   Terms (13+). Marks are NOT real money.
-// Formats: Weekly lineup and Daily lineup (Season leagues come later). Every sport: NFL, CFB, NBA, MLB, F1 (F1 is weekly only).
+// Formats: Weekly lineup and Daily lineup. Every sport: NFL, CFB, NBA, CBB (AP Top 25 games), MLB, F1 (F1 is weekly only).
 //
 // What the worker writes (the site can only read these; rules check lineups against them):
 //   fcontests/{id}  one contest: sport, format, label, lockAt (first game), games, slots, pool {playerId: {n, t, p}},
@@ -12,7 +12,7 @@
 // score, rank and (Marks mode) the Marks earned, paid with a ledger entry fantasy_<entryId> in the same batch.
 
 const API = "https://site.api.espn.com/apis/site/v2/sports/";
-const LGS = { nfl: "football/nfl", cfb: "football/college-football", nba: "basketball/nba", mlb: "baseball/mlb" };
+const LGS = { nfl: "football/nfl", cfb: "football/college-football", nba: "basketball/nba", cbb: "basketball/mens-college-basketball", mlb: "baseball/mlb" };
 const getJSON = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error(r.status + " " + u); return r.json(); };
 
 // Lineup spots per sport: [spot, player group]. Groups: QB RB WR TE (football), G F C (NBA), H P (MLB hitter/pitcher), D (F1 driver).
@@ -20,6 +20,7 @@ export const SLOTS = {
   nfl: [["qb", "QB"], ["rb1", "RB"], ["rb2", "RB"], ["wr1", "WR"], ["wr2", "WR"], ["te", "TE"]],
   cfb: [["qb", "QB"], ["rb1", "RB"], ["rb2", "RB"], ["wr1", "WR"], ["wr2", "WR"], ["te", "TE"]],
   nba: [["g1", "G"], ["g2", "G"], ["f1", "F"], ["f2", "F"], ["c", "C"]],
+  cbb: [["g1", "G"], ["g2", "G"], ["f1", "F"], ["f2", "F"], ["c", "C"]],
   mlb: [["h1", "H"], ["h2", "H"], ["h3", "H"], ["p", "P"]],
   f1: [["d1", "D"], ["d2", "D"], ["d3", "D"]],
 };
@@ -35,7 +36,7 @@ const nice = (s) => new Date(Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.sli
 function group(lg, pos) {
   const p = String(pos || "").toUpperCase();
   if (lg === "nfl" || lg === "cfb") return ["QB", "RB", "WR", "TE"].includes(p) ? p : (p === "FB" ? "RB" : null);
-  if (lg === "nba") return p.startsWith("G") || p === "PG" || p === "SG" ? "G" : p.startsWith("F") || p === "SF" || p === "PF" ? "F" : p.startsWith("C") ? "C" : null;
+  if (lg === "nba" || lg === "cbb") return p.startsWith("G") || p === "PG" || p === "SG" ? "G" : p.startsWith("F") || p === "SF" || p === "PF" ? "F" : p.startsWith("C") ? "C" : null;
   if (lg === "mlb") return /^(P|SP|RP)$/.test(p) ? "P" : p ? "H" : null;
   return null;
 }
@@ -58,7 +59,7 @@ function boxPoints(lg, summary) {
           else if (cat.name === "fumbles") pts -= v(/^fumblesLost$/) * 2;
           else if (cat.name === "kickReturns") pts += v(/^kickReturnTouchdowns$/) * 6;
           else if (cat.name === "puntReturns") pts += v(/^puntReturnTouchdowns$/) * 6;
-        } else if (lg === "nba") {
+        } else if (lg === "nba" || lg === "cbb") {
           pts += v(/^points$/) + v(/^rebounds$/) * 1.2 + v(/^assists$/) * 1.5 + v(/^steals$/) * 3 + v(/^blocks$/) * 3 - v(/^turnovers$/);
         } else if (lg === "mlb") {
           if (/bat/i.test(cat.name || cat.type || "") || k(/^atBats$/) >= 0) pts += v(/^hits$/) * 3 + v(/^runs$/) * 2 + v(/^RBIs?$/i) * 2 + v(/^homeRuns$/) * 4 + v(/^walks$/) * 2;
@@ -98,6 +99,16 @@ async function poolFor(lg, events) {
 const scoreboard = async (lg, q) => (await getJSON(API + LGS[lg] + "/scoreboard" + (q ? "?" + q : ""))).events || [];
 const firstStart = (events) => Math.min(...events.map((e) => Date.parse(e.date)).filter(Number.isFinite));
 
+// AP Top 25 team ids (college sports), cached 12 h.
+const topAt = new Map();
+async function top25(lg) {
+  const c = topAt.get(lg); if (c && Date.now() - c.at < 12 * 3600e3) return c.ids;
+  const rk = await getJSON(API + LGS[lg] + "/rankings").catch(() => null);
+  const ap = (rk?.rankings || []).find((r) => /AP/.test(r.name || "")) || rk?.rankings?.[0];
+  const ids = new Set((ap?.ranks || []).map((r) => String(r.team?.id)).filter((x) => x && x !== "undefined"));
+  topAt.set(lg, { at: Date.now(), ids }); return ids;
+}
+
 async function planContests(lg) {
   const out = [], today = etDate(new Date());
   if (lg === "nfl" || lg === "cfb") {
@@ -112,13 +123,15 @@ async function planContests(lg) {
       for (const e of events) (days[etDate(new Date(e.date))] ||= []).push(e);
       for (const [d, evs] of Object.entries(days)) if (d >= today) out.push({ id: lg + "_d_" + d, fmt: "d", label: nice(d), events: evs });
     }
-  } else if (lg === "nba" || lg === "mlb") {
+  } else if (lg === "nba" || lg === "mlb" || lg === "cbb") {
+    const q = lg === "cbb" ? "groups=50&limit=400&" : "", top = lg === "cbb" ? await top25(lg) : null;
+    const keep = (evs) => (top ? evs.filter((e) => (e.competitions?.[0]?.competitors || []).some((c) => top.has(String(c.team?.id)))) : evs);   // CBB: only games with an AP Top 25 team (300+ teams is too many to pick from)
     for (const d of [today, addDays(today, 1)]) {
-      const events = await scoreboard(lg, "dates=" + d).catch(() => []);
+      const events = keep(await scoreboard(lg, q + "dates=" + d).catch(() => []));
       if (events.length) out.push({ id: lg + "_d_" + d, fmt: "d", label: nice(d), events });
     }
     for (const mon of [mondayOf(today), addDays(mondayOf(today), 7)]) {
-      const events = (await Promise.all([0, 1, 2, 3, 4, 5, 6].map((i) => scoreboard(lg, "dates=" + addDays(mon, i)).catch(() => [])))).flat();
+      const events = keep((await Promise.all([0, 1, 2, 3, 4, 5, 6].map((i) => scoreboard(lg, q + "dates=" + addDays(mon, i)).catch(() => [])))).flat());
       if (events.length) out.push({ id: lg + "_w_" + mon, fmt: "w", label: "Week of " + nice(mon), events });
     }
   }
@@ -142,7 +155,7 @@ async function f1Contest() {
 const lastPlan = new Map();   // lg -> time contests were last (re)built
 export async function fantasyTick(db, admin) {
   const FV = admin.firestore.FieldValue, TS = admin.firestore.Timestamp;
-  for (const lg of ["nfl", "cfb", "nba", "mlb", "f1"]) {
+  for (const lg of ["nfl", "cfb", "nba", "cbb", "mlb", "f1"]) {
     // 1) Publish upcoming contests (and refresh their player lists) every 30 minutes until they lock.
     if (Date.now() - (lastPlan.get(lg) || 0) > 30 * 60_000) {
       lastPlan.set(lg, Date.now());
@@ -249,7 +262,7 @@ async function settleContest(db, admin, ref, d) {
 //   - at each week's lock, copies every member's current starters into the league (locked.{contestId})
 //   - when that week's contest is final, scores the starters with the same points as the weekly contest, adds them to the
 //     season totals, and in Marks leagues gives the week's top score LEAGUE_WIN Marks (agreed accounts only).
-export const ROSTER = { nfl: 8, cfb: 8, nba: 7, mlb: 6, f1: 3 };
+export const ROSTER = { nfl: 8, cfb: 8, nba: 7, cbb: 7, mlb: 6, f1: 3 };
 const LEAGUE_WIN = 20;
 const poolAt = new Map();
 async function publishPool(db, admin, lg) {
@@ -262,8 +275,8 @@ async function publishPool(db, admin, lg) {
       for (const e of st?.children?.[0]?.standings?.entries || []) if (e.athlete?.id) players[String(e.athlete.id)] = { n: e.athlete.displayName || "", t: "", p: "D" };
     } else {
       let teams = [];
-      if (lg === "cfb") {
-        const rk = await getJSON(API + LGS.cfb + "/rankings");
+      if (lg === "cfb" || lg === "cbb") {
+        const rk = await getJSON(API + LGS[lg] + "/rankings");
         const ap = (rk.rankings || []).find((r) => /AP/.test(r.name || "")) || rk.rankings?.[0];
         teams = (ap?.ranks || []).map((r) => ({ id: String(r.team?.id), t: r.team?.abbreviation || "" })).filter((x) => x.id);
       } else {
