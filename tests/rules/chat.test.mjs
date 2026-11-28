@@ -102,3 +102,22 @@ test("send a report; nobody can read reports in the app", async () => {
   await assertFails(addDoc(collection(as("ann"), "reports"), { from: "bob", about: "cat", reason: "bullying", at: serverTimestamp() }));
   await assertFails(addDoc(collection(as("ann"), "reports"), { from: "ann", about: "cat", reason: "made-up", at: serverTimestamp() }));
 });
+
+// Chat photos: a small JPEG saved inside the message (no file storage on the free plan).
+const JPEG = "data:image/jpeg;base64," + "A".repeat(2000);
+test("friends can send a photo", () => assertSucceeds(send("ann", "ann_bob", { text: "", img: JPEG })));
+test("photos must be a JPEG data address", async () => {
+  await assertFails(send("ann", "ann_bob", { text: "", img: "data:image/png;base64,AAAA" }));
+  await assertFails(send("ann", "ann_bob", { text: "", img: "https://example.com/x.jpg" }));
+  await assertFails(send("ann", "ann_bob", { text: "", img: "data:image/jpeg;base64,<script>" }));
+});
+test("photos can't be too big", () => assertFails(send("ann", "ann_bob", { text: "", img: "data:image/jpeg;base64," + "A".repeat(300001) })));
+test("strangers can't send photos", () => assertFails(send("cat", "ann_bob", { text: "", img: JPEG })));
+test("a banned person can't send messages", async () => {
+  await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "bans/ann"), { by: "x", reason: "spam", until: null, at: Timestamp.now() }));
+  await assertFails(send("ann", "ann_bob"));
+});
+test("an ended ban doesn't block", async () => {
+  await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "bans/ann"), { by: "x", reason: "spam", until: Timestamp.fromMillis(Date.now() - 60000), at: Timestamp.now() }));
+  await assertSucceeds(send("ann", "ann_bob"));
+});

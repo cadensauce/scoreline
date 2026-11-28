@@ -563,6 +563,7 @@
     .dev-form input[type="number"] { flex: 0 1 110px; } .dev-form input:focus { border-color: var(--muted); } .dev-form .pill-btn { flex: none; }
     .dev-form select { flex: 0 1 140px; height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; }
     .va-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .mod-box .acct-input { width: 100%; margin-bottom: 8px; } .mod-days { margin-bottom: 8px; flex-wrap: wrap; }
     .site-bar { position: sticky; top: 0; z-index: 70; padding: 8px 14px; background: var(--text); color: var(--bg); font-size: 13px; font-weight: 700; text-align: center; }
     .site-off { position: fixed; inset: 0; z-index: 99998; display: grid; place-items: center; padding: 24px; background: var(--bg); color: var(--text); text-align: center; } .site-off-e { font-size: 54px; margin-bottom: 8px; } .site-off b { font-size: 22px; } .site-off p { color: var(--muted); max-width: 360px; margin: 10px auto 0; }
     /* Customize: parts you turned off are hidden */
@@ -1015,6 +1016,12 @@
     .msg p { margin: 0; padding: 9px 13px; border-radius: 18px 18px 18px 6px; background: var(--panel-3); font-size: 14.5px; line-height: 1.35; word-wrap: break-word; -webkit-user-select: text; user-select: text; }
     .msg.me { align-self: flex-end; } .msg.me p { background: var(--accent); color: var(--on-accent); border-radius: 18px 18px 6px 18px; }
     .msg small { display: block; font-size: 10.5px; color: var(--muted); margin: 3px 8px 0; } .msg.me small { text-align: right; }
+    .chat-photo { flex: none; display: grid; place-items: center; width: 42px; border-radius: var(--r-in); border: 1px solid var(--line); background: var(--panel); font-size: 18px; cursor: pointer; }
+    .msg-img { display: block; position: relative; border: 0; padding: 0; margin: 0 0 4px; background: none; border-radius: 12px; overflow: hidden; max-width: min(240px, 100%); cursor: pointer; }
+    .msg-img img { display: block; width: 100%; height: auto; }
+    .msg-img span { display: none; }
+    .msg-img.hide img { filter: blur(24px); opacity: .5; }
+    .msg-img.hide span { display: grid; place-items: center; position: absolute; inset: 0; font-size: 13px; font-weight: 600; color: #fff; text-shadow: 0 1px 3px #000; }
     .chat-form { display: flex; gap: 8px; padding: 10px 0 calc(12px + env(safe-area-inset-bottom)); position: sticky; bottom: 0; background: var(--bg); }
     .chat-form input { flex: 1; min-width: 0; border-radius: 99px; }
     /* Chats: list, chat page, shares, safety notes (like Instagram) */
@@ -5924,7 +5931,40 @@
         favMeta(d.card.favPlayers, 30000).then(draw).catch(() => {});   // and again when the slow ones finish (or retry once)
       }
       setBody(v, d.card?.name || "@" + d.username, d.card ? profileHtml(d) : '<div class="empty">@' + esc(d.username || "this person") + " keeps their profile private" + (d.isFriend ? "." : ", or you're not friends yet.") + "</div>");
+      if (!d.mine) modPanel(v, d).catch(() => {});
     }
+    /* Mod tools on someone's profile (Owner and Mods only; the rules enforce who can act on whom). */
+    async function modPanel(v, d) {
+      const R = window.scorelineRoles, M = window.scorelineMod;
+      if (!R || !M) return;
+      const me = await R.mine().catch(() => "");
+      if (me !== "owner" && me !== "mod") return;
+      const st = await M.status(d.uid).catch(() => ({ banned: false }));
+      const body = v.el?.querySelector(".sheet-body"); if (!body || !v.el.isConnected) return;
+      const box = document.createElement("div"); box.className = "mod-box";
+      box.innerHTML = '<div class="section-title"><b>🛡️ Mod tools</b></div><div class="panel dev-panel">' +
+        (st.banned ? '<p class="muted">🚫 Banned ' + (st.until ? "until " + esc(new Date(st.until).toLocaleDateString([], { month: "short", day: "numeric" })) : "for good") + " · " + esc(st.reason || "") + "</p>" : "") +
+        '<input class="acct-input" data-mod-reason maxlength="300" placeholder="Reason (they will see this)">' +
+        '<div class="seg chips mod-days">' + M.BAN_DAYS.map(([n, l], i) => '<button type="button" data-mod-days="' + n + '" class="' + (i === 0 ? "on" : "") + '">' + l + "</button>").join("") + "</div>" +
+        '<div class="va-btns"><button type="button" class="pill-btn" data-mod-warn="' + esc(d.uid) + '">⚠️ Warn</button><button type="button" class="pill-btn" data-mod-ban="' + esc(d.uid) + '">🚫 Ban</button>' +
+        (st.banned ? '<button type="button" class="pill-btn" data-mod-unban="' + esc(d.uid) + '">Unban</button>' : "") + "</div>" +
+        '<div class="g-note">A ban turns off chat, friends, reactions and ideas for them; scores still work. Too many bans or warnings in a short time pauses a Mod until the Owner checks.</div></div>';
+      body.appendChild(box);
+    }
+    document.addEventListener("click", async (e) => {
+      const dd = e.target.closest("[data-mod-days]");
+      if (dd) { dd.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === dd)); return; }
+      const w = e.target.closest("[data-mod-warn], [data-mod-ban], [data-mod-unban]"); if (!w) return;
+      const box = w.closest(".mod-box"), M = window.scorelineMod, reason = box.querySelector("[data-mod-reason]").value;
+      const days = +(box.querySelector("[data-mod-days].on")?.dataset.modDays || 1);
+      w.disabled = true;
+      try {
+        if (w.dataset.modWarn) { await M.warn(w.dataset.modWarn, reason); toast("Warning sent ⚠️"); }
+        else if (w.dataset.modBan) { await M.ban(w.dataset.modBan, reason, days); toast("Banned 🚫"); }
+        else { await M.unban(w.dataset.modUnban); toast("Unbanned"); }
+        buzz(12); const v = views.find((x) => x.el?.contains(box)); box.remove(); if (v) modPanel(v, { uid: v.uid }).catch(() => {});
+      } catch (err) { toast(err.message || "That didn't work."); w.disabled = false; }
+    });
     window.openProfile = openProfile;
 
     /* editor */
@@ -6194,8 +6234,24 @@
             reps.map((x) => '<div class="opt rep-row"><span><b>' + esc(REASON[x.reason] || x.reason) + '</b><small>@' + esc(x.fromName || "…") + " reported <button type=\"button\" class=\"link-btn\" data-viewcard=\"" + esc(x.about) + "\">@" + esc(x.aboutName || "…") + "</button> · " + esc(x.when ? new Date(x.when).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "") + "</small>" +
               (x.text ? '<small class="rep-text">“' + esc(x.text) + "”</small>" : "") + "</span></div>").join("")) + "</div>";
       }
+      if (me === "owner" || me === "mod") {
+        const M = window.scorelineMod, bans = await M?.bans().catch(() => null);
+        html += '<div class="section-title"><b>Banned 🚫</b><span class="muted">' + (bans ? bans.length : "") + '</span></div><div class="panel">' +
+          (!bans ? '<p class="muted people-hint">Couldn\'t load bans.</p>' : !bans.length ? '<p class="muted people-hint">No one is banned.</p>' :
+            bans.map((x) => '<div class="opt rep-row"><span><b><button type="button" class="link-btn" data-viewcard="' + esc(x.uid) + '">@' + esc(x.name || "…") + "</button></b><small>" + esc(x.reason || "") + " · " + (x.until ? (x.until > Date.now() ? "until " + esc(new Date(x.until).toLocaleDateString([], { month: "short", day: "numeric" })) : "ended") : "forever") + " · by @" + esc(x.byName || "…") + "</small></span></div>").join("")) +
+          '</div><div class="g-note">Open someone\'s profile to warn, ban or unban them.</div>';
+        if (me === "owner") {
+          const ps = await M?.paused().catch(() => []) || [];
+          if (ps.length) html += '<div class="section-title"><b>Paused for too many actions ⏸️</b></div><div class="panel">' + ps.map((x) => '<div class="opt soc-row"><span><b>@' + esc(x.name || "…") + "</b><small>" + esc(x.why || "Acted too fast") + '</small></span><button type="button" class="pill-btn" data-unpause="' + esc(x.uid) + '" data-unpause-role="' + esc(x.role) + '">Unpause</button></div>').join("") + "</div>";
+        }
+      }
       if (box.isConnected) box.innerHTML = html;
     }
+    document.addEventListener("click", async (e) => {
+      const u = e.target.closest("[data-unpause]"); if (!u) return;
+      u.disabled = true;
+      try { await window.scorelineMod.unpause(u.dataset.unpause, u.dataset.unpauseRole); toast("Unpaused"); u.closest(".opt")?.remove(); } catch { toast("Couldn't unpause."); u.disabled = false; }
+    });
     document.addEventListener("submit", async (e) => {
       const f = e.target.closest("[data-role-form]"); if (!f) return;
       e.preventDefault();
@@ -6841,7 +6897,7 @@
     const fmtClock = (v) => { const n = qMins(v); return new Date(2000, 0, 1, Math.floor(n / 60), n % 60).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); };
     function notifsHtml() {
       const favs = [...state.favs], p = alertPrefs(), quietOn = !isNaN(qMins(p.quietFrom)) && !isNaN(qMins(p.quietTo));
-      return '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Only about the teams you follow</small></span><i class="switch"></i></button><button type="button" class="pill-btn test-btn" id="testNotify">Send test notification</button>' + (alertsOn ? '<div class="g-note" id="pushState">' + esc(pushStatus) + "</div>" : "") + "</div>" +
+      return '<div class="panel"><button type="button" class="opt ' + (alertsOn ? "on" : "") + '" id="alertsMaster"><span><b>Score alerts</b><small>Only about the teams you follow</small></span><i class="switch"></i></button><button type="button" class="opt ' + (p.chat === "off" ? "" : "on") + '" data-chat-alerts><span><b>💬 Messages</b><small>New chat messages and photos (when you\'re signed in)</small></span><i class="switch"></i></button><button type="button" class="pill-btn test-btn" id="testNotify">Send test notification</button>' + (alertsOn ? '<div class="g-note" id="pushState">' + esc(pushStatus) + "</div>" : "") + "</div>" +
         '<div class="section-title"><b>Quiet hours</b></div><div class="panel"><button type="button" class="opt ' + (quietOn ? "on" : "") + '" data-quiet-toggle><span><b>Quiet hours</b><small>No alerts between these times (your phone\'s time)</small></span><i class="switch"></i></button>' +
         (quietOn ? '<div class="quiet-times"><label>From<input type="time" data-quiet-from value="' + esc(qTime(p.quietFrom, "22:00")) + '"></label><label>To<input type="time" data-quiet-to value="' + esc(qTime(p.quietTo, "07:00")) + '"></label></div>' : "") + "</div>" +
         '<div class="section-title"><b>Your teams</b></div><div class="panel nteams">' + (favs.length ? favs.map((k) =>
@@ -6861,6 +6917,7 @@
     document.addEventListener("click", (e) => {
       if (e.target.closest("[data-open-notifs]")) return openNotifs();
       if (e.target.closest("[data-open-dev]")) return openDev();
+      if (e.target.closest("[data-chat-alerts]")) { const raw = store.get("alertPrefs", {}); raw.chat = raw.chat === "off" ? "on" : "off"; store.set("alertPrefs", raw); window.scorelineSettingsChanged?.(); if (alertsOn) pushSync(); buzz(6); return renderAlerts(); }
       if (e.target.closest("[data-quiet-toggle]")) { const p = alertPrefs(), on = !isNaN(qMins(p.quietFrom)) && !isNaN(qMins(p.quietTo)); saveQuiet(on ? null : "22:00", on ? null : "07:00"); buzz(6); renderAlerts(); }
     });
     document.addEventListener("change", (e) => {
@@ -7336,6 +7393,7 @@
     const deviceId = (() => { let id = store.get("deviceId", ""); if (!/^[0-9a-f]{64}$/.test(id)) { id = hex(crypto.getRandomValues(new Uint8Array(32))); store.set("deviceId", id); } return id; })();
     const subUrl = (id) => PUSH_DB + id + "?key=" + PUSH_KEY;
     let pushActive = false;
+    window.scorelineDeviceId = deviceId; window.scorelinePushOn = () => pushActive;
     let pushTestAt = "";
     // The installed Android app gets a push address from Android itself (Firebase Cloud Messaging).
     const nativePush = () => typeof window.ScorelineNative?.pushToken === "function";
@@ -7396,7 +7454,7 @@
           updatedAt: { timestampValue: new Date().toISOString() },
         };
         const r = await pfetch(subUrl(deviceId), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fields }) });
-        pushActive = r.ok;
+        pushActive = r.ok; if (pushActive) window.scorelineChatPush?.();   /* and link this phone to your account for chat alerts */
         if (r.ok) {
           store.set("pushOffPending", false);
           // Older versions saved this phone under a hash of its push address; remove that copy once.

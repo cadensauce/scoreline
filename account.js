@@ -118,6 +118,8 @@ async function onUser(u) {
     await startSync();
     watchFriends();
     watchChats();
+    registerChatPush();
+    checkModStatus();
   }
   if (!u) forgetSlot(SLOT);   // this slot has no one signed in: not in the switch list
   syncButton();
@@ -323,6 +325,7 @@ async function ensureChatOk() {
     setBody(v, "Chat rules", '<div class="chat-rules"><p><b>Before you chat, please read these.</b> They keep Scoreline friendly and safe.</p><ul>' +
       "<li><b>Be kind.</b> No bullying, threats, hate or harassment.</li>" +
       "<li><b>Keep it clean.</b> No adult, violent or gross content.</li>" +
+      "<li><b>Photos:</b> only send photos you took or are allowed to share. Never send photos of other people without their OK. Photos from others stay hidden until you tap them.</li>" +
       "<li><b>Keep yourself private.</b> Never share your address, school, phone number, passwords or where you'll be.</li>" +
       "<li><b>Links and files from other people aren't checked by Scoreline</b> and aren't Scoreline's responsibility. Only open them from people you trust. Never type a password on a site you reached from a chat.</li>" +
       "<li><b>No spam or scams.</b> Don't ask for money, gift cards or accounts.</li>" +
@@ -386,7 +389,7 @@ async function openChatId(id, agreed) {
     ? '<button type="button" class="chat-act" data-gmembers="' + esc(id) + '">' + c.members.length + ' people</button><button type="button" class="chat-act" data-greport="' + esc(id) + '">Report</button><button type="button" class="chat-act" data-gleave="' + esc(id) + '">Leave</button>'
     : '<button type="button" class="chat-act" data-viewcard="' + esc(other(c)) + '">Profile</button><button type="button" class="chat-act" data-block="' + esc(other(c)) + '">Block</button><button type="button" class="chat-act" data-report="' + esc(other(c)) + '" data-report-chat="' + esc(id) + '">Report</button>';
   setBody(v, await chatName(c), '<div class="chat-acts">' + acts + '</div><div class="chat-log" data-chatlog></div>' +
-    '<form class="chat-form" data-chatform><input maxlength="500" placeholder="Message…" autocomplete="off" aria-label="Message"><button class="pill-btn" type="submit">Send</button></form>');
+    '<form class="chat-form" data-chatform><label class="chat-photo" aria-label="Send a photo" title="Send a photo">📷<input type="file" accept="image/*" data-chatphoto hidden></label><input maxlength="500" placeholder="Message…" autocomplete="off" aria-label="Message"><button class="pill-btn" type="submit">Send</button></form>');
   v.el.querySelector(".src-note")?.remove();
   v.el.classList.add("chat-sheet");
   v.chat = c; v.msgs = [];
@@ -404,7 +407,7 @@ async function openChatId(id, agreed) {
       day = dk;
       const who = c.group && !mine && m.from !== prev ? '<div class="msg-who">@' + esc(names[m.from] || "…") + "</div>" : "";
       prev = m.from;
-      return sep + who + '<div class="msg' + (mine ? " me" : "") + '">' + (m.share ? shareCard(m.share) : "") + (m.text ? "<p>" + linkify(m.text) + "</p>" : "") +
+      return sep + who + '<div class="msg' + (mine ? " me" : "") + '">' + (m.share ? shareCard(m.share) : "") + (photoOk(m.img) ? '<button type="button" class="msg-img' + (mine ? "" : " hide") + '" data-msgimg><img alt="Photo" src="' + m.img + '" loading="lazy"><span>📷 Tap to show photo</span></button>' : "") + (m.text ? "<p>" + linkify(m.text) + "</p>" : "") +
         "<small>" + esc(new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })) + "</small></div>";
     }).join("") || '<div class="g-note" style="text-align:center;margin-top:30px">Say hi 👋</div>');
     if (nearEnd || !v.seen) log.scrollTop = log.scrollHeight;
@@ -417,10 +420,36 @@ async function openChatId(id, agreed) {
     input.value = ""; buzz();
     try { await sendMsg(c, { text }); } catch { toast("Message didn't send. You can only message friends who haven't blocked you."); input.value = text; }
   });
+  v.el.querySelector("[data-chatphoto]").addEventListener("change", async (e) => {
+    const file = e.target.files?.[0]; e.target.value = "";
+    if (!file) return;
+    toast("Sending photo…");
+    let img;
+    try { img = await shrinkPhoto(file); } catch { return toast("That photo couldn't be sent. Try a different one."); }
+    try { await sendMsg(c, { img }); buzz(); } catch { toast("Photo didn't send. You can only message friends who haven't blocked you."); }
+  });
+  v.el.addEventListener("click", (e) => { const b = e.target.closest("[data-msgimg]"); if (b) b.classList.toggle("hide", false); });
 }
-async function sendMsg(c, { text = "", share = null }) {
-  await fb.addDoc(fb.collection(db, "chats", c.id, "messages"), { from: user.uid, text, at: fb.serverTimestamp(), ...(share ? { share } : {}) });
-  const preview = share ? "Shared a " + SHARE_LABEL[share.k].toLowerCase() + ": " + share.t : text;
+/* Chat photos: Firebase's free plan has no file storage, so a photo is shrunk on the phone (longest side ≤ 1080 px,
+   JPEG, under ~280 KB) and saved inside the message. Re-drawing it also strips hidden data like GPS location.
+   Videos are too big for this, so chat has photos only. Photos from others start hidden: tap to show. */
+const photoOk = (s) => typeof s === "string" && s.length <= 300000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(s);
+async function shrinkPhoto(file) {
+  if (!/^image\//.test(file.type || "")) throw new Error("not a photo");
+  let pic;
+  try { pic = await createImageBitmap(file); } catch { const url = URL.createObjectURL(file); pic = new Image(); pic.src = url; await pic.decode(); URL.revokeObjectURL(url); }
+  for (const [max, q] of [[1080, 0.72], [900, 0.62], [720, 0.55], [560, 0.5]]) {
+    const s = Math.min(1, max / Math.max(pic.width, pic.height)), c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(pic.width * s)); c.height = Math.max(1, Math.round(pic.height * s));
+    c.getContext("2d").drawImage(pic, 0, 0, c.width, c.height);
+    const d = c.toDataURL("image/jpeg", q);
+    if (photoOk(d) && d.length <= 280000) return d;
+  }
+  throw new Error("too big");
+}
+async function sendMsg(c, { text = "", share = null, img = "" }) {
+  await fb.addDoc(fb.collection(db, "chats", c.id, "messages"), { from: user.uid, text, at: fb.serverTimestamp(), ...(share ? { share } : {}), ...(img ? { img } : {}) });
+  const preview = share ? "Shared a " + SHARE_LABEL[share.k].toLowerCase() + ": " + share.t : img ? "📷 Photo" : text;
   fb.updateDoc(fb.doc(db, "chats", c.id), { updatedAt: fb.serverTimestamp(), last: { from: user.uid, text: preview.slice(0, 120), at: fb.serverTimestamp() } }).catch(() => {});
 }
 // Links become buttons that ask before leaving Scoreline. Only http(s) links.
@@ -1019,6 +1048,7 @@ document.addEventListener("click", async (e) => {
   }
   if (t.closest("[data-logout]")) {
     const others = savedAccts().filter((a) => a.slot !== SLOT);
+    const cp = chatPushDoc(); if (cp) await fb.deleteDoc(cp).catch(() => {});   // this phone stops getting this account's messages
     forgetSlot(SLOT); await fb.signOut(auth); toast("Logged out");
     if (others.length) switchTo(others[0].slot);   // like TikTok: carry on in your other account
     return;
@@ -1258,6 +1288,64 @@ window.scorelineRoles = {
     await Promise.all(rows.flatMap((x) => [x.from, x.about]).filter(Boolean).map(nameOf));
     return rows.map((x) => ({ ...x, fromName: names[x.from], aboutName: names[x.about], when: x.at?.toMillis ? x.at.toMillis() : 0 }));
   },
+};
+
+/* ---------- chat notifications: chatPush/{uid}/devices/{deviceId} links your account to this phone's alerts, so the
+   push worker can tell you about new messages. Only you can add or remove your own phones; nobody can read the list. */
+function chatPushDoc() { const d = window.scorelineDeviceId; return user && fb && /^[0-9a-f]{64}$/.test(d || "") ? fb.doc(db, "chatPush", user.uid, "devices", d) : null; }
+function registerChatPush() { const r = chatPushDoc(); if (r && window.scorelinePushOn?.()) fb.setDoc(r, { at: fb.serverTimestamp() }).catch(() => {}); }
+window.scorelineChatPush = registerChatPush;
+
+/* ---------- mod tools: warnings and bans (Owner and Mods). The push worker pauses a Mod who bans or warns too many
+   people too fast, until the Owner looks. A ban blocks chat, friends, reactions and ideas (the rules check it);
+   scores and news still work. */
+const BAN_DAYS = [[1, "1 day"], [7, "7 days"], [30, "30 days"], [0, "Forever"]];
+async function checkModStatus() {
+  if (!user) return;
+  const b = await fb.getDoc(fb.doc(db, "bans", user.uid)).then((d) => d.data()).catch(() => null);
+  const until = b?.until?.toMillis ? b.until.toMillis() : null;
+  if (b && (until === null || until > Date.now())) {
+    const v = { kind: "notice", key: "banned" }; if (!pushView(v)) return;
+    return setBody(v, "Account paused", '<div class="panel"><b>🚫 Your account is banned ' + (until ? "until " + esc(new Date(until).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })) : "for good") + '.</b><p class="muted">Reason: ' + esc(b.reason || "Breaking the chat rules") + "</p><p class=\"muted\">You can still check scores and news, but chat, friends, reactions and ideas are off. The Scoreline team can see who banned you and why, and checks bans.</p></div>");
+  }
+  const w = await fb.getDocs(fb.query(fb.collection(db, "warnings"), fb.where("to", "==", user.uid), fb.limit(20))).catch(() => null);
+  const fresh = w?.docs.filter((d) => !d.data().seen).sort((a, b) => tms(b.data().at) - tms(a.data().at))[0];
+  if (!fresh) return;
+  const v = { kind: "notice", key: "warning" }; if (!pushView(v)) return;
+  setBody(v, "A warning", '<div class="panel"><b>⚠️ A warning from the Scoreline team</b><p>' + esc(fresh.data().reason || "") + '</p><p class="muted">Please follow the chat rules. More warnings can lead to a ban.</p><button type="button" class="pill-btn tos-go" data-warn-ok="' + esc(fresh.id) + '">I understand</button></div>');
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-warn-ok]"); if (!b || !user) return;
+  fb.updateDoc(fb.doc(db, "warnings", b.dataset.warnOk), { seen: true }).catch(() => {}); closeTop();
+});
+window.scorelineMod = {
+  BAN_DAYS,
+  async warn(uid, reason) {
+    reason = String(reason || "").trim().slice(0, 300); if (!reason) throw new Error("Write a reason.");
+    try { await fb.addDoc(fb.collection(db, "warnings"), { to: uid, by: user.uid, reason, at: fb.serverTimestamp() }); }
+    catch { throw new Error("Couldn't warn. Mods can't warn the Owner, Devs or other Mods, and paused Mods can't act."); }
+  },
+  async ban(uid, reason, days) {
+    reason = String(reason || "").trim().slice(0, 300); if (!reason) throw new Error("Write a reason.");
+    const until = days ? fb.Timestamp.fromMillis(Date.now() + days * 86400000) : null;
+    try { await fb.setDoc(fb.doc(db, "bans", uid), { by: user.uid, reason, until, at: fb.serverTimestamp() }); }
+    catch { throw new Error("Couldn't ban. Mods can't ban the Owner, Devs or other Mods, and paused Mods can't act."); }
+  },
+  async unban(uid) { try { await fb.deleteDoc(fb.doc(db, "bans", uid)); } catch { throw new Error("Couldn't unban."); } },
+  async status(uid) { const b = await fb.getDoc(fb.doc(db, "bans", uid)).then((d) => d.data()).catch(() => null); const u = b?.until?.toMillis ? b.until.toMillis() : null; return b && (u === null || u > Date.now()) ? { banned: true, until: u, reason: b.reason } : { banned: false }; },
+  async bans() {
+    const r = await fb.getDocs(fb.query(fb.collection(db, "bans"), fb.orderBy("at", "desc"), fb.limit(50)));
+    const rows = r.docs.map((d) => ({ uid: d.id, ...d.data() }));
+    await Promise.all(rows.flatMap((x) => [x.uid, x.by]).filter(Boolean).map(nameOf));
+    return rows.map((x) => ({ uid: x.uid, name: names[x.uid], byName: names[x.by], reason: x.reason, until: x.until?.toMillis ? x.until.toMillis() : null }));
+  },
+  async paused() {   // Owner only: Mods the worker paused
+    const r = await fb.getDocs(fb.query(fb.collection(db, "roles"), fb.where("paused", "==", true))).catch(() => null);
+    if (!r) return [];
+    await Promise.all(r.docs.map((d) => nameOf(d.id)));
+    return r.docs.map((d) => ({ uid: d.id, role: d.data().role, name: names[d.id], why: d.data().pausedWhy || "" }));
+  },
+  async unpause(uid, role) { await fb.setDoc(fb.doc(db, "roles", uid), { role, by: user.uid, at: fb.serverTimestamp() }); delete roleCache[uid]; },
 };
 
 /* ---------- reactions: 🔥 😂 😮 😭 🐐 👀 on plays, news and moves (counts for everyone, like Discord) ----------

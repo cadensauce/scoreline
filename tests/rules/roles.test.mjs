@@ -84,3 +84,53 @@ test("brackets: your own only, and locked once the playoffs start", async () => 
   await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "public/bracketLocks"), { nfl_2026: Timestamp.fromMillis(Date.now() - 1000) }));
   await assertFails(setDoc(doc(as("joe"), "brackets/joe_nfl_2026"), mine));
 });
+
+// Mod tools: bans and warnings.
+const ban = (who, uid, extra = {}) => setDoc(doc(as(who), "bans/" + uid), { by: who, reason: "spam", until: null, at: serverTimestamp(), ...extra });
+const warn = (who, to, extra = {}) => setDoc(doc(as(who), "warnings/w_" + who + "_" + to), { to, by: who, reason: "be nice", at: serverTimestamp(), ...extra });
+test("mods and the owner can ban and warn regular people", async () => {
+  await assertSucceeds(ban("modi", "joe"));
+  await assertSucceeds(ban("boss", "ann", { until: Timestamp.fromMillis(Date.now() + 86400000) }));
+  await assertSucceeds(warn("modi", "cat"));
+  await assertSucceeds(warn("boss", "cat2"));
+});
+test("regular people can't ban or warn", async () => {
+  await assertFails(ban("joe", "ann"));
+  await assertFails(warn("joe", "ann"));
+});
+test("mods can't ban the owner, other mods or devs; the owner can", async () => {
+  await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "roles/devi"), { role: "dev", by: "boss", at: Timestamp.now() }));
+  await assertFails(ban("modi", "boss"));
+  await assertFails(ban("modi", "devi"));
+  await assertFails(warn("modi", "devi"));
+  await assertSucceeds(ban("boss", "devi"));
+  await assertFails(ban("modi", "modi"));
+});
+test("a paused mod can't moderate", async () => {
+  await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), "roles/modi"), { role: "mod", by: "boss", at: Timestamp.now(), paused: true }));
+  await assertFails(ban("modi", "joe"));
+  await assertFails(warn("modi", "joe"));
+});
+test("a ban needs a reason and can't be faked", async () => {
+  await assertFails(ban("modi", "joe", { reason: "" }));
+  await assertFails(ban("modi", "joe", { by: "boss" }));
+  await assertFails(ban("modi", "joe", { power: 1 }));
+});
+test("you can see your own ban and warnings, and mark a warning seen", async () => {
+  await assertSucceeds(ban("modi", "joe"));
+  await assertSucceeds(warn("modi", "joe"));
+  await assertSucceeds(getDoc(doc(as("joe"), "bans/joe")));
+  await assertSucceeds(getDoc(doc(as("joe"), "warnings/w_modi_joe")));
+  await assertFails(getDoc(doc(as("ann"), "warnings/w_modi_joe")));
+  await assertSucceeds(setDoc(doc(as("joe"), "warnings/w_modi_joe"), { seen: true }, { merge: true }));
+  await assertFails(setDoc(doc(as("joe"), "warnings/w_modi_joe"), { reason: "nothing" }, { merge: true }));
+  await assertFails(deleteDoc(doc(as("joe"), "bans/joe")));
+});
+test("only you can link your phones for chat alerts, and nobody reads them", async () => {
+  const dev = "a".repeat(64);
+  await assertSucceeds(setDoc(doc(as("joe"), "chatPush/joe/devices/" + dev), { at: serverTimestamp() }));
+  await assertFails(setDoc(doc(as("ann"), "chatPush/joe/devices/" + dev), { at: serverTimestamp() }));
+  await assertFails(setDoc(doc(as("joe"), "chatPush/joe/devices/short"), { at: serverTimestamp() }));
+  await assertFails(getDoc(doc(as("joe"), "chatPush/joe/devices/" + dev)));
+  await assertSucceeds(deleteDoc(doc(as("joe"), "chatPush/joe/devices/" + dev)));
+});

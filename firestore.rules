@@ -7,7 +7,14 @@ service cloud.firestore {
     // Two-step sign-in: if you turned it on (twoStep/{uid} exists), a device only counts as signed in after it
     // entered the emailed code; the push worker then signs it in with a token marked ts = true.
     function verified() { return !exists(/databases/$(database)/documents/twoStep/$(request.auth.uid)) || request.auth.token.ts == true; }
-    function member() { return signedIn() && verified(); }
+    // Banned people (bans/{uid}, set by the Owner or a Mod) can still sign in and read scores, but count as non-members:
+    // no chat, friends, reactions or ideas until the ban ends.
+    function banned() {
+      return exists(/databases/$(database)/documents/bans/$(request.auth.uid))
+        && (get(/databases/$(database)/documents/bans/$(request.auth.uid)).data.until == null
+            || get(/databases/$(database)/documents/bans/$(request.auth.uid)).data.until > request.time);
+    }
+    function member() { return signedIn() && verified() && !banned(); }
     // Site switch: in read-only or offline mode, new messages, friend requests and reactions are paused (the owner can still act).
     function siteOpen() { return !exists(/databases/$(database)/documents/public/site) || get(/databases/$(database)/documents/public/site).data.mode == 'on' || isOwner(); }
     function friends(a, b) {
@@ -71,7 +78,34 @@ service cloud.firestore {
     // or take away the other roles (Dev, Mod, Beta Tester), never their own and never another Owner's.
     function roleOf(uid) { return exists(/databases/$(database)/documents/roles/$(uid)) ? get(/databases/$(database)/documents/roles/$(uid)).data.role : ''; }
     function isOwner() { return roleOf(me()) == 'owner'; }
-    function isMod() { return roleOf(me()) in ['owner', 'mod']; }
+    // A Mod the push worker paused (too many bans or warnings too fast) can't moderate until the Owner unpauses them.
+    function paused(uid) { return exists(/databases/$(database)/documents/roles/$(uid)) && get(/databases/$(database)/documents/roles/$(uid)).data.get('paused', false) == true; }
+    function isMod() { return isOwner() || (roleOf(me()) == 'mod' && !paused(me())); }
+    // Who a moderator may act on: never themselves or the Owner; only the Owner can act on Devs and Mods.
+    function canTarget(uid) { return uid != me() && roleOf(uid) != 'owner' && (isOwner() || !(roleOf(uid) in ['dev', 'mod'])); }
+    function modNote(d) { return d.by == me() && d.at == request.time && d.reason is string && d.reason.size() >= 1 && d.reason.size() <= 300; }
+    match /bans/{uid} {
+      allow get: if signedIn() && (me() == uid || isMod());
+      allow list: if member() && isMod();
+      allow create, update: if member() && isMod() && canTarget(uid)
+        && request.resource.data.keys().hasOnly(['by', 'reason', 'until', 'at']) && modNote(request.resource.data)
+        && (request.resource.data.until == null || request.resource.data.until is timestamp);
+      allow delete: if member() && isMod() && canTarget(uid);
+    }
+    match /warnings/{id} {
+      allow read: if signedIn() && (resource.data.to == me() || isMod());
+      allow create: if member() && isMod() && request.resource.data.to is string && canTarget(request.resource.data.to)
+        && request.resource.data.keys().hasOnly(['to', 'by', 'reason', 'at']) && modNote(request.resource.data);
+      allow update: if signedIn() && resource.data.to == me() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seen']) && request.resource.data.seen == true;
+      allow delete: if member() && isOwner();
+    }
+    // Chat alerts: which phones (the device id used for score alerts) belong to you. Only you write it; nobody reads it in the app.
+    match /chatPush/{uid}/devices/{dev} {
+      allow read: if false;
+      allow create, update: if signedIn() && me() == uid && dev.matches('^[0-9a-f]{64}$')
+        && request.resource.data.keys().hasOnly(['at']) && request.resource.data.at == request.time;
+      allow delete: if signedIn() && me() == uid;
+    }
     match /roles/{uid} {
       allow read: if member();
       allow create, update: if member() && isOwner() && uid != me()
@@ -514,9 +548,11 @@ service cloud.firestore {
         allow create: if member() && siteOpen() && request.resource.data.from == me()
           && me() in chat().members
           && exists(/databases/$(database)/documents/chatOk/$(me()))
-          && request.resource.data.keys().hasOnly(['from', 'text', 'at', 'share'])
+          && request.resource.data.keys().hasOnly(['from', 'text', 'at', 'share', 'img'])
           && request.resource.data.text is string && request.resource.data.text.size() <= 500
-          && (request.resource.data.text.size() > 0 || 'share' in request.resource.data)
+          && (request.resource.data.text.size() > 0 || 'share' in request.resource.data || 'img' in request.resource.data)
+          && (!('img' in request.resource.data) || (request.resource.data.img is string && request.resource.data.img.size() <= 300000
+              && request.resource.data.img.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')))
           && (!('share' in request.resource.data) || shareOk(request.resource.data.share))
           && request.resource.data.at == request.time
           && (isGroup(chat()) || (friends(chat().members[0], chat().members[1])

@@ -11,6 +11,7 @@ import nodemailer from "nodemailer";
 import crypto from "node:crypto";
 import { picksTick, cleanupDeleted, seedShop, marksCheck } from "./picks.mjs";
 import { bracketTick } from "./bracket.mjs";
+import { startChatMod } from "./chatmod.mjs";
 let bracketAt = 0;
 import { fantasyTick } from "./fantasy.mjs";
 import { profileStats } from "./profile.mjs";
@@ -165,6 +166,7 @@ db.collection("otpAttempts").onSnapshot((snap) => {
 }, (e) => console.log("otp attempt listener stopped", e.message));
 // ---- subscribers -------------------------------------------------------------------------
 let subs = [];
+let subsById = new Map();   // every phone with alerts on (chat alerts don't need followed teams)
 let subsAt = 0;
 let lastTest = null;   // shown in public/push.status so a test can be checked without logs
 async function loadSubs() {
@@ -183,6 +185,7 @@ async function loadSubs() {
       console.log(new Date().toISOString(), "test →", s.id.slice(0, 8), result);
     }
   }
+  subsById = new Map(all.map((s) => [s.id, s]));
   subs = all.filter((s) => s.favs.size);
   subsAt = Date.now();
   console.log(new Date().toISOString(), "subscribers:", subs.length);
@@ -394,6 +397,8 @@ async function checkNews() {
 try { const d = await stateDoc.get(); if (d.exists) newsState = { seen: d.data().seen || [], caps: d.data().caps || {} }; } catch {}
 let picksAt = 0, cleanupAt = 0, fantasyAt = 0, marksAt = 0, statsAt = 0;
 await seedShop(db);
+await loadSubs().catch((e) => console.log("subs error", e.message));
+startChatMod(db, admin, { getSub: (id) => subsById.get(id), deliver, quietNow });   // chat alerts + Mod safety
 const until = Date.now() + RUN_FOR_MS;
 console.log("Push worker running until", new Date(until).toISOString());
 while (Date.now() < until) {
