@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795848155" />
+  <meta name="build" content="1795848458" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -2534,7 +2534,7 @@
       if (!ev) left += '<div class="empty">No race weekend scheduled right now.</div>';
       else {
         const nx = nextSession(ev);
-        left += '<div class="status' + (nx?.status?.type?.state === "in" ? " live" : "") + '" style="font-size:12px;color:var(--accent)">' + esc(nx?.status?.type?.state === "in" ? "Live now" : ev.status?.type?.state === "post" ? "Race weekend complete" : "Race weekend") + "</div>";
+        left += '<div class="status' + (nx?.status?.type?.state === "in" ? " live" : "") + '" style="font-size:12px;color:var(--accent)">' + esc(nx?.status?.type?.state === "in" ? "Live now" : !nx && ev.status?.type?.state === "post" ? "Race weekend complete" : "Race weekend") + "</div>";
         left += '<div class="gp-name">' + esc(ev.name) + '</div><div class="gp-sub">' + esc([ev.circuit?.fullName, ev.circuit?.address?.city, ev.circuit?.address?.country].filter(Boolean).join(" · ")) + "</div>";
         if (nx && nx.status?.type?.state === "pre") left += '<div class="countdown" id="f1Count" data-at="' + esc(nx.date) + '">--<small>until ' + esc(SESSION_NAMES[nx.type?.abbreviation] || "next session") + "</small></div>";
         left += '<div class="sessions">' + (ev.competitions || []).map((c) => {
@@ -2638,9 +2638,11 @@
         Object.values(cars).forEach((c) => c.sort((m, n) => m.t - n.t));
         const nums = Object.keys(cars).filter((n) => cars[n].length > 20);
         if (!nums.length) throw new Error("no data");
-        const ref = nums.slice().sort((m, n) => (order[m] || 99) - (order[n] || 99))[0];
-        // Out of the session (DNF / parked in the garage): a car that barely moves while most of the field is racing.
+        // The outline comes from the car that covered the most track in this window (the leader may be sitting in the
+        // pit lane during practice, which would draw a straight line instead of the circuit).
         const extent = (c) => Math.hypot(Math.max(...c.map((p) => p.x)) - Math.min(...c.map((p) => p.x)), Math.max(...c.map((p) => p.y)) - Math.min(...c.map((p) => p.y)));
+        const ref = nums.slice().sort((m, n) => extent(cars[n]) - extent(cars[m]))[0];
+        // Out of the session (DNF / parked in the garage): a car that barely moves while most of the field is racing.
         const trackSize = extent(cars[ref]), still = nums.filter((n) => extent(cars[n]) < trackSize * 0.04);
         const out = new Set(still.length <= nums.length / 2 ? still : []);   // everyone still = red flag or end of session, keep them
         track = { s, live, out, at: Date.now(), a: a.getTime(), b: b.getTime(), cars, order, outline: cars[ref], drivers: Object.fromEntries(drivers.map((d) => [d.driver_number, d])) };
@@ -7755,6 +7757,6 @@
     if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
-  <script type="module" src="account.js?v=1795848155"></script>
+  <script type="module" src="account.js?v=1795848458"></script>
 </body>
 </html>
