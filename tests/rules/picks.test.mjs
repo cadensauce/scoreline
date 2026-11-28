@@ -194,6 +194,11 @@ test("league: create (free), and Marks leagues need the agreement", async () => 
   await assertSucceeds(newLeague("teen"));
   await assertFails(setDoc(doc(as("newbie"), "leagues/L2"), { name: "x", lg: "f1", mode: "marks", owner: "newbie", members: ["newbie"], invites: [], status: "forming", rosterSize: 3, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
 });
+test("league: college basketball leagues draft 7, like the NBA", async () => {
+  await LSETUP();
+  await assertSucceeds(newLeague("teen", { lg: "cbb", rosterSize: 7 }));
+  await assertFails(setDoc(doc(as("teen"), "leagues/L3"), { name: "x", lg: "cbb", mode: "free", owner: "teen", members: ["teen"], invites: [], status: "forming", rosterSize: 8, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+});
 test("league: invited friend can join, invited non-friend can't", async () => {
   await LSETUP(); await assertSucceeds(newLeague("teen"));
   await assertSucceeds(updateDoc(doc(as("pal"), "leagues/L1"), { members: ["teen", "pal"], invites: ["stranger"], updatedAt: serverTimestamp() }));
@@ -236,6 +241,7 @@ test("profile: name, theme, sports, teams and players save", () => assertSucceed
 test("profile: works without agreeing to the Terms (no Shop extras)", () => assertSucceeds(fullCard("newbie")));
 test("profile: unknown theme is refused", () => assertFails(fullCard("teen", { theme: "neon" })));
 test("profile: unknown sport is refused", () => assertFails(fullCard("teen", { sports: ["nfl", "cricket"] })));
+test("profile: all six sports (with college basketball) are allowed", () => assertSucceeds(fullCard("teen", { sports: ["nfl", "cfb", "nba", "cbb", "mlb", "f1"] })));
 test("profile: at most 20 favourite players", () => assertFails(fullCard("teen", { favPlayers: Array.from({ length: 21 }, (_, i) => ({ lg: "nba", id: String(i), n: "P" + i })) })));
 test("profile: at most 12 favourite teams", () => assertFails(fullCard("teen", { favTeams: Array.from({ length: 13 }, (_, i) => ({ lg: "nba", id: String(i), n: "T" + i })) })));
 test("profile: display name at most 30 characters", () => assertFails(fullCard("teen", { name: "x".repeat(31) })));

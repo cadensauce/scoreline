@@ -1176,7 +1176,7 @@ window.scorelinePicks = {
 
 /* ---------- Season leagues with friends (leagues/{id}): create, invite, join, snake draft, weekly starters.
    Every step is checked by the rules; the push worker scores the weeks. ---------- */
-const LEAGUE_ROSTER = { nfl: 8, cfb: 8, nba: 7, mlb: 6, f1: 3 };
+const LEAGUE_ROSTER = { nfl: 8, cfb: 8, nba: 7, cbb: 7, mlb: 6, f1: 3 };
 const poolCache = {};
 window.scorelineLeagues = {
   me: () => (pickReady() ? user.uid : ""),
