@@ -1583,11 +1583,13 @@
 
   <script>
     const API = "https://site.api.espn.com/apis/site/v2/sports/";
-    const BB = (lg) => lg === "nba" || lg === "cbb";   /* basketball: NBA and college share the court, fouls, halves aside */\r\n    const LEAGUES = {
+    const BB = (lg) => lg === "nba" || lg === "cbb";   /* basketball: NBA and college share the court, fouls, halves aside */
+    const LEAGUES = {
       nfl:  { name: "NFL", path: "football/nfl", paging: "week" },
       cfb:  { name: "College Football", short: "CFB", path: "football/college-football", paging: "week", extra: "&groups=80&limit=300" },
       f1:   { name: "Formula 1", short: "F1", path: "racing/f1" },
-      nba:  { name: "NBA", path: "basketball/nba", paging: "day" },\r\n      cbb:  { name: "College Basketball", short: "CBB", path: "basketball/mens-college-basketball", paging: "day", extra: "&groups=50&limit=400" },
+      nba:  { name: "NBA", path: "basketball/nba", paging: "day" },
+      cbb:  { name: "College Basketball", short: "CBB", path: "basketball/mens-college-basketball", paging: "day", extra: "&groups=50&limit=400" },
       mlb:  { name: "MLB", path: "baseball/mlb", paging: "day" },
     };
     // Phone app mode: the Android app, or Scoreline added to an iPhone/Android home screen.
@@ -6982,7 +6984,10 @@
         "Pit crew": "About 20 mechanics who change all 4 tyres in roughly 2 to 3 seconds.",
       },
     };
-    /* College basketball shares the NBA's tables (stats, glossary, positions, icons); only halves and the primer differ. */\r\n    [ICONS, NEWS_VIP, PP_CATS, RECAP_EDGES, STAT_KEYS, BALL_ICON, GLOSS, POSINFO].forEach((t) => { if (t && t.nba && !t.cbb) t.cbb = t.nba; });\r\n    PRIMER.cbb = "<b>College basketball in 30 seconds.</b> Score by shooting through the hoop: 2 points, 3 from behind the arc, 1 for a free throw. 2 halves of 20 minutes. Over 350 Division I schools play in conferences, and in March the NCAA Tournament (March Madness) decides the champion.";\r\n    function posInfo(lg, a) {
+    /* College basketball shares the NBA's tables (stats, glossary, positions, icons); only halves and the primer differ. */
+    [ICONS, NEWS_VIP, PP_CATS, RECAP_EDGES, STAT_KEYS, BALL_ICON, GLOSS, POSINFO].forEach((t) => { if (t && t.nba && !t.cbb) t.cbb = t.nba; });
+    PRIMER.cbb = "<b>College basketball in 30 seconds.</b> Score by shooting through the hoop: 2 points, 3 from behind the arc, 1 for a free throw. 2 halves of 20 minutes. Over 350 Division I schools play in conferences, and in March the NCAA Tournament (March Madness) decides the champion.";
+    function posInfo(lg, a) {
       const t = POSINFO[lg]; if (!t || !a) return "";
       a = String(a).toUpperCase();
       return t[a] || t[a.replace(/^[LR](?=[A-Z])/, "")] || "";
