@@ -1600,7 +1600,8 @@
       if (e.target.closest("[data-ppclose]")) e.target.closest(".pp-wrap")?.remove();
     });
     const MOBILE_APP = !!window.__PREVIEW_APP || (IS_PHONE && (!!window.__TAURI__ || STANDALONE));
-    const navOrder = () => { const p = pins(); return ["home", ...p, ...(ALL_SPORTS.includes(state.tab) && !p.includes(state.tab) ? [state.tab] : []), "news", "fantasy", "you"]; };   // Social is part of You now (one less tab on phones)
+    const navHidden = () => store.get("navHide", {}) || {};   /* tabs turned off in Customize → Bottom bar */
+    const navOrder = () => { const p = pins(); return ["home", ...p, ...(ALL_SPORTS.includes(state.tab) && !p.includes(state.tab) ? [state.tab] : []), ...["news", "fantasy"].filter((k) => !navHidden()[k] || state.tab === k), "you"]; };   // Social is part of You now (one less tab on phones)
     /* ---------- native-app feel (phone app only) ---------- */
     if (MOBILE_APP) {
       document.documentElement.classList.add("mobile-app");
@@ -6081,7 +6082,7 @@
         '<div class="section-title"><b>Settings</b></div><div class="panel nteams">' +
           (MOBILE_APP ? '<div class="opt nteam" role="button" tabindex="0" data-open-notifs><span><b>Notifications</b><small>' + esc(alertsOn ? "On" + (quietLabel() ? " · quiet " + quietLabel() : "") : "Off") + '</small></span><span class="chev">›</span></div>' : "") +
           '<div class="opt nteam" role="button" tabindex="0" data-open-ideas><span><b>Ideas 💡</b><small>Suggest features and vote on what gets built next</small></span><span class="chev">›</span></div>' +
-          '<div class="opt nteam" role="button" tabindex="0" data-open-custom><span><b>Customize</b><small>Choose what shows on game pages, and text size</small></span><span class="chev">›</span></div>' +
+          '<div class="opt nteam" role="button" tabindex="0" data-open-custom><span><b>Customize</b><small>Choose what shows on game pages, the bottom bar, and text size</small></span><span class="chev">›</span></div>' +
           (signedIn ? '<div class="opt nteam" role="button" tabindex="0" data-open-account><span><b>Account and security</b><small>Email, two-step sign-in, sign-in codes, log out' + (reqs ? " · " + reqs + " friend request" + (reqs === "1" ? "" : "s") : "") + '</small></span><span class="chev">›</span></div>' : "") +
           '<div class="opt nteam" role="button" tabindex="0" data-open-dev hidden><span><b>Developer tools</b><small>Only shown to the Scoreline team</small></span><span class="chev">›</span></div>' +
         "</div>" +
@@ -6275,13 +6276,18 @@
       const h = hidden(), ts = store.get("textSize", "m");
       return '<div class="section-title"><b>Text size</b></div><div class="panel"><div class="seg chips ts-seg">' + TEXT_SIZES.map(([k, n]) => '<button type="button" class="' + (ts === k ? "on" : "") + '" data-ts="' + k + '">' + n + "</button>").join("") + "</div><p class=\"g-note\" style=\"margin:8px 2px 0\">Makes scores, plays and cards easier to read.</p></div>" +
         '<div class="section-title"><b>Show</b></div><div class="panel">' + CUSTOM.map(([k, n, d]) => '<button type="button" class="opt ' + (h[k] ? "" : "on") + '" data-custom="' + k + '"><span><b>' + esc(n) + "</b><small>" + esc(d) + '</small></span><i class="switch"></i></button>').join("") + "</div>" +
-        '<p class="g-note">Turned off parts are just hidden. Scores always show.</p>';
+        '<p class="g-note">Turned off parts are just hidden. Scores always show.</p>' +
+        '<div class="section-title"><b>Bottom bar</b></div><div class="panel">' + NAV_OPTS.map(([k, n, d]) => '<button type="button" class="opt ' + (navHidden()[k] ? "" : "on") + '" data-navtab="' + k + '"><span><b>' + esc(n) + "</b><small>" + esc(d) + '</small></span><i class="switch"></i></button>').join("") + "</div>" +
+        '<p class="g-note">Home and You always stay. Pick your sports on the You page.</p>';
     }
+    const NAV_OPTS = [["news", "📰 News", "Headlines and moves (also on each sport's 📰 button)"], ["fantasy", "🏆 Fantasy", "Your Fantasy leagues"]];
     function openCustom() { const v = { kind: "custom", key: "custom" }; if (!pushView(v)) return; setBody(v, "Customize", customHtml()); }
     document.addEventListener("click", (e) => {
       if (e.target.closest("[data-open-custom]")) return openCustom();
       const c = e.target.closest("[data-custom]");
       if (c) { const h = hidden(); h[c.dataset.custom] = !h[c.dataset.custom]; store.set("hide", h); applyCustom(); c.classList.toggle("on", !h[c.dataset.custom]); buzz(8); return; }
+      const nt = e.target.closest("[data-navtab]");
+      if (nt) { const h = navHidden(); h[nt.dataset.navtab] = !h[nt.dataset.navtab]; store.set("navHide", h); nt.classList.toggle("on", !h[nt.dataset.navtab]); renderTabs(); buzz(8); return; }
       const t = e.target.closest("[data-ts]");
       if (t && t.closest(".ts-seg")) { store.set("textSize", t.dataset.ts); applyCustom(); t.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === t)); buzz(8); }
     });
