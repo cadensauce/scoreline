@@ -1391,7 +1391,7 @@
       #main .grid .card { grid-template-columns: minmax(0, 1fr) auto; }
       #main .tname { flex-wrap: wrap; row-gap: 0; column-gap: 6px; }
       #main .team { column-gap: 0; grid-template-columns: 22px minmax(0, 1fr) auto auto; } #main .team > * + * { margin-left: 8px; }
-      #main .team > span:empty, #main .team > .score:empty { display: none; }   /* upcoming games: no empty score column eating the name's room */
+      #main .team > span:empty:not(.ph), #main .team > .score:empty { display: none; }   /* upcoming games: no empty score column eating the name's room */
       .sub-row { flex-wrap: wrap; row-gap: 8px; }
       #main .grid .card > .card-tags { grid-column: 1 / -1; grid-row: 1; }   /* labels across the top; the status sits beside the two teams */
       #main .grid .card:has(> .card-tags) > .card-head { grid-row: 2 / span 2; }
