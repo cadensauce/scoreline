@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795886930" />
+  <meta name="build" content="1795887116" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -141,6 +141,7 @@
     .gc-list { max-height: 260px; overflow-y: auto; display: grid; gap: 2px; margin-bottom: 10px; overscroll-behavior: contain; } .gc-msg { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text); font: inherit; font-size: 14px; line-height: 1.4; padding: 6px 8px; border-radius: 10px; overflow-wrap: anywhere; cursor: pointer; } .gc-msg b { color: var(--muted); font-weight: 700; } .gc-msg.me b { color: var(--text); } .gc-form { display: flex; gap: 8px; } .gc-form input { flex: 1; min-width: 0; height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 16px; } .gc-rules { margin-top: 6px; }
     .otd { display: grid; gap: 2px; width: 100%; text-align: left; padding: 12px 14px; margin: 0 0 12px; border: 1px solid var(--line); border-radius: var(--radius, 14px); background: var(--panel); color: var(--text); font: inherit; font-size: 14.5px; line-height: 1.4; cursor: pointer; } .otd-k { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); } .otd small { display: block; color: var(--muted); font-size: 12.5px; } .g-sec .otd { margin: 0; }
     .pstat { display: block; color: var(--text) !important; font-weight: 600; } .pstat:empty { display: none; }
+    .ldr-logo { flex: none; width: 30px; height: 30px; object-fit: contain; }
     .venue-card .vc-wx { padding: 14px 0 4px; border-bottom: 1px solid var(--line); margin-bottom: 4px; } .venue-card .vc-wx .g-label { font-size: 15px; margin: 0 0 10px; } .venue-card .vc-wx .wx-imp { margin-top: 10px; } .venue-card .vc-wx .g-note { margin-top: 8px; } .venue-card .vc-wx:empty { display: none; }
     .att-q { width: 100%; height: 44px; padding: 0 16px; margin-bottom: 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 16px; } .att-menu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; } .att-menu button { display: grid; place-items: center; gap: 6px; padding: 16px 6px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; } .att-menu button i { font-style: normal; font-size: 26px; } .chat-plus { flex: none; width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 22px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
     button.session { width: 100%; font: inherit; color: inherit; text-align: left; cursor: pointer; border: 0; grid-template-columns: 52px 1fr auto 14px; } button.session .chev { color: var(--muted); } .f1-sess { width: 100%; border-collapse: collapse; } .f1-sess td, .f1-sess th { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; font-size: 14px; vertical-align: middle; } .f1-sess th { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; } .f1-sess .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; } .f1-sess td small { display: block; color: var(--muted); font-size: 12px; } .f1-sess .num small { display: inline; } .f1-sess .pos { width: 32px; font-weight: 800; } .tt-dot { display: inline-block; width: 4px; height: 14px; border-radius: 2px; margin-right: 8px; vertical-align: -2px; }
@@ -6921,7 +6922,8 @@
        (they belong to the photographers); teams show as colour badges, not logos. Every story links to its source. */
     const BUZZ_LGS = ["nfl", "nba", "mlb", "cfb", "cbb"];
     const POS = "(?:QB|RB|FB|WR|TE|OL|OT|OG|G|C|T|DL|DE|DT|NT|LB|OLB|ILB|MLB|DB|CB|S|SS|FS|K|P|LS|KR|PR|LHP|RHP|P|1B|2B|3B|SS|OF|LF|CF|RF|DH|INF|UTIL|PG|SG|SF|PF|F|G-F|F-C|C-F|ATH)";
-    const teamBadge = (t) => t ? '<span class="tbadge" style="--tc:#' + esc(t.color || "555") + '">' + esc(t.abbreviation || "?") + "</span>" : "";
+    const ldrBadge = (t) => (t?.logo ? '<img class="ldr-logo" src="' + esc(t.logo) + '" alt="' + esc(t.abbreviation || "") + '" loading="lazy">' : teamBadge(t));   // stat leaders: the team logo
+    const teamBadge = (t) => !t ? "" : '<span class="tbadge" style="--tc:#' + esc(t.color || "555") + '">' + esc(t.abbreviation || "?") + "</span>";   // a team-colour badge with the abbreviation; was: there's none
     const FA = '<span class="tbadge fa" title="Free agent">FA</span>';
     const LBL = (t, title) => '<span class="tbadge fa" title="' + title + '">' + t + "</span>";
     const PS = LBL("PS", "Practice squad"), IR = LBL("IR", "Injured list"), WV = LBL("Waivers", "Waivers"), MIN = LBL("Minors", "Minor leagues"), SUS = LBL("Suspended", "Suspended"), TRD = LBL("Trade", "Trade");
@@ -7101,7 +7103,7 @@
           const want = (c.categories || []).find((x) => x.name === o.cat) || (c.categories || [])[0];
           if (want) want.leaders = await Promise.all((want.leaders || []).slice(0, 10).map(async (l) => {
             const [a, t] = await Promise.all([getJSON(https(l.athlete?.$ref)).catch(() => null), l.team?.$ref ? getJSON(https(l.team.$ref)).catch(() => null) : null]);
-            return { displayValue: l.displayValue, athlete: a ? { id: a.id, displayName: a.displayName, position: a.position } : null, team: t ? { abbreviation: t.abbreviation, color: t.color, displayName: t.displayName } : null };
+            return { displayValue: l.displayValue, athlete: a ? { id: a.id, displayName: a.displayName, position: a.position } : null, team: t ? { abbreviation: t.abbreviation, color: t.color, displayName: t.displayName, logo: https(t.logos?.[0]?.href || "") } : null };
           }));
           d = { requestedSeason: { year: yr }, currentSeason: { year: LDR.cur?.[lg] || yr }, categories: c.categories || [] };
         } catch { box.innerHTML = '<div class="error">Couldn\'t load leaders.</div>'; return; }
@@ -7121,7 +7123,7 @@
         dm("<b>Stat leaders.</b> The top players in one stat. Per-game stats (like points per game) only count players who've played enough games. Playoffs only count playoff games.") +
         (!cat?.leaders?.length ? '<div class="panel"><p class="muted people-hint">No leaders for this yet. Not available.</p></div>' :
           '<div class="panel ldr-list">' + cat.leaders.slice(0, 10).map((l, i) => '<button type="button" class="opt ldr-row' + (i < 3 ? " top" : "") + '" data-player="' + lg + "|" + esc(l.athlete?.id || "") + '">' +
-            '<span class="ldr-rank">' + (medal[i] || i + 1) + "</span>" + teamBadge(l.team) + '<span class="ldr-name"><b>' + esc(l.athlete?.displayName || "") + "</b><small>" + esc([l.athlete?.position?.abbreviation, l.team?.displayName].filter(Boolean).join(" · ")) + "</small></span>" +
+            '<span class="ldr-rank">' + (medal[i] || i + 1) + "</span>" + ldrBadge(l.team) + '<span class="ldr-name"><b>' + esc(l.athlete?.displayName || "") + "</b><small>" + esc([l.athlete?.position?.abbreviation, l.team?.displayName].filter(Boolean).join(" · ")) + "</small></span>" +
             '<span class="ldr-val">' + esc(ldrVal(l)) + "</span></button>").join("") + "</div>");
     }
     document.addEventListener("change", (e) => {
@@ -8140,6 +8142,6 @@
     if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
-  <script type="module" src="account.js?v=1795886930"></script>
+  <script type="module" src="account.js?v=1795887116"></script>
 </body>
 </html>
