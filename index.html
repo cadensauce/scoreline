@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795847752" />
+  <meta name="build" content="1795847899" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -362,6 +362,7 @@
     .fg-chip { width: 32px; height: 32px; border-radius: 9px; border: 0; font: inherit; font-size: 13px; font-weight: 700; display: grid; place-items: center; cursor: pointer; }
     .fg-chip.W { background: rgba(52, 199, 89, .16); color: #4cd471; } .fg-chip.L { background: rgba(255, 69, 58, .14); color: #ff6b61; } .fg-chip.T { background: var(--panel-2); color: var(--muted); }
     .fg .g-note { margin: 8px 0 0; } .fg-series { color: var(--text); }
+    .g-count { margin-top: 4px; font-size: 12.5px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
     .t-form { display: flex; align-items: center; gap: 10px; margin: -2px 0 14px; } .t-form small { color: var(--muted); font-size: 13px; }
     .fg-chip.sm { width: 28px; height: 28px; font-size: 12px; border-radius: 8px; }
     .greet { display: flex; flex-direction: column; gap: 2px; margin: -4px 0 14px; } .greet b { font-size: 15px; } .greet span { color: var(--muted); font-size: 14px; line-height: 1.45; }
@@ -3665,6 +3666,13 @@
         rows + '<p class="g-note">Last five games, oldest → newest. Tap a result for the score.</p>' + serLine + "</div>";
     }
     document.addEventListener("click", (e) => { const c = e.target.closest("[data-fg]"); if (c) { buzz(6); toast(c.dataset.fg); } });
+    // "Starts in 2h 14m" under an upcoming game's start time (every sport; F1 has its own countdown). Ticks once a minute.
+    function startsIn(iso) {
+      const m = Math.round((new Date(iso) - Date.now()) / 6e4);
+      if (m <= 0) return "Starting now ⏱️"; if (m < 60) return "Starts in " + m + "m ⏱️";
+      const h = Math.floor(m / 60); return h < 24 ? "Starts in " + h + "h " + (m % 60) + "m" : "Starts in " + Math.floor(h / 24) + "d " + (h % 24) + "h";
+    }
+    setInterval(() => document.querySelectorAll("[data-startat]").forEach((el) => { const t = startsIn(el.dataset.startat); if (el.textContent !== t) el.textContent = t; }), 30000);
     function plainLine(s, teams, state, lg) {
       if (teams.length !== 2) return "";
       const comp = s.header?.competitions?.[0] || {}, st = comp.status?.type || {};
@@ -5312,7 +5320,7 @@
         return '<button type="button" class="g-team" data-team="' + lg + "|" + esc(t.team?.id) + '">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : "") +
           "<b>" + esc(t.team?.abbreviation || t.team?.displayName) + "</b>" + (gpid && gpid === String(t.team?.id) ? POSS_ICON(lg) : "") + (st.state === "in" ? '<i class="poss-ph"></i>' : "") + '<small>' + esc(t.record?.[0]?.summary || t.record?.[0]?.displayValue || "") + "</small></button>" +
           (i === 0 ? '<div class="g-mid">' + (showScore ? '<div class="g-score">' + esc(teams[0]?.score ?? "") + "<i>–</i>" + esc(teams[1]?.score ?? "") + "</div>" : "") +
-            '<div class="status ' + (st.state === "in" ? "live" : "") + '">' + esc(st.state === "pre" ? fmtDay(comp.date) + " · " + fmtTime(comp.date) : st.shortDetail || "") + "</div>" + (st.state !== "pre" ? flagLine(s, teams, lg) : "") + "</div>" : "");   // flags/fouls/errors right under the score and clock
+            '<div class="status ' + (st.state === "in" ? "live" : "") + '">' + esc(st.state === "pre" ? fmtDay(comp.date) + " · " + fmtTime(comp.date) : st.shortDetail || "") + "</div>" + (st.state === "pre" && new Date(comp.date) - Date.now() < 7 * 864e5 ? '<div class="g-count" data-startat="' + esc(comp.date) + '">' + esc(startsIn(comp.date)) + "</div>" : "") + (st.state !== "pre" ? flagLine(s, teams, lg) : "") + "</div>" : "");   // flags/fouls/errors right under the score and clock
       }).join("") + "</div>";
 
       // Order: score → plain-English status → tabs → win probability → plays → the rest.
@@ -7747,6 +7755,6 @@
     if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
-  <script type="module" src="account.js?v=1795847752"></script>
+  <script type="module" src="account.js?v=1795847899"></script>
 </body>
 </html>
