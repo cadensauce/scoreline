@@ -5694,10 +5694,19 @@
         return { share: { k: "game", lg, id, t: o.t.slice(0, 80), s: (LEAGUES[lg].name || "").slice(0, 80) } };
       },
       async team() {
-        const lgs = ATT_LGS(), opts = [];
+        // Team lists: standings for the pro leagues, the AP Top 25 for college (ESPN's /teams list blocks browsers).
+        const lgs = ATT_LGS(), opts = [], seen = new Set();
+        const add = (lg, t) => { if (!t?.id || seen.has(lg + "|" + t.id)) return; seen.add(lg + "|" + t.id); const uid = t.uid || LG_UID[lg] + "~t:" + t.id;
+          opts.push({ v: lg + "|" + t.id, l: t.displayName || [t.location, t.name].filter(Boolean).join(" ") || t.abbreviation || "", group: state.favs.has(uid) ? "⭐ Your teams" : LEAGUES[lg].short || LEAGUES[lg].name }); };
         await Promise.all(lgs.map(async (lg) => {
-          const j = await getJSON(API + LEAGUES[lg].path + "/teams" + (lg === "cfb" || lg === "cbb" ? "?limit=400" : "")).catch(() => null);
-          (j?.sports?.[0]?.leagues?.[0]?.teams || []).forEach((x) => { const t = x.team || {}; if (t.id) opts.push({ v: lg + "|" + t.id, l: t.displayName || t.name || "", group: (state.favs.has(t.uid) ? "⭐ Your teams" : LEAGUES[lg].short || LEAGUES[lg].name) }); });
+          if (lg === "cfb" || lg === "cbb") {
+            const j = await getJSON(API + LEAGUES[lg].path + "/rankings").catch(() => null), r = (j?.rankings || []).find((x) => /AP/i.test(x.name || "")) || j?.rankings?.[0];
+            (r?.ranks || []).forEach((x) => add(lg, x.team));
+          } else {
+            const [sp, lgn] = LEAGUES[lg].path.split("/"), j = await getJSON("https://site.api.espn.com/apis/v2/sports/" + sp + "/" + lgn + "/standings").catch(() => null);
+            const walk = (n) => { (n?.standings?.entries || []).forEach((e) => add(lg, e.team)); (n?.children || []).forEach(walk); };
+            walk(j);
+          }
         }));
         if (!opts.length) { toast("Couldn't load teams. Try again."); return null; }
         opts.sort((a, b) => (b.group.startsWith("⭐") - a.group.startsWith("⭐")) || a.group.localeCompare(b.group) || a.l.localeCompare(b.l));
@@ -5719,7 +5728,7 @@
             const past = q.length >= 3 ? await espnPlayers(q).catch(() => []) : [];
             if (my !== n || !v.el.isConnected) return;
             const seen = new Set(found.map((h) => h.lg + "|" + h.id));
-            hits = [...found.sort((a, b) => (a.n.toLowerCase().startsWith(q) ? 0 : 1) - (b.n.toLowerCase().startsWith(q) ? 0 : 1) || a.n.localeCompare(b.n)).slice(0, 12), ...past.filter((h) => !seen.has(h.lg + "|" + h.id))].slice(0, 18);
+            hits = [...found.sort((a, b) => (a.n.toLowerCase().startsWith(q) ? 0 : 1) - (b.n.toLowerCase().startsWith(q) ? 0 : 1) || (pins().includes(a.lg) ? 0 : 1) - (pins().includes(b.lg) ? 0 : 1) || a.n.localeCompare(b.n)).slice(0, 12), ...past.filter((h) => !seen.has(h.lg + "|" + h.id))].slice(0, 18);
             box.innerHTML = hits.length ? hits.map((h, i) => '<button type="button" class="opt pick-opt" data-att-i="' + i + '"><span>' + esc(h.n) + " <small class=\"muted\">" + esc([h.t, SPORT_NAMES[h.lg]].filter(Boolean).join(" · ")) + "</small></span></button>").join("") : '<p class="g-note">No players found.</p>';
           }, 250); });
           box.addEventListener("click", (e) => { const b = e.target.closest("[data-att-i]"); if (!b) return; const h = hits[Number(b.dataset.attI)]; buzz(8); closeTop();
