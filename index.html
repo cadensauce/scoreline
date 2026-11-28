@@ -2197,7 +2197,7 @@
       const sBtn = paged ? '<button type="button" class="icon-btn' + (open ? " on" : "") + '" data-searchtoggle aria-label="Search ' + esc(L.short || L.name) + ' teams"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>' : "";
       const hBtn = key !== "f1" ? '<button type="button" class="icon-btn' + (HEAT ? " on" : "") + '" data-heat aria-label="' + (HEAT ? "Show as list" : "Show as heat map") + '" title="' + (HEAT ? "List" : "Heat map") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2" opacity=".55"/><rect x="3" y="13" width="8" height="8" rx="2" opacity=".3"/><rect x="13" y="13" width="8" height="8" rx="2" opacity=".75"/></svg></button>' : "";
       return '<div class="bar"><h1>' + esc(title) + "</h1>" + hBtn + sBtn + "</div>" + headlineHtml(key) + (open ? search : "") +
-        '<div class="bar-row">' + liveBtn + "</div>" + (paged ? '<div class="tool-row" data-noswipe><button type="button" class="tool-chip" data-standings="' + key + '"><i>📊</i>' + (key === "cfb" ? "Top 25" : "Standings") + '</button><button type="button" class="tool-chip" data-open-buzz="all" data-bz-lg="' + key + '"><i>📰</i>News</button><button type="button" class="tool-chip" data-leaders="' + key + '"><i>🏅</i>Leaders</button>' + (key !== "cfb" ? '<button type="button" class="tool-chip" data-bracket="' + key + '"><i>🏆</i>Bracket</button>' : "") + "</div>" : "") + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
+        '<div class="bar-row">' + liveBtn + "</div>" + (paged ? '<div class="tool-row" data-noswipe><button type="button" class="tool-chip" data-standings="' + key + '"><i>📊</i>' + (key === "cfb" ? "Top 25" : "Standings") + '</button><button type="button" class="tool-chip" data-open-buzz="all" data-bz-lg="' + key + '"><i>📰</i>News</button><button type="button" class="tool-chip" data-leaders="' + key + '"><i>🏅</i>Leaders</button>' + (key !== "cfb" && key !== "cbb" ? '<button type="button" class="tool-chip" data-bracket="' + key + '"><i>🏆</i>Bracket</button>' : "") + "</div>" : "") + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
         (HEAT ? '<div class="heat-key"><span>One-sided</span><i></i><span>Close game</span></div>' : "") + (HEAT ? dm("<b>Reading the heat map.</b> Each tile is one game. The brighter the tile, the closer the game is to a coin flip (from win probability), so the most exciting games stand out. Upcoming games use the pre-game odds; finished games are dimmed. The ball icon shows who has it.") : "");
     }
 
@@ -3852,7 +3852,7 @@
           else if (/shot|jumper|layup|dunk|hook|tip/i.test(lt)) poss = lteam;
         }
         const f = (t) => fouls[tid(t)] || 0;
-        const mid = per ? "Fouls " + f(away) + " – " + f(home) + (f(away) >= 5 || f(home) >= 5 ? " · Bonus" : "") : "";
+        const mid = per ? "Fouls " + f(away) + " – " + f(home) + (Math.max(f(away), f(home)) >= (v.lg === "cbb" ? 7 : 5) ? " · Bonus" : "") : "";
         return { live, stops, left: { [tid(away)]: left(away), [tid(home)]: left(home) }, max: per > 4 ? 2 : per === 4 ? 4 : 7, poss: live ? poss : null, mid, last };
       }
       // MLB
