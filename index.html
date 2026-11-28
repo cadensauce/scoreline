@@ -6831,7 +6831,6 @@
       const box = f.closest(".quiet-times"), a = box.querySelector("[data-quiet-from]").value, b = box.querySelector("[data-quiet-to]").value;
       if (/^\d\d:\d\d$/.test(a) && /^\d\d:\d\d$/.test(b)) { saveQuiet(a, b); renderAlerts(); }
     });
-    // Version shown in You → About. One source: <meta name="version"> (major.minor) + <meta name="build"> (when this page was published).
     const versionText = () => (document.querySelector("meta[name=version]")?.content || "2.0");
     const builtOn = () => { const b = Number(document.querySelector("meta[name=build]")?.content); return b ? new Date(b * 1000).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "recently"; };
     // Sports pinned to the bottom bar. Everything else stays one tap away on Home.

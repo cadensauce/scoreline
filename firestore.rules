@@ -606,7 +606,7 @@ service cloud.firestore {
     match /recovery/{uid} {
       allow get, delete: if signedIn() && me() == uid;
       allow create, update: if signedIn() && me() == uid && request.resource.data.keys().hasOnly(['email', 'at'])
-        && request.resource.data.email is string && request.resource.data.email.matches('^[^\s@]+@[^\s@]+\.[^\s@]{2,}$') && request.resource.data.email.size() <= 100
+        && request.resource.data.email is string && request.resource.data.email.matches('^[^ @]+@[^ @]+[.][^ @][^ @]+$') && request.resource.data.email.size() <= 100
         && request.resource.data.at == request.time;
     }
     // "Forgot password" for username accounts: anyone can ask (signed out); the worker emails a reset link to that
