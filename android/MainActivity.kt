@@ -1,5 +1,6 @@
 package io.github.cadensauce.scoreline
 
+import android.content.Intent
 import android.os.Bundle
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -14,6 +15,20 @@ import com.google.firebase.messaging.FirebaseMessaging
 class MainActivity : TauriActivity() {
   @Volatile private var pushToken: String = ""
   @Volatile private var pushError: String = ""
+  // The link of the alert that opened the app ("#g=nfl-401…"); the page takes it once.
+  @Volatile private var pendingLink: String = ""
+
+  private fun takeLink(i: Intent?) {
+    val l = i?.getStringExtra("link") ?: return
+    if (l.startsWith("#")) pendingLink = l
+    i.removeExtra("link")
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    takeLink(intent)
+  }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
@@ -21,6 +36,7 @@ class MainActivity : TauriActivity() {
     ScorelineMessagingService.ensureChannel(this)
     startFirebase()
     loadToken()
+    takeLink(intent)
   }
 
   // Firebase normally starts itself from res/values/firebase.xml; start it by hand if that didn't happen.
@@ -61,5 +77,8 @@ class MainActivity : TauriActivity() {
 
     @Keep @JavascriptInterface
     fun pushError(): String = pushError
+
+    @Keep @JavascriptInterface
+    fun pendingLink(): String { val l = pendingLink; pendingLink = ""; return l }
   }
 }

@@ -31,10 +31,13 @@ self.addEventListener("fetch", (event) => {
 // Tapping a notification opens (or focuses) the app.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const url = new URL(event.notification.data?.url || "./", self.registration.scope).href;   // "./#g=nfl-401…" opens that game
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
       const open = wins.find((w) => w.url.startsWith(self.registration.scope));
-      return open ? open.focus() : self.clients.openWindow("./");
+      if (!open) return self.clients.openWindow(url);
+      open.postMessage({ type: "open-link", url });   // already open: the page jumps to the game (no reload)
+      return open.focus();
     })
   );
 });

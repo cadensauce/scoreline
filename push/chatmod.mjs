@@ -36,7 +36,7 @@ export function startChatMod(db, admin, { getSub, deliver, quietNow }) {
           for (const d of devs?.docs || []) {
             const s = getSub(d.id);
             if (!s || s.prefs.chat === "off" || quietNow(s.prefs)) continue;
-            await deliver(s, title, body, "chat-" + c.doc.id, 3600);
+            await deliver(s, title, body, "chat-" + c.doc.id, 3600, "#c=" + c.doc.id);
           }
         }
       } catch (e) { console.log("chat alert failed", e.message); }

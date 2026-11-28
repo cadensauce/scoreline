@@ -17,7 +17,7 @@ class ScorelineMessagingService : FirebaseMessagingService() {
     val d = msg.data
     val title = d["title"] ?: msg.notification?.title ?: return
     val body = d["body"] ?: msg.notification?.body ?: ""
-    show(this, title, body, d["tag"] ?: title)
+    show(this, title, body, d["tag"] ?: title, d["link"] ?: "")
   }
 
   // The page reads the new address next time the app opens and saves it.
@@ -35,10 +35,11 @@ class ScorelineMessagingService : FirebaseMessagingService() {
       nm.createNotificationChannel(ch)
     }
 
-    fun show(ctx: Context, title: String, body: String, tag: String) {
+    // link: where tapping goes ("#g=nfl-401…" = that game); handed to the page by MainActivity.
+    fun show(ctx: Context, title: String, body: String, tag: String, link: String = "") {
       ensureChannel(ctx)
       val open = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
-        ?.apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP }
+        ?.apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP; if (link.isNotEmpty()) putExtra("link", link) }
       val pi = open?.let {
         PendingIntent.getActivity(ctx, tag.hashCode(), it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
       }

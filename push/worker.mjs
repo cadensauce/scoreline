@@ -223,7 +223,8 @@ function wants(prefs, team, kind, ev) {
 const sentKeys = new Set();
 const FCM_PREFIX = "https://fcm.native/";
 // Deliver one alert to one phone: the Android app via Firebase Cloud Messaging, home-screen installs via web push.
-async function deliver(s, title, body, tag, ttl) {
+// link: where tapping the alert goes ("#g=nfl-401…" opens that game, "#c=<chat>" a chat); "" = the app's home.
+async function deliver(s, title, body, tag, ttl, link = "") {
   const drop = async () => { await db.collection("pushSubs").doc(s.id).delete().catch(() => {}); subs = subs.filter((x) => x !== s); };
   if (s.sub.endpoint.startsWith(FCM_PREFIX)) {
     try {
@@ -232,7 +233,7 @@ async function deliver(s, title, body, tag, ttl) {
         // A "notification" message is shown by Android itself when the app is closed (no app code has to wake up);
         // when the app is open, the app's own service gets it and shows it the same way.
         notification: { title, body },
-        data: { title, body, tag: String(tag) },
+        data: { title, body, tag: String(tag), link: String(link || "") },
         android: { priority: "high", ttl: ttl * 1000, notification: { channelId: "scores", tag: String(tag), icon: "ic_stat_scoreline", defaultSound: true } },
       });
       return "app: sent " + String(id).split("/").pop();
@@ -241,18 +242,24 @@ async function deliver(s, title, body, tag, ttl) {
       console.log("app push failed", e.code || e.message); return "app: " + (e.code || e.message);
     }
   }
-  try { await webpush.sendNotification(s.sub, JSON.stringify({ title, body, tag, url: "./" }), { TTL: ttl, urgency: "high" }); return "web: sent"; }
+  try { await webpush.sendNotification(s.sub, JSON.stringify({ title, body, tag, url: "./" + (link || "") }), { TTL: ttl, urgency: "high" }); return "web: sent"; }
   catch (e) {
     if (e.statusCode === 404 || e.statusCode === 410) { await drop(); return "web: gone"; }
     console.log("push failed", e.statusCode || e.message); return "web: " + (e.statusCode || e.message);
   }
+}
+// "#g=<lg>-<event>" for a game alert: the league comes from the team key (s:20~l:28~t:23 → NFL).
+function gameLink(teamKey, ev) {
+  if (!ev?.id) return "";
+  const n = (String(teamKey).match(/~l:(\d+)/) || [])[1], lg = Object.keys(LEAGUES).find((k) => String(LEAGUES[k].league) === n);
+  return lg ? "#g=" + lg + "-" + ev.id : "";
 }
 async function send(teamKey, kind, title, body, dedupe, ev) {
   const targets = subs.filter((s) => s.favs.has(teamKey) && wants(s.prefs, teamKey, kind, ev) && !sentKeys.has(s.id + "|" + dedupe));
   if (!targets.length) return 0;
   await Promise.all(targets.map(async (s) => {
     sentKeys.add(s.id + "|" + dedupe);
-    await deliver(s, title, body, dedupe, kind === "start" || kind === "score" ? 900 : 3600);
+    await deliver(s, title, body, dedupe, kind === "start" || kind === "score" ? 900 : 3600, gameLink(teamKey, ev));
   }));
   console.log(new Date().toISOString(), kind, "→", targets.length, "|", title, "|", body);
   return targets.length;
@@ -380,7 +387,7 @@ async function checkPlayers(lg, L, ev, st) {
         const dedupe = "pl-" + key + "-" + id;
         if (quietNow(s.prefs) || s.prefs.player === "off" || sentKeys.has(s.id + "|" + dedupe)) continue;
         sentKeys.add(s.id + "|" + dedupe);
-        await deliver(s, L.icon + " " + name + ": " + what + "!", scoreLine(ev) + " · " + (ev.status?.type?.shortDetail || ""), dedupe, 1800);
+        await deliver(s, L.icon + " " + name + ": " + what + "!", scoreLine(ev) + " · " + (ev.status?.type?.shortDetail || ""), dedupe, 1800, "#g=" + lg + "-" + ev.id);
       }
       console.log(new Date().toISOString(), "player", lg, name, what);
     }
