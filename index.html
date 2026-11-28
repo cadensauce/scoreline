@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795861322" />
+  <meta name="build" content="1795861608" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -636,7 +636,7 @@
     .bz-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 10px; } .bz-chips button { flex: none; height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; } .bz-chips button.on { background: var(--text); color: var(--bg); }
     .bz-item { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); margin-bottom: 10px; }
     .bz-item.mine { border-color: var(--line-hi); } .bz-mine { color: var(--gold, #f2c14e); font-weight: 600; }
-    .bz-meta a, .credit-link, .g-note .link-btn, .acct-note .link-btn, p .link-btn, small .link-btn { display: inline-block; padding: 8px 4px; margin: -8px -4px; }   /* "Read more": a bigger tap area without moving the text */
+    .bz-meta a, .credit-link, .g-note .link-btn, .acct-note .link-btn, p .link-btn, small .link-btn { display: inline-block; padding: 4px 6px; margin: -4px -6px; }   /* taller tap area that stays clear of the line above */   /* "Read more": a bigger tap area without moving the text */
     .bz-top { display: flex; gap: 12px; } .bz-e { font-size: 24px; line-height: 1.1; flex: none; } .bz-txt { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
     .bz-txt b { font-size: 15.5px; line-height: 1.3; overflow-wrap: anywhere; } .bz-txt small { color: var(--muted); font-size: 12.5px; line-height: 1.4; overflow-wrap: anywhere; } .bz-meta a { color: var(--text); }
     .bz-move { display: flex; align-items: center; gap: 8px; } .bz-move i { font-style: normal; color: var(--muted); }
@@ -7758,6 +7758,6 @@
     if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
-  <script type="module" src="account.js?v=1795861322"></script>
+  <script type="module" src="account.js?v=1795861608"></script>
 </body>
 </html>
