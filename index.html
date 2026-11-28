@@ -138,6 +138,7 @@
     .bar h1 { margin: 0 auto 0 0; font-family: var(--display); font-size: 32px; font-weight: 650; letter-spacing: -.01em; }
     .pill-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 7px 14px; font-weight: 600; color: var(--text); transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast); }
     .rc-sec { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; } .rc-sec small { color: var(--muted); font-size: var(--fs-xs, 12px); } .rc-img { display: block; width: 100%; max-width: 420px; margin: 0 auto 12px; border-radius: 16px; } .rc-row { display: flex; justify-content: center; margin-bottom: 8px; }
+    .gc-list { max-height: 260px; overflow-y: auto; display: grid; gap: 2px; margin-bottom: 10px; overscroll-behavior: contain; } .gc-msg { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text); font: inherit; font-size: 14px; line-height: 1.4; padding: 6px 8px; border-radius: 10px; overflow-wrap: anywhere; cursor: pointer; } .gc-msg b { color: var(--muted); font-weight: 700; } .gc-msg.me b { color: var(--text); } .gc-form { display: flex; gap: 8px; } .gc-form input { flex: 1; min-width: 0; height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 16px; } .gc-rules { margin-top: 6px; }
     @media (hover: hover) { .pill-btn:hover { background: var(--panel-2); border-color: var(--line-hi); } }
     .pill-btn:active, .tab:active, .refresh:active { transform: scale(.97); }
     .pill-btn.on { background: rgba(255, 59, 78, .14); border-color: rgba(255, 59, 78, .45); color: #ffb3bb; }
@@ -2544,6 +2545,8 @@
           return '<div class="session ' + (c === nx ? "next" : "") + '"><b>' + esc(c.type?.abbreviation || "") + '</b><span class="when">' + tm("f1", SESSION_NAMES[c.type?.abbreviation] || "") + " · " + esc(fmtDay(c.date)) + " " + esc(fmtTime(c.date)) + "</span>" + tag + "</div>";
         }).join("") + "</div>";
         if (nx && ev.circuit?.address?.city) left += '<div class="g-sec" data-wx style="margin-top:12px"><div class="skel" style="height:90px"></div></div>';
+        const f1Live = (ev.competitions || []).some((c) => c.status?.type?.state === "in"), f1Soon = nx && nx.status?.type?.state === "pre" && Date.parse(nx.date) - Date.now() < 2 * 3600e3;
+        if ((f1Live || f1Soon) && /^[0-9]{1,15}$/.test(String(ev.id))) left += '<div class="g-sec gc-sec" style="margin-top:12px" data-gamechat="f1_' + ev.id + '" data-open="1"></div>';   // watch-together chat while a session is on
         const race =(ev.competitions || []).slice().reverse().find((c) => c.status?.type?.state !== "pre" && (c.competitors || []).length);
         if (race) {
           const hasTeam = race.competitors.some((d) => d.team?.displayName);   // ESPN often leaves teams out of session results: then no empty column
@@ -2569,10 +2572,12 @@
       const wrapNow = again && main.querySelector(".f1-wrap");
       if (wrapNow) {
         const apply = () => {
-          const oldWx = wrapNow.querySelector("[data-wx]"), y = scrollY;
+          const oldWx = wrapNow.querySelector("[data-wx]"), oldGc = wrapNow.querySelector("[data-gamechat]"), y = scrollY;
           wrapNow.innerHTML = left + right;
-          const newWx = wrapNow.querySelector("[data-wx]");
+          const newWx = wrapNow.querySelector("[data-wx]"), newGc = wrapNow.querySelector("[data-gamechat]");
           if (oldWx && newWx) newWx.replaceWith(oldWx);   // keep the weather already shown
+          if (oldGc && newGc && oldGc.dataset.gamechat === newGc.dataset.gamechat) newGc.replaceWith(oldGc);   // keep the chat (and anything you're typing)
+          else window.scorelineGameChat?.mount(newGc);
           if (Math.abs(scrollY - y) > 2) scrollTo(0, y);
           tickCountdown(); stamp();
         };
@@ -2582,6 +2587,7 @@
         return;
       }
       main.innerHTML = barHtml("Formula 1", "f1") + '<div class="panel track-panel" id="trackPanel"><div class="g-label">Track</div><div class="skel" style="height:260px"></div></div>' + '<div class="f1-wrap">' + left + right + "</div>" + '<div data-f1strat></div>';
+      window.scorelineGameChat?.mount(main.querySelector("[data-gamechat]"));
       f1QualiHtml().catch(() => "").then((q) => new Promise((r) => setTimeout(r, 800)).then(f1StrategyHtml).catch(() => "").then((x) => { const el = main.querySelector("[data-f1strat]"); if (el) { if (q + x) el.outerHTML = q + x; else el.remove(); } }));
       renderTabs();
       stamp();
@@ -5340,6 +5346,8 @@
       h += '<div class="gtabs" role="tablist">' + gcats.map(([k, l]) => '<button type="button" role="tab" data-gcat="' + k + '" class="' + (k === "all" ? "active" : "") + '">' + l + "</button>").join("") + "</div>";
       h += recap;
       h += wpSectionHtml(s, teams, st.state, id, lg);
+      const gAge = Date.now() - Date.parse(comp.date || 0), gOpen = st.state === "in" || (st.state === "pre" && gAge > -2 * 3600e3) || (st.state === "post" && gAge < 6 * 3600e3);   // chat opens 2 h before, closes ~3 h after the end
+      if (gOpen || (st.state === "post" && gAge < 36 * 3600e3)) h += '<div class="g-sec gc-sec" data-c="all" data-gamechat="' + lg + "_" + esc(id) + '" data-open="' + (gOpen ? 1 : 0) + '"></div>';
       if (st.state !== "pre") h += highlightsHtml(s, recap ? "recap" : "all");
       if (st.state !== "in") h += '<div data-pred></div>';   // prediction (before) / predicted vs actual (after), filled in below
       if (PICK_LGS.includes(lg)) h += '<div class="g-sec pick-sec" data-pick data-c="all"></div>';
@@ -5392,6 +5400,7 @@
       if (vnu?.id) loadWeather(v.el.querySelector("[data-wx]"), vnu, comp.date, st.state === "in" ? "Weather now" : lg === "mlb" ? "Weather at first pitch" : "Weather at kickoff", "https://sports.core.api.espn.com/v2/sports/" + wsp + "/leagues/" + wlg + "/venues/" + vnu.id, lg);
       if (vnu?.id && st.state === "post") pastWeather(v.el.querySelector("[data-vwx]"), vnu, comp.date, "https://sports.core.api.espn.com/v2/sports/" + wsp + "/leagues/" + wlg + "/venues/" + vnu.id);
       useOurModel(lg, v, s, teams, st.state, id);
+      window.scorelineGameChat?.mount(v.el.querySelector("[data-gamechat]"));
     }
 
     /* ---------- Recap card: a shareable picture of a finished game (score, top players, the big moment) ----------

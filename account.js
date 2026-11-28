@@ -1502,3 +1502,64 @@ window.scorelineBracket = {
     catch (e) { if (/permission/i.test(e?.code || "")) throw new Error("locked"); throw e; }
   },
 };
+
+/* ---------- Game chat: talk about a game while it's on, with everyone watching ----------
+   gamechat/{lg_id}/msgs/{id} = { from, text, at }. Safety: signed-in accounts that agreed to the Terms (13+) and the
+   chat rules; text only (no links, photos or shares), 200 characters, one message every 5 seconds (gcLast/{uid}).
+   Tap a message to report the person (or delete your own; Mods and the Owner can delete any). Blocked people are hidden. */
+const GC_LINK = /(https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|gg|io|co|ly|me|tv|xyz|app)\b|discord|snap(chat)?\b|insta(gram)?\b|tiktok)/i;
+window.scorelineGameChat = {
+  mount(el) {
+    if (!el || el.dataset.gcOn) return; el.dataset.gcOn = "1";
+    const gid = el.dataset.gamechat, open = el.dataset.open === "1";
+    el.innerHTML = '<div class="g-label">💬 Game chat</div><div class="gc-list" aria-live="polite"><p class="g-note">Loading…</p></div>' +
+      (open ? '<form class="gc-form" autocomplete="off"><input type="text" maxlength="200" placeholder="Say something about the game" aria-label="Message the game chat" enterkeyhint="send"><button type="submit" class="pill-btn">Send</button></form>'
+        : '<p class="g-note">Chat is closed for this game.</p>') +
+      '<p class="g-note gc-rules">Be kind · no links or personal info · tap a message to report it.</p>';
+    const list = el.querySelector(".gc-list");
+    let unsub = null, mod = false, msgs = [];
+    const stop = () => { unsub?.(); unsub = null; clearInterval(tick); };
+    const tick = setInterval(() => { if (!el.isConnected) stop(); }, 5000);
+    const draw = async () => {
+      if (!el.isConnected) return stop();
+      const shown = msgs.filter((m) => !blocked.has(m.from));
+      if (!shown.length) { list.innerHTML = '<p class="g-note">No messages yet. Start the conversation 👋</p>'; return; }
+      const names = await Promise.all(shown.map((m) => nameOf(m.from).catch(() => "player")));
+      const atEnd = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+      list.innerHTML = shown.map((m, i) => '<button type="button" class="gc-msg' + (m.from === user?.uid ? " me" : "") + '" data-gc-id="' + esc(m.id) + '" data-gc-from="' + esc(m.from) + '"><b>@' + esc(names[i]) + "</b> " + esc(m.text) + "</button>").join("");
+      if (atEnd) list.scrollTop = list.scrollHeight;
+    };
+    (async () => {
+      await startFirebase();
+      if (FIREBASE_CONFIG) await Promise.race([authReady, new Promise((r) => setTimeout(r, 4000))]);
+      if (!user) { list.innerHTML = '<p class="g-note">Sign in to see and join the game chat.</p>'; el.querySelector(".gc-form")?.remove(); return; }
+      mod = ["owner", "mod"].includes(await roleOf(user.uid).catch(() => ""));
+      const q = fb.query(fb.collection(db, "gamechat", gid, "msgs"), fb.orderBy("at"), fb.limitToLast(60));
+      unsub = fb.onSnapshot(q, (snap) => { msgs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.text); draw(); },
+        () => { list.innerHTML = '<p class="g-note">Game chat isn\'t available right now.</p>'; });
+    })();
+    el.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-gc-id]"); if (!b || !user) return;
+      const mine = b.dataset.gcFrom === user.uid;
+      if (mine || mod) {
+        if (!confirm(mine ? "Delete your message?" : "Delete this message (Mod)?")) return;
+        try { await fb.deleteDoc(fb.doc(db, "gamechat", gid, "msgs", b.dataset.gcId)); } catch { toast("Couldn't delete it."); }
+        if (!mine && confirm("Report this person too?")) reportUser(b.dataset.gcFrom, ("g_" + gid).slice(0, 64));
+        return;
+      }
+      reportUser(b.dataset.gcFrom, ("g_" + gid).slice(0, 64));
+    });
+    el.querySelector(".gc-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const inp = e.target.querySelector("input"), text = inp.value.trim();
+      if (!text) return;
+      if (GC_LINK.test(text)) return toast("No links or social handles in game chat 🙂");
+      if (!(await ensureChatOk())) return;
+      const batch = fb.writeBatch(db);
+      batch.set(fb.doc(db, "gcLast", user.uid), { at: fb.serverTimestamp() });
+      batch.set(fb.doc(fb.collection(db, "gamechat", gid, "msgs")), { from: user.uid, text, at: fb.serverTimestamp() });
+      try { await batch.commit(); inp.value = ""; buzz(8); list.scrollTop = list.scrollHeight; }
+      catch { toast("Couldn't send. Game chat needs the Terms agreed (13+), and one message every 5 seconds."); }
+    });
+  },
+};

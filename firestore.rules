@@ -686,6 +686,30 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['at']) && request.resource.data.at == request.time;
     }
     // Reports: anyone signed in can send one; nobody can read them in the app (the owner reviews them).
+    // Game chat: everyone signed in can read a game's chat; to post you need the Terms (13+) and the chat rules agreed.
+    // Text only, 200 characters, no links, one message every 5 seconds (gcLast/{uid} is written in the same batch).
+    // You can delete your own messages; Mods and the Owner can delete any.
+    match /gamechat/{gid}/msgs/{m} {
+      allow read: if member();
+      allow create: if member() && siteOpen() && teen()
+        && exists(/databases/$(database)/documents/chatOk/$(me()))
+        && gid.matches('^(nfl|cfb|nba|cbb|mlb|f1)_[0-9]{1,15}$')
+        && request.resource.data.keys().hasOnly(['from', 'text', 'at'])
+        && request.resource.data.from == me()
+        && request.resource.data.text is string && request.resource.data.text.size() >= 1 && request.resource.data.text.size() <= 200
+        && !request.resource.data.text.lower().matches('.*(https?://|www[.]|discord|[a-z0-9-][.](com|net|org|gg|io|ly|me|tv|xyz|app)).*')
+        && request.resource.data.at == request.time
+        && existsAfter(/databases/$(database)/documents/gcLast/$(me()))
+        && getAfter(/databases/$(database)/documents/gcLast/$(me())).data.at == request.time;
+      allow delete: if member() && (resource.data.from == me() || isMod());
+      allow update: if false;
+    }
+    match /gcLast/{uid} {
+      allow read: if false;
+      allow create, update: if member() && me() == uid && request.resource.data.keys().hasOnly(['at'])
+        && request.resource.data.at == request.time
+        && (resource == null || request.time > resource.data.at + duration.value(5, 's'));
+    }
     match /reports/{id} {
       allow create: if member() && request.resource.data.from == me()   // reports always work, even in read-only
         && request.resource.data.keys().hasOnly(['from', 'about', 'chat', 'text', 'reason', 'at'])
