@@ -389,7 +389,7 @@ async function openChatId(id, agreed) {
     ? '<button type="button" class="chat-act" data-gmembers="' + esc(id) + '">' + c.members.length + ' people</button><button type="button" class="chat-act" data-greport="' + esc(id) + '">Report</button><button type="button" class="chat-act" data-gleave="' + esc(id) + '">Leave</button>'
     : '<button type="button" class="chat-act" data-viewcard="' + esc(other(c)) + '">Profile</button><button type="button" class="chat-act" data-block="' + esc(other(c)) + '">Block</button><button type="button" class="chat-act" data-report="' + esc(other(c)) + '" data-report-chat="' + esc(id) + '">Report</button>';
   setBody(v, await chatName(c), '<div class="chat-acts">' + acts + '</div><div class="chat-log" data-chatlog></div>' +
-    '<form class="chat-form" data-chatform><label class="chat-photo" aria-label="Send a photo" title="Send a photo">📷<input type="file" accept="image/*" data-chatphoto hidden></label><input maxlength="500" placeholder="Message…" autocomplete="off" aria-label="Message"><button class="pill-btn" type="submit">Send</button></form>');
+    '<form class="chat-form" data-chatform><button type="button" class="chat-plus" data-chatplus aria-label="Send a photo, game, player and more" title="Send a photo, game, player and more">+</button><input type="file" accept="image/*" data-chatphoto hidden><input type="file" accept="image/*" capture="environment" data-chatcam hidden><input maxlength="500" placeholder="Message…" autocomplete="off" aria-label="Message"><button class="pill-btn" type="submit">Send</button></form>');
   v.el.querySelector(".src-note")?.remove();
   v.el.classList.add("chat-sheet");
   v.chat = c; v.msgs = [];
@@ -420,14 +420,30 @@ async function openChatId(id, agreed) {
     input.value = ""; buzz();
     try { await sendMsg(c, { text }); } catch { toast("Message didn't send. You can only message friends who haven't blocked you."); input.value = text; }
   });
-  v.el.querySelector("[data-chatphoto]").addEventListener("change", async (e) => {
+  // "+" next to the message box: photo, camera, or a game / player / team / recap card from the app.
+  v.el.querySelector("[data-chatplus]").addEventListener("click", () => {
+    const m = { kind: "attmenu", key: "attmenu" };
+    if (!pushView(m)) return;
+    const opts = [["photo", "🖼️", "Photo"], ["camera", "📷", "Camera"], ["game", "🏟️", "Game"], ["player", "👤", "Player"], ["team", "🛡️", "Team"], ["recap", "📸", "Recap card"]];
+    setBody(m, "Send", '<div class="att-menu">' + opts.map(([k, i, l]) => '<button type="button" data-att="' + k + '"><i aria-hidden="true">' + i + "</i>" + l + "</button>").join("") + "</div>");
+    m.el.querySelector(".att-menu").addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-att]"); if (!b) return;
+      const k = b.dataset.att; buzz(8);
+      if (k === "photo" || k === "camera") { v.el.querySelector(k === "photo" ? "[data-chatphoto]" : "[data-chatcam]").click(); closeTop(); return; }
+      closeTop();
+      const r = await window.scorelineAttach?.[k]?.().catch(() => null);
+      if (!r) return;
+      try { await sendMsg(c, r.img ? { img: r.img } : { share: r.share }); buzz(12); } catch { toast("Didn't send. You can only message friends who haven't blocked you."); }
+    });
+  });
+  v.el.querySelectorAll("[data-chatphoto], [data-chatcam]").forEach((inp) => inp.addEventListener("change", async (e) => {
     const file = e.target.files?.[0]; e.target.value = "";
     if (!file) return;
     toast("Sending photo…");
     let img;
     try { img = await chatPhoto(file); } catch { return toast("That photo couldn't be sent. Try a different one."); }
     try { await sendMsg(c, { img }); buzz(); } catch { toast("Photo didn't send. You can only message friends who haven't blocked you."); }
-  });
+  }));
   v.el.addEventListener("click", (e) => { const b = e.target.closest("[data-msgimg]"); if (b) b.classList.toggle("hide", false); });
 }
 /* Chat photos: Firebase's free plan has no file storage, so a photo is shrunk on the phone (longest side ≤ 1080 px,
@@ -566,7 +582,7 @@ async function reportInGroup(id) {
 }
 
 /* share into a chat */
-async function shareTo(s) {
+async function shareTo(s, img = "") {   // a game/player/team/… card, or a picture (img: chat-ready JPEG)
   if (!user) return toast("Sign in to share with friends.");
   if (!(await ensureChatOk())) return;
   const v = { kind: "shareto", key: "shareto" };
@@ -575,7 +591,7 @@ async function shareTo(s) {
   const fr = friendState.friends.filter((f) => !withChat.has(f) && !blocked.has(f));
   await Promise.all([...chats.flatMap((c) => c.members), ...fr].map(nameOf));
   const rows = await Promise.all(chats.slice(0, 20).map(async (c) => '<button type="button" class="opt soc-row" data-sendshare="' + esc(c.id) + '"><span class="soc-who">' + (await chatPic(c)) + "<span><b>" + esc(await chatName(c)) + '</b></span></span><span class="pill-btn">Send</span></button>'));
-  setBody(v, "Share", '<div class="chat-share-prev">' + shareCard(s) + "</div>" +
+  setBody(v, img ? "Send picture" : "Share", '<div class="chat-share-prev">' + (img ? '<img class="rc-img" src="' + img + '" alt="Picture to send">' : shareCard(s)) + "</div>" +
     (rows.length + fr.length ? '<div class="panel">' + rows.join("") + fr.map((f) => '<button type="button" class="opt soc-row" data-sendshare-to="' + esc(f) + '"><span class="soc-who">' + avatarHtml("", names[f]) + "<span><b>@" + esc(names[f]) + '</b></span></span><span class="pill-btn">Send</span></button>').join("") + "</div>"
       : '<div class="panel"><p class="muted people-hint">Add friends to share with them.</p></div>'));
   const send = async (b, cid) => {
@@ -583,7 +599,7 @@ async function shareTo(s) {
     try {
       let c = chatState.chats.find((x) => x.id === cid);
       if (!c) { const d = await fb.getDoc(fb.doc(db, "chats", cid)); c = { id: cid, ...d.data() }; }
-      await sendMsg(c, { share: s }); buzz(12);
+      await sendMsg(c, img ? { img } : { share: s }); buzz(12);
       b.querySelector(".pill-btn").textContent = "Sent"; toast("Sent to " + (await chatName(c)));
     } catch { b.disabled = false; toast("Couldn't send it. Try again."); }
   };
@@ -625,6 +641,7 @@ window.addEventListener("scoreline-social", () => drawFriends().catch(() => {}))
 
 window.scorelineChat = {
   openList: openChats, openFriends, share: shareTo, open: openChatId,
+  sendImage: (img) => (photoOk(img) ? shareTo(null, img) : toast("That picture is too big to send.")),
   unread: () => (user ? chatState.chats.filter(unreadOf).length + chatState.invites.filter(okInvite).length : 0),
 };
 document.addEventListener("click", async (e) => {

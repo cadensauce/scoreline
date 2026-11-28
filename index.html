@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795886242" />
+  <meta name="build" content="1795886379" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -141,6 +141,7 @@
     .gc-list { max-height: 260px; overflow-y: auto; display: grid; gap: 2px; margin-bottom: 10px; overscroll-behavior: contain; } .gc-msg { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text); font: inherit; font-size: 14px; line-height: 1.4; padding: 6px 8px; border-radius: 10px; overflow-wrap: anywhere; cursor: pointer; } .gc-msg b { color: var(--muted); font-weight: 700; } .gc-msg.me b { color: var(--text); } .gc-form { display: flex; gap: 8px; } .gc-form input { flex: 1; min-width: 0; height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 16px; } .gc-rules { margin-top: 6px; }
     .otd { display: grid; gap: 2px; width: 100%; text-align: left; padding: 12px 14px; margin: 0 0 12px; border: 1px solid var(--line); border-radius: var(--radius, 14px); background: var(--panel); color: var(--text); font: inherit; font-size: 14.5px; line-height: 1.4; cursor: pointer; } .otd-k { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); } .otd small { display: block; color: var(--muted); font-size: 12.5px; } .g-sec .otd { margin: 0; }
     .pstat { display: block; color: var(--text) !important; font-weight: 600; } .pstat:empty { display: none; }
+    .att-q { width: 100%; height: 44px; padding: 0 16px; margin-bottom: 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 16px; } .att-menu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; } .att-menu button { display: grid; place-items: center; gap: 6px; padding: 16px 6px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; } .att-menu button i { font-style: normal; font-size: 26px; } .chat-plus { flex: none; width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 22px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
     button.session { width: 100%; font: inherit; color: inherit; text-align: left; cursor: pointer; border: 0; grid-template-columns: 52px 1fr auto 14px; } button.session .chev { color: var(--muted); } .f1-sess { width: 100%; border-collapse: collapse; } .f1-sess td, .f1-sess th { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; font-size: 14px; vertical-align: middle; } .f1-sess th { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; } .f1-sess .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; } .f1-sess td small { display: block; color: var(--muted); font-size: 12px; } .f1-sess .num small { display: inline; } .f1-sess .pos { width: 32px; font-weight: 800; } .tt-dot { display: inline-block; width: 4px; height: 14px; border-radius: 2px; margin-right: 8px; vertical-align: -2px; }
     .pstat { display: block; color: var(--text) !important; font-weight: 600; } .pstat:empty { display: none; }
     @media (hover: hover) { .pill-btn:hover { background: var(--panel-2); border-color: var(--line-hi); } }
@@ -5610,20 +5611,27 @@
       ctx.fillStyle = "#7d7d86"; ctx.font = "500 28px " + font; ctx.textAlign = "right"; ctx.fillText("Free fan app · not affiliated with F1", W - pad, H - 132); ctx.textAlign = "left";
       return rcShare(c, "f1-" + String(gpName(ev) || "race").toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-recap.png", "Recap card: " + (gpName(ev) || "race") + " top 10");
     }
+    // A chat-ready copy of a card: JPEG under the chat photo limit.
+    function rcJpeg(c) { for (const q of [0.85, 0.75, 0.65, 0.55, 0.45]) { const d = c.toDataURL("image/jpeg", q); if (d.length <= 280000) return d; } return ""; }
     async function rcShare(c, name, alt) {
       const blob = await new Promise((r) => c.toBlob(r, "image/png"));
       if (!blob) return toast("Couldn't make the card.");
-      const file = new File([blob], name, { type: "image/png" });
+      const file = new File([blob], name, { type: "image/png" }), url = URL.createObjectURL(blob), v = { kind: "recapcard", key: "recapcard" };
       buzz(10);
-      if (navigator.canShare?.({ files: [file] })) { try { await navigator.share({ files: [file], title: "Recap" }); return; } catch (e) { if (e?.name === "AbortError") return; } }
-      const url = URL.createObjectURL(blob), v = { kind: "recapcard", key: "recapcard" };
       if (!pushView(v)) return;
+      const canShare = !!navigator.canShare?.({ files: [file] });
       setBody(v, "Recap card", '<img class="rc-img" src="' + url + '" alt="' + esc(alt) + '">' +
-        '<div class="rc-row"><a class="pill-btn" href="' + url + '" download="' + esc(name) + '">⬇️ Save picture</a></div><p class="g-note">On a phone you can also press and hold the picture to save or share it.</p>');
+        '<div class="rc-row"><button type="button" class="pill-btn" data-rc-chat>💬 Send in chat</button>' + (canShare ? '<button type="button" class="pill-btn" data-rc-share>⬆️ Share</button>' : "") +
+        '<a class="pill-btn" href="' + url + '" download="' + esc(name) + '">⬇️ Save</a></div><p class="g-note">Send it to a friend or group right here; no need to save it first.</p>');
+      v.el.querySelector("[data-rc-chat]").addEventListener("click", () => { const img = rcJpeg(c); if (!img) return toast("Couldn't make the card."); window.scorelineChat ? window.scorelineChat.sendImage(img) : toast("Chat is still loading. Try again in a second."); });
+      v.el.querySelector("[data-rc-share]")?.addEventListener("click", async () => { try { await navigator.share({ files: [file], title: "Recap" }); } catch {} });
     }
     async function recapCard(btn) {
       const host = btn.closest("[data-lg]"), d = host?.__rc; if (!d) return;
-      const { s, teams, lg } = d, comp = s.header?.competitions?.[0] || {}, st = comp.status?.type || {};
+      return rcShare(drawRecap(d.s, d.teams, d.lg), rcName(d.teams) + ".png", rcAlt(d.teams));
+    }
+    function drawRecap(s, teams, lg) {
+      const comp = s.header?.competitions?.[0] || {}, st = comp.status?.type || {};
       const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H;
       const ctx = c.getContext("2d"), font = getComputedStyle(document.body).fontFamily || "system-ui, sans-serif";
       ctx.fillStyle = "#0e0e11"; ctx.fillRect(0, 0, W, H);
@@ -5657,9 +5665,78 @@
       }
       ctx.fillStyle = "#f2f2f4"; ctx.font = "800 40px " + font; ctx.fillText("Scoreline", pad, H - 130);
       ctx.fillStyle = "#7d7d86"; ctx.font = "500 28px " + font; ctx.textAlign = "right"; ctx.fillText("Free fan app · not affiliated with any league", W - pad, H - 132); ctx.textAlign = "left";
-      return rcShare(c, ((teams[0]?.team?.abbreviation || "") + "-" + (teams[1]?.team?.abbreviation || "") + "-recap.png").toLowerCase(), "Recap card: " + (teams[0]?.team?.abbreviation || "") + " " + (teams[0]?.score ?? "") + ", " + (teams[1]?.team?.abbreviation || "") + " " + (teams[1]?.score ?? ""));
+      return c;
     }
+    function rcName(teams) { return ((teams[0]?.team?.abbreviation || "") + "-" + (teams[1]?.team?.abbreviation || "") + "-recap").toLowerCase(); }
+    function rcAlt(teams) { return "Recap card: " + (teams[0]?.team?.abbreviation || "") + " " + (teams[0]?.score ?? "") + ", " + (teams[1]?.team?.abbreviation || "") + " " + (teams[1]?.score ?? ""); }
 
+    /* ---------- Chat "+" menu: pick a game, player, team or recap card to send (used by account.js) ---------- */
+    const ATT_LGS = () => { const p = pins().filter((k) => LEAGUES[k] && k !== "f1"); return p.length ? p : ["nfl", "nba"]; };
+    async function attGames(finishedOnly) {
+      const lgs = ATT_LGS(), out = [];
+      const days = finishedOnly ? [0, -1] : [0];
+      await Promise.all(lgs.flatMap((lg) => days.map(async (dd) => {
+        const d = new Date(Date.now() + dd * 864e5), q = (LEAGUES[lg].extra ? LEAGUES[lg].extra.replace(/^&/, "") + "&" : "") + "dates=" + ymd(d);
+        const j = await getJSON(API + LEAGUES[lg].path + "/scoreboard?" + q).catch(() => null);
+        (j?.events || []).forEach((e) => {
+          const st = e.status?.type || {}; if (finishedOnly && !st.completed) return;
+          const [a, h] = teamsOf(e), score = st.state === "pre" ? fmtTime(e.date) : (a?.score ?? "") + "–" + (h?.score ?? "") + " · " + (st.shortDetail || "");
+          out.push({ v: lg + "|" + e.id, l: (a?.team?.abbreviation || "") + " @ " + (h?.team?.abbreviation || "") + " · " + score, group: LEAGUES[lg].short || LEAGUES[lg].name, fav: hasFav(e), t: (a?.team?.abbreviation || "") + " @ " + (h?.team?.abbreviation || "") });
+        });
+      })));
+      return out.sort((x, y) => (y.fav - x.fav) || x.group.localeCompare(y.group)).slice(0, 120);
+    }
+    window.scorelineAttach = {
+      async game() {
+        const list = await attGames(false); if (!list.length) { toast("No games today in your sports."); return null; }
+        const v = await choose("Send a game", list.map((o) => ({ ...o, group: (o.fav ? "⭐ " : "") + o.group }))); if (!v) return null;
+        const o = list.find((x) => x.v === v), [lg, id] = v.split("|");
+        return { share: { k: "game", lg, id, t: o.t.slice(0, 80), s: (LEAGUES[lg].name || "").slice(0, 80) } };
+      },
+      async team() {
+        const lgs = ATT_LGS(), opts = [];
+        await Promise.all(lgs.map(async (lg) => {
+          const j = await getJSON(API + LEAGUES[lg].path + "/teams" + (lg === "cfb" || lg === "cbb" ? "?limit=400" : "")).catch(() => null);
+          (j?.sports?.[0]?.leagues?.[0]?.teams || []).forEach((x) => { const t = x.team || {}; if (t.id) opts.push({ v: lg + "|" + t.id, l: t.displayName || t.name || "", group: (state.favs.has(t.uid) ? "⭐ Your teams" : LEAGUES[lg].short || LEAGUES[lg].name) }); });
+        }));
+        if (!opts.length) { toast("Couldn't load teams. Try again."); return null; }
+        opts.sort((a, b) => (b.group.startsWith("⭐") - a.group.startsWith("⭐")) || a.group.localeCompare(b.group) || a.l.localeCompare(b.l));
+        const v = await choose("Send a team", opts); if (!v) return null;
+        const [lg, id] = v.split("|"), o = opts.find((x) => x.v === v);
+        return { share: { k: "team", lg, id, t: o.l.slice(0, 80), s: (LEAGUES[lg].name || "").slice(0, 80) } };
+      },
+      player() {
+        return new Promise((done) => {
+          const v = { kind: "attplayer", key: "attplayer" };
+          if (!pushView(v)) return done(null);
+          setBody(v, "Send a player", '<input class="att-q" type="search" placeholder="Search players (2+ letters)" aria-label="Search players" autocomplete="off"><div class="panel pick-list att-hits"><p class="g-note">Type a name to search every sport.</p></div>');
+          const inp = v.el.querySelector(".att-q"), box = v.el.querySelector(".att-hits"); let hits = [], t = 0, n = 0;
+          setTimeout(() => inp.focus(), 250);
+          inp.addEventListener("input", () => { clearTimeout(t); t = setTimeout(async () => {
+            const q = inp.value.toLowerCase().trim(), my = ++n; if (q.length < 2) return;
+            const lgs = Object.keys(SPORT_NAMES), found = [];
+            await Promise.all(lgs.map(async (lg) => { const pool = await PF()?.pool(lg).catch(() => ({})) || {}; for (const [id, p] of Object.entries(pool)) if ((p.n || "").toLowerCase().includes(q)) found.push({ lg, id, n: p.n, t: p.t || "" }); }));
+            const past = q.length >= 3 ? await espnPlayers(q).catch(() => []) : [];
+            if (my !== n || !v.el.isConnected) return;
+            const seen = new Set(found.map((h) => h.lg + "|" + h.id));
+            hits = [...found.sort((a, b) => (a.n.toLowerCase().startsWith(q) ? 0 : 1) - (b.n.toLowerCase().startsWith(q) ? 0 : 1) || a.n.localeCompare(b.n)).slice(0, 12), ...past.filter((h) => !seen.has(h.lg + "|" + h.id))].slice(0, 18);
+            box.innerHTML = hits.length ? hits.map((h, i) => '<button type="button" class="opt pick-opt" data-att-i="' + i + '"><span>' + esc(h.n) + " <small class=\"muted\">" + esc([h.t, SPORT_NAMES[h.lg]].filter(Boolean).join(" · ")) + "</small></span></button>").join("") : '<p class="g-note">No players found.</p>';
+          }, 250); });
+          box.addEventListener("click", (e) => { const b = e.target.closest("[data-att-i]"); if (!b) return; const h = hits[Number(b.dataset.attI)]; buzz(8); closeTop();
+            done({ share: { k: h.lg === "f1" ? "driver" : "player", lg: h.lg, id: String(h.id).slice(0, 40), t: String(h.n).slice(0, 80), s: [h.t, SPORT_NAMES[h.lg]].filter(Boolean).join(" · ").slice(0, 80) } }); });
+          const watch = setInterval(() => { if (!v.el.isConnected) { clearInterval(watch); done(null); } }, 400);
+        });
+      },
+      async recap() {
+        const list = await attGames(true); if (!list.length) { toast("No finished games today or yesterday in your sports."); return null; }
+        const v = await choose("Recap card for…", list.map((o) => ({ ...o, group: (o.fav ? "⭐ " : "") + o.group }))); if (!v) return null;
+        const [lg, id] = v.split("|"), s = await getJSON(API + LEAGUES[lg].path + "/summary?event=" + id).catch(() => null);
+        const teams = (s?.header?.competitions?.[0]?.competitors || []).slice().sort((a) => (a.homeAway === "away" ? -1 : 1));
+        if (teams.length !== 2) { toast("Couldn't make that card."); return null; }
+        const img = rcJpeg(drawRecap(s, teams, lg));
+        return img ? { img } : null;
+      },
+    };
     /* ---------- standings + playoff picture (team sports) ---------- */
     const PLAYOFF_CUT = { nfl: [7, 0, "Top 7 in each conference make the playoffs if the season ended today."], nba: [6, 10, "Top 6 make the playoffs; 7–10 go to the play-in, if the season ended today."], mlb: [6, 0, "Top 6 in each league make the playoffs if the season ended today."] };
     /* College football: AP Top 25 with this week's moves (ESPN rankings) */
@@ -8031,6 +8108,6 @@
     if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
-  <script type="module" src="account.js?v=1795886242"></script>
+  <script type="module" src="account.js?v=1795886379"></script>
 </body>
 </html>
