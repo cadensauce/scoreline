@@ -89,6 +89,7 @@ setInterval(async () => {   // clean up codes nobody used
 const mailer = process.env.SMTP_USER && process.env.SMTP_PASS
   ? nodemailer.createTransport({ service: "gmail", auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } }) : null;
 const OTP_TTL = 10 * 60 * 1000;
+const SYNTH = "@users.scoreline-41f14.firebaseapp.com";   // made-up login address of username-only accounts (never emailed)
 const hashCode = (uid, code) => crypto.createHash("sha256").update(uid + ":" + code).digest("hex");
 const answer = (uid, data) => db.collection("otpResults").doc(uid).set({ ...data, at: admin.firestore.FieldValue.serverTimestamp() });
 db.collection("otpRequests").onSnapshot((snap) => {
@@ -99,11 +100,14 @@ db.collection("otpRequests").onSnapshot((snap) => {
     if (!mailer) { await answer(uid, { error: "Email codes aren't set up yet." }); return; }
     try {
       const u = await admin.auth().getUser(uid);
-      if (!u.email) { await answer(uid, { error: "This account has no email address." }); return; }
+      // Username accounts sign in with a made-up address; their codes go to the optional recovery email instead.
+      const rec = (await db.collection("recovery").doc(uid).get().catch(() => null))?.data()?.email || "";
+      const to = rec || (u.email && !u.email.endsWith(SYNTH) ? u.email : "");
+      if (!to) { await answer(uid, { error: "Add an email to your account first (Account → Add one)." }); return; }
       const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
       await db.collection("otpCodes").doc(uid).set({ hash: hashCode(uid, code), expires: Date.now() + OTP_TTL, tries: 0, purpose: x.purpose === "enable" ? "enable" : "signin" });
       await mailer.sendMail({
-        from: `"Scoreline" <${process.env.SMTP_USER}>`, to: u.email,
+        from: `"Scoreline" <${process.env.SMTP_USER}>`, to,
         subject: `${code} is your Scoreline code`,
         text: `Your Scoreline sign-in code is ${code}\n\nIt works for 10 minutes. If you didn't try to sign in, you can ignore this email; someone may know your password, so consider changing it.`,
       });
@@ -111,6 +115,30 @@ db.collection("otpRequests").onSnapshot((snap) => {
     } catch (e) { console.log("two-step email failed", e.message); await answer(uid, { error: "Couldn't send the email. Try again in a minute." }); }
   });
 }, (e) => console.log("otp request listener stopped", e.message));
+
+// ---- "Forgot password" for username accounts: email a reset link to the account's recovery email ----------
+// Anyone can ask (they only type a username); nothing is sent unless that account added a recovery email, and at most
+// one email per account every 15 minutes, so it can't be used to spam people.
+const lastReset = new Map();
+db.collection("resetRequests").onSnapshot((snap) => {
+  snap.docChanges().forEach(async (c) => {
+    if (c.type !== "added") return;
+    const { username, at } = c.doc.data() || {};
+    await c.doc.ref.delete().catch(() => {});
+    if (!mailer || !/^[a-z0-9_]{3,20}$/.test(username || "") || Date.now() - (at?.toMillis?.() || 0) > 5 * 60 * 1000) return;
+    try {
+      const uid = (await db.collection("usernames").doc(username).get()).data()?.uid; if (!uid) return;
+      if (Date.now() - (lastReset.get(uid) || 0) < 15 * 60 * 1000) return;
+      const to = (await db.collection("recovery").doc(uid).get()).data()?.email; if (!to) return;
+      const u = await admin.auth().getUser(uid); if (!u.email) return;
+      const link = await admin.auth().generatePasswordResetLink(u.email);
+      lastReset.set(uid, Date.now());
+      await mailer.sendMail({ from: `"Scoreline" <${process.env.SMTP_USER}>`, to, subject: "Reset your Scoreline password",
+        text: `Someone (hopefully you) asked to reset the password for @${username} on Scoreline.\n\nChoose a new password here (the link works for about an hour):\n${link}\n\nIf this wasn't you, you can ignore this email; your password stays the same.` });
+      console.log(new Date().toISOString(), "password reset email sent");
+    } catch (e) { console.log("password reset failed", e.message); }
+  });
+}, (e) => console.log("reset listener stopped", e.message));
 db.collection("otpAttempts").onSnapshot((snap) => {
   snap.docChanges().forEach(async (c) => {
     if (c.type === "removed") return;

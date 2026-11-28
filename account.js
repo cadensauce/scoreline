@@ -109,6 +109,7 @@ async function onUser(u) {
       authDone();
       return;
     }
+    recoveryEmail = (await fb.getDoc(fb.doc(db, "recovery", u.uid)).catch(() => null))?.data()?.email || "";
     const p = await fb.getDoc(fb.doc(db, "profiles", u.uid));
     profile = p.exists() ? p.data() : null;
     if (profile) names[u.uid] = profile.username;
@@ -130,10 +131,22 @@ function syncButton() {
 }
 const cleanName = (s) => String(s || "").trim().toLowerCase();
 
-async function signUp(email, password, username, teen) {
-  username = cleanName(username);
+// Username + password accounts: Firebase needs an email behind the scenes, so new accounts sign in with a made-up
+// address built from the username (never shown, never emailed). A real email is optional and kept privately in
+// recovery/{uid}: it's where password-reset links and two-step codes go.
+const SYNTH = "@users.scoreline-41f14.firebaseapp.com";
+const loginFor = (name) => cleanName(name).replace(/^@+/, "") + SYNTH;
+const isSynth = (e) => String(e || "").endsWith(SYNTH);
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+let recoveryEmail = "";
+const contactEmail = () => recoveryEmail || (isSynth(user?.email) ? "" : user?.email || "");
+async function signUp(username, password, email, teen) {
+  username = cleanName(username).replace(/^@+/, "");
   if (!/^[a-z0-9_]{3,20}$/.test(username)) throw new Error("Usernames are 3–20 letters, numbers or _.");
-  const cred = await fb.createUserWithEmailAndPassword(auth, email, password);
+  if (email && !EMAIL_RE.test(email)) throw new Error("That email doesn't look right (or leave it empty).");
+  if ((await fb.getDoc(fb.doc(db, "usernames", username)).catch(() => null))?.exists()) throw new Error("That username is taken. Try another.");
+  const cred = await fb.createUserWithEmailAndPassword(auth, loginFor(username), password).catch((e) => { if (/email-already-in-use/.test(e?.code || "")) throw new Error("That username is taken. Try another."); throw e; });
+  if (email) { await fb.setDoc(fb.doc(db, "recovery", cred.user.uid), { email: email.slice(0, 100), at: fb.serverTimestamp() }).catch(() => {}); recoveryEmail = email; }
   try {
     await fb.setDoc(fb.doc(db, "usernames", username), { uid: cred.user.uid });
     await fb.setDoc(fb.doc(db, "profiles", cred.user.uid), { username, createdAt: fb.serverTimestamp() });
@@ -640,6 +653,7 @@ async function deleteAccount() {
   await fb.deleteDoc(fb.doc(db, "users", uid)).catch(() => {});
   await fb.deleteDoc(fb.doc(db, "profiles", uid)).catch(() => {});
   await fb.deleteDoc(fb.doc(db, "cards", uid)).catch(() => {});
+  await fb.deleteDoc(fb.doc(db, "recovery", uid)).catch(() => {});
   if (uname) await fb.deleteDoc(fb.doc(db, "usernames", uname)).catch(() => {});
   await user.delete();
 }
@@ -659,8 +673,11 @@ function refreshAccountSheet() {
   else if (!fb) h = '<div class="skel" style="height:200px"></div>';
   else if (!user) {
     h = '<div class="seg"><button type="button" data-amode="login" class="' + (mode === "login" ? "active" : "") + '">Log in</button><button type="button" data-amode="signup" class="' + (mode === "signup" ? "active" : "") + '">Create account</button></div>' +
-      '<form class="acct-form" data-acct>' + (mode === "signup" ? '<label>Username<input name="username" maxlength="20" autocomplete="username" placeholder="e.g. niners_fan"></label>' : "") +
-      '<label>Email<input name="email" type="email" autocomplete="email" required></label><label>Password<input name="password" type="password" minlength="6" autocomplete="' + (mode === "signup" ? "new-password" : "current-password") + '" required></label>' +
+      '<form class="acct-form" data-acct>' + (mode === "signup"
+        ? '<label>Username<input name="username" maxlength="20" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. niners_fan" required></label>'
+        : '<label>Username or email<input name="who" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>') +
+      '<label>Password<input name="password" type="password" minlength="6" autocomplete="' + (mode === "signup" ? "new-password" : "current-password") + '" required></label>' +
+      (mode === "signup" ? '<label>Email <small class="muted">(optional)</small><input name="email" type="email" autocomplete="email" placeholder="Only for password resets and two-step codes"></label><p class="g-note">No email? That\'s fine. Just remember your password: without an email we can\'t send a reset link.</p>' : "") +
       (mode === "signup" ? TOS_CHECK + '<p class="g-note">By clicking Create account you agree to the TOS and understand the consequences.</p>' : "") +
       '<div class="acct-err" data-err></div><button class="pill-btn dl acct-go" type="submit">' + (mode === "signup" ? "Create account" : "Log in") + "</button>" +
       (mode === "login" ? '<button type="button" class="acct-link" data-forgot>Forgot password?</button>' : "") + "</form>" +
@@ -669,7 +686,7 @@ function refreshAccountSheet() {
       (window.__TAURI__ ? "" : '<p class="g-note">Continuing with Google means you agree to the <button type="button" class="link-btn" data-terms>Terms of Service</button>.</p>') +
       TRUST + '<button type="button" class="acct-link" data-privacy>Read the full privacy page</button>';
   } else if (pending2) {
-    h = otpForm("Check your email", "Two-step sign-in is on. We sent a 6-digit code to " + esc(maskEmail(user.email)) + ". It works for 10 minutes.") +
+    h = otpForm("Check your email", "Two-step sign-in is on. We sent a 6-digit code to " + esc(maskEmail(contactEmail())) + ". It works for 10 minutes.") +
       '<div class="acct-foot"><button type="button" class="acct-link" data-otpresend>Send a new code</button><button type="button" class="acct-link" data-logout>Log out</button></div>';  } else if (!profile) {
     h = '<div class="g-label">Pick a username</div><p class="g-note">This is the only thing other people will see. 3–20 letters, numbers or _.</p>' +
       '<form class="acct-add acct-unf" data-uname><input maxlength="20" placeholder="e.g. niners_fan" autocomplete="off"><button class="pill-btn" type="submit">Save</button>' + TOS_CHECK + '</form><div class="acct-err" data-err></div>' +
@@ -681,7 +698,7 @@ function refreshAccountSheet() {
       '<div class="g-note">★ teams and alert settings are synced.</div>' +
       '<div class="g-label" style="margin-top:18px">Your profile</div><div class="opt"><span><b>Photo, bio, theme and favourites</b><small>' + ((myCard?.show || "friends") === "me" ? "Only you can see it" : "Your friends can see it") + '</small></span><span class="acct-acts"><button class="pill-btn" type="button" data-viewcard="' + esc(user.uid) + '">View</button><button class="pill-btn" type="button" data-editprofile>Edit</button></span></div>' +
       '<div class="g-label" style="margin-top:18px">Two-step sign-in</div><div data-2box><div class="opt"><span><b>' + (twoStepOn ? "On" : "Off") + '</b><small>' + (twoStepOn ? "New devices need a code we email you" : "Ask for an emailed code when you sign in on a new device") + '</small></span>' +
-      (twoStepOn ? '<button class="pill-btn" type="button" data-2off>Turn off</button>' : '<button class="pill-btn" type="button" data-2on>Turn on</button>') + "</div></div>" +      (window.__TAURI__ ? "" : '<div class="signin-send"><button type="button" class="pill-btn" data-sendsignin>Send sign-in to the app</button><div data-signincode></div></div>') +
+      (twoStepOn ? '<button class="pill-btn" type="button" data-2off>Turn off</button>' : contactEmail() ? '<button class="pill-btn" type="button" data-2on>Turn on</button>' : '<button class="pill-btn" type="button" data-add-recovery>Add an email first</button>') + "</div></div>" +      (window.__TAURI__ ? "" : '<div class="signin-send"><button type="button" class="pill-btn" data-sendsignin>Send sign-in to the app</button><div data-signincode></div></div>') +
       '<div class="g-label" style="margin-top:18px">Add a friend</div><form class="acct-add" data-addf><input placeholder="Username (the @ is optional)" maxlength="21" autocomplete="off"><button class="pill-btn" type="submit">Add</button></form>' + addNoteHtml() +
       (F.incoming.length ? '<div class="g-label" style="margin-top:16px">Friend requests</div><div class="panel">' + F.incoming.map((r) => person(r.from, '<button class="pill-btn" type="button" data-accept="' + esc(r.id) + '">Accept</button><button class="pill-btn" type="button" data-decline="' + esc(r.id) + '">✕</button>')).join("") + "</div>" : "") +
       '<div class="g-label" style="margin-top:16px">Friends</div><div class="panel">' + (F.friends.length ? F.friends.map((uid) => person(uid, '<button class="pill-btn" type="button" data-viewcard="' + esc(uid) + '">Profile</button><button class="pill-btn" type="button" data-chat="' + esc(uid) + '">Chat</button><button class="pill-btn" type="button" data-unfriend="' + esc(uid) + '" aria-label="Remove friend">✕</button>')).join("") : '<div class="g-note">No friends yet. Add someone by their username.</div>') + "</div>" +
@@ -740,7 +757,7 @@ window.scorelineSocial = {
 };
 const niceErr = (e) => {
   const c = e?.code || "";
-  if (/invalid-credential|wrong-password|user-not-found/.test(c)) return "Wrong email or password.";
+  if (/invalid-credential|wrong-password|user-not-found/.test(c)) return "Wrong username or password.";
   if (/email-already-in-use/.test(c)) return "That email already has an account. Log in instead.";
   if (/weak-password/.test(c)) return "Use at least 6 characters for your password.";
   if (/invalid-email/.test(c)) return "That email doesn't look right.";
@@ -773,7 +790,7 @@ document.addEventListener("click", async (e) => {
   if (e.target.closest("[data-2on]")) {
     otpPurpose = "enable"; await requestCode("enable");
     const box = document.querySelector("[data-2box]");
-    if (box) box.innerHTML = otpForm("Turn on two-step sign-in", "We emailed a 6-digit code to " + esc(maskEmail(user.email)) + ". Enter it to confirm your email works.") + '<button type="button" class="acct-link" data-otpresend>Send a new code</button>';
+    if (box) box.innerHTML = otpForm("Turn on two-step sign-in", "We emailed a 6-digit code to " + esc(maskEmail(contactEmail())) + ". Enter it to confirm your email works.") + '<button type="button" class="acct-link" data-otpresend>Send a new code</button>';
     return;
   }
   if (e.target.closest("[data-2off]")) {
@@ -903,8 +920,11 @@ document.addEventListener("submit", async (e) => {
 const maskEmail = (e) => { const [u, d] = String(e || "").split("@"); return d ? (u[0] || "") + "•••@" + d : "Hidden"; };
 let emailShownUntil = 0;
 function emailLine() {
+  // Username-only accounts: show the optional recovery email (or a way to add one), never the made-up login address.
+  if (isSynth(user.email)) return recoveryEmail ? "Recovery email " + esc(maskEmail(recoveryEmail)) + ' <button type="button" class="acct-link" data-add-recovery>Change</button>'
+    : 'No email <button type="button" class="acct-link" data-add-recovery>Add one</button>';
   if (Date.now() < emailShownUntil) return esc(user.email || "");
-  return esc(maskEmail(user.email)) + ' <button type="button" class="acct-link" data-showemail>Show</button>';
+  return esc(maskEmail(contactEmail())) + ' <button type="button" class="acct-link" data-showemail>Show</button>';
 }
 function revealEmail() {
   emailShownUntil = Date.now() + 30000;          // hides itself again after 30 seconds
@@ -943,8 +963,8 @@ document.addEventListener("submit", async (e) => {
     const d = Object.fromEntries(new FormData(f));
     const btn = f.querySelector(".acct-go"); btn.disabled = true; errBox(f, "");
     try {
-      if (mode === "signup") { await signUp(d.email.trim(), d.password, d.username, !!d.teen); await startSync().catch(() => {}); refreshAccountSheet(); }
-      else await fb.signInWithEmailAndPassword(auth, d.email.trim(), d.password);
+      if (mode === "signup") { await signUp(d.username, d.password, (d.email || "").trim(), !!d.teen); await startSync().catch(() => {}); refreshAccountSheet(); }
+      else { const who = (d.who || "").trim(); await fb.signInWithEmailAndPassword(auth, who.includes("@") ? who : loginFor(who), d.password); }
       buzz(12); toast(mode === "signup" ? "Account created" : "Logged in");
     } catch (err) { errBox(f, niceErr(err)); }
     btn.disabled = false;
@@ -1008,9 +1028,13 @@ document.addEventListener("click", async (e) => {
   if (t.closest("[data-acct-add]")) { buzz(12); return addAccount(); }
   if (t.closest("[data-acct-switch]")) return openSwitcher();
   if (t.closest("[data-forgot]")) {
-    const email = t.closest("form")?.querySelector('[name="email"]')?.value.trim();
-    if (!email) return errBox(t, "Type your email above first.");
-    try { await fb.sendPasswordResetEmail(auth, email); toast("Password reset email sent"); } catch (err) { errBox(t, niceErr(err)); }
+    const who = t.closest("form")?.querySelector('[name="who"]')?.value.trim() || "";
+    if (!who) return errBox(t, "Type your username (or email) above first.");
+    try {
+      if (who.includes("@")) await fb.sendPasswordResetEmail(auth, who);
+      else await fb.addDoc(fb.collection(db, "resetRequests"), { username: cleanName(who).replace(/^@+/, ""), at: fb.serverTimestamp() });
+      toast(who.includes("@") ? "Password reset email sent" : "If that account has a recovery email, a reset link is on its way 📬");
+    } catch (err) { errBox(t, niceErr(err)); }
     return;
   }
   const acc = t.closest("[data-accept]");
@@ -1351,3 +1375,25 @@ window.scorelineIdeas = {
   async suggestions() { const r = await fb.getDocs(fb.query(fb.collection(db, "suggestions"), fb.orderBy("at", "desc"), fb.limit(50))); return r.docs.map((d) => ({ id: d.id, ...d.data() })); },
   role: async () => (user ? roleOf(user.uid) : ""),
 };
+
+/* ---------- optional recovery email (for password resets and two-step codes) ---------- */
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("[data-add-recovery]") || !user) return;
+  const el = e.target.closest("[data-email]") || document.querySelector("[data-email]"); if (!el) return;
+  el.innerHTML = '<form class="acct-add" data-recovery-form><input type="email" placeholder="you@example.com" value="' + esc(recoveryEmail) + '" aria-label="Recovery email" autocomplete="email"><button class="pill-btn" type="submit">Save</button></form>' +
+    (recoveryEmail ? '<button type="button" class="acct-link" data-recovery-remove>Remove email</button>' : "");
+  el.querySelector("input")?.focus();
+});
+document.addEventListener("submit", async (e) => {
+  const f = e.target.closest?.("[data-recovery-form]"); if (!f || !user) return;
+  e.preventDefault();
+  const v = f.querySelector("input").value.trim();
+  if (!EMAIL_RE.test(v)) return toast("That email doesn't look right.");
+  try { await fb.setDoc(fb.doc(db, "recovery", user.uid), { email: v.slice(0, 100), at: fb.serverTimestamp() }); recoveryEmail = v; buzz(12); toast("Recovery email saved"); refreshAccountSheet(); }
+  catch { toast("Couldn't save it. Try again."); }
+});
+document.addEventListener("click", async (e) => {
+  if (!e.target.closest("[data-recovery-remove]") || !user) return;
+  if (twoStepOn) return toast("Turn off two-step sign-in first (codes go to this email).");
+  try { await fb.deleteDoc(fb.doc(db, "recovery", user.uid)); recoveryEmail = ""; toast("Email removed"); refreshAccountSheet(); } catch { toast("Couldn't remove it."); }
+});

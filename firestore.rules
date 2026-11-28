@@ -601,6 +601,21 @@ service cloud.firestore {
         && request.resource.data.at == request.time;
       allow read, delete: if member() && roleOf(me()) in ['owner', 'dev', 'mod'];
     }
+    // Optional recovery email (username-only accounts): only you can see or change it; the worker emails codes/resets to it.
+    match /recovery/{uid} {
+      allow get, delete: if signedIn() && me() == uid;
+      allow create, update: if signedIn() && me() == uid && request.resource.data.keys().hasOnly(['email', 'at'])
+        && request.resource.data.email is string && request.resource.data.email.matches('^[^\s@]+@[^\s@]+\.[^\s@]{2,}$') && request.resource.data.email.size() <= 100
+        && request.resource.data.at == request.time;
+    }
+    // "Forgot password" for username accounts: anyone can ask (signed out); the worker emails a reset link to that
+    // account's recovery email if it has one (at most every 15 minutes). Nobody can read these.
+    match /resetRequests/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['username', 'at'])
+        && request.resource.data.username is string && request.resource.data.username.matches('^[a-z0-9_]{3,20}$')
+        && request.resource.data.at == request.time;
+      allow read, update, delete: if false;
+    }
     // Agreed to the chat rules (once). Needed before sending messages.
     match /chatOk/{uid} {
       allow get, delete: if member() && me() == uid;
