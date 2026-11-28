@@ -46,7 +46,8 @@ service cloud.firestore {
     match /cards/{uid} {
       allow read: if member() && (me() == uid || (resource.data.show == 'friends' && friends(me(), uid)));
       allow create, update: if member() && me() == uid
-        && request.resource.data.keys().hasOnly(['avatar', 'bio', 'teams', 'show', 'updatedAt', 'title', 'banner', 'deco', 'name', 'theme', 'sports', 'favTeams', 'favPlayers'])
+        && request.resource.data.keys().hasOnly(['avatar', 'bio', 'teams', 'show', 'updatedAt', 'title', 'banner', 'deco', 'name', 'theme', 'sports', 'favTeams', 'favPlayers', 'hideOg'])
+        && (!('hideOg' in request.resource.data) || request.resource.data.hideOg is bool)
         // Shop extras can only be shown if you own them, and only while you've agreed to the Terms (withdrawing freezes them).
         && ((request.resource.data.get('title', '') == '' && request.resource.data.get('banner', '') == '' && request.resource.data.get('deco', '') == '')
           || (exists(/databases/$(database)/documents/ages/$(uid)) && get(/databases/$(database)/documents/ages/$(uid)).data.is13plus == true))
@@ -600,6 +601,40 @@ service cloud.firestore {
         && (request.resource.data.name == '' || request.resource.data.name == get(/databases/$(database)/documents/profiles/$(me())).data.username)
         && request.resource.data.at == request.time;
       allow read, delete: if member() && roleOf(me()) in ['owner', 'dev', 'mod'];
+    }
+    // Optional recovery email (username-only accounts): only you can see or change it; the worker emails codes/resets to it.
+    match /recovery/{uid} {
+      allow get, delete: if signedIn() && me() == uid;
+      allow create, update: if signedIn() && me() == uid && request.resource.data.keys().hasOnly(['email', 'at'])
+        && request.resource.data.email is string && request.resource.data.email.matches('^[^ @]+@[^ @]+[.][^ @][^ @]+$') && request.resource.data.email.size() <= 100
+        && request.resource.data.at == request.time;
+    }
+    // "Forgot password" for username accounts: anyone can ask (signed out); the worker emails a reset link to that
+    // account's recovery email if it has one (at most every 15 minutes). Nobody can read these.
+    match /resetRequests/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['username', 'at'])
+        && request.resource.data.username is string && request.resource.data.username.matches('^[a-z0-9_]{3,20}$')
+        && request.resource.data.at == request.time;
+      allow read, update, delete: if false;
+    }
+    // Bracket predictions: your own bracket only (id = uid_league_season). Locked once that league's playoffs start
+    // (the worker writes the lock time from the real schedule). The worker pays Marks for correct picks.
+    function bracketOpen(lg, season) {
+      return !exists(/databases/$(database)/documents/public/bracketLocks)
+        || !((lg + '_' + string(season)) in get(/databases/$(database)/documents/public/bracketLocks).data)
+        || request.time < get(/databases/$(database)/documents/public/bracketLocks).data[lg + '_' + string(season)];
+    }
+    match /brackets/{id} {
+      allow get: if member() && resource.data.uid == me();
+      allow create, update: if member() && request.resource.data.uid == me()
+        && id == me() + '_' + request.resource.data.lg + '_' + string(request.resource.data.season)
+        && request.resource.data.keys().hasOnly(['uid', 'lg', 'season', 'picks', 'seeds', 'at'])
+        && request.resource.data.lg in ['nfl', 'nba', 'mlb'] && request.resource.data.season is int
+        && request.resource.data.picks is map && request.resource.data.picks.size() <= 40
+        && request.resource.data.seeds is map && request.resource.data.seeds.size() <= 4
+        && request.resource.data.at == request.time
+        && bracketOpen(request.resource.data.lg, request.resource.data.season);
+      allow delete: if member() && resource.data.uid == me() && bracketOpen(resource.data.lg, resource.data.season);
     }
     // Agreed to the chat rules (once). Needed before sending messages.
     match /chatOk/{uid} {
