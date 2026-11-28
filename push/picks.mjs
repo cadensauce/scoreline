@@ -6,7 +6,17 @@
 // Marks are earned only: never bought, cashed out or traded. A pick costs nothing.
 
 const API = "https://site.api.espn.com/apis/site/v2/sports/";
-const LGS = { nfl: "football/nfl", cfb: "football/college-football", nba: "basketball/nba", mlb: "baseball/mlb" };
+const LGS = { nfl: "football/nfl", cfb: "football/college-football", nba: "basketball/nba", cbb: "basketball/mens-college-basketball", mlb: "baseball/mlb" };
+// College basketball: only games with an AP Top 25 team (300+ teams play most nights).
+let top25 = { at: 0, ids: null };
+async function cbbTop() {
+  if (top25.ids && Date.now() - top25.at < 12 * 3600e3) return top25.ids;
+  const rk = await getJSON(API + LGS.cbb + "/rankings").catch(() => null);
+  const ap = (rk?.rankings || []).find((r) => /AP/.test(r.name || "")) || rk?.rankings?.[0];
+  const ids = new Set((ap?.ranks || []).map((r) => String(r.team?.id || "")).filter(Boolean));
+  if (ids.size) top25 = { at: Date.now(), ids };
+  return ids;
+}
 const PROJ_EVERY_MS = 60 * 60_000;     // refresh each game's pre-game win chance hourly
 const SUMMARIES_PER_TICK = 15;         // spread the summary requests out
 const SWEEP_EVERY_MS = 10 * 60_000;    // catch any finished game that wasn't settled (worker restarts, schedule roll-over)
@@ -48,9 +58,11 @@ export async function picksTick(db, admin) {
     for (let k = -1; k <= 6; k++) {
       const day = ymd(new Date(now + k * 864e5)), key = lg + day;
       if (k > 0 && now - (dayAt.get(key) || 0) < DAY_EVERY_MS) continue;
-      try { const d = await getJSON(API + path + "/scoreboard?limit=300&dates=" + day + (lg === "cfb" ? "&groups=80" : "")); dayAt.set(key, now); events.push(...(d.events || [])); } catch {}
+      try { const d = await getJSON(API + path + "/scoreboard?limit=300&dates=" + day + (lg === "cfb" ? "&groups=80" : lg === "cbb" ? "&groups=50" : "")); dayAt.set(key, now); events.push(...(d.events || [])); } catch {}
     }
+    const keepIds = lg === "cbb" ? await cbbTop() : null;
     for (const ev of events) {
+      if (keepIds && !(ev.competitions?.[0]?.competitors || []).some((x) => keepIds.has(String(x.team?.id)))) continue;
       const c = ev.competitions?.[0]; if (!c) continue;
       const st = c.status?.type || {}, state = st.state, docId = lg + "_" + ev.id;
       const when = Date.parse(c.date || ev.date);

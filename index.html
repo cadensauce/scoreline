@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795885974" />
+  <meta name="build" content="1795886199" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -141,6 +141,7 @@
     .gc-list { max-height: 260px; overflow-y: auto; display: grid; gap: 2px; margin-bottom: 10px; overscroll-behavior: contain; } .gc-msg { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text); font: inherit; font-size: 14px; line-height: 1.4; padding: 6px 8px; border-radius: 10px; overflow-wrap: anywhere; cursor: pointer; } .gc-msg b { color: var(--muted); font-weight: 700; } .gc-msg.me b { color: var(--text); } .gc-form { display: flex; gap: 8px; } .gc-form input { flex: 1; min-width: 0; height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 16px; } .gc-rules { margin-top: 6px; }
     .otd { display: grid; gap: 2px; width: 100%; text-align: left; padding: 12px 14px; margin: 0 0 12px; border: 1px solid var(--line); border-radius: var(--radius, 14px); background: var(--panel); color: var(--text); font: inherit; font-size: 14.5px; line-height: 1.4; cursor: pointer; } .otd-k { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); } .otd small { display: block; color: var(--muted); font-size: 12.5px; } .g-sec .otd { margin: 0; }
     .pstat { display: block; color: var(--text) !important; font-weight: 600; } .pstat:empty { display: none; }
+    button.session { width: 100%; font: inherit; color: inherit; text-align: left; cursor: pointer; border: 0; grid-template-columns: 52px 1fr auto 14px; } button.session .chev { color: var(--muted); } .f1-sess { width: 100%; border-collapse: collapse; } .f1-sess td, .f1-sess th { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; font-size: 14px; vertical-align: middle; } .f1-sess th { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; } .f1-sess .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; } .f1-sess td small { display: block; color: var(--muted); font-size: 12px; } .f1-sess .num small { display: inline; } .f1-sess .pos { width: 32px; font-weight: 800; } .tt-dot { display: inline-block; width: 4px; height: 14px; border-radius: 2px; margin-right: 8px; vertical-align: -2px; }
     .pstat { display: block; color: var(--text) !important; font-weight: 600; } .pstat:empty { display: none; }
     @media (hover: hover) { .pill-btn:hover { background: var(--panel-2); border-color: var(--line-hi); } }
     .pill-btn:active, .tab:active, .refresh:active { transform: scale(.97); }
@@ -2640,10 +2641,12 @@
         left += '<div class="status' + (nx?.status?.type?.state === "in" ? " live" : "") + '" style="font-size:12px;color:var(--accent)">' + esc(nx?.status?.type?.state === "in" ? "Live now" : !nx && ev.status?.type?.state === "post" ? "Race weekend complete" : "Race weekend") + "</div>";
         left += '<div class="gp-name">' + esc(ev.name) + '</div><div class="gp-sub">' + esc([ev.circuit?.fullName, ev.circuit?.address?.city, ev.circuit?.address?.country].filter(Boolean).join(" · ")) + "</div>";
         if (nx && nx.status?.type?.state === "pre") left += '<div class="countdown" id="f1Count" data-at="' + esc(nx.date) + '">--<small>until ' + esc(SESSION_NAMES[nx.type?.abbreviation] || "next session") + "</small></div>";
-        left += '<div class="sessions">' + (ev.competitions || []).map((c) => {
+        window.__f1ev = ev;
+        left += '<div class="sessions">' + (ev.competitions || []).map((c, ci) => {
           const s = c.status?.type?.state;
           const tag = s === "in" ? '<span class="tag" style="color:var(--live)">Live</span>' : s === "post" ? '<span class="tag" style="color:var(--muted)">Done</span>' : c === nx ? '<span class="tag">Next</span>' : "<span></span>";
-          return '<div class="session ' + (c === nx ? "next" : "") + '"><b>' + esc(c.type?.abbreviation || "") + '</b><span class="when">' + tm("f1", SESSION_NAMES[c.type?.abbreviation] || "") + " · " + esc(fmtDay(c.date)) + " " + esc(fmtTime(c.date)) + "</span>" + tag + "</div>";
+          const tapOk = s !== "pre";   // started or finished: tap for its leaderboard
+          return (tapOk ? '<button type="button" data-f1sess="' + ci + '" aria-label="' + esc((SESSION_NAMES[c.type?.abbreviation] || "Session") + " leaderboard") + '" ' : "<div ") + 'class="session ' + (c === nx ? "next" : "") + '"><b>' + esc(c.type?.abbreviation || "") + '</b><span class="when">' + tm("f1", SESSION_NAMES[c.type?.abbreviation] || "") + " · " + esc(fmtDay(c.date)) + " " + esc(fmtTime(c.date)) + "</span>" + tag + (tapOk ? '<span class="chev">›</span></button>' : "</div>");
         }).join("") + "</div>";
         if (nx && ev.circuit?.address?.city) left += '<div class="g-sec" data-wx style="margin-top:12px"><div class="skel" style="height:90px"></div></div>';
         const f1Live = (ev.competitions || []).some((c) => c.status?.type?.state === "in"), f1Soon = nx && nx.status?.type?.state === "pre" && Date.parse(nx.date) - Date.now() < 2 * 3600e3;
@@ -2731,9 +2734,17 @@
           const all = await getJSON(OF1 + "sessions?year=" + new Date().getFullYear());
           s = all.filter((x) => new Date(x.date_end) < now).pop(); live = false;
         }
-        const drivers = await getJSON(OF1 + "drivers?session_key=" + s.session_key);
+        let drivers = await getJSON(OF1 + "drivers?session_key=" + s.session_key);
         let a, b, rows = [];
         if (live) { b = new Date(now); a = new Date(now - 100000); rows = await fetchLoc(s.session_key, a, b); }
+        let liveNote = "";
+        if (!rows.length && live) {
+          // OpenF1 shares car positions for free only once a session is over (live positions are for its paid sponsors),
+          // so while a session is on we replay the latest finished one and say so.
+          const all = await getJSON(OF1 + "sessions?year=" + new Date().getFullYear()).catch(() => []);
+          const prev = (all || []).filter((x) => new Date(x.date_end).getTime() + 20 * 60000 < now && x.session_key !== s.session_key).pop();
+          if (prev) { liveNote = (s.session_name || "This session") + " is on now. Live car positions aren't free during a session, so here's a replay of " + prev.session_name + "."; s = prev; drivers = await getJSON(OF1 + "drivers?session_key=" + s.session_key).catch(() => []); }
+        }
         if (!rows.length) {
           live = false;
           const st = new Date(s.date_start).getTime(), en = new Date(s.date_end).getTime();
@@ -2755,7 +2766,7 @@
         // Out of the session (DNF / parked in the garage): a car that barely moves while most of the field is racing.
         const trackSize = extent(cars[ref]), still = nums.filter((n) => extent(cars[n]) < trackSize * 0.04);
         const out = new Set(still.length <= nums.length / 2 ? still : []);   // everyone still = red flag or end of session, keep them
-        track = { s, live, out, at: Date.now(), a: a.getTime(), b: b.getTime(), cars, order, outline: cars[ref], drivers: Object.fromEntries(drivers.map((d) => [d.driver_number, d])) };
+        track = { s, live, liveNote, out, at: liveNote ? Date.now() - 13 * 60000 : Date.now(), a: a.getTime(), b: b.getTime(), cars, order, outline: cars[ref], drivers: Object.fromEntries((drivers || []).map((d) => [d.driver_number, d])) };   // with a live note: look again in ~2 minutes
       } catch { track = { error: true, at: Date.now() }; }
       const el2 = $("trackPanel");
       if (el2) drawTrack(el2);
@@ -2797,6 +2808,44 @@
         '<div class="tt-row"><b>' + (r.pos || T.order[r.n] || i + 1) + '</b><i style="background:#' + esc(T.drivers[r.n]?.team_colour || "8a93a5") + '"></i><span>' + esc(T.drivers[r.n]?.name_acronym || r.n) + "</span>" +
         (inPit(r.n) ? '<em class="tt-pit">PIT</em>' : "") + "<small>" + esc(r.txt) + "</small></div>").join("") + "</div>";
     }
+    /* ---------- Tap a session (practice, qualifying, sprint, race) to see its leaderboard ----------
+       Order from ESPN; lap times and gaps from OpenF1's free results once the session is over. */
+    async function openF1Session(i) {
+      const ev = window.__f1ev, c = ev?.competitions?.[i]; if (!c) return;
+      const name = SESSION_NAMES[c.type?.abbreviation] || c.type?.abbreviation || "Session";
+      const v = { kind: "f1sess", key: "f1sess|" + (c.id || i) };
+      if (!pushView(v)) return;
+      setBody(v, name, '<div class="skel" style="height:320px"></div>');
+      const esp = (c.competitors || []).slice().filter((d) => d.order).sort((a, b) => a.order - b.order);
+      let res = [], drv = {};
+      try {
+        const yr = new Date(c.date).getFullYear(), all = await getJSON(OF1 + "sessions?year=" + yr);
+        const s = (all || []).find((x) => Math.abs(new Date(x.date_start) - new Date(c.date)) < 2 * 3600e3);
+        if (s && new Date(s.date_end).getTime() < Date.now()) {
+          [res, drv] = await Promise.all([getJSON(OF1 + "session_result?session_key=" + s.session_key).catch(() => []), getJSON(OF1 + "drivers?session_key=" + s.session_key).then((d) => Object.fromEntries((d || []).map((x) => [x.driver_number, x]))).catch(() => ({}))]);
+        }
+      } catch {}
+      if (!v.el.isConnected) return;
+      const race = /race|sprint$/i.test(name), quali = /qualifying|shootout/i.test(name);
+      const time = (r) => {
+        if (r.dsq) return "DSQ"; if (r.dns) return "DNS"; if (r.dnf) return "DNF";
+        const d = Array.isArray(r.duration) ? r.duration.filter((x) => x != null).pop() : r.duration, g = Array.isArray(r.gap_to_leader) ? r.gap_to_leader.filter((x) => x != null).pop() : r.gap_to_leader;
+        if (r.position === 1) return d != null ? (race ? r.number_of_laps + " laps" : lapTxt(d)) : "";
+        if (typeof g === "string") return g;
+        return g != null ? "+" + Number(g).toFixed(3) : d != null ? lapTxt(d) : "";
+      };
+      const stage = (r) => (quali && Array.isArray(r.duration) ? ["Q1", "Q2", "Q3"][r.duration.filter((x) => x != null).length - 1] || "" : "");
+      let rows;
+      if (res?.length) rows = res.slice().sort((a, b) => (a.position || 99) - (b.position || 99)).map((r) => { const d = drv[r.driver_number] || {};
+        return "<tr><td class=\"pos\">" + esc(r.position ?? "–") + '</td><td><i class="tt-dot" style="background:#' + esc(d.team_colour || "8a93a5") + '"></i>' + esc(d.full_name || d.broadcast_name || "#" + r.driver_number) + (d.team_name ? "<small>" + esc(d.team_name) + "</small>" : "") + '</td><td class="num">' + esc(time(r)) + (stage(r) ? " <small>" + stage(r) + "</small>" : "") + "</td></tr>"; });
+      else rows = esp.map((d) => "<tr><td class=\"pos\">" + esc(d.order) + "</td><td>" + esc(d.athlete?.displayName || "") + (d.team?.displayName ? "<small>" + esc(d.team.displayName) + "</small>" : "") + '</td><td class="num"></td></tr>');
+      const st = c.status?.type?.state;
+      setBody(v, name, '<div class="g-note" style="margin-bottom:10px">' + esc([gpName(ev), fmtDay(c.date) + " " + fmtTime(c.date), st === "in" ? "Live" : st === "post" ? "Final" : ""].filter(Boolean).join(" · ")) + "</div>" +
+        (rows.length ? '<table class="f1-sess"><thead><tr><th>Pos</th><th>Driver</th><th class="num">' + (race ? "Gap" : quali ? "Best lap" : "Best lap") + "</th></tr></thead><tbody>" + rows.join("") + "</tbody></table>" +
+          (res?.length ? "" : '<p class="g-note">Lap times and gaps show up shortly after the session ends.</p>')
+          : '<div class="empty">No results for this session yet.</div>'));
+    }
+
     function drawTrack(el) {
       const T = track;
       cancelAnimationFrame(trackRaf); clearInterval(trackPoll);
@@ -2823,7 +2872,7 @@
       svg += "</svg>";
       const chip = (n) => '<span class="t-chip"><i style="background:#' + esc(T.drivers[n]?.team_colour || "8a93a5") + '"></i>P' + esc(T.order[n]) + " " + esc(dname(n)) + "</span>";
       el.innerHTML = '<div class="t-head"><div class="g-label" style="margin:0">Track</div><span class="' + (T.live ? "status live" : "t-replay") + '">' + (T.live ? "Live" : "Replay") + "</span></div>" +
-        '<div class="g-note" style="margin:2px 0 6px">' + esc([T.s.circuit_short_name, T.s.session_name, T.live ? "" : new Date(T.s.date_start).toLocaleDateString([], { month: "short", day: "numeric" })].filter(Boolean).join(" · ")) + "</div>" + svg +
+        '<div class="g-note" style="margin:2px 0 6px">' + esc([T.s.circuit_short_name, T.s.session_name, T.live ? "" : new Date(T.s.date_start).toLocaleDateString([], { month: "short", day: "numeric" })].filter(Boolean).join(" · ")) + "</div>" + (T.liveNote ? '<div class="g-note t-livenote">📡 ' + esc(T.liveNote) + "</div>" : "") + svg +
         '<div class="t-order">' + ranked.slice(0, 3).map(chip).join("") + (ranked.length > 3 ? '<span class="muted">…</span>' + chip(last) : "") + "</div>" + '<div data-tower></div>';
       const towerEl = el.querySelector("[data-tower]"); let towerAt = 0;
       loadTower(T).then(() => { towerAt = 0; }).catch(() => {});
@@ -3056,6 +3105,8 @@
       if (ext && TAURI?.opener) { e.preventDefault(); TAURI.opener.openUrl(ext.href).catch(() => window.open(ext.href, "_blank")); return; }
       const drv = e.target.closest("[data-driver]");
       if (drv) return openDriver(drv.dataset.driver);
+      const f1s = e.target.closest("[data-f1sess]");
+      if (f1s) return openF1Session(Number(f1s.dataset.f1sess));
       const rcb = e.target.closest("[data-recap-card]");
       if (rcb) return rcb.dataset.recapCard === "f1" ? recapCardF1() : recapCard(rcb);
       const pl = e.target.closest("[data-player]");
@@ -3473,7 +3524,7 @@
       if (s.teen === null && !store.get("tosNo", false)) return put(tosForm());
       const marks = s.teen === true;   // Marks only after agreeing to the Terms (13+); everyone else picks just for fun
       const [g, p] = await Promise.all([P.game(gid), P.pick(gid)]);
-      if (!g) return put('<div class="pick-msg">Picks open closer to the game.</div>');
+      if (!g) return put('<div class="pick-msg">' + (lg === "cbb" ? "College basketball picks are for games with an AP Top 25 team." : "Picks open closer to the game.") + "</div>");
       const locked = (g.lockAt?.toMillis?.() || 0) <= Date.now();
       const btn = (t, sd) => { const r = g.rewards?.[sd] ?? 10; return '<button type="button" class="pick-btn' + (p?.side === sd ? " on" : "") + '" data-pick-side="' + sd + '"' + (locked ? " disabled" : "") + "><b>" + ab(t) + "</b>" + (marks ? "<small>" + MARK_SVG(13) + " +" + r + " Marks" + (r >= 2 * (g.rewards?.[sd === "home" ? "away" : "home"] ?? r) ? " · Upset bonus" : "") + "</small>" : "") + "</button>"; };
       put('<div class="pick-row" data-gid="' + esc(gid) + '">' + btn(away, "away") + btn(home, "home") + '</div><div class="g-note">' +
@@ -7980,6 +8031,6 @@
     if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
-  <script type="module" src="account.js?v=1795885974"></script>
+  <script type="module" src="account.js?v=1795886199"></script>
 </body>
 </html>
