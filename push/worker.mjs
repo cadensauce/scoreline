@@ -25,6 +25,7 @@ const LEAGUES = {
   nfl: { name: "NFL", icon: "🏈", path: "football/nfl", league: 28 },
   cfb: { name: "CFB", icon: "🏈", path: "football/college-football", extra: "groups=80&limit=300", league: 23 },
   nba: { name: "NBA", icon: "🏀", path: "basketball/nba", league: 46 },
+  cbb: { name: "CBB", icon: "🏀", path: "basketball/mens-college-basketball", extra: "groups=50&limit=400", league: 41 },
   mlb: { name: "MLB", icon: "⚾", path: "baseball/mlb", league: 10 },
 };
 
@@ -285,7 +286,7 @@ async function checkGames() {
         if (prev.st === "pre" && st === "in")
           await send(key, "start", L.icon + " " + nick(me) + " vs " + nick(opp) + " is starting", [tv(ev), "Tap to follow along"].filter(Boolean).join(" · "), "start-" + ev.id, ev);
         // Your team scores (basketball: end of Q1 and Q3 instead of every basket; Q2 is "halftime")
-        if (st === "in" && lg !== "nba" && mine > prev.sc[i]) {
+        if (st === "in" && lg !== "nba" && lg !== "cbb" && mine > prev.sc[i]) {
           const pts = mine - prev.sc[i];
           const what = lg === "mlb" ? (pts === 1 ? "scores a run" : "scores " + pts + " runs") : footballScore(pts);
           await send(key, "score", L.icon + " " + nick(me) + " " + what, scoreLine(ev) + " · " + clock, "score-" + ev.id + "-" + i + "-" + mine, ev);
@@ -305,7 +306,7 @@ async function checkGames() {
       }
       // Close finish, once per game
       const diff = Math.abs(sc[0] - sc[1]);
-      const late = lg === "mlb" ? period >= 9 && diff <= 1 : lg === "nba" ? period >= 4 && diff <= 5 && /^[0-2]:\d\d/.test(clock) : period >= 4 && diff <= 8 && /^[0-4]:\d\d/.test(clock);
+      const late = lg === "mlb" ? period >= 9 && diff <= 1 : lg === "nba" ? period >= 4 && diff <= 5 && /^[0-2]:\d\d/.test(clock) : lg === "cbb" ? period >= 2 && diff <= 5 && /^[0-2]:\d\d/.test(clock) : period >= 4 && diff <= 8 && /^[0-4]:\d\d/.test(clock);
       if (st === "in" && late && !closeSent.has(ev.id)) {
         closeSent.add(ev.id);
         for (const t of teams) await send(keyOf(t), "close", L.icon + " Close finish: " + nick(teams[0]) + " vs " + nick(teams[1]), scoreLine(ev) + " · " + clock, "close-" + ev.id, ev);
