@@ -273,3 +273,26 @@ Next session, in order:
   draft, the Social tab, and 320 px fit (`tests/specs/fantasy.spec.js`).
 - Rules tests: 62. Still to watch: first real Fantasy settlements (CFB Friday, F1 Las Vegas), first real league week,
   App Check numbers before enforcing.
+
+## 2026-11-21 to 2026-11-28: social, roles, news, college basketball, deep pass (PRs #112–#150)
+
+- Social (#112–#126): find people, friend requests with clear results, TikTok-style account switching, chats list,
+  group chats, sharing games/players/teams/Fantasy, chat rules gate, block + report, Friends page.
+- Roles (#128, #135): Owner gives Dev / Mod / Beta Tester, role tags, Reports for Owner + Mods, "View site as" a role,
+  OG tag for accounts made before 2027 (hideable).
+- Big batch (#131–#134): win % capped at 99 until decided, special-game labels, stadium + weather card, ejections,
+  colleges on player pages, combinable filters, Customize + text size, The Buzz (news + moves with emoji titles),
+  key dates, reactions with counts, stat leaders, calendar picker, owner site switch, ideas board + private
+  suggestions, emoji play cards, playoff bracket + build-your-own bracket (Marks for right picks), team W/L
+  predictions, week numbers, custom picker. Legal and security review: `docs/legal-security-review.md`.
+- Accounts (#140): username + password sign-in, optional recovery email, optional 2FA.
+- Navigation (#142–#145): News tab, 📰 on sport pages, always-on headline, bottom bar picker (any tabs, no limit),
+  labelled shortcut chips (Standings / News / Leaders / Bracket), phone preview no longer laggy.
+- College basketball + chat + mods (#146–#148): CBB everywhere (halves, college bonus, alerts), chat photos (shrunk on
+  the phone, stored in the message, hidden until tapped), chat notifications (worker `push/chatmod.mjs`), warn/ban
+  from profiles, auto-pause for a Mod acting too fast. Phones always load the newest chat code (`account.js?v=build`).
+- Deep pass (#149): automatic checker on every tab and page at 320/375/430 px + click-through of every button.
+  Personal headlines (your teams first, emoji + reaction), Home opens on scores, offseason notes with ESPN's
+  next-season dates, CBB halves/Top 25, Sign in/Sign out wording, accurate site description (no Premier League).
+- Features (#150, for review): Form guide on upcoming games, team-page streaks, a personal hello on Home,
+  ⭐ Your teams filter in News, no betting articles in The Buzz, a redraw watchdog so pages never stay on skeletons.
