@@ -615,6 +615,24 @@ service cloud.firestore {
         && request.resource.data.username is string && request.resource.data.username.matches('^[a-z0-9_]{3,20}$')
         && request.resource.data.at == request.time;
       allow read, update, delete: if false;
+    // Bracket predictions: your own bracket only (id = uid_league_season). Locked once that league's playoffs start
+    // (the worker writes the lock time from the real schedule). The worker pays Marks for correct picks.
+    function bracketOpen(lg, season) {
+      return !exists(/databases/$(database)/documents/public/bracketLocks)
+        || !((lg + '_' + string(season)) in get(/databases/$(database)/documents/public/bracketLocks).data)
+        || request.time < get(/databases/$(database)/documents/public/bracketLocks).data[lg + '_' + string(season)];
+    }
+    match /brackets/{id} {
+      allow get: if member() && resource.data.uid == me();
+      allow create, update: if member() && request.resource.data.uid == me()
+        && id == me() + '_' + request.resource.data.lg + '_' + string(request.resource.data.season)
+        && request.resource.data.keys().hasOnly(['uid', 'lg', 'season', 'picks', 'seeds', 'at'])
+        && request.resource.data.lg in ['nfl', 'nba', 'mlb'] && request.resource.data.season is int
+        && request.resource.data.picks is map && request.resource.data.picks.size() <= 40
+        && request.resource.data.seeds is map && request.resource.data.seeds.size() <= 4
+        && request.resource.data.at == request.time
+        && bracketOpen(request.resource.data.lg, request.resource.data.season);
+      allow delete: if member() && resource.data.uid == me() && bracketOpen(resource.data.lg, resource.data.season);
     }
     // Agreed to the chat rules (once). Needed before sending messages.
     match /chatOk/{uid} {

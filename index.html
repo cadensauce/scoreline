@@ -606,6 +606,7 @@
     .br-seed { width: 16px; text-align: right; color: var(--muted); font-size: 13px; font-weight: 700; } .br-score { font-weight: 800; font-variant-numeric: tabular-nums; } .br-score i { font-style: normal; font-size: 11px; }
     .br-game.bye { flex-direction: row; align-items: center; flex-wrap: wrap; } .br-game.bye .br-team { flex: 1; } .br-bye { font-weight: 800; color: var(--muted); } .br-game.bye small { flex-basis: 100%; }
     .br-note { margin: 4px 2px 0; }
+    .br-seeds { gap: 2px; } .br-slot i { margin-left: auto; font-style: normal; color: var(--muted); } .br-slot.empty b { color: var(--muted); font-weight: 600; }
     .f-about { margin: 6px 0 0; font-size: 12px; color: var(--muted); } .f-about summary { cursor: pointer; text-align: center; list-style: none; padding: 4px; } .f-about summary::-webkit-details-marker { display: none; } .f-about[open] summary { margin-bottom: 4px; }
     /* Team schedule: week numbers and W/L predictions */
     .wk { font-weight: 800; color: var(--text); margin-right: 2px; } .tpred-t { font-size: 11.5px; }
@@ -6591,7 +6592,8 @@
       const confs = (d.children || []).map((c) => {
         const entries = []; const walk = (n) => { (n.standings?.entries || []).forEach((e) => entries.push(e)); (n.children || []).forEach(walk); }; walk(c);
         const seed = (e) => Number((e.stats || []).find((s) => s.name === "playoffSeed")?.value) || 99;
-        return { name: c.abbreviation || c.name, teams: entries.map((e) => ({ id: String(e.team?.id), seed: seed(e), team: e.team })).filter((t) => t.seed < 99).sort((a, b) => a.seed - b.seed) };
+        const all = entries.map((e) => ({ id: String(e.team?.id), seed: seed(e), team: e.team }));
+        return { name: c.abbreviation || c.name, all, teams: all.filter((t) => t.seed < 99).sort((a, b) => a.seed - b.seed) };
       });
       return confs;
     }
@@ -6609,58 +6611,83 @@
       for (let a = firstPair, b = n; a < b; a++, b--) if (s(a) && s(b)) out += '<div class="br-game">' + row(s(a)) + row(s(b)) + "</div>";
       return out;
     }
-    /* ---------- 🔮 My bracket: tap who wins each matchup; winners move on to the final. Saved on this device. ---------- */
+    /* ---------- 🔮 My bracket: pick your own seeds (any team), then who wins each matchup; winners move on to the final.
+       Saved on this device, and to your account when signed in (it locks when the playoffs start; correct NFL picks earn
+       Marks for accounts that agreed to the Terms). ---------- */
     const FINAL_NAME = { nfl: "Super Bowl", nba: "NBA Finals", mlb: "World Series" };
     const ROUND_NAMES = { nfl: ["Wild Card", "Divisional", "Conference final"], nba: ["First round", "Conf. semifinals", "Conf. finals"], mlb: ["Wild Card", "Division series", "Championship series"] };
-    const myPicksKey = (lg, season) => "bracketPicks:" + lg + ":" + season;
+    const SEEDS_N = { nfl: 7, nba: 8, mlb: 6 };
+    const myPicksKey = (lg, season) => "bracketPicks2:" + lg + ":" + season;
+    const myBr = (lg, season) => { const x = store.get(myPicksKey(lg, season), null); return x && x.seeds ? x : { seeds: {}, picks: {} }; };
+    let brSaveT = 0;
+    function saveMyBr(lg, season, data) {
+      store.set(myPicksKey(lg, season), data);
+      clearTimeout(brSaveT);
+      brSaveT = setTimeout(() => window.scorelineBracket?.save(lg, season, data).catch((e) => { if (/locked/i.test(e?.message || "")) toast("Brackets are locked: the playoffs have started 🔒"); }), 800);
+    }
     // Matchups per round for one conference, given the winners picked so far (seed numbers).
-    function brPlan(lg, w) {   // w(round, index) -> winning seed or undefined
+    function brPlan(lg, w) {
       if (lg === "nfl") {
         const r1 = [[2, 7], [3, 6], [4, 5]], won1 = r1.map((_, i) => w(0, i));
-        const r2 = won1.every(Boolean) ? (() => { const rest = won1.slice().sort((a, b) => a - b), low = rest[2]; return [[1, low], [rest[0], rest[1]]]; })() : [[1, undefined], [undefined, undefined]];
+        const r2 = won1.every(Boolean) ? (() => { const rest = won1.slice().sort((a, b) => a - b); return [[1, rest[2]], [rest[0], rest[1]]]; })() : [[1, undefined], [undefined, undefined]];
         return [r1, r2, [[w(1, 0), w(1, 1)]]];
       }
       if (lg === "mlb") { const r1 = [[3, 6], [4, 5]]; return [r1, [[1, w(0, 1)], [2, w(0, 0)]], [[w(1, 0), w(1, 1)]]]; }
-      const r1 = [[1, 8], [4, 5], [3, 6], [2, 7]];   // NBA (seeds 7 and 8 as they stand: the play-in decides them)
+      const r1 = [[1, 8], [4, 5], [3, 6], [2, 7]];
       return [r1, [[w(0, 0), w(0, 1)], [w(0, 2), w(0, 3)]], [[w(1, 0), w(1, 1)]]];
     }
     function myBracketHtml(lg, season, confs) {
-      const picks = store.get(myPicksKey(lg, season), {}) || {};
-      const name = (c, seed) => { const t = c.teams.find((x) => x.seed === seed); return t ? t : null; };
+      const data = myBr(lg, season), picks = data.picks, N = SEEDS_N[lg] || 7;
+      const teamOf = (c, seed) => { const id = data.seeds[c.name]?.[seed]; return id ? c.all.find((t) => t.id === String(id)) : null; };
+      const tname = (t) => esc(t.team?.shortDisplayName || t.team?.displayName || "");
       const champs = [];
-      const confHtml = confs.filter((c) => c.teams.length).slice(0, 2).map((c, ci) => {
+      const confHtml = confs.filter((c) => c.all?.length).slice(0, 2).map((c, ci) => {
         const w = (r, i) => picks[c.name + "|" + r + "|" + i];
-        const plan = brPlan(lg, w);
         champs[ci] = { c, seed: w(2, 0) };
-        return '<div class="section-title"><b>' + esc(c.name) + "</b></div>" + plan.map((round, r) => '<div class="g-label">' + esc(ROUND_NAMES[lg][r]) + "</div><div class=\"br-col\">" + round.map(([a, b], i) => {
-          const pick = w(r, i), row = (seed) => { const t = seed && name(c, seed); return t ? '<button type="button" class="br-team br-pick' + (pick === seed ? " won" : pick ? " lost" : "") + '" data-brp="' + esc(c.name) + "|" + r + "|" + i + "|" + seed + '"><span class="br-seed">' + seed + "</span>" + teamBadge(t.team) + "<b>" + esc(t.team?.shortDisplayName || t.team?.displayName || "") + "</b>" + (pick === seed ? '<span class="pick-tick">✓</span>' : "") + "</button>" : '<div class="br-team tbd"><span class="br-seed"></span><b>Pick the game before</b></div>'; };
-          return '<div class="br-game">' + row(a) + row(b) + "</div>";
-        }).join("") + "</div>").join("");
+        const seedRows = Array.from({ length: N }, (_, k) => k + 1).map((s) => { const t = teamOf(c, s);
+          return '<button type="button" class="br-team br-pick br-slot' + (t ? "" : " empty") + '" data-brseed="' + esc(c.name) + "|" + s + '"><span class="br-seed">' + s + "</span>" + (t ? teamBadge(t.team) + "<b>" + tname(t) + "</b>" : "<b>Tap to add a team</b>") + '<i aria-hidden="true">✎</i></button>'; }).join("");
+        const plan = brPlan(lg, w);
+        return '<div class="section-title"><b>' + esc(c.name) + '</b></div><div class="g-label">Your seeds</div><div class="br-game br-seeds">' + seedRows + "</div>" +
+          plan.map((round, r) => '<div class="g-label">' + esc(ROUND_NAMES[lg][r]) + '</div><div class="br-col">' + round.map(([a, b], i) => {
+            const pick = w(r, i), row = (seed) => { const t = seed && teamOf(c, seed);
+              return t ? '<button type="button" class="br-team br-pick' + (pick === seed ? " won" : pick ? " lost" : "") + '" data-brp="' + esc(c.name) + "|" + r + "|" + i + "|" + seed + '"><span class="br-seed">' + seed + "</span>" + teamBadge(t.team) + "<b>" + tname(t) + "</b>" + (pick === seed ? '<span class="pick-tick">✓</span>' : "") + "</button>"
+                : '<div class="br-team tbd"><span class="br-seed">' + (seed || "") + "</span><b>" + (seed ? "Add seed " + seed + " above" : "Pick the game before") + "</b></div>"; };
+            return '<div class="br-game">' + row(a) + row(b) + "</div>";
+          }).join("") + "</div>").join("");
       }).join("");
-      const fin = picks["final"], [A, B] = champs;
-      const finRow = (x) => { const t = x?.seed && x.c.teams.find((y) => y.seed === x.seed); return t ? '<button type="button" class="br-team br-pick' + (fin === x.c.name ? " won" : fin ? " lost" : "") + '" data-brp="final|' + esc(x.c.name) + '"><span class="br-seed">' + t.seed + "</span>" + teamBadge(t.team) + "<b>" + esc(t.team?.shortDisplayName || "") + "</b>" + (fin === x.c.name ? '<span class="pick-tick">🏆</span>' : "") + "</button>" : '<div class="br-team tbd"><span class="br-seed"></span><b>' + esc(x?.c?.name || "") + " champion</b></div>"; };
-      const champ = fin && [A, B].find((x) => x?.c.name === fin), champT = champ && champ.c.teams.find((y) => y.seed === champ.seed);
-      return '<p class="g-note br-note">Tap who you think wins each game. Winners move on. Saved on this device.</p>' + confHtml +
+      const fin = picks.final, [A, B] = champs;
+      const finRow = (x) => { const t = x?.seed && teamOf(x.c, x.seed); return t ? '<button type="button" class="br-team br-pick' + (fin === x.c.name ? " won" : fin ? " lost" : "") + '" data-brp="final|' + esc(x.c.name) + '"><span class="br-seed">' + x.seed + "</span>" + teamBadge(t.team) + "<b>" + tname(t) + "</b>" + (fin === x.c.name ? '<span class="pick-tick">🏆</span>' : "") + "</button>" : '<div class="br-team tbd"><span class="br-seed"></span><b>' + esc(x?.c?.name || "") + " champion</b></div>"; };
+      const champ = fin && [A, B].find((x) => x?.c.name === fin), champT = champ && teamOf(champ.c, champ.seed);
+      return '<p class="g-note br-note">Add your own seeds (any team), or fill them from the standings. Then tap who wins each game.' + (lg === "nfl" ? " 💰 Correct picks earn Marks once the games are played (13+, Terms agreed): 10 Wild Card, 20 Divisional, 40 Conference, 80 for the champion. Locks when the playoffs start." : "") + "</p>" +
+        '<div class="va-btns"><button type="button" class="pill-btn" data-brfill>Fill from standings</button><button type="button" class="pill-btn" data-brp-reset>Start over</button></div>' + confHtml +
         '<div class="section-title"><b>' + esc(FINAL_NAME[lg]) + ' 🏆</b></div><div class="br-col"><div class="br-game">' + finRow(A) + finRow(B) + "</div></div>" +
-        (champT ? '<div class="br-champ">🎉 Your champion: <b>' + esc(champT.team?.displayName || "") + "</b></div>" : "") +
-        '<button type="button" class="link-btn br-reset" data-brp-reset>Start over</button>';
+        (champT ? '<div class="br-champ">🎉 Your champion: <b>' + esc(champT.team?.displayName || "") + "</b></div>" : "");
     }
-    document.addEventListener("click", (e) => {
-      const p = e.target.closest("[data-brp]"), rs = e.target.closest("[data-brp-reset]");
-      if (!p && !rs) return;
-      const v = views.find((x) => x.el === (p || rs).closest(".sheet")); if (!v) return;
-      const lg = v.el.dataset.lg, key = myPicksKey(lg, v.brSeason), picks = store.get(key, {}) || {};
-      if (rs) { store.set(key, {}); buzz(8); return drawBracket(v, lg); }
-      const parts = p.dataset.brp.split("|");
-      if (parts[0] === "final") picks.final = parts[1];
-      else {
-        const [conf, r, i, seed] = parts, k = conf + "|" + r + "|" + i;
-        picks[k] = Number(seed);
-        // Changing an early pick clears the later picks that depended on it.
-        Object.keys(picks).forEach((x) => { const [c2, r2] = x.split("|"); if (c2 === conf && Number(r2) > Number(r)) delete picks[x]; });
-        delete picks.final;
+    document.addEventListener("click", async (e) => {
+      const p = e.target.closest("[data-brp]"), rs = e.target.closest("[data-brp-reset]"), sl = e.target.closest("[data-brseed]"), fill = e.target.closest("[data-brfill]");
+      if (!p && !rs && !sl && !fill) return;
+      const v = views.find((x) => x.el === (p || rs || sl || fill).closest(".sheet")); if (!v) return;
+      const lg = v.el.dataset.lg, season = v.brSeason, data = myBr(lg, season);
+      if (rs) { saveMyBr(lg, season, { seeds: {}, picks: {} }); buzz(8); return drawBracket(v, lg); }
+      if (fill) { (v.brConfs || []).forEach((c) => { data.seeds[c.name] = Object.fromEntries(c.teams.filter((t) => t.seed <= (SEEDS_N[lg] || 7)).map((t) => [t.seed, t.id])); }); data.picks = {}; saveMyBr(lg, season, data); buzz(8); return drawBracket(v, lg); }
+      if (sl) {
+        const [conf, seed] = sl.dataset.brseed.split("|"), c = (v.brConfs || []).find((x) => x.name === conf); if (!c) return;
+        const used = new Set(Object.entries(data.seeds[conf] || {}).filter(([s]) => s !== seed).map(([, id]) => String(id)));
+        const pick = await choose("Seed " + seed + " · " + conf, c.all.filter((t) => !used.has(t.id)).sort((a, b) => (a.team?.displayName || "").localeCompare(b.team?.displayName || "")).map((t) => ({ v: t.id, l: t.team?.displayName || "" })), data.seeds[conf]?.[seed]);
+        if (pick == null) return;
+        (data.seeds[conf] ||= {})[seed] = pick;
+        Object.keys(data.picks).forEach((k) => { if (k.startsWith(conf + "|")) delete data.picks[k]; }); delete data.picks.final;   // seeds changed: redo the picks after them
+        saveMyBr(lg, season, data); return drawBracket(v, lg);
       }
-      store.set(key, picks); buzz(8); drawBracket(v, lg);
+      const parts = p.dataset.brp.split("|");
+      if (parts[0] === "final") data.picks.final = parts[1];
+      else {
+        const [conf, r, i, seed] = parts;
+        data.picks[conf + "|" + r + "|" + i] = Number(seed);
+        Object.keys(data.picks).forEach((x) => { const [c2, r2] = x.split("|"); if (c2 === conf && Number(r2) > Number(r)) delete data.picks[x]; });
+        delete data.picks.final;
+      }
+      saveMyBr(lg, season, data); buzz(8); drawBracket(v, lg);
     });
     async function openBracket(lg) {
       const v = { kind: "bracket", key: "bracket|" + lg };
@@ -6685,7 +6712,9 @@
       v.brSeasons = Array.from({ length: 8 }, (_, i) => cur - i).map((y) => ({ v: y, l: seasonName(lg, y) }));
       let html = '<div class="ldr-pick">' + pickBtn("data-br-season", seasonName(lg, season)) + "</div>";
       v.brSeason = season;
-      const canPredict = !!FINAL_NAME[lg] && confs.filter((c) => c.teams.length).length >= 2;
+      v.brConfs = confs;
+      const canPredict = !!FINAL_NAME[lg] && confs.filter((c) => c.all?.length).length >= 2;
+      if (canPredict && !v.brLoaded) { v.brLoaded = true; const saved = await window.scorelineBracket?.load(lg, season).catch(() => null); if (saved?.seeds) store.set(myPicksKey(lg, season), { seeds: saved.seeds, picks: saved.picks || {} }); }   // your saved bracket from your account
       if (canPredict) html += '<div class="bz-chips seg chips">' + [["real", "Results"], ["mine", "🔮 My bracket"]].map(([k, n]) => '<button type="button" class="' + ((BR.mode || "real") === k ? "on" : "") + '" data-br-mode="' + k + '">' + n + "</button>").join("") + "</div>";
       if (canPredict && BR.mode === "mine") { box.innerHTML = html + myBracketHtml(lg, season, confs); return; }
       if (rounds) html += '<div class="bz-chips seg chips">' + rounds.map(([w, n]) => '<button type="button" class="' + (BR.round === w ? "on" : "") + '" data-br-round="' + w + '">' + esc(n) + "</button>").join("") + "</div>";

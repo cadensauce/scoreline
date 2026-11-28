@@ -10,6 +10,8 @@ import admin from "firebase-admin";
 import nodemailer from "nodemailer";
 import crypto from "node:crypto";
 import { picksTick, cleanupDeleted, seedShop, marksCheck } from "./picks.mjs";
+import { bracketTick } from "./bracket.mjs";
+let bracketAt = 0;
 import { fantasyTick } from "./fantasy.mjs";
 import { profileStats } from "./profile.mjs";
 
@@ -402,6 +404,7 @@ while (Date.now() < until) {
     if (Date.now() - newsAt > NEWS_EVERY_MS) await checkNews();
     if (Date.now() - cleanupAt > 6 * 3600e3) { cleanupAt = Date.now(); await cleanupDeleted(db, admin).catch((e) => console.log("cleanup error", e.message)); }
     if (Date.now() - picksAt > 60_000) { picksAt = Date.now(); await picksTick(db, admin).catch((e) => console.log("picks error", e.message)); }
+    if (Date.now() - bracketAt > 10 * 60_000) { bracketAt = Date.now(); await bracketTick(db, admin).catch((e) => console.log("bracket error", e.message)); }   // bracket locks + Marks for correct picks
     if (Date.now() - fantasyAt > 5 * 60_000) { fantasyAt = Date.now(); await fantasyTick(db, admin).catch((e) => console.log("fantasy error", e.message)); }
     if (Date.now() - statsAt > 3 * 3600e3) { statsAt = Date.now(); await profileStats(db, admin).catch((e) => console.log("profile stats error", e.message)); }   // profile stats: at shift start, then every 3 hours
     if (Date.now() - marksAt > 24 * 3600e3) { marksAt = Date.now(); await marksCheck(db, admin).catch((e) => console.log("marks check error", e.message)); }   // at the start of each 6-hour shift
