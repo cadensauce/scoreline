@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795886692" />
+  <meta name="build" content="1795886930" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1938,7 +1938,7 @@
     // A little personality: how the game is going, in one emoji line.
     function gameVibe(ev, key) {
       const state = ev.status?.type?.state;
-      if (state === "in") { const c = closeness(ev, key); return c < 0.08 ? "🔥 Nail-biter" : c > 0.46 ? "🧹 Running away with it" : ""; }
+      if (state === "in") { if (nailBiter(ev, key)) return "🔥 Nail-biter"; const c = closeness(ev, key); return c > 0.42 ? "🧹 Running away with it" : ""; }
       if (state === "post") { const t = teamsOf(ev), g = Math.abs(Number(t[0]?.score) - Number(t[1]?.score)); if (isNaN(g)) return ""; return g <= ({ mlb: 1, nfl: 3, cfb: 3, nba: 3, cbb: 3 }[key] ?? 1) ? "😮‍💨 Down to the wire" : ""; }
       return "";
     }
@@ -1946,17 +1946,30 @@
     const fl = (k) => state.filters.has(k), noFilters = () => !state.filters.size;
     const filterPills = () => '<button type="button" data-filter="all" class="' + (noFilters() ? "active" : "") + '">All</button><i class="flt-sep" aria-hidden="true">|</i>' +
       [["live", "<i class=fe>🔴 </i>Live"], ["close", "<i class=fe>🔥 </i>Closest"], ["fav", "⭐"]].map(([k, l]) => '<button type="button" data-filter="' + k + '" class="' + (fl(k) ? "active" : "") + '" aria-pressed="' + fl(k) + '"' + (k === "fav" ? ' aria-label="My teams" title="My teams"' : "") + ">" + l + "</button>").join("");
+    let wpAsked = false;
     function applyFilter(evs, key) {
       let r = evs;
       if (fl("fav")) r = r.filter(hasFav);
       if (fl("live")) r = r.filter(isLive);
+      if (fl("close") && !wpAsked && window.ScorelineWP) { wpAsked = true; Promise.all(["nfl", "cfb", "nba"].map((x) => window.ScorelineWP.ready(x).catch(() => {}))).then(() => render(false)); }   // team strength for win chances
       if (fl("close")) r = r.slice().sort((a, b) => closeness(a, key || leagueOf(a)) - closeness(b, key || leagueOf(b)));
       return r;
 
     }
     const leagueOf = (ev) => ev.__lg || "";
-    // Closest Games: lower = closer. Live games first (closest to 50/50 by win probability, else by score gap),
-    // then upcoming games (most even matchup by our team ratings), then finished games (smallest margin).
+    // Closest Games: lower = closer. Live games first, by a mix of win chance (how close to 50/50) and the score gap
+    // (in "scores": a touchdown, two baskets, a run), then upcoming games (most even matchup by our team ratings),
+    // then finished games (smallest margin). A tied game the favourite is sure to win isn't "close".
+    const ONE_SCORE = { nfl: 8, cfb: 8, nba: 6, cbb: 6, mlb: 1.5 };
+    const LAST_PERIOD = { nfl: 4, cfb: 4, nba: 4, cbb: 2, mlb: 8 };
+    function liveHomeChance(ev, key) {
+      const t = teamsOf(ev), comp = ev.competitions?.[0] || {}, W = window.ScorelineWP, [away, home] = t;
+      let hp = comp.situation?.lastPlay?.probability?.homeWinPercentage;
+      if (hp == null && typeof W?.[key] === "function" && key !== "f1") {
+        try { hp = W[key]({ homeScore: +home.score, awayScore: +away.score, period: ev.status?.period, clock: ev.status?.displayClock, possession: null, homeTeamId: home.team?.id, awayTeamId: away.team?.id, neutral: !!comp.neutralSite }); } catch { hp = null; }
+      }
+      return typeof hp === "number" && isFinite(hp) ? hp : null;
+    }
     function closeness(ev, key) {
       const st = ev.status?.type?.state, t = teamsOf(ev), comp = ev.competitions?.[0] || {}, W = window.ScorelineWP;
       const [away, home] = t; if (!home || !away) return 99;
@@ -1964,13 +1977,21 @@
       if (st === "post") return 10 + gap / 100;
       const ids = { homeTeamId: home.team?.id, awayTeamId: away.team?.id, neutral: !!comp.neutralSite };
       if (st === "in") {
-        let hp = comp.situation?.lastPlay?.probability?.homeWinPercentage;
-        if (hp == null && key === "nba" && W?.nba) hp = W.nba({ homeScore: +home.score, awayScore: +away.score, period: ev.status?.period, clock: ev.status?.displayClock, possession: null, ...ids });
-        return hp == null ? Math.min(0.49, gap / 40) : Math.abs(hp - 0.5);
+        const hp = liveHomeChance(ev, key), byScore = Math.min(0.5, gap / ((ONE_SCORE[key] || 8) * 3) * 0.5);
+        return hp == null ? byScore : 0.65 * Math.abs(hp - 0.5) + 0.35 * byScore;
       }
       const f = W?.[key];
       const hp = typeof f === "function" && key !== "f1" ? f({ homeScore: 0, awayScore: 0, period: 1, clock: key === "nba" ? "12:00" : "15:00", possession: null, ...ids }) : null;
       return 1 + (hp == null ? 0.5 : Math.abs(hp - 0.5));
+    }
+    // 🔥 Nail-biter: only late (4th quarter / 2nd half / 8th inning on, or overtime) and really close:
+    // within one score and, when we know it, neither team above a 75% chance to win.
+    function nailBiter(ev, key) {
+      const t = teamsOf(ev), per = Number(ev.status?.period) || 0, gap = Math.abs(Number(t[0]?.score) - Number(t[1]?.score));
+      if (!(per >= (LAST_PERIOD[key] || 4)) || isNaN(gap)) return false;
+      const tight = key === "mlb" ? gap <= 1 : BB(key) ? gap <= 5 : gap <= 7;
+      const hp = liveHomeChance(ev, key);
+      return tight && (hp == null || (hp >= 0.25 && hp <= 0.75));
     }
     function sortEvents(events) {
       const rank = (ev) => (isLive(ev) ? 0 : ev.status?.type?.state === "pre" ? 1 : 2);
@@ -8119,6 +8140,6 @@
     if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
-  <script type="module" src="account.js?v=1795886692"></script>
+  <script type="module" src="account.js?v=1795886930"></script>
 </body>
 </html>
