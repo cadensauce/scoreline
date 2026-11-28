@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795881338" />
+  <meta name="build" content="1795881432" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -5785,7 +5785,7 @@
           const lock = c.lockAt?.toDate?.(), open = lock && lock > new Date();
           return '<button type="button" class="opt" data-fx-cid="' + esc(c.id) + '"><span><b>' + esc(c.label) + "</b><small>" + (open ? "Open · locks " + esc(fmtDay(lock.toISOString()) + " " + fmtTime(lock.toISOString())) : c.status === "final" ? "Final" : "Live now") + '</small></span><span class="chev">›</span></button>';
         }).join("") + "</div>" : '<div class="panel"><p class="muted">No ' + esc(tabName(lg)) + " contests right now. They show up when games are on the schedule" + (lg === "mlb" ? " (MLB is in its offseason)." : ".") + "</p></div>") +
-          '<div class="g-note">Lineup: ' + esc(FX_LINEUP[lg]) + ". Scoring: " + esc(FX_SCORING[lg]) + ".</div>";
+          '<div class="g-note">' + (lg === "cbb" ? "Games with an AP Top 25 team. " : "") + "Lineup: " + esc(FX_LINEUP[lg]) + ". Scoring: " + esc(FX_SCORING[lg]) + ".</div>";
         main.innerHTML = h; return;
       }
       // One contest: your lineup
@@ -7759,6 +7759,6 @@
     if (store.get("afterReload", "") === "dev") { store.set("afterReload", ""); state.tab = "you"; render(); setTimeout(openDev, 700); }   // after Stop (View site as): back to Dev tools
   </script>
   <script src="models/wp.js" defer></script>
-  <script type="module" src="account.js?v=1795881338"></script>
+  <script type="module" src="account.js?v=1795881432"></script>
 </body>
 </html>
