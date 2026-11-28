@@ -2589,9 +2589,10 @@
         Object.values(cars).forEach((c) => c.sort((m, n) => m.t - n.t));
         const nums = Object.keys(cars).filter((n) => cars[n].length > 20);
         if (!nums.length) throw new Error("no data");
-        const ref = nums.slice().sort((m, n) => (order[m] || 99) - (order[n] || 99))[0];
-        // Out of the session (DNF / parked in the garage): a car that barely moves while most of the field is racing.
+        // The outline comes from the car that covered the most track in this window (the leader may be sitting in the pit lane during practice, which would draw a straight line instead of the circuit).
         const extent = (c) => Math.hypot(Math.max(...c.map((p) => p.x)) - Math.min(...c.map((p) => p.x)), Math.max(...c.map((p) => p.y)) - Math.min(...c.map((p) => p.y)));
+        const ref = nums.slice().sort((m, n) => extent(cars[n]) - extent(cars[m]))[0];
+        // Out of the session (DNF / parked in the garage): a car that barely moves while most of the field is racing.
         const trackSize = extent(cars[ref]), still = nums.filter((n) => extent(cars[n]) < trackSize * 0.04);
         const out = new Set(still.length <= nums.length / 2 ? still : []);   // everyone still = red flag or end of session, keep them
         track = { s, live, out, at: Date.now(), a: a.getTime(), b: b.getTime(), cars, order, outline: cars[ref], drivers: Object.fromEntries(drivers.map((d) => [d.driver_number, d])) };
