@@ -357,6 +357,11 @@
     .terms-key { font-size: 13.5px; line-height: 1.5; padding: 12px 14px; margin: 4px 0 12px; border-radius: 12px; border: 1px solid var(--line-hi, var(--line)); background: var(--panel-2); }
     .acct-check { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; font-size: 13.5px; line-height: 1.4; margin: 6px 0 2px; } .acct-check input { width: 18px; height: 18px; flex: none; margin: 0; } .acct-unf { flex-wrap: wrap; } .acct-unf .acct-check { flex-basis: 100%; }
     .link-btn { border: 0; background: none; padding: 0; font: inherit; color: var(--text); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; } .terms h3 { font-size: 15px; margin: 18px 0 6px; } .terms p, .terms li { font-size: 14px; line-height: 1.55; } .terms ul { padding-left: 18px; margin: 0; }
+    .fg-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; } .fg-team { width: 44px; font-weight: 700; font-size: 14px; }
+    .fg-chips { display: flex; gap: 6px; } .fg-rec { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .fg-chip { width: 32px; height: 32px; border-radius: 9px; border: 0; font: inherit; font-size: 13px; font-weight: 700; display: grid; place-items: center; cursor: pointer; }
+    .fg-chip.W { background: rgba(52, 199, 89, .16); color: #4cd471; } .fg-chip.L { background: rgba(255, 69, 58, .14); color: #ff6b61; } .fg-chip.T { background: var(--panel-2); color: var(--muted); }
+    .fg .g-note { margin: 8px 0 0; } .fg-series { color: var(--text); }
     .pick-sec:empty { display: none; } .pick-row { display: flex; gap: 10px; } .pick-msg { font-size: 14px; line-height: 1.45; margin-bottom: 10px; }
     .pick-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 8px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); color: var(--text); transition: border-color var(--t-fast), background var(--t-fast); }
     .pick-btn b { font-size: 16px; } .pick-btn small { font-size: 11.5px; color: var(--muted); } .pick-btn.on { border-color: var(--text); background: var(--panel-2); } .pick-btn:disabled { opacity: .55; }
@@ -3558,6 +3563,28 @@
         (items.length ? '<ul class="recap-list">' + items.map(([k, v]) => "<li><b>" + esc(k) + "</b><span>" + esc(v) + "</span></li>").join("") + "</ul>" : "") + "</div>";
     }
 
+    /* Form guide (upcoming games): each team's last five results, oldest → newest, and this season's meetings.
+       From ESPN's own game data; nothing shows when it isn't there. Tap a result for the score and opponent. */
+    function formGuideHtml(s, teams, lg) {
+      const l5 = s.lastFiveGames || [];
+      const rows = teams.map((t) => {
+        const evs = (l5.find((y) => String(y.team?.id) === String(t.team?.id))?.events || []).filter((e) => /^[WLT]$/.test(e.gameResult || "")).slice(-5);
+        if (!evs.length) return "";
+        const w = evs.filter((e) => e.gameResult === "W").length, l = evs.filter((e) => e.gameResult === "L").length, tie = evs.length - w - l;
+        const chip = (e) => { const when = Date.parse(e.gameDate || "") ? new Date(Date.parse(e.gameDate)).toLocaleDateString([], { month: "short", day: "numeric" }) : "";
+          const opp = e.opponent?.abbreviation || e.opponent?.displayName || "";
+          const say = e.gameResult + " " + String(e.score || "").replace("-", "–") + " " + (e.atVs === "@" ? "at" : "vs") + " " + opp + (when ? ", " + when : "");
+          return '<button type="button" class="fg-chip ' + e.gameResult + '" data-fg="' + esc(say) + '" aria-label="' + esc(say) + '">' + e.gameResult + "</button>"; };
+        return '<div class="fg-row"><span class="fg-team">' + esc(t.team?.abbreviation || "") + '</span><span class="fg-chips">' + evs.map(chip).join("") + '</span><small class="fg-rec">' + w + "-" + l + (tie ? "-" + tie : "") + "</small></div>";
+      }).join("");
+      const ser = (s.seasonseries || []).find((x) => x.type === "season") || (s.seasonseries || [])[0];
+      const serLine = ser?.summary && ser.events?.some((e) => e.status === "post") ? '<p class="g-note fg-series">🤝 ' + esc(ser.summary) + (ser.totalCompetitions ? " (" + ser.totalCompetitions + " meetings this season)" : "") + "</p>" : "";
+      if (!rows && !serLine) return "";
+      return '<div class="g-sec fg" data-c="all"><div class="g-label">Form guide 📈</div>' +
+        dm("<b>Form guide.</b> Each team's last five results, oldest on the left: <b>W</b> win, <b>L</b> loss, <b>T</b> tie. Tap one to see the score. A team on a run of W's is playing well right now.") +
+        rows + '<p class="g-note">Last five games, oldest → newest. Tap a result for the score.</p>' + serLine + "</div>";
+    }
+    document.addEventListener("click", (e) => { const c = e.target.closest("[data-fg]"); if (c) { buzz(6); toast(c.dataset.fg); } });
     function plainLine(s, teams, state, lg) {
       if (teams.length !== 2) return "";
       const comp = s.header?.competitions?.[0] || {}, st = comp.status?.type || {};
@@ -5218,6 +5245,7 @@
       if (st.state !== "pre") h += highlightsHtml(s, recap ? "recap" : "all");
       if (st.state !== "in") h += '<div data-pred></div>';   // prediction (before) / predicted vs actual (after), filled in below
       if (PICK_LGS.includes(lg)) h += '<div class="g-sec pick-sec" data-pick data-c="all"></div>';
+      if (st.state === "pre") h += formGuideHtml(s, teams, lg);
       if (lg === "mlb") h += pitchersHtml(s);
       if ((lg === "nfl" || lg === "cfb") && window.ScorelineWP) window.ScorelineWP.ready(lg).catch(() => {});   // for the strategy picker
       if (lg === "nfl" || lg === "cfb") h += '<div class="g-sec" data-field data-c="plays timeouts"><div class="g-label">Plays</div><div class="skel" style="height:150px"></div></div>';
