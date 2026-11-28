@@ -1549,7 +1549,7 @@ window.scorelineGameChat = {
     (async () => {
       await startFirebase();
       if (FIREBASE_CONFIG) await Promise.race([authReady, new Promise((r) => setTimeout(r, 4000))]);
-      if (!user) { list.innerHTML = '<p class="g-note">Sign in to see and join the game chat.</p>'; el.querySelector(".gc-form")?.remove(); return; }
+      if (!user) { stop(); el.innerHTML = '<div class="gc-mini"><span>💬 <b>Game chat</b> <small>Talk about it while it’s on</small></span><button type="button" class="pill-btn" data-pick-signin>Sign in</button></div>'; return; }   // signed out: one compact row, not a big empty block
       mod = ["owner", "mod"].includes(await roleOf(user.uid).catch(() => ""));
       const q = fb.query(fb.collection(db, "gamechat", gid, "msgs"), fb.orderBy("at"), fb.limitToLast(60));
       unsub = fb.onSnapshot(q, (snap) => { msgs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.text); draw(); },
