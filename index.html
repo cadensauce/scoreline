@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- Scoreline version: bump on each release (major.minor); apps take it too. Build is bumped on every push. -->
   <meta name="version" content="2.0" />
-  <meta name="build" content="1795827563" />
+  <meta name="build" content="1795828491" />
   <!-- Security: scripts only from Scoreline itself and Google/Firebase (sign-in); no plugins; links can't change where
        the page loads from or where forms send; http images/requests are upgraded to https. Data feeds stay open (connect). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self' https://cadensauce.github.io; form-action 'self'; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ipc: http://ipc.localhost; upgrade-insecure-requests" />
@@ -1600,7 +1600,7 @@
       if (e.target.closest("[data-ppclose]")) e.target.closest(".pp-wrap")?.remove();
     });
     const MOBILE_APP = !!window.__PREVIEW_APP || (IS_PHONE && (!!window.__TAURI__ || STANDALONE));
-    const navOrder = () => { const p = pins(); return ["home", ...p, ...(ALL_SPORTS.includes(state.tab) && !p.includes(state.tab) ? [state.tab] : []), "fantasy", "you"]; };   // Social is part of You now (one less tab on phones)
+    const navOrder = () => { const p = pins(); return ["home", ...p, ...(ALL_SPORTS.includes(state.tab) && !p.includes(state.tab) ? [state.tab] : []), "news", "fantasy", "you"]; };   // Social is part of You now (one less tab on phones)
     /* ---------- native-app feel (phone app only) ---------- */
     if (MOBILE_APP) {
       document.documentElement.classList.add("mobile-app");
@@ -1884,10 +1884,11 @@
       const btn = (k, label, active, extra) => '<button class="btab ' + (active ? "active" : "") + '" type="button" ' + extra + ">" + ICONS[k] + label + (k !== "home" && k !== "more" && liveIn(k) ? '<span class="dot"></span>' : "") + "</button>";
       $("btabs").innerHTML = navOrder().map((k) => btn(k, tabName(k), state.tab === k, 'data-tab="' + k + '"')).join("");
     }
-    const tabName = (k) => k === "home" ? "Home" : k === "you" ? "You" : k === "fantasy" ? "Fantasy" : k === "social" ? "Social" : (LEAGUES[k].short || LEAGUES[k].name);
+    const tabName = (k) => k === "home" ? "Home" : k === "you" ? "You" : k === "news" ? "News" : k === "fantasy" ? "Fantasy" : k === "social" ? "Social" : (LEAGUES[k].short || LEAGUES[k].name);
     const svg = (d) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + "</svg>";
     const ICONS = {
       home: svg('<path d="M4 11l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>'),
+      news: svg('<path d="M5 5h11v14H6a1 1 0 0 1-1-1z"/><path d="M16 9h3v9a1 1 0 0 1-2 0V9M8 9h5M8 12h5M8 15h3"/>'),
       fantasy: svg('<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7M10 17h4"/>'),
       social: svg('<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.2A4.6 4.6 0 0 1 21 18.5"/>'),
       nfl: svg('<ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-45 12 12)"/><path d="M9.5 14.5l5-5M11 11.5l1.5 1.5M12.5 10l1.5 1.5"/>'),
@@ -2145,7 +2146,11 @@
         const score = (big ? 3 : 0) + (vip ? 2 : 0) + Math.min(hot, 4) + (now - t < 864e5 ? 1 : 0);
         if (!best || score > best.score || (score === best.score && t > best.t)) best = { score, t, h, d: a.description || "", url: a.links?.web?.href || "" };
       }
-      return best;
+      if (best) return best;
+      // No big story right now: show the newest one instead, so there's always a headline at the top.
+      const fresh = arts.filter((a) => ["HeadlineNews", "Story"].includes(a.type) && a.headline && !NEWS_SKIP.test(a.headline) && now - (Date.parse(a.published || "") || 0) < 2 * 864e5)
+        .sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0))[0];
+      return fresh ? { score: 0, t: Date.parse(fresh.published) || now, h: fresh.headline, d: fresh.description || "", url: fresh.links?.web?.href || "" } : null;
     }
     async function loadHeadline(key) {
       headAt[key] = Date.now();
@@ -2176,7 +2181,7 @@
       const sBtn = paged ? '<button type="button" class="icon-btn' + (open ? " on" : "") + '" data-searchtoggle aria-label="Search ' + esc(L.short || L.name) + ' teams"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>' : "";
       const hBtn = key !== "f1" ? '<button type="button" class="icon-btn' + (HEAT ? " on" : "") + '" data-heat aria-label="' + (HEAT ? "Show as list" : "Show as heat map") + '" title="' + (HEAT ? "List" : "Heat map") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2" opacity=".55"/><rect x="3" y="13" width="8" height="8" rx="2" opacity=".3"/><rect x="13" y="13" width="8" height="8" rx="2" opacity=".75"/></svg></button>' : "";
       return '<div class="bar"><h1>' + esc(title) + "</h1>" + hBtn + sBtn + "</div>" + headlineHtml(key) + (open ? search : "") +
-        '<div class="bar-row">' + liveBtn + (paged ? '<button type="button" class="icon-btn st-btn" data-standings="' + key + '" aria-label="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '" title="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button><button type="button" class="icon-btn" data-leaders="' + key + '" aria-label="Stat leaders" title="Stat leaders">🏆</button>' + (key !== "cfb" ? '<button type="button" class="icon-btn" data-bracket="' + key + '" aria-label="Playoff bracket" title="Playoff bracket"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h5v4H3M3 15h5v4H3M8 7h3v10H8M11 12h4M15 10h6v4h-6"/></svg></button>' : "") + '' : "") + "</div>" + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
+        '<div class="bar-row">' + liveBtn + (paged ? '<button type="button" class="icon-btn st-btn" data-standings="' + key + '" aria-label="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '" title="' + (key === "cfb" ? "Standings and Top 25" : "Standings") + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button><button type="button" class="icon-btn" data-open-buzz="all" data-bz-lg="' + key + '" aria-label="News" title="News">📰</button><button type="button" class="icon-btn" data-leaders="' + key + '" aria-label="Stat leaders" title="Stat leaders">🏆</button>' + (key !== "cfb" ? '<button type="button" class="icon-btn" data-bracket="' + key + '" aria-label="Playoff bracket" title="Playoff bracket"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h5v4H3M3 15h5v4H3M8 7h3v10H8M11 12h4M15 10h6v4h-6"/></svg></button>' : "") + '' : "") + "</div>" + (pager || toggle ? '<div class="sub-row">' + pager + toggle + "</div>" : "") + (day ? stripHtml(key) : "") + (PRIMER[key] ? dm(PRIMER[key] + posGuide(key)) : "") +
         (HEAT ? '<div class="heat-key"><span>One-sided</span><i></i><span>Close game</span></div>' : "") + (HEAT ? dm("<b>Reading the heat map.</b> Each tile is one game. The brighter the tile, the closer the game is to a coin flip (from win probability), so the most exciting games stand out. Upcoming games use the pre-game odds; finished games are dimmed. The ball icon shows who has it.") : "");
     }
 
@@ -2728,7 +2733,7 @@
       store.set("tab", state.tab);
       renderTabs();
       if (state.tab !== "f1") clearInterval(countdownTimer);
-      const p = state.tab === "you" ? renderAlerts() : state.tab === "fantasy" ? renderFantasy() : state.tab === "social" ? renderSocial() : state.tab === "home" ? renderHome() : state.tab === "f1" ? renderF1() : renderLeague(state.tab, force);
+      const p = state.tab === "you" ? renderAlerts() : state.tab === "fantasy" ? renderFantasy() : state.tab === "news" ? renderNews() : state.tab === "social" ? renderSocial() : state.tab === "home" ? renderHome() : state.tab === "f1" ? renderF1() : renderLeague(state.tab, force);
       Promise.resolve(p).finally(() => $("main").classList.add("calm"));
       return p;
     }
@@ -6381,23 +6386,32 @@
       box.innerHTML = all.length ? all.map(buzzRow).join("") : '<div class="panel"><p class="muted people-hint">Nothing new right now. Check back soon 👀</p></div>';
       window.scorelineReact?.fill(box);
     }
-    function openBuzz(kind) {
-      buzzKind = kind || "all";
+    // The News tab: The Buzz as a full page (same chips, key dates and feed).
+    function renderNews() {
+      const main = $("main");
+      main.innerHTML = '<div class="bar"><h1>News 🐝</h1></div>' + buzzBodyHtml();
+      return drawBuzz({ el: main });
+    }
+    function openBuzz(kind, lg) {
+      buzzKind = kind || "all"; if (lg) buzzLg = lg;
       const v = { kind: "buzz", key: "buzz" };
       if (!pushView(v)) return;
+      setBody(v, "The Buzz 🐝", buzzBodyHtml());
+      drawBuzz(v);
+    }
+    function buzzBodyHtml() {
       const chip = (attr, k, n, on) => '<button type="button" class="' + (on ? "on" : "") + '" ' + attr + '="' + k + '">' + n + "</button>";
-      setBody(v, "The Buzz 🐝", '<div class="bz-chips seg chips">' + [["all", "Everything"], ["news", "📰 News"], ["move", "🔄 Moves"]].map(([k, n]) => chip("data-bzk", k, n, buzzKind === k)).join("") + "</div>" +
+      return ('<div class="bz-chips seg chips">' + [["all", "Everything"], ["news", "📰 News"], ["move", "🔄 Moves"]].map(([k, n]) => chip("data-bzk", k, n, buzzKind === k)).join("") + "</div>" +
         '<div class="bz-chips seg chips">' + [["all", "All sports"], ...BUZZ_LGS.map((k) => [k, LEAGUES[k].short || k.toUpperCase()])].map(([k, n]) => chip("data-bzl", k, n, buzzLg === k)).join("") + "</div>" +
         keyDatesHtml() + dm("<b>Reading The Buzz.</b> News and roster moves from around the league. <b>FA</b> means free agent (not on a team). <b>Waived</b> or <b>released</b> means cut. <b>Practice squad</b> is the NFL's backup group that trains with the team. <b>Injured list / reserve</b> means out hurt for a while. <b>Called up</b> means moved onto the main roster. The <b>trade deadline</b> is the last day teams can trade players for the rest of the season.") +
         '<div data-buzz><div class="skel" style="height:90px"></div><div class="skel" style="height:90px"></div></div><p class="g-note">News and moves from ESPN\'s public feeds. Tap Read more for the full story.</p>');
-      drawBuzz(v);
     }
     document.addEventListener("click", (e) => {
-      if (e.target.closest("[data-open-buzz]")) return openBuzz(e.target.closest("[data-open-buzz]").dataset.openBuzz);
+      const ob = e.target.closest("[data-open-buzz]"); if (ob) return openBuzz(ob.dataset.openBuzz, ob.dataset.bzLg);
       const k = e.target.closest("[data-bzk]"), l = e.target.closest("[data-bzl]");
       if (!k && !l) return;
       if (k) buzzKind = k.dataset.bzk; if (l) buzzLg = l.dataset.bzl;
-      const v = views.find((x) => x.key === "buzz"); if (!v) return;
+      const v = views.find((x) => x.key === "buzz") || (state.tab === "news" ? { el: $("main") } : null); if (!v) return;
       (k || l).parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === (k || l)));
       buzz(8); drawBuzz(v);
     });
